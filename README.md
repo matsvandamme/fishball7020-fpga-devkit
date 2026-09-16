@@ -1006,11 +1006,20 @@ nothing in the DAC DMA, no DDS tone, and nobody having asked to transmit. When
 a transmission ends, ADI's driver reverts the baseband source to a silent DDS
 but leaves the chain biased, so it goes straight back to idling hot.
 
-Into an open or shorted port that is not a damage risk — the AD9361's outputs
-tolerate both. But there is no reason to keep a transmitter energised that you
-are not using, it warms a die that already sits above 50 °C, and on the **PA
-variant of this board it is not a trivial amount of power**: see the loopback
-warning below.
+Idling like that is not itself a damage risk: at maximum attenuation the output
+power is negligible (−89.75 dB of range below full scale). But there is no
+reason to keep a transmitter energised that you are not using, it warms a die
+that already sits above 50 °C, and on the **PA variant of this board it is not a
+trivial amount of power**: see the loopback warning below.
+
+**Do not transmit at power into an unterminated port.** An open or shorted
+connector reflects everything back into the output stage. Neither the AD9361
+datasheet (the TX is specified into a matched 100 Ω differential load, ~6.5 dBm
+max) nor the PGA-102+ PA datasheet (up to ~+17.5 dBm here) states any tolerance
+for an output open, short, or high VSWR — so treat it as unspecified and always
+terminate: an antenna, a load, or a pad into the receiver. The receiver has a
+hard number: **+2.5 dBm is the AD9361's absolute-maximum RF input**, which is
+why every loopback path in this repo goes through an attenuator.
 
 **This build fixes it in firmware.** `patches/0004-mute-tx-when-no-dma-stream.patch`
 hooks the TX buffer lifecycle the DAC driver already has:
