@@ -135,6 +135,8 @@ if [ $MUTATE -eq 1 ]; then
            's/? sample_d : gpio_o_in/? sample : gpio_o_in/'
     mutate "only one synchroniser stage on the flag" \
            's/(flag_s == 1.b1)/(flag_m == 1'"'"'b1)/g'
+    mutate "a datapath reset leaves a stale nibble on the pins" \
+           's/^      sample_d <= {NBITS{1.b0}};/      sample_d <= sample_d;/'
 
     if [ $survived -ne 0 ]; then
         echo "   $survived mutant(s) survived - the testbench is weaker than it looks"

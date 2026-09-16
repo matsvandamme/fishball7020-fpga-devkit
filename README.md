@@ -1131,9 +1131,14 @@ module is not in `src/`, the runner lifts it straight out of its patch file.
    PASS  473 checks, no mismatches against the golden model
 
 == tx_gpio_bitmap ==
-   pins follow EMIO GPIO when the flag is clear,
-   and the sample nibble when it is set
-   PASS  89 checks
+   [1] the pins are ordinary GPIO while the flag is clear
+   [2] the sample nibble reaches the pins once the flag is set
+   [3] one transition per SAMPLE when valid is gapped (2R2T)
+   [4] the last nibble is held across a stalled stream
+   [5] clearing the flag hands the pins back to Linux
+   [6] reset puts the pins back in a defined state
+   [7] 2000 random clocks, every signal moving independently
+   PASS  2092 checks
 ```
 
 Every check is exact integer arithmetic — an Fs/4 shift is a swap and a sign
@@ -1153,12 +1158,18 @@ runner can check itself:
 ./sim/run_sim.sh --mutate
 ```
 
-It breaks the modules nine ways — for `ad_fs4_ddc`, the phase counter moved
-out of its guard, a sign error in the −j quadrant, I and Q swapped in +j,
+It breaks the modules ten ways — for `ad_fs4_ddc`, the phase counter moved out
+of its guard, a sign error in the −j quadrant, I and Q swapped in +j,
 `valid_out` unregistered; for `tx_gpio_bitmap`, the nibble captured every clock
 instead of every sample, the pins left tristated, the mux reversed, the sample
-not registered, one synchroniser stage instead of two — and reports any mutant
-the testbenches fail to catch. CI runs both.
+not registered, one synchroniser stage instead of two, a reset that leaves a
+stale nibble standing — and reports any mutant the testbenches fail to catch.
+CI runs both.
+
+This is not decoration. Writing that last mutant is what exposed a hole in the
+reset test: a sample was landing between the reset and the check and papering
+over the stale value. The test was wrong, `--mutate` said so, and it got
+fixed.
 
 If you add HDL of your own, add a testbench beside this one. It is the
 cheapest verification available here by a factor of about a thousand.
@@ -1385,7 +1396,7 @@ build with nothing cached.
 | RX path | no `rx_ddc`, stock `coefile_int.coe`, **72 / 220 DSP48s**, 11 893 LUTs |
 | BOOT.bin | 2 849 940 B, bitstream compressed to 2 329 140 B |
 | Timing | WNS +0.214 ns, 0 failing endpoints of 48 248 |
-| HDL simulation | 562 checks against the golden models, all 9 mutants caught |
+| HDL simulation | 2 565 checks against the golden models, all 10 mutants caught |
 | On the board | correct `hw_model`, persistent serial, TX muted at boot, 32 self-test checks passed |
 
 **An HDL change reaches the fabric.** The same tree with

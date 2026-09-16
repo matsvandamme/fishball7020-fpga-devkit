@@ -2,8 +2,9 @@
 
 A worked example of getting something out of the FPGA that no software timing
 can give you: **four digital output pins whose every edge is locked to a
-specific transmitted RF sample**. No drift, no unknown latency, no "about a
-millisecond later". You decide, sample by sample, what those pins do.
+specific transmitted RF sample**. Not "about a millisecond later, give or take"
+— a fixed offset you measure once and then trust. You decide, sample by
+sample, what those pins do.
 
 The trick costs nothing, because the bits it uses were being thrown away.
 
@@ -46,15 +47,28 @@ header instead of dropping them.
 ## What "coherent" buys you
 
 **Coherent** here means: a fixed, unchanging, known relationship in time
-between two things. The pins carry bit `b0..b3` of the same sample whose bits
-`b4..b15` are being converted to RF at that instant, and both are clocked by
-the same sample clock inside the AD9361. If bit 0 flips high on sample 4000,
-the edge on that pin and the RF from sample 4000 happen together, every time,
-on every run, for as long as the radio streams.
+between two things. It does **not** mean simultaneous, and the difference
+matters enough to spell out.
 
-Nothing in software can do this. A GPIO toggled from Linux is tens of
-microseconds away from the RF and jitters run to run; even a kernel driver is
-at the mercy of the DMA queue depth. Here the timing is structural.
+The pins carry bits `b0..b3` of a sample; bits `b4..b15` of that same sample
+become RF. But the pin is driven one FPGA clock after the sample leaves the
+DMA unpacker, while the RF still has to cross the fabric interpolation filter,
+the AD9361's own digital filters, the DAC and the analog transmit chain. **So
+the pins lead the RF**, by something on the order of a microsecond depending
+on how the filters are configured.
+
+What makes that useful is that the lead is *constant*. It does not drift, it
+does not vary sample to sample, and it comes out the same on every run as long
+as you do not change the sample rate or the filter configuration. Measure it
+once — with a scope on a pin and a second one on the RF, or by looping the
+transmitter back into the receiver and cross-correlating — and subtract it
+forever after.
+
+Nothing in software gets you even that. A GPIO toggled from Linux is tens of
+microseconds away from the RF and the delay changes from run to run and from
+pulse to pulse; even a kernel driver is at the mercy of the DMA queue depth.
+Here the offset is structural, so it is a calibration constant instead of a
+source of error.
 
 The contributor who proposed this feature uses it for **multi-channel radar**
 (1 transmitter, 8 receivers; or 2 and 8). The transmit buffer in DDR holds the
@@ -87,13 +101,22 @@ into the low nibble comes out on the pins, one nibble per sample.
                                     up_dac_gpio_out[1] ┘  (the enable flag)
 ```
 
-The new module, `tx_gpio_bitmap.v`, is about thirty lines:
+The new module, `tx_gpio_bitmap.v`, is thirty lines of logic under a much
+longer comment. Three things in it are deliberate:
 
 - It captures the nibble **once per sample** — not once per clock. In the
   board's 2R2T mode a sample only arrives every second FPGA clock, and
   capturing on the clock would silently double the rate of every pattern you
   wrote. This is the one real bug in the design space, and the testbench exists
   mostly to catch it.
+- It captures on the strobe that says *the new word is here now*
+  (`fifo_rd_valid | fifo_rd_underflow`), not the one that says *a word has been
+  requested* (`fifo_rd_en`). The unpacker registers its output, so those are
+  one clock apart, and getting it wrong puts the previous sample on the pins
+  forever — coherent, repeatable, and one sample wrong. Including the underflow
+  strobe means that when the DMA starves and the DAC is fed zeros, the pins
+  carry those zeros too: the promise "the pins are the low nibble of what the
+  DAC got" has no exceptions.
 - A flag bit chooses who owns the pins: **0** = ordinary Linux GPIO, **1** =
   the sample nibble. So enabling the feature does not cost you four pins the
   rest of the time.
@@ -110,6 +133,9 @@ would give you filter output on the pins, not the bits you wrote.
 | `hdl/projects/pluto/system_constr.xdc` | the pin assignments |
 | `firmware/sim/tb_tx_gpio_bitmap.v` | the self-checking testbench |
 | `firmware/patches/optional/0006-tx-sample-nibble-to-gpio.patch` | all of the above, **opt-in** |
+
+It costs a handful of LUTs and four flip-flops per pin. No DSP slices, no
+block RAM, no new clock.
 
 ### The pins
 
@@ -170,7 +196,36 @@ echo 0xBC 0x0    > $D/direct_reg_access     # back to ordinary GPIO
 ```
 
 With the flag clear the four pins are EMIO GPIO bits 18–21, i.e. ordinary
-`/sys/class/gpio` lines, readable and writable from Linux as usual.
+`/sys/class/gpio` lines, readable and writable from Linux as usual. On Zynq
+the EMIO lines follow the 54 MIO ones, so these are GPIO numbers
+`base + 54 + 18` … `base + 54 + 21`; read `base` from
+`/sys/class/gpio/gpiochip*/base`.
+
+**Changing the interpolation factor does not clobber the flag.** The driver
+read-modify-writes only bit 0 of this register (`cf_axi_interpolation_set`),
+so a `sampling_frequency` change that engages or bypasses the FPGA filter
+leaves bit 1 alone.
+
+### Checking it works without a scope
+
+The pin inputs are wired back to EMIO GPIO bits 18–21 **unconditionally** —
+including while the fabric is driving them. So Linux can read the actual pin
+level even in bit-map mode:
+
+```sh
+G=$(( $(cat /sys/class/gpio/gpiochip*/base | head -1) + 54 + 18 ))   # pin 0
+echo $G > /sys/class/gpio/export
+echo in > /sys/class/gpio/gpio$G/direction
+cat /sys/class/gpio/gpio$G/value
+```
+
+Reading through sysfs takes microseconds, so on a fast clock pattern you will
+just see 0 and 1 at random — which is itself informative, since a dead pin
+reads the same value every time. For a definite answer, transmit a cyclic
+buffer that holds one bit **high for the whole buffer**, confirm the pin reads
+1, then transmit one that holds it low and confirm it reads 0. That exercises
+the entire path — your authoring code, the DMA, the tap, the mux, the pad —
+with nothing but `cat`.
 
 The pins only carry meaningful data while a **TX buffer is streaming**. This
 firmware mutes the transmitter and powers down the TX synthesiser between
@@ -240,9 +295,16 @@ transmit it directly.
 ## Limits
 
 - **Rate.** One nibble per sample, so the fastest a pin can toggle is half the
-  sample rate: about 30 MHz at 61.44 MSPS. Every pattern is a division of the
-  sample rate, and only of the sample rate — you cannot get an arbitrary
-  frequency out of this.
+  sample rate — about 30 MHz at 61.44 MSPS. "Sample rate" here means the one
+  libiio reports, the rate of the buffer *you* write. When the FPGA
+  interpolator is engaged for low sample rates, that is one eighth of the rate
+  the AD9361 runs internally, and the pins follow your buffer, not the chip.
+  Every pattern is a whole-number division of that rate — you cannot get an
+  arbitrary frequency out of this.
+- **Skew.** The four outputs are not timing-constrained, so the spread between
+  them is whatever the router produced: a few hundred picoseconds, unverified.
+  Nothing next to a 16 ns sample period, but do not build a picosecond-accurate
+  instrument on it without constraining and checking.
 - **I only, 4 pins**, unless you widen it.
 - **3.3 V LVCMOS**, single-ended, no series termination on the board. Keep the
   wires short; if you need to drive something far away, buffer it.
