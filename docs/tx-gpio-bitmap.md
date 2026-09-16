@@ -78,9 +78,9 @@ source of error.
 
 ### What it is for
 
-The contributor who proposed this feature uses it for **multi-channel radar**
-(1 transmitter, 8 receivers; or 2 and 8). The transmit buffer in DDR holds the
-waveform, and the low nibble of each sample carries, on separate pins:
+The motivating application is **multi-channel radar** (1 transmitter, 8
+receivers; or 2 and 8). The transmit buffer in DDR holds the waveform, and the
+low nibble of each sample carries, on separate pins:
 
 | Pin | Typical use |
 |---|---|
