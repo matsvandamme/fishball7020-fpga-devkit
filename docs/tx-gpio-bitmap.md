@@ -444,8 +444,8 @@ Being explicit, because "it builds" and "it works" are different claims:
 | Nibble reaches the pins, bit for bit | ✅ all four one-hot patterns, on hardware |
 | Bit order matches the header labels | ✅ `sample_gpio[n]` ↔ nibble bit `n` |
 | The flag hands the pins back when cleared | ✅ measured |
-| **Coherence with the RF measured** | ❌ **not yet done** — needs a scope |
-| **Rate / edge timing on a scope** | ❌ **not yet done** |
+| Pins track the pattern **in time**, at the rate the samples imply | ✅ two bits at once, 0.0–0.1 % period error |
+| **Edge-level timing and coherence with the RF** | ❌ **not yet done** — needs a scope |
 
 Run the hardware check yourself with `tools/tx-gpio-bitmap-check.py`. It needs
 no scope, no jumper and no antenna, and it never transmits at power — TX
@@ -459,8 +459,46 @@ flag ON - each pin must carry its own bit of the nibble
   ...
 flag OFF - the fabric must let go, so the pins stop following the data
   nibble 0x0 -> [1, 1, 1, 1]   nibble 0xF -> [1, 1, 1, 1]   released (floating)
+
+timing - the pins must track the pattern at the rate the samples imply
+  bit0:  52 edges, period   499.6 ms, expected   499.3 ms, error 0.1%  ok
+  bit1: 207 edges, period   124.8 ms, expected   124.8 ms, error 0.0%  ok
 RESULT: PASS
 ```
+
+### How the pin state is actually measured
+
+Worth being precise, because "I read the pin" can mean several things. The
+path is **pad → the FPGA's input buffer → `gpio_i[21:18]` → PS7 `EMIOGPIOI` →
+the GPIO controller's `DATA_RO` register → sysfs**. In the routed design each
+pin is a real `IOBUF` primitive whose `I` and `O` sit on *separate* nets
+(`sample_gpio_OBUF[n]` and `sample_gpio_IBUF[n]`), so the value read is the
+input buffer sensing the pad, not a loop-back of what was driven. The
+pre-charge experiment confirms it from the other direction: with `gpio_o` set
+to 0 the pin still reads 1 when it floats, which an internal echo could not do.
+
+What that does **not** establish: the PCB trace from the FPGA ball to the JP5
+pin (taken from the schematic), the actual voltage as opposed to which side of
+the logic threshold it is on, and anything at edge resolution.
+
+### The timing measurement, and why it means something
+
+Static levels only prove the wiring. The timing stage authors a square wave
+whose period is fixed by the buffer length and the sample rate — one cycle per
+buffer on bit 0, four on bit 1 — drops the sample rate to the AD9361's minimum
+so the pattern is slow enough for sysfs to follow, and measures the period that
+comes out of the pin.
+
+Both bits land on `N / fs` to within 0.1 %, simultaneously, with no drift over
+a dozen seconds. That is the coherence mechanism showing itself: the pins are
+clocked by the sample stream and by nothing else. If anything else were driving
+them the period would not track the sample rate at all.
+
+It is still not an edge-level result. Sysfs reads take milliseconds and cannot
+see a pin toggling at megahertz, so the *fixed offset between a pin edge and
+its RF* — the calibration constant the feature exists to provide — remains
+designed-for rather than demonstrated. Measuring it needs a scope on a pin and
+the RF together, or a loopback with cross-correlation.
 
 ### Two traps that check exists to avoid
 

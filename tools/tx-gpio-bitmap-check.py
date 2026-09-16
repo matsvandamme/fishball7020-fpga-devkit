@@ -138,12 +138,73 @@ def main():
     print(f"  nibble 0x0 -> {low}   nibble 0xF -> {high}   "
           f"{'released (floating)' if released else 'STILL DRIVEN - flag not gating'}")
 
+    ok.append(timing_test(board, c))
+
     print(f"\ntransmitter still at {c.read(PHY, 'voltage0', 'hardwaregain', True)}")
     board.set_flag(False)
     board.release()
     c.close()
     print("\nRESULT:", "PASS" if all(ok) else "FAIL")
     return 0 if all(ok) else 1
+
+
+def timing_test(board, c):
+    """Do the pins track the pattern IN TIME, at the rate the samples imply?
+
+    Static levels only prove the wiring. This authors a square wave whose
+    period is set by the buffer length and the sample rate - one cycle per
+    buffer on bit 0, four on bit 1 - and measures what comes out. If the pins
+    were driven by anything other than the sample stream, the period would not
+    land on N/fs.
+
+    The rate is dropped to the AD9361's minimum and the buffer made large, so
+    the pattern is slow enough to sample through sysfs (~50-150 reads/s).
+    """
+    print("\ntiming - the pins must track the pattern at the rate the samples imply")
+    rate_attr = "/sys/bus/iio/devices/iio:device0/in_voltage_sampling_frequency"
+    original = board.sh(f"cat {rate_attr}").strip()
+    board.sh(f"echo 2100000 > {rate_attr}")          # the exact minimum is rejected
+    fs = int(board.sh(f"cat {rate_attr}").strip())
+    N = 1 << 20
+    try:
+        vals = []
+        for n in range(N):
+            vals += [(1 if n < N // 2 else 0) | (2 if (n % (N // 4)) < (N // 8) else 0), 0]
+        board.set_flag(True)
+        c.write_samples(TXDEV, vals, mask_for([0, 1], 4), nchannels=2, cyclic=True)
+        time.sleep(0.5)
+        pins = board.pins[:2]
+        raw = board.sh(
+            "".join(f"([ -d /sys/class/gpio/gpio{n} ] || echo {n} > /sys/class/gpio/export); "
+                    f"echo in > /sys/class/gpio/gpio{n}/direction; " for n in pins) +
+            'i=0; while [ $i -lt 700 ]; do echo "$(cut -d\\  -f1 /proc/uptime) '
+            + "".join(f"$(cat /sys/class/gpio/gpio{n}/value)" for n in pins) +
+            '"; i=$((i+1)); done')
+        c.close_buffer(TXDEV)
+        rows = [l.split() for l in raw.strip().split("\n") if len(l.split()) == 2]
+        if len(rows) < 50:
+            print("  could not sample the pins fast enough"); return False
+        t0 = float(rows[0][0])
+        seq = [(float(t) - t0, v) for t, v in rows]
+        good = True
+        for idx, cycles in ((0, 1), (1, 4)):
+            edges, prev = [], seq[0][1][idx]
+            for t, v in seq:
+                if v[idx] != prev:
+                    edges.append(t); prev = v[idx]
+            expect = N / fs / cycles
+            if len(edges) < 4:
+                print(f"  bit{idx}: only {len(edges)} edges seen"); good = False; continue
+            periods = [edges[i + 2] - edges[i] for i in range(len(edges) - 2)]
+            meas = sum(periods) / len(periods)
+            err = abs(meas - expect) / expect * 100
+            good &= err < 2.0
+            print(f"  bit{idx}: {len(edges):3d} edges, period {meas*1000:7.1f} ms, "
+                  f"expected {expect*1000:7.1f} ms, error {err:.1f}%  "
+                  f"{'ok' if err < 2.0 else 'OUT OF TOLERANCE'}")
+        return good
+    finally:
+        board.sh(f"echo {original} > {rate_attr}")
 
 
 if __name__ == "__main__":
