@@ -1,5 +1,5 @@
 diff --git a/hdl/projects/pluto/system_bd.tcl b/hdl/projects/pluto/system_bd.tcl
-index 8eeff72ab..bbe8181ca 100755
+index 8eeff72ab..e90f8cb6e 100755
 --- a/hdl/projects/pluto/system_bd.tcl
 +++ b/hdl/projects/pluto/system_bd.tcl
 @@ -17,9 +17,17 @@ create_bd_port -dir I spi0_sdo_i
@@ -103,10 +103,10 @@ index 8eeff72ab..bbe8181ca 100755
 +ad_connect axi_ad9361/l_clk tx_bitmap/clk
 +ad_connect axi_ad9361/rst tx_bitmap/rst
 +ad_connect tx_upack/fifo_rd_data_0 nibble_slice/Din
-+ad_connect nibble_slice/Dout tx_bitmap/sample
++ad_connect nibble_slice/Dout tx_bitmap/sample_in
 +ad_connect tx_upack/fifo_rd_valid bitmap_valid_or/Op1
 +ad_connect tx_upack/fifo_rd_underflow bitmap_valid_or/Op2
-+ad_connect bitmap_valid_or/Res tx_bitmap/sample_valid
++ad_connect bitmap_valid_or/Res tx_bitmap/valid_in
 +ad_connect axi_ad9361/up_dac_gpio_out bitmap_sel/Din
 +ad_connect bitmap_sel/Dout tx_bitmap/flag
 +ad_connect sys_ps7/GPIO_O gpio_bitmap_o/Din
@@ -120,17 +120,31 @@ index 8eeff72ab..bbe8181ca 100755
  ad_connect  axi_ad9361/l_clk axi_ad9361_dac_dma/m_axis_aclk
  ad_connect  cpack/fifo_wr_overflow axi_ad9361/adc_dovf
 diff --git a/hdl/projects/pluto/system_constr.xdc b/hdl/projects/pluto/system_constr.xdc
-index ff020ba04..2d0eacfc8 100755
+index ff020ba04..a7cb5ca29 100755
 --- a/hdl/projects/pluto/system_constr.xdc
 +++ b/hdl/projects/pluto/system_constr.xdc
-@@ -50,6 +50,24 @@ set_property  -dict {PACKAGE_PIN  J20 IOSTANDARD LVCMOS25} [get_ports gpio_ctl[3
+@@ -50,6 +50,56 @@ set_property  -dict {PACKAGE_PIN  J20 IOSTANDARD LVCMOS25} [get_ports gpio_ctl[3
  set_property  -dict {PACKAGE_PIN  P20  IOSTANDARD LVCMOS25} [get_ports gpio_en_agc]
  set_property  -dict {PACKAGE_PIN  R19  IOSTANDARD LVCMOS25} [get_ports gpio_resetb]
  
-+# Header GPIO, broken out on the expansion connector as 3V3_IO1..4. Free in
-+# the stock design; driven here either by Linux (EMIO GPIO) or by the low
-+# nibble of the transmit sample. Confirm against your board revision's
-+# schematic before trusting these balls.
++# Header GPIO, broken out on connector JP5 as 3V3_IO1..4 (pins 7, 9, 11, 13).
++# Free in the stock design; driven here either by Linux (EMIO GPIO) or by the
++# low nibble of the transmit sample.
++#
++# Balls read off the vendor schematic, sheet 5 (U1G, "PL端BANK13"):
++#   3V3_IO1 = V10 (IO_L20P)   3V3_IO3 = U10 (IO_L12N)
++#   3V3_IO2 = U9  (IO_L16P)   3V3_IO4 = T9  (IO_L12P)
++# sample_gpio[n] is wired to 3V3_IO(n+1), so the bit number matches the silk.
++#
++# LVCMOS33 is right: sheet 1 ties VCCO_13_1..4 (T8, U11, W7, Y10) to VCC3V3.
++# Note this is NOT the same as the rest of the design, which declares LVCMOS25
++# and LVDS_25 on banks 34/35 that the same sheet supplies from VCC1V8 - an
++# inconsistency inherited from ADI's stock Pluto constraints, left alone here.
++#
++# Do not guess these. V11, W9 and V7 are adjacent bank-13 balls and look like
++# plausible candidates, but the schematic marks them "no connect" - and a wrong
++# PACKAGE_PIN is not a build error, it is a bitstream that drives a pad wired
++# to nothing.
 +#
 +# These four outputs are deliberately left UNCONSTRAINED, like every other
 +# LVCMOS output in this design. Skew between them is then whatever the router
@@ -140,10 +154,28 @@ index ff020ba04..2d0eacfc8 100755
 +# are doing something where it is not irrelevant, add a set_output_delay
 +# against the AD9361 datapath clock and re-run implementation; do not assume
 +# the numbers here have been verified, because they have not been.
-+set_property  -dict {PACKAGE_PIN  V11  IOSTANDARD LVCMOS33} [get_ports sample_gpio[0]]
-+set_property  -dict {PACKAGE_PIN  W9   IOSTANDARD LVCMOS33} [get_ports sample_gpio[1]]
-+set_property  -dict {PACKAGE_PIN  T9   IOSTANDARD LVCMOS33} [get_ports sample_gpio[2]]
-+set_property  -dict {PACKAGE_PIN  V7   IOSTANDARD LVCMOS33} [get_ports sample_gpio[3]]
++set_property  -dict {PACKAGE_PIN  V10  IOSTANDARD LVCMOS33} [get_ports sample_gpio[0]]
++set_property  -dict {PACKAGE_PIN  U9   IOSTANDARD LVCMOS33} [get_ports sample_gpio[1]]
++set_property  -dict {PACKAGE_PIN  U10  IOSTANDARD LVCMOS33} [get_ports sample_gpio[2]]
++set_property  -dict {PACKAGE_PIN  T9   IOSTANDARD LVCMOS33} [get_ports sample_gpio[3]]
++
++# The bit-map enable flag is written by software in the AXI clock domain and
++# read in the AD9361 datapath domain, so it is a clock-domain crossing. That
++# is exactly what the two flip-flops inside tx_gpio_bitmap are for. Timing it
++# as an ordinary synchronous path is not conservative, it is meaningless - and
++# measured, it made this the worst path in the whole design (+0.186 ns, where
++# the stock design has +0.214 ns) for no reason. Bound the crossing instead:
++# -datapath_only keeps the two synchroniser flops close enough together for
++# metastability to settle, without pretending the launch edge means anything.
++#
++# Written as a single command: an .xdc is a restricted Tcl dialect and "if" is
++# NOT one of the commands it accepts - Vivado answers a guarded version with
++# "Command 'if' is not supported in the xdc constraint file" and silently drops
++# the whole block. (It says so in pluto.runs/*/runme.log, not in the top-level
++# build log.) No guard is needed anyway: these lines only exist in the file
++# once the bit-map patch is applied, and then the cell always exists.
++set_max_delay -datapath_only 4.000 \
++  -to [get_pins -quiet -hier -filter {NAME =~ *tx_bitmap*flag_m_reg/D}]
 +
  set_property  -dict {PACKAGE_PIN  T15  IOSTANDARD LVCMOS25} [get_ports enable]
  set_property  -dict {PACKAGE_PIN  P18  IOSTANDARD LVCMOS25} [get_ports txnrx]
@@ -207,10 +239,10 @@ index 5e4718878..29a903476 100755
      .rx_clk_in_p (rx_clk_in_p),
 diff --git a/hdl/projects/pluto/tx_gpio_bitmap.v b/hdl/projects/pluto/tx_gpio_bitmap.v
 new file mode 100644
-index 000000000..0fca00a53
+index 000000000..47ff1ecad
 --- /dev/null
 +++ b/hdl/projects/pluto/tx_gpio_bitmap.v
-@@ -0,0 +1,132 @@
+@@ -0,0 +1,140 @@
 +// ***************************************************************************
 +// ***************************************************************************
 +// Copyright (C) 2026 fishball7020-fpga-devkit contributors
@@ -260,13 +292,13 @@ index 000000000..0fca00a53
 +//
 +// GAPPED VALID MATTERS
 +// --------------------
-+// `sample` is only meaningful on clocks where `sample_valid` is high - in
++// `sample_in` is only meaningful on clocks where `valid_in` is high - in
 +// 2R2T mode the datapath presents a new sample every second `l_clk`. The
 +// nibble is captured on those clocks only and held in between, so a pattern
 +// authored per SAMPLE comes out per sample. Capturing every clock would
 +// double the apparent rate and is the mistake the testbench exists to catch.
 +//
-+// `sample_valid` must mean "a new word is standing at `sample` NOW", not "a
++// `valid_in` must mean "a new word is standing at `sample_in` NOW", not "a
 +// word has been requested". In this design it is
 +// `fifo_rd_valid | fifo_rd_underflow` from util_upack2, which is exactly
 +// that; `fifo_rd_en` is one clock too early and would hand the pins the
@@ -291,24 +323,32 @@ index 000000000..0fca00a53
 +  input                    clk,
 +  input                    rst,
 +
-+  // datapath: the raw DMA sample and its valid strobe
++  // datapath: the raw DMA sample and its valid strobe.
++  //
++  // X_INTERFACE_IGNORE keeps Vivado's IP packager from deciding these ports
++  // are a bus. Left alone it sees a vector next to a port whose name ends in
++  // _valid, infers a data/valid signal interface, and turns the port into an
++  // interface pin - at which point ad_connect refuses to wire a plain slice
++  // output to it ("Cannot connect non-interface to interface"). The names
++  // below also follow ad_fs4_ddc's valid_in/*_in convention, which packages
++  // as plain pins. Belt and braces: this costs one build to discover.
 +
-+  input   [NBITS-1:0]      sample,
-+  input                    sample_valid,
++  (* X_INTERFACE_IGNORE = "true" *) input   [NBITS-1:0]  sample_in,
++  (* X_INTERFACE_IGNORE = "true" *) input                valid_in,
 +
 +  // control: bit 1 of up_dac_gpio_out
 +
-+  input                    flag,
++  (* X_INTERFACE_IGNORE = "true" *) input                flag,
 +
 +  // standard-GPIO source, used when flag = 0
 +
-+  input   [NBITS-1:0]      gpio_o_in,
-+  input   [NBITS-1:0]      gpio_t_in,
++  (* X_INTERFACE_IGNORE = "true" *) input   [NBITS-1:0]  gpio_o_in,
++  (* X_INTERFACE_IGNORE = "true" *) input   [NBITS-1:0]  gpio_t_in,
 +
 +  // to the pins (via an ad_iobuf at the top level)
 +
-+  output  [NBITS-1:0]      pin_o,
-+  output  [NBITS-1:0]      pin_t
++  (* X_INTERFACE_IGNORE = "true" *) output  [NBITS-1:0]  pin_o,
++  (* X_INTERFACE_IGNORE = "true" *) output  [NBITS-1:0]  pin_t
 +);
 +
 +  reg     [NBITS-1:0]      sample_d = {NBITS{1'b0}};
@@ -320,8 +360,8 @@ index 000000000..0fca00a53
 +  always @(posedge clk) begin
 +    if (rst == 1'b1) begin
 +      sample_d <= {NBITS{1'b0}};
-+    end else if (sample_valid == 1'b1) begin
-+      sample_d <= sample;
++    end else if (valid_in == 1'b1) begin
++      sample_d <= sample_in;
 +    end
 +  end
 +

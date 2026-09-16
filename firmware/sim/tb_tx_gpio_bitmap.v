@@ -58,13 +58,13 @@ module tb_tx_gpio_bitmap;
 
   tx_gpio_bitmap #(.NBITS(N)) dut (
     .clk(clk), .rst(rst),
-    .sample(sample), .sample_valid(sample_valid), .flag(flag),
+    .sample_in(sample), .valid_in(sample_valid), .flag(flag),
     .gpio_o_in(gpio_o_in), .gpio_t_in(gpio_t_in),
     .pin_o(pin_o), .pin_t(pin_t));
 
   tx_gpio_bitmap #(.NBITS(W)) dut_w (
     .clk(clk), .rst(rst),
-    .sample(sample_w), .sample_valid(sample_valid), .flag(flag),
+    .sample_in(sample_w), .valid_in(sample_valid), .flag(flag),
     .gpio_o_in(gpio_o_in_w), .gpio_t_in(gpio_t_in_w),
     .pin_o(pin_o_w), .pin_t(pin_t_w));
 

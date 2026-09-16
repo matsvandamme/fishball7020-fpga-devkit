@@ -126,13 +126,13 @@ if [ $MUTATE -eq 1 ]; then
     module=tx_gpio_bitmap
     echo "   -- $module"
     mutate "nibble captured every clock, not every sample" \
-           's/end else if (sample_valid == 1.b1) begin/end else begin/'
+           's/end else if (valid_in == 1.b1) begin/end else begin/'
     mutate "pins left tristated while the flag is set" \
            's/{NBITS{1.b0}} : gpio_t_in/gpio_t_in : gpio_t_in/'
     mutate "the mux is the wrong way round" \
            's/? sample_d : gpio_o_in/? gpio_o_in : sample_d/'
     mutate "the sample is not registered at all" \
-           's/? sample_d : gpio_o_in/? sample : gpio_o_in/'
+           's/? sample_d : gpio_o_in/? sample_in : gpio_o_in/'
     mutate "only one synchroniser stage on the flag" \
            's/(flag_s == 1.b1)/(flag_m == 1'"'"'b1)/g'
     mutate "a datapath reset leaves a stale nibble on the pins" \

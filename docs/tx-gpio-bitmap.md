@@ -139,19 +139,33 @@ block RAM, no new clock.
 
 ### The pins
 
-The board breaks out four free single-ended 3.3 V I/O on the expansion header,
-`3V3_IO1..4`, unused by the stock design:
+The board breaks out four free single-ended 3.3 V I/O on connector **JP5**,
+`3V3_IO1..4`, unused by the stock design. Read off the vendor schematic,
+sheet 5 (`U1G`, "PL端BANK13"):
 
-| Signal | Header net | FPGA ball |
-|---|---|---|
-| `sample_gpio[0]` | `3V3_IO1` | V11 |
-| `sample_gpio[1]` | `3V3_IO2` | W9 |
-| `sample_gpio[2]` | `3V3_IO3` | T9 |
-| `sample_gpio[3]` | `3V3_IO4` | V7 |
+| Signal | Header net | JP5 pin | FPGA ball | FPGA pin name |
+|---|---|---|---|---|
+| `sample_gpio[0]` | `3V3_IO1` | 7 | **V10** | IO_L20P |
+| `sample_gpio[1]` | `3V3_IO2` | 9 | **U9** | IO_L16P |
+| `sample_gpio[2]` | `3V3_IO3` | 11 | **U10** | IO_L12N |
+| `sample_gpio[3]` | `3V3_IO4` | 13 | **T9** | IO_L12P |
 
-> **Check these against your own board before you build.** They were read off
-> the vendor schematic for this revision. A wrong `PACKAGE_PIN` in an `.xdc`
-> is not a build error — it is a bitstream that drives the wrong pad.
+The bit number matches the header label, so `sample_gpio[0]` is the pin
+silkscreened `3V3_IO1`. JP5 also carries VCC1V8, VCC3V3 and VCC5V (pins 1, 3,
+5) and the four 1.8 V differential pairs, which are where an I+Q widening
+would go.
+
+`LVCMOS33` is the right standard: sheet 1 ties `VCCO_13_1..4` (balls T8, U11,
+W7, Y10) to **VCC3V3**. Note that this differs from the rest of the design,
+which declares `LVCMOS25` and `LVDS_25` on banks 34 and 35 that the same sheet
+supplies from **VCC1V8** — an inconsistency inherited from ADI's stock Pluto
+constraints, left alone here because the board demonstrably works.
+
+> **Do not guess these balls.** V11, W9 and V7 are adjacent bank-13 balls and
+> look like plausible candidates — an earlier draft of this feature used them.
+> The schematic marks all three "no connect". Vivado accepted them without
+> complaint and produced a clean, timing-met bitstream that drove three pads
+> wired to nothing, because a wrong `PACKAGE_PIN` is not a build error.
 
 ## Building it
 

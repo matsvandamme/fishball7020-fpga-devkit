@@ -1399,6 +1399,17 @@ build with nothing cached.
 | HDL simulation | 2 565 checks against the golden models, all 10 mutants caught |
 | On the board | correct `hw_model`, persistent serial, TX muted at boot, 32 self-test checks passed |
 
+**A second HDL change, measured the same way.** The tree with
+`optional/0006-tx-sample-nibble-to-gpio.patch` applied and the HDL rebuilt from
+a regenerated block design.
+
+| | |
+|---|---|
+| Timing | WNS **+0.231 ns**, 0 failing endpoints of 48 263 — *better* than stock, because the patch constrains the enable flag's clock-domain crossing that would otherwise be timed as if it were synchronous |
+| Logic | **+3 LUTs, +7 flip-flops**, no DSPs, no block RAM |
+| I/O | **+4 bonded IOBs** — V10, U9, U10, T9, all bank 13, `LVCMOS33` |
+| Critical path | back in ADI's DMA-to-unpacker logic; the feature's own worst path has more slack than the design's |
+
 **An HDL change reaches the fabric.** The same tree with
 `optional/0003-wbfm-channelizer.patch` applied, the Vivado project deleted, and
 `build_all.sh --hdl-only` re-run.
