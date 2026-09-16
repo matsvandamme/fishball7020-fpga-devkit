@@ -8,11 +8,17 @@ sample, what those pins do.
 
 The trick costs nothing, because the bits it uses were being thrown away.
 
-- [The four bits nobody uses](#the-four-bits-nobody-uses)
-- [What "coherent" buys you](#what-coherent-buys-you)
-- [What was built](#what-was-built)
-- [Building it](#building-it) · [Turning it on](#turning-it-on)
-- [Authoring the patterns](#authoring-the-patterns) · [Limits](#limits)
+**Contents**
+
+- [The four bits nobody uses](#the-four-bits-nobody-uses) — the idea
+- [What "coherent" buys you](#what-coherent-buys-you) — and what it does *not* mean
+- [How it is built](#how-it-is-built) — datapath, module, wiring, pins, cost
+- [How to control it](#how-to-control-it) — the register, GPIO mode, authoring patterns
+- [Building and flashing](#building-and-flashing)
+- [Limits](#limits) · [What has actually been verified](#what-has-actually-been-verified)
+- [Notes for anyone extending it](#notes-for-anyone-extending-it)
+
+---
 
 ## The four bits nobody uses
 
@@ -37,9 +43,9 @@ your sample:   b15 b14 b13 b12 b11 b10 b9 b8 b7 b6 b5 b4 │ b3 b2 b1 b0
 
 You can see it in ADI's own HDL — `axi_ad9361_tx_channel.v` does literally
 `dac_data_out_int <= dma_data[15:4];`. The bottom four bits (the **low
-nibble**, in the usual jargon for "bottom four bits of a byte-ish quantity")
-reach the FPGA and stop there. They change nothing about the transmitted
-signal, because nothing downstream reads them.
+nibble**, the usual jargon for "bottom four bits") reach the FPGA and stop
+there. They change nothing about the transmitted signal, because nothing
+downstream reads them.
 
 So they are free. This feature routes them to four pins on the expansion
 header instead of dropping them.
@@ -60,7 +66,7 @@ on how the filters are configured.
 What makes that useful is that the lead is *constant*. It does not drift, it
 does not vary sample to sample, and it comes out the same on every run as long
 as you do not change the sample rate or the filter configuration. Measure it
-once — with a scope on a pin and a second one on the RF, or by looping the
+once — with a scope on a pin and another on the RF, or by looping the
 transmitter back into the receiver and cross-correlating — and subtract it
 forever after.
 
@@ -69,6 +75,8 @@ microseconds away from the RF and the delay changes from run to run and from
 pulse to pulse; even a kernel driver is at the mercy of the DMA queue depth.
 Here the offset is structural, so it is a calibration constant instead of a
 source of error.
+
+### What it is for
 
 The contributor who proposed this feature uses it for **multi-channel radar**
 (1 transmitter, 8 receivers; or 2 and 8). The transmit buffer in DDR holds the
@@ -81,67 +89,139 @@ waveform, and the low nibble of each sample carries, on separate pins:
 | `sample_gpio[2]` | **sync / trigger** — "the chirp starts *now*" |
 | `sample_gpio[3]` | spare: a coded marker, a range gate, a T/R switch line |
 
-Separate receiver hardware then samples with a timebase that is welded to the
+Separate receiver hardware then samples with a timebase welded to the
 transmitted waveform, which is the whole game in radar and in MIMO
 (multiple-input multiple-output: several antennas that must agree on phase).
 
-None of those roles is wired into the FPGA. **A pin's role is whatever pattern
-you put in that bit**, which is the next section.
+**None of those roles is wired into the FPGA.** A pin's role is whatever
+pattern you put in that bit — see [how to control it](#how-to-control-it).
 
-## What was built
+---
+
+## How it is built
 
 The FPGA does not *generate* anything. It **transports**: whatever you author
 into the low nibble comes out on the pins, one nibble per sample.
 
 ```
-   DDR buffer ──DMA──> tx_upack ──┬── [15:4] ──> interpolator ──> AD9361 DAC ──> RF
-   (16-bit samples)               │
-                                  └── [3:0] ───> tx_gpio_bitmap ──> 4 header pins
-                                                       ▲
-                                    up_dac_gpio_out[1] ┘  (the enable flag)
+  DDR buffer ──DMA──> tx_upack ──┬── [15:4] ──> interpolator ──> AD9361 ──> RF
+  (16-bit samples)   (unpacker)  │                                DAC
+                                 │
+                                 └── [3:0] ──> tx_gpio_bitmap ──> 4 header pins
+                                                     ▲   ▲
+                              up_dac_gpio_out[1] ────┘   └──── EMIO GPIO 18-21
+                              (the enable flag)                (when flag = 0)
 ```
 
-The new module, `tx_gpio_bitmap.v`, is thirty lines of logic under a much
-longer comment. Three things in it are deliberate:
-
-- It captures the nibble **once per sample** — not once per clock. In the
-  board's 2R2T mode a sample only arrives every second FPGA clock, and
-  capturing on the clock would silently double the rate of every pattern you
-  wrote. This is the one real bug in the design space, and the testbench exists
-  mostly to catch it.
-- It captures on the strobe that says *the new word is here now*
-  (`fifo_rd_valid | fifo_rd_underflow`), not the one that says *a word has been
-  requested* (`fifo_rd_en`). The unpacker registers its output, so those are
-  one clock apart, and getting it wrong puts the previous sample on the pins
-  forever — coherent, repeatable, and one sample wrong. Including the underflow
-  strobe means that when the DMA starves and the DAC is fed zeros, the pins
-  carry those zeros too: the promise "the pins are the low nibble of what the
-  DAC got" has no exceptions.
-- A flag bit chooses who owns the pins: **0** = ordinary Linux GPIO, **1** =
-  the sample nibble. So enabling the feature does not cost you four pins the
-  rest of the time.
-
-The tap is deliberately the **raw DMA sample**, upstream of the interpolation
-filter. A FIR filter mixes neighbouring samples together; tapping after it
-would give you filter output on the pins, not the bits you wrote.
+### Files
 
 | File | What it is |
 |---|---|
-| `hdl/projects/pluto/tx_gpio_bitmap.v` | the module |
-| `hdl/projects/pluto/system_bd.tcl` | wiring: the nibble slice, the flag slice, EMIO GPIO widened 18 → 22 |
-| `hdl/projects/pluto/system_top.v` | an `ad_iobuf` onto the four package pins |
-| `hdl/projects/pluto/system_constr.xdc` | the pin assignments |
-| `firmware/sim/tb_tx_gpio_bitmap.v` | the self-checking testbench |
+| `hdl/projects/pluto/tx_gpio_bitmap.v` | the module (~30 lines of logic) |
+| `hdl/projects/pluto/system_bd.tcl` | block-design wiring: slices, the OR gate, EMIO widened 18 → 22 |
+| `hdl/projects/pluto/system_top.v` | the `ad_iobuf` onto the four package pins |
+| `hdl/projects/pluto/system_constr.xdc` | pin assignments and the CDC constraint |
+| `firmware/sim/tb_tx_gpio_bitmap.v` | self-checking testbench, 2092 checks |
 | `firmware/patches/optional/0006-tx-sample-nibble-to-gpio.patch` | all of the above, **opt-in** |
 
-It costs a handful of LUTs and four flip-flops per pin. No DSP slices, no
-block RAM, no new clock.
+### Where the nibble is tapped, and why there
+
+The tap is `tx_upack/fifo_rd_data_0[3:0]` — **channel 0's I, straight out of
+the DMA unpacker, before the interpolation filter.**
+
+A FIR interpolator mixes neighbouring samples together. Tapping downstream of
+it would put *filter output* on the pins rather than the bits you wrote, and
+only when interpolation happened to be engaged — a bug that would appear and
+disappear with the sample rate. Tapping the raw DMA word means the pattern
+reaches the pins bit-for-bit whatever the rest of the transmit chain does, and
+those bits are still exactly the ones the DAC discards, so the analog cost is
+zero.
+
+(`fifo_rd_data_1[3:0]` is channel 0's Q, the hook for a future I+Q widening.)
+
+### The capture strobe, and why it is not the obvious one
+
+The nibble is captured on `fifo_rd_valid | fifo_rd_underflow`, **not** on
+`fifo_rd_en`. The obvious choice is the wrong one:
+
+- `fifo_rd_en` is a **request** — "give me a sample".
+- `util_upack2` **registers** its output (`fifo_rd_data <= deinterleaved_data;`
+  in `util_upack2_impl.v`), so the requested word only appears on the
+  *following* clock.
+- `fifo_rd_valid` and `fifo_rd_underflow` are registered alongside the data.
+  Exactly one of them is high on the clock where the new word stands at the
+  output — `valid` for a real sample, `underflow` for the zeros the unpacker
+  substitutes when the DMA has starved.
+
+Capturing on `fifo_rd_en` latches the *previous* sample: stable, repeatable,
+and permanently one sample behind the DAC. Using the OR of the two registered
+strobes also means that when the DMA underflows and the DAC is fed zeros, the
+pins carry those zeros too — so "the pins are the low nibble of what the DAC
+got" has no exceptions to write down.
+
+### Why a per-sample strobe at all
+
+In **2R2T** mode (both channels active) the datapath presents a new sample
+only every *second* FPGA clock. Capturing on the clock rather than on the
+strobe would double the rate of every pattern you authored — a clock at half
+the sample rate instead of a quarter, a one-sample frame marker arriving twice.
+It simulates perfectly back-to-back and costs a Vivado rebuild and a flash to
+discover on hardware, which is why the testbench checks it specifically and
+`run_sim.sh --mutate` proves that check can fail.
+
+### The module
+
+```verilog
+module tx_gpio_bitmap #(parameter integer NBITS = 4) (
+  input                clk, rst,        // l_clk and the datapath reset
+  input  [NBITS-1:0]   sample_in,       // the raw DMA nibble
+  input                valid_in,        // "a new word is here NOW"
+  input                flag,            // up_dac_gpio_out[1]
+  input  [NBITS-1:0]   gpio_o_in,       // EMIO GPIO, used when flag = 0
+  input  [NBITS-1:0]   gpio_t_in,
+  output [NBITS-1:0]   pin_o, pin_t);   // to an ad_iobuf at the top level
+```
+
+| `flag` | What owns the pins |
+|---|---|
+| `0` | **EMIO GPIO** — Linux drives them, tristate and all. The state at reset. |
+| `1` | **the fabric** — `pin_o` = the registered nibble, `pin_t` = 0 (all driven) |
+
+Three details that are deliberate:
+
+- **`NBITS` is a real parameter.** The testbench instantiates an 8-bit copy
+  alongside the 4-bit one, because a parameter nobody instantiates is a
+  parameter that does not work. Widening to I+Q is a parameter change plus four
+  more pins.
+- **The flag crosses two flip-flops.** It is written by software in the AXI
+  clock domain and read in the datapath domain — a genuine clock-domain
+  crossing, and the synchroniser keeps a metastable level out of the fabric. A
+  flag change therefore takes effect two clocks later.
+- **Reset clears the held nibble**, so a datapath reset cannot leave a stale
+  bit pattern standing on the pins.
+
+### Block-design wiring
+
+All in `system_bd.tcl`, following the existing `interp_slice` template:
+
+| Instance | What it does |
+|---|---|
+| `bitmap_sel` (`xlslice`) | bit **1** of `up_dac_gpio_out` → the enable flag. Bit 0 is already the interpolator bypass. |
+| `nibble_slice` (`xlslice`) | `fifo_rd_data_0[3:0]` → the module's `sample_in` |
+| `bitmap_valid_or` (`util_vector_logic`) | `fifo_rd_valid OR fifo_rd_underflow` → `valid_in` |
+| `gpio_bitmap_o` / `gpio_bitmap_t` (`xlslice`) | EMIO GPIO bits **21:18** → the standard-GPIO inputs |
+| `tx_bitmap` (module reference) | the module itself |
+
+The PS7's `PCW_GPIO_EMIO_GPIO_IO` goes from **18 to 22** and the `gpio_i/o/t`
+block-design ports widen to match, which is what gives the four pins their
+ordinary-GPIO identity when the flag is clear. `system_top.v` adds an
+`ad_iobuf` tying `pin_o`/`pin_t` to the package pins and feeds the pad inputs
+back to `gpio_i[21:18]`.
 
 ### The pins
 
-The board breaks out four free single-ended 3.3 V I/O on connector **JP5**,
-`3V3_IO1..4`, unused by the stock design. Read off the vendor schematic,
-sheet 5 (`U1G`, "PL端BANK13"):
+Four free single-ended 3.3 V I/O on connector **JP5**, unused by the stock
+design. Read off the vendor schematic, sheet 5 (`U1G`, "PL端BANK13"):
 
 | Signal | Header net | JP5 pin | FPGA ball | FPGA pin name |
 |---|---|---|---|---|
@@ -152,109 +232,99 @@ sheet 5 (`U1G`, "PL端BANK13"):
 
 The bit number matches the header label, so `sample_gpio[0]` is the pin
 silkscreened `3V3_IO1`. JP5 also carries VCC1V8, VCC3V3 and VCC5V (pins 1, 3,
-5) and the four 1.8 V differential pairs, which are where an I+Q widening
-would go.
+5) and four 1.8 V differential pairs, which are where an I+Q widening would go.
 
 `LVCMOS33` is the right standard: sheet 1 ties `VCCO_13_1..4` (balls T8, U11,
-W7, Y10) to **VCC3V3**. Note that this differs from the rest of the design,
-which declares `LVCMOS25` and `LVDS_25` on banks 34 and 35 that the same sheet
+W7, Y10) to **VCC3V3**. Note this differs from the rest of the design, which
+declares `LVCMOS25` and `LVDS_25` on banks 34 and 35 that the same sheet
 supplies from **VCC1V8** — an inconsistency inherited from ADI's stock Pluto
 constraints, left alone here because the board demonstrably works.
 
 > **Do not guess these balls.** V11, W9 and V7 are adjacent bank-13 balls and
-> look like plausible candidates — an earlier draft of this feature used them.
-> The schematic marks all three "no connect". Vivado accepted them without
-> complaint and produced a clean, timing-met bitstream that drove three pads
-> wired to nothing, because a wrong `PACKAGE_PIN` is not a build error.
+> look like plausible candidates — an earlier version of this feature used
+> them. The schematic marks all three **"no connect"**. Vivado accepted them
+> without complaint and produced a clean, timing-met bitstream that drove three
+> pads wired to nothing, because a wrong `PACKAGE_PIN` is not a build error.
 
-## Building it
+### What it costs
 
-The patch is **not** applied by `setup.sh`. Opt in:
+Measured against a stock build of the same tree:
 
-```bash
-cd firmware
-(cd src && git apply ../patches/optional/0006-tx-sample-nibble-to-gpio.patch)
-rm -rf src/hdl/projects/pluto/pluto.xpr src/hdl/projects/pluto/pluto.*  # force a fresh Vivado project
-./scripts/build_all.sh --hdl-only
-./scripts/verify_output.sh
-```
+| | Stock | With the feature |
+|---|---|---|
+| Slice LUTs | 11 893 | **+3** |
+| Slice registers | 20 851 | **+7** (4 nibble + 2 synchroniser + 1) |
+| Bonded IOBs | 57 | **+4** |
+| DSPs / block RAM | 72 / 2 | **no change** |
+| Timing | WNS +0.214 ns | **WNS +0.231 ns**, 0 failing of 48 263 |
 
-Before that, and any time you change the module, run the simulation — it takes
-a second and needs only `iverilog`:
+Timing comes out *better* than stock because the patch also constrains the
+enable flag's clock-domain crossing, which Vivado would otherwise time as if it
+were an ordinary synchronous path — and ADI's stock design never constrained it
+either.
 
-```bash
-cd firmware
-./sim/run_sim.sh            # both modules, checked against golden models
-./sim/run_sim.sh --mutate   # and prove the tests can actually fail
-```
+---
 
-Flash the result the usual way — **by copying to the SD card partition, never
-over DFU**.
+## How to control it
 
-## Turning it on
+### Turning the bit-map on and off
 
-The flag is **bit 1 of the DAC core's `GP_CONTROL` register**, at AXI offset
-`0xBC`. (Bit 0 is already taken: it is the interpolator bypass.) There is no
-IIO attribute for it yet, so reach it through the debugfs register window on
-the board:
+The enable is **bit 1 of the DAC core's `GP_CONTROL` register, AXI offset
+`0xBC`**. Bit 0 is already taken: it is the interpolator bypass. There is no
+IIO attribute for it yet, so reach it through the debugfs register window:
 
 ```sh
 # on the board, as root
-cd /sys/kernel/debug/iio
-D=$(grep -l cf-ad9361-dds-core-lpc iio:device*/name | xargs dirname)
+D=/sys/kernel/debug/iio/iio:device2        # cf-ad9361-dds-core-lpc
+cat $D/name                                # confirm before writing
 
-# read 0xBC, then write it back with bit 1 set
-echo 0xBC        > $D/direct_reg_access ; cat $D/direct_reg_access
-echo 0xBC 0x2    > $D/direct_reg_access     # enable the bit-map
-echo 0xBC 0x0    > $D/direct_reg_access     # back to ordinary GPIO
+echo 0xBC > $D/direct_reg_access ; cat $D/direct_reg_access   # read it
+echo "0xBC 0x2" > $D/direct_reg_access                        # bit-map ON
+echo "0xBC 0x0" > $D/direct_reg_access                        # back to GPIO
 ```
 
-With the flag clear the four pins are EMIO GPIO bits 18–21, i.e. ordinary
-`/sys/class/gpio` lines, readable and writable from Linux as usual. On Zynq
-the EMIO lines follow the 54 MIO ones, so these are GPIO numbers
-`base + 54 + 18` … `base + 54 + 21`; read `base` from
-`/sys/class/gpio/gpiochip*/base`.
+The register resets to 0, so **the pins are ordinary GPIO at power-on** and the
+feature is inert until you ask for it.
 
-**Changing the interpolation factor does not clobber the flag.** The driver
-read-modify-writes only bit 0 of this register (`cf_axi_interpolation_set`),
-so a `sampling_frequency` change that engages or bypasses the FPGA filter
-leaves bit 1 alone.
+**Changing the sample rate will not clobber your flag.** The driver's
+`cf_axi_interpolation_set()` read-modify-writes only `BIT(0)`, so engaging or
+bypassing the FPGA interpolation filter leaves bit 1 alone.
 
-### Checking it works without a scope
+### The pins as ordinary GPIO
 
-The pin inputs are wired back to EMIO GPIO bits 18–21 **unconditionally** —
-including while the fabric is driving them. So Linux can read the actual pin
-level even in bit-map mode:
+With the flag clear, the four pins are EMIO GPIO bits 18–21. On Zynq the EMIO
+lines follow the 54 MIO ones:
 
 ```sh
-G=$(( $(cat /sys/class/gpio/gpiochip*/base | head -1) + 54 + 18 ))   # pin 0
-echo $G > /sys/class/gpio/export
-echo in > /sys/class/gpio/gpio$G/direction
-cat /sys/class/gpio/gpio$G/value
+BASE=$(cat /sys/class/gpio/gpiochip*/base | head -1)   # 906 on this firmware
+N=$((BASE + 54 + 18))                                  # 978 = sample_gpio[0]
+echo $N > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio$N/direction
+echo 1   > /sys/class/gpio/gpio$N/value
 ```
 
-Reading through sysfs takes microseconds, so on a fast clock pattern you will
-just see 0 and 1 at random — which is itself informative, since a dead pin
-reads the same value every time. For a definite answer, transmit a cyclic
-buffer that holds one bit **high for the whole buffer**, confirm the pin reads
-1, then transmit one that holds it low and confirm it reads 0. That exercises
-the entire path — your authoring code, the DMA, the tap, the mux, the pad —
-with nothing but `cat`.
+`sample_gpio[0..3]` are GPIO **978, 979, 980, 981** on this firmware.
 
-The pins only carry meaningful data while a **TX buffer is streaming**. This
-firmware mutes the transmitter and powers down the TX synthesiser between
-streams (see the transmitter-safety section of the README), so the nibble
-holds its last value when nothing is flowing.
+> **Reading a pin back is subtler than it looks.** With `direction=out` the
+> sysfs `value` file returns what you *wrote*, not what is on the pad. This was
+> measured, not assumed: EMIO bits routed to no pad at all read back
+> identically, so a readback in that mode proves nothing. To observe the actual
+> pin level, set `direction=in`, which releases the PS's driver and lets the pad
+> input reach `gpio_i`. In bit-map mode the fabric keeps driving the pin
+> regardless of what the PS asks for, so `direction=in` plus a read is how you
+> see what the fabric is putting out.
 
-## Authoring the patterns
+### Authoring the pin patterns
 
 This is the part people underestimate, so in detail.
 
 There is no "set pin 0 to clock mode" register. **The pattern is data.** You
-build the transmit buffer yourself and put the bits in it.
+build the transmit buffer yourself and put the bits in it. A pin is a master
+clock because you made that bit alternate; it is a frame marker because you
+made that bit pulse once per frame.
 
 The rule that matters: **OR the nibble in last**, after every scaling, gain or
-format conversion step. Anything that multiplies your samples will overwrite
+format-conversion step. Anything that multiplies your samples will overwrite
 the bottom bits, because to that code they are noise.
 
 ```python
@@ -265,7 +335,7 @@ n  = np.arange(N)
 fs = 61.44e6
 
 # 1. the RF you actually want to transmit, scaled to full-scale int16
-sig = (0.5 * 2**15 * np.exp(2j * np.pi * 1e6 * n / fs))
+sig = 0.5 * 2**15 * np.exp(2j * np.pi * 1e6 * n / fs)
 i16 = sig.real.astype(np.int16)
 q16 = sig.imag.astype(np.int16)
 
@@ -287,40 +357,111 @@ sdr.tx([i16, q16])             # libiio hands these to the DAC bit for bit
 Three things to notice:
 
 - **`tx_cyclic_buffer = True` is how you get a continuous clock.** Author one
-  period, let the DMA loop it. Make the buffer length an exact multiple of your
-  pattern period or you get a glitch at the wrap.
-- **Only channel 0's I samples carry the nibble** in this build. Q
-  (`fifo_rd_data_1[3:0]`) is wired up in the same place if you want eight pins
-  later; the module already takes an `NBITS` parameter.
+  period and let the DMA loop it. Make the buffer length an exact multiple of
+  your pattern period, or you get a glitch at the wrap.
+- **Only channel 0's I samples carry the nibble** in this build.
 - **Your RF loses 4 bits of resolution on I** — you are overwriting real, if
-  tiny, signal bits. At full scale that is about a −72 dBFS noise floor
-  addition on that path. Irrelevant for radar pulses, worth knowing for a
-  sensitive modulation.
+  tiny, signal bits, adding roughly a −72 dBFS noise floor on that path.
+  Irrelevant for radar pulses; worth knowing for a sensitive modulation.
+
+**You can exercise the whole digital path with the transmitter muted.** The
+nibble never touches the analog chain, so set TX attenuation to maximum
+(−89.75 dB) and the pins still do exactly what you authored, with no meaningful
+RF leaving the port and no antenna required.
 
 ### What about GNU Radio?
 
 The ordinary `complex float` flowgraph **will not work**. Every float sink
 rescales on its way to int16, and rescaling destroys exactly the bits you care
-about. If you want GNU Radio, you have to work at `short` level end to end and
-use a sink that hands samples through unscaled. In practice it is easier to
-render the buffer with numpy, as above, or to write a raw int16 file and
-transmit it directly.
+about. If you want GNU Radio you have to work at `short` level end to end with
+a sink that passes samples through unscaled. In practice it is easier to render
+the buffer with numpy, as above, or to write a raw int16 file and transmit it
+directly.
+
+---
+
+## Building and flashing
+
+The patch is **not** applied by `setup.sh`. Opt in:
+
+```bash
+cd firmware
+(cd src && git apply ../patches/optional/0006-tx-sample-nibble-to-gpio.patch)
+rm -rf src/hdl/projects/pluto/pluto.{xpr,runs,gen,cache,hw,srcs,ip_user_files,sdk}
+./scripts/build_all.sh --hdl-only
+```
+
+Deleting the Vivado project matters: the block design is *generated* from
+`system_bd.tcl`, and a build that opens an existing `pluto.xpr` reuses the old
+one, so your wiring changes never reach the fabric.
+
+Simulate first — it takes a second and needs only `iverilog`:
+
+```bash
+./sim/run_sim.sh            # both custom modules, against golden models
+./sim/run_sim.sh --mutate   # and prove the tests can actually fail
+```
+
+The bitstream lives inside `BOOT.bin`, so this needs a full SD-card update —
+**DFU cannot do it**. See [Flash the board](../README.md#6-flash-the-board).
+
+---
 
 ## Limits
 
 - **Rate.** One nibble per sample, so the fastest a pin can toggle is half the
-  sample rate — about 30 MHz at 61.44 MSPS. "Sample rate" here means the one
-  libiio reports, the rate of the buffer *you* write. When the FPGA
-  interpolator is engaged for low sample rates, that is one eighth of the rate
-  the AD9361 runs internally, and the pins follow your buffer, not the chip.
-  Every pattern is a whole-number division of that rate — you cannot get an
-  arbitrary frequency out of this.
-- **Skew.** The four outputs are not timing-constrained, so the spread between
-  them is whatever the router produced: a few hundred picoseconds, unverified.
-  Nothing next to a 16 ns sample period, but do not build a picosecond-accurate
-  instrument on it without constraining and checking.
-- **I only, 4 pins**, unless you widen it.
+  sample rate — about 30 MHz at 61.44 MSPS. "Sample rate" means the one libiio
+  reports, the rate of the buffer *you* write. When the FPGA interpolator is
+  engaged for low sample rates that is one eighth of the rate the AD9361 runs
+  internally, and the pins follow your buffer, not the chip. Every pattern is a
+  whole-number division of that rate — you cannot get an arbitrary frequency.
+- **The pins only move while a TX buffer is streaming.** Between streams the
+  last nibble is held. This firmware also mutes the transmitter and powers down
+  the TX synthesiser between streams (see the README's transmitter-safety
+  section).
+- **I only, four pins**, unless you widen `NBITS`.
 - **3.3 V LVCMOS**, single-ended, no series termination on the board. Keep the
-  wires short; if you need to drive something far away, buffer it.
+  wires short; buffer anything long.
+- **Skew between the four pins is unconstrained** — a few hundred picoseconds
+  of routing, not checked by timing analysis. Nothing against a 16 ns sample
+  period, but do not build a picosecond-accurate instrument on it without
+  adding output constraints and re-running implementation.
 - **Nothing validates your pattern.** The nibble is copied through untouched,
   which is the entire point and also means a typo goes straight to the pins.
+
+## What has actually been verified
+
+Being explicit, because "it builds" and "it works" are different claims:
+
+| | Status |
+|---|---|
+| Logic correct against a golden model | ✅ 2092 checks, 6 mutants all caught |
+| Synthesises, implements, meets timing | ✅ measured, numbers above |
+| Pins land on the intended balls | ✅ confirmed in the routed checkpoint |
+| Ball assignments match the schematic | ✅ read off sheet 5 |
+| Bank voltage supports LVCMOS33 | ✅ `VCCO_13` = VCC3V3, sheet 1 |
+| `BOOT.bin` built and flashed, board boots | ✅ AD9361 healthy afterwards |
+| **Pins observed toggling on hardware** | ❌ **not yet done** |
+| **Coherence with the RF measured** | ❌ **not yet done** |
+
+The last two need an instrument or a jumper wire and have not been done. Until
+they are, treat this as "built and plausible", not "working".
+
+## Notes for anyone extending it
+
+Four things cost a build each to discover, none of them visible to simulation:
+
+- **Vivado infers bus interfaces from port names.** A vector beside a port
+  whose name ends in `_valid` becomes a data/valid *interface* pin, and
+  `ad_connect` then refuses to wire a plain slice output to it ("Cannot connect
+  non-interface to interface"). Hence `sample_in`/`valid_in` and
+  `(* X_INTERFACE_IGNORE = "true" *)` on every port.
+- **An `.xdc` is a restricted Tcl dialect and does not accept `if`.** A guarded
+  constraint block is silently discarded whole, and the explanation appears in
+  `pluto.runs/*/runme.log`, *not* in the top-level build log. Check the run
+  logs, not just the build log.
+- **A wrong `PACKAGE_PIN` is not an error.** Vivado will happily place a port on
+  a ball the board leaves unconnected, and report perfect timing.
+- **Clock-domain crossings are timed as if they were synchronous** unless you
+  say otherwise. The flag crossing made this feature the critical path of the
+  whole design until a `set_max_delay -datapath_only` fixed the analysis.

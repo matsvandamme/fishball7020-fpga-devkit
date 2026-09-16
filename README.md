@@ -84,7 +84,8 @@ required either way.
   Linux 5.15 → Buildroot root filesystem → `BOOT.bin`.
 - **The real ADI block design, editable** — open it in Vivado and put your
   own HDL directly into the AD9361 datapath.
-- **Three ways onto the board** — SD card, DFU over USB, or JTAG for a
+- **Four ways onto the board** — SD card, DFU over USB, over SSH from the
+  running board (the only remote route that can update the bitstream), or JTAG for a
   seconds-long iteration loop instead of a full rebuild.
 - **The transmitter is off unless you are transmitting** — stock firmware
   leaves the AD9361's TX chain biased from power-on, radiating LO leakage with
@@ -197,7 +198,7 @@ Notes:
 
 - **SD-card boot never writes to the QSPI flash**, so whatever is on that
   chip is unaffected by anything the devkit does.
-- **JTAG mode is for the [Option C](#option-c--jtag-temporary-but-the-fastest-hdl-loop)
+- **JTAG mode is for the [Option D](#option-d--jtag-temporary-but-the-fastest-hdl-loop)
   workflow**, not for normal running.
 - The distributor's write-up lists QSPI as the default; boards observed in
   practice ship in SD mode. Either way the switch is the thing to check, not
@@ -667,7 +668,44 @@ ideal for iterating on the kernel or rootfs without touching the SD card.
    Zynq> reset
    ```
 
-### Option C — JTAG (temporary, but the fastest HDL loop)
+### Option C — over SSH, from the running board (no card removal)
+
+If the board still boots, it can rewrite its own SD card. The FAT partition
+is `/dev/mmcblk0p1`, normally left unmounted, so you can mount it, replace
+`BOOT.bin`, and reboot — all over the network. **This is the only remote
+option that can update the FPGA bitstream**, because DFU has no target for
+`BOOT.bin`. For iterating on HDL it turns a card-shuffling loop into one
+command.
+
+```bash
+# run from: firmware/   (BOARD is the running board)
+BOARD=root@192.168.2.1
+
+# 1. Back up what is on the card RIGHT NOW - this is your way back.
+ssh $BOARD 'mkdir -p /tmp/sd && mount -o ro /dev/mmcblk0p1 /tmp/sd && cat /tmp/sd/BOOT.bin' > BOOT.bin.rollback
+ssh $BOARD 'md5sum /tmp/sd/BOOT.bin; umount /tmp/sd'
+md5sum BOOT.bin.rollback                      # the two must match
+
+# 2. Copy the new one in beside the old, then verify before swapping.
+ssh $BOARD 'mount -o rw /dev/mmcblk0p1 /tmp/sd'
+scp output/BOOT.bin $BOARD:/tmp/sd/BOOT.bin.new
+ssh $BOARD 'md5sum /tmp/sd/BOOT.bin.new'      # must match md5sum output/BOOT.bin
+
+# 3. Swap, flush, unmount cleanly, reboot.
+ssh $BOARD 'cd /tmp/sd && cp BOOT.bin BOOT.bin.stockbak && mv BOOT.bin.new BOOT.bin && sync && cd / && umount /tmp/sd && reboot'
+```
+
+The board is back in about 40 seconds.
+
+> **Do the backup step.** A bad `BOOT.bin` means the board does not boot, and
+> then this option is gone — recovery needs a card reader. Verify the md5 of
+> the copy *before* the `mv`, unmount cleanly so FAT metadata is flushed, and
+> keep `BOOT.bin.rollback` until the new firmware has proved itself.
+>
+> The same approach updates the other four files, but there is rarely a
+> reason: DFU handles them and cannot brick the boot path.
+
+### Option D — JTAG (temporary, but the fastest HDL loop)
 
 For iterating on PL changes you can push a bitstream straight into the FPGA
 over JTAG — seconds, instead of a full `build_all.sh` plus reflash. Two
