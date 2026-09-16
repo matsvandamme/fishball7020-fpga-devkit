@@ -441,11 +441,48 @@ Being explicit, because "it builds" and "it works" are different claims:
 | Ball assignments match the schematic | ✅ read off sheet 5 |
 | Bank voltage supports LVCMOS33 | ✅ `VCCO_13` = VCC3V3, sheet 1 |
 | `BOOT.bin` built and flashed, board boots | ✅ AD9361 healthy afterwards |
-| **Pins observed toggling on hardware** | ❌ **not yet done** |
-| **Coherence with the RF measured** | ❌ **not yet done** |
+| Nibble reaches the pins, bit for bit | ✅ all four one-hot patterns, on hardware |
+| Bit order matches the header labels | ✅ `sample_gpio[n]` ↔ nibble bit `n` |
+| The flag hands the pins back when cleared | ✅ measured |
+| **Coherence with the RF measured** | ❌ **not yet done** — needs a scope |
+| **Rate / edge timing on a scope** | ❌ **not yet done** |
 
-The last two need an instrument or a jumper wire and have not been done. Until
-they are, treat this as "built and plausible", not "working".
+Run the hardware check yourself with `tools/tx-gpio-bitmap-check.py`. It needs
+no scope, no jumper and no antenna, and it never transmits at power — TX
+attenuation is pinned at maximum throughout, which is safe because the nibble
+only occupies bits the DAC discards.
+
+```
+flag ON - each pin must carry its own bit of the nibble
+  0xF all high    -> [1, 1, 1, 1]  want [1, 1, 1, 1]  control 0  ok
+  0x1 only bit 0  -> [1, 0, 0, 0]  want [1, 0, 0, 0]  control 0  ok
+  ...
+flag OFF - the fabric must let go, so the pins stop following the data
+  nibble 0x0 -> [1, 1, 1, 1]   nibble 0xF -> [1, 1, 1, 1]   released (floating)
+RESULT: PASS
+```
+
+### Two traps that check exists to avoid
+
+Both of these produce a convincing-looking pass that means nothing, and both
+were hit before the test was right:
+
+- **`direction=out` readback proves nothing.** sysfs returns the value you
+  wrote. EMIO bits routed to no pad at all read back perfectly. Every read must
+  set `direction=in` first, and the script reads EMIO 22 — deliberately
+  connected to nothing — alongside as a control that must never go high.
+- **With the flag clear the pins float, and they float HIGH on this board.**
+  So "the pin reads 1" is not evidence the fabric is driving it. The only sound
+  test of the flag is to stream *two different nibbles*: if the pin follows the
+  data, the fabric owns it; if it reads the same either way, the fabric has let
+  go. Pre-charging the pad to the opposite state does not settle it — a
+  floating CMOS pin with a pull-up returns to 1 regardless.
+
+What this does **not** yet establish is the coherence claim itself: that the
+pin edge sits at a fixed, repeatable offset from the RF. Sysfs reads take
+microseconds and cannot see a pin toggling at megahertz. That needs a scope,
+and until someone does it, treat the timing relationship as designed-for rather
+than demonstrated.
 
 ## Notes for anyone extending it
 

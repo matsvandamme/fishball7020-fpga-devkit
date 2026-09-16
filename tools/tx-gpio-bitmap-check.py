@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""Verify the TX-sample-nibble-to-GPIO feature on real hardware.
+
+    ./tx-gpio-bitmap-check.py [ip:192.168.2.1]
+
+Answers one question: do the four header pins actually carry the low nibble of
+the transmit samples? It needs no scope, no jumper wire and no antenna - only
+the board, over the network.
+
+HOW IT AVOIDS TRANSMITTING
+--------------------------
+The nibble lives in the four bits the 12-bit DAC discards, so the analog path
+sees zeros no matter what pattern is authored. TX attenuation is pinned to
+maximum (-89.75 dB) before anything streams and checked again at the end, so
+the transmitter stays in the same state it idles in.
+
+TWO TRAPS THIS SCRIPT EXISTS TO AVOID
+-------------------------------------
+1. With `direction=out`, sysfs returns the value you WROTE, not the pin. EMIO
+   bits wired to no pad at all read back perfectly. Every read here sets
+   `direction=in` first, and gpio 982 - routed to nothing - is read alongside
+   as a control that must never go high.
+
+2. With the flag clear the fabric releases the pins and they FLOAT, reading
+   high on this board. So "the pin reads 1" alone proves nothing. The flag
+   test streams two different nibbles: if the pin follows the data the fabric
+   is driving it, and if it reads the same either way the fabric has let go.
+
+Needs: python3, sshpass, and network access to the board.
+"""
+import subprocess
+import sys
+import time
+
+sys.path.insert(0, __file__.rsplit("/", 1)[0] + "/selftest")
+from iiod_min import Iiod, mask_for                      # noqa: E402
+
+TXDEV = "cf-ad9361-dds-core-lpc"
+PHY = "ad9361-phy"
+NSAMP = 8192
+MUTED = "-89.750000"
+CONTROL_OFFSET = 22          # EMIO 22: routed to no pad in this design
+
+
+class Board:
+    """The parts of the test that need a shell rather than IIO."""
+
+    def __init__(self, host):
+        self.host = host
+        self.base = None
+        self.dds = None
+
+    def sh(self, cmd):
+        r = subprocess.run(
+            ["sshpass", "-p", "analog", "ssh", "-o", "StrictHostKeyChecking=no",
+             "-o", "ConnectTimeout=10", f"root@{self.host}", cmd],
+            capture_output=True, text=True, timeout=60)
+        return r.stdout.strip()
+
+    def discover(self):
+        self.base = int(self.sh("cat /sys/class/gpio/gpiochip*/base | head -1"))
+        # The DDS core's debugfs directory. debugfs has no "name" file - that
+        # lives in sysfs - so match the name there and reuse the index.
+        self.dds = self.sh(
+            'for d in /sys/bus/iio/devices/iio:device*; do '
+            f'[ "$(cat $d/name)" = "{TXDEV}" ] && '
+            'echo /sys/kernel/debug/iio/$(basename $d); done')
+        if not self.dds:
+            raise SystemExit(f"could not find {TXDEV} in debugfs (are you root?)")
+        self.pins = [self.base + 54 + 18 + n for n in range(4)]
+        self.control = self.base + 54 + CONTROL_OFFSET
+        for n in self.pins + [self.control]:
+            self.sh(f"[ -d /sys/class/gpio/gpio{n} ] || echo {n} > /sys/class/gpio/export")
+
+    def set_flag(self, on):
+        self.sh(f'echo "0xBC 0x{2 if on else 0:x}" > {self.dds}/direct_reg_access')
+        self.sh(f"echo 0xBC > {self.dds}/direct_reg_access")
+        return self.sh(f"cat {self.dds}/direct_reg_access")
+
+    def read_pins(self):
+        """Read the four pads plus the control, always as inputs."""
+        pins = self.pins + [self.control]
+        cmd = "; ".join(
+            f"echo in > /sys/class/gpio/gpio{n}/direction; "
+            f'printf "%s " $(cat /sys/class/gpio/gpio{n}/value)' for n in pins)
+        v = [int(x) for x in self.sh(cmd).split()]
+        return v[:4], v[4]
+
+    def release(self):
+        for n in self.pins + [self.control]:
+            self.sh(f"echo {n} > /sys/class/gpio/unexport 2>/dev/null")
+
+
+def main():
+    host = (sys.argv[1] if len(sys.argv) > 1 else "ip:192.168.2.1").split(":")[-1]
+    board = Board(host)
+    board.discover()
+    print(f"board {host}: gpio base {board.base}, pins {board.pins}, "
+          f"control {board.control}")
+
+    c = Iiod(host, timeout=20).connect()
+    for ch in ("voltage0", "voltage1"):
+        c.write(PHY, ch, "hardwaregain", MUTED, output=True)
+    print(f"transmitter pinned at {c.read(PHY, 'voltage0', 'hardwaregain', True)}\n")
+
+    def stream_and_read(nibble):
+        vals = []
+        for _ in range(NSAMP):
+            vals += [nibble & 0xF, 0]              # I carries the nibble, Q is zero
+        c.write_samples(TXDEV, vals, mask_for([0, 1], 4), nchannels=2, cyclic=True)
+        time.sleep(0.5)
+        pins, ctrl = board.read_pins()
+        c.close_buffer(TXDEV)
+        time.sleep(0.3)
+        return pins, ctrl
+
+    ok = []
+    print("flag ON - each pin must carry its own bit of the nibble")
+    board.set_flag(True)
+    for name, nib, want in [("all high", 0xF, [1, 1, 1, 1]),
+                            ("all low", 0x0, [0, 0, 0, 0]),
+                            ("only bit 0", 0x1, [1, 0, 0, 0]),
+                            ("only bit 1", 0x2, [0, 1, 0, 0]),
+                            ("only bit 2", 0x4, [0, 0, 1, 0]),
+                            ("only bit 3", 0x8, [0, 0, 0, 1])]:
+        pins, ctrl = stream_and_read(nib)
+        good = pins == want and ctrl == 0
+        ok.append(good)
+        print(f"  0x{nib:X} {name:11s} -> {pins}  want {want}  control {ctrl}  "
+              f"{'ok' if good else 'MISMATCH'}")
+
+    print("\nflag OFF - the fabric must let go, so the pins stop following the data")
+    board.set_flag(False)
+    low, _ = stream_and_read(0x0)
+    high, _ = stream_and_read(0xF)
+    released = low == high
+    ok.append(released)
+    print(f"  nibble 0x0 -> {low}   nibble 0xF -> {high}   "
+          f"{'released (floating)' if released else 'STILL DRIVEN - flag not gating'}")
+
+    print(f"\ntransmitter still at {c.read(PHY, 'voltage0', 'hardwaregain', True)}")
+    board.set_flag(False)
+    board.release()
+    c.close()
+    print("\nRESULT:", "PASS" if all(ok) else "FAIL")
+    return 0 if all(ok) else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

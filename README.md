@@ -995,6 +995,7 @@ fishball7020-fpga-devkit/
 │
 ├── tools/
 │   ├── env-vivado.sh                    ← source this before any vivado/xsct/bootgen command
+│   ├── tx-gpio-bitmap-check.py          ← verifies the TX-nibble-to-GPIO feature on hardware, no scope needed
 │   ├── selftest/                        ← is the board damaged? measures and says (see below)
 │   │   ├── sdr_selftest.py              rails, BIST, receiver, and an RF loopback sweep
 │   │   ├── iiod_min.py                  libiio's network protocol over a plain socket, stdlib only
