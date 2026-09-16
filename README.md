@@ -150,6 +150,7 @@ login prompt — no prior knowledge assumed.
 - [How it works](docs/how-it-works.md) — the boot chain explained from scratch
 - [The stock block design: IPs, wiring, and what you can change](docs/block-design.md)
 - [Worked example: an FM channelizer in the FPGA](docs/wbfm-channelizer.md)
+- [Worked example: TX sample bits on header pins](docs/tx-gpio-bitmap.md) — four outputs locked to the transmitted waveform
 - [Transmitter safety](#transmitter-safety) — TX is muted when nothing is being sent
 - [Measured performance](docs/measured-performance.md) — what one board actually does, and what the numbers do not mean
 - [Simulating your HDL first](#simulating-your-hdl-first) — one second instead of twenty minutes
@@ -415,6 +416,13 @@ filtering entirely:
 > with no software channel filter left in it. It also explains why the
 > obvious approach — "just lowpass the channel" — cannot work, which is worth
 > reading before you design any filter for this board.
+>
+> The second worked example, **[Four header pins that tick with the
+> transmitted waveform](docs/tx-gpio-bitmap.md)**, goes the other way: it taps
+> the four bits of every transmit sample that the 12-bit DAC discards and puts
+> them on expansion-header pins, giving four digital outputs locked to the RF
+> sample that carried them — a clock, a frame marker and a sync line for
+> external receivers, at no analog cost.
 
 ### Rebuilding after a GUI block-design edit
 
@@ -964,7 +972,8 @@ fishball7020-fpga-devkit/
     │   ├── 0004-mute-tx-when-no-dma-stream.patch TX safeguard (see Transmitter safety)
     │   ├── 0005-dont-clobber-a-gain-set-before-streaming.patch  the unmute stops overwriting your gain
     │   └── optional/                             NOT applied by setup.sh — worked examples
-    │       └── 0003-wbfm-channelizer.patch      the FM channelizer (docs/wbfm-channelizer.md)
+    │       ├── 0003-wbfm-channelizer.patch      the FM channelizer (docs/wbfm-channelizer.md)
+    │       └── 0006-tx-sample-nibble-to-gpio.patch  TX sample LSBs on header pins (docs/tx-gpio-bitmap.md)
     ├── scripts/
     │   ├── setup.sh                    (run once) clones upstream source into src/, applies patches/*.patch (not optional/)
     │   ├── build_all.sh                (run every time) full build → output/
@@ -1108,9 +1117,8 @@ you still have to flash and reboot. Synthesis also cannot tell you the logic is
 
 Needs only `iverilog` (`sudo apt install iverilog`), takes about a second, and
 checks the repo's custom HDL against a golden model of what it is supposed to
-compute. It works whether or not you have applied the channelizer patch — if
-`ad_fs4_ddc.v` is not in `src/`, the runner lifts it straight out of the patch
-file.
+compute. It works whether or not you have applied the optional patches — if a
+module is not in `src/`, the runner lifts it straight out of its patch file.
 
 ```
 == ad_fs4_ddc ==
@@ -1121,6 +1129,11 @@ file.
    [5] outputs hold their value while valid_in is low
    [6] the endpoints of the documented input range
    PASS  473 checks, no mismatches against the golden model
+
+== tx_gpio_bitmap ==
+   pins follow EMIO GPIO when the flag is clear,
+   and the sample nibble when it is set
+   PASS  89 checks
 ```
 
 Every check is exact integer arithmetic — an Fs/4 shift is a swap and a sign
@@ -1140,9 +1153,12 @@ runner can check itself:
 ./sim/run_sim.sh --mutate
 ```
 
-It breaks the module four ways — the phase counter moved out of its guard, a
-sign error in the −j quadrant, I and Q swapped in +j, `valid_out` unregistered
-— and reports any mutant the testbench fails to catch. CI runs both.
+It breaks the modules nine ways — for `ad_fs4_ddc`, the phase counter moved
+out of its guard, a sign error in the −j quadrant, I and Q swapped in +j,
+`valid_out` unregistered; for `tx_gpio_bitmap`, the nibble captured every clock
+instead of every sample, the pins left tristated, the mux reversed, the sample
+not registered, one synchroniser stage instead of two — and reports any mutant
+the testbenches fail to catch. CI runs both.
 
 If you add HDL of your own, add a testbench beside this one. It is the
 cheapest verification available here by a factor of about a thousand.
@@ -1369,7 +1385,7 @@ build with nothing cached.
 | RX path | no `rx_ddc`, stock `coefile_int.coe`, **72 / 220 DSP48s**, 11 893 LUTs |
 | BOOT.bin | 2 849 940 B, bitstream compressed to 2 329 140 B |
 | Timing | WNS +0.214 ns, 0 failing endpoints of 48 248 |
-| HDL simulation | 473 checks against the golden model, all 4 mutants caught |
+| HDL simulation | 562 checks against the golden models, all 9 mutants caught |
 | On the board | correct `hw_model`, persistent serial, TX muted at boot, 32 self-test checks passed |
 
 **An HDL change reaches the fabric.** The same tree with

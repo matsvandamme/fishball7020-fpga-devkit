@@ -3,7 +3,7 @@
 # Simulate the repo's custom HDL and check it against a golden model.
 #
 #     ./sim/run_sim.sh            # run from firmware/
-#     ./sim/run_sim.sh --mutate   # also prove the testbench can fail
+#     ./sim/run_sim.sh --mutate   # also prove the testbenches can fail
 #
 # Needs Icarus Verilog only:  sudo apt install iverilog
 #
@@ -34,45 +34,61 @@ if ! command -v iverilog >/dev/null; then
     exit 2
 fi
 
-# The design under test ships inside an OPTIONAL patch, so it is only in src/
-# if that patch has been applied. Take it from there when it is, and otherwise
-# lift it straight out of the patch - the simulation should not require you to
-# have opted into the channelizer to check that the channelizer is correct.
-DUT=$FW/src/hdl/projects/pluto/ad_fs4_ddc.v
-PATCHFILE=$FW/patches/optional/0003-wbfm-channelizer.patch
-if [ -r "$DUT" ]; then
-    cp "$DUT" "$WORK/ad_fs4_ddc.v"
-    origin="src/ (the channelizer patch is applied)"
-elif [ -r "$PATCHFILE" ]; then
-    awk '
-        /^\+\+\+ b\/hdl\/projects\/pluto\/ad_fs4_ddc\.v$/ { grab = 1; next }
-        grab && /^diff --git/                             { grab = 0 }
-        grab && /^\+/                                     { print substr($0, 2) }
-    ' "$PATCHFILE" > "$WORK/ad_fs4_ddc.v"
-    [ -s "$WORK/ad_fs4_ddc.v" ] || { echo "could not extract the module from $PATCHFILE" >&2; exit 2; }
-    origin="patches/optional/0003 (extracted; the patch is not applied)"
-else
-    echo "cannot find ad_fs4_ddc.v in src/ or in patches/optional/" >&2
-    exit 2
-fi
-
 fail=0
-echo "== ad_fs4_ddc =="
-echo "   source: $origin"
-# -Wall catches width mismatches and implicit nets, which is most of what goes
-# wrong in Verilog that nobody simulates.
-if ! iverilog -g2005 -Wall -o "$WORK/tb" "$SIM/tb_ad_fs4_ddc.v" "$WORK/ad_fs4_ddc.v" 2>&1 \
-     | sed 's/^/   /' ; then
-    fail=1
-fi
-[ -x "$WORK/tb" ] || { echo "   compilation failed"; exit 1; }
-# vvp exits 0 even when the testbench reports mismatches, so judge on what the
-# testbench actually said rather than on its exit status.
-vvp "$WORK/tb" | tee "$WORK/out.txt" | sed 's/^/   /'
-grep -q "^  PASS" "$WORK/out.txt" || fail=1
-grep -q "FAIL"    "$WORK/out.txt" && fail=1
 
-# --mutate: prove the testbench can actually fail.
+# Every design under test here ships inside an OPTIONAL patch, so it is only
+# in src/ if that patch has been applied. Take it from there when it is, and
+# otherwise lift it straight out of the patch - checking that the channelizer
+# is correct should not require you to have opted into the channelizer.
+#
+#   fetch <module> <patchfile>   ->  $WORK/<module>.v, and sets $origin
+fetch() {
+    local module=$1 patch=$2
+    local dut=$FW/src/hdl/projects/pluto/$module.v
+    local patchfile=$FW/patches/optional/$patch
+    if [ -r "$dut" ]; then
+        cp "$dut" "$WORK/$module.v"
+        origin="src/ (the patch is applied)"
+    elif [ -r "$patchfile" ]; then
+        awk -v want="+++ b/hdl/projects/pluto/$module.v" '
+            $0 == want           { grab = 1; next }
+            grab && /^diff --git/ { grab = 0 }
+            grab && /^\+/         { print substr($0, 2) }
+        ' "$patchfile" > "$WORK/$module.v"
+        [ -s "$WORK/$module.v" ] || { echo "could not extract $module from $patchfile" >&2; exit 2; }
+        origin="patches/optional/${patch%%-*} (extracted; the patch is not applied)"
+    else
+        echo "cannot find $module.v in src/ or in patches/optional/" >&2
+        exit 2
+    fi
+}
+
+#   simulate <module>            ->  compiles tb_<module>.v + the module, runs it
+simulate() {
+    local module=$1
+    echo "== $module =="
+    echo "   source: $origin"
+    # -Wall catches width mismatches and implicit nets, which is most of what
+    # goes wrong in Verilog that nobody simulates.
+    if ! iverilog -g2005 -Wall -o "$WORK/tb_$module" \
+         "$SIM/tb_$module.v" "$WORK/$module.v" 2>&1 | sed 's/^/   /' ; then
+        fail=1
+    fi
+    [ -x "$WORK/tb_$module" ] || { echo "   compilation failed"; exit 1; }
+    # vvp exits 0 even when the testbench reports mismatches, so judge on what
+    # the testbench actually said rather than on its exit status.
+    vvp "$WORK/tb_$module" | tee "$WORK/out.txt" | sed 's/^/   /'
+    grep -q "^  PASS" "$WORK/out.txt" || fail=1
+    grep -q "FAIL"    "$WORK/out.txt" && fail=1
+}
+
+fetch ad_fs4_ddc      0003-wbfm-channelizer.patch
+simulate ad_fs4_ddc
+echo
+fetch tx_gpio_bitmap  0006-tx-sample-nibble-to-gpio.patch
+simulate tx_gpio_bitmap
+
+# --mutate: prove the testbenches can actually fail.
 #
 # A green test suite means nothing until you have watched it go red. Each
 # mutant below is a plausible mistake - the phase counter moved out of the
@@ -81,15 +97,16 @@ grep -q "FAIL"    "$WORK/out.txt" && fail=1
 # corresponding check is decorative and should be fixed.
 if [ $MUTATE -eq 1 ]; then
     echo
-    echo "== mutation check: the testbench must reject each of these =="
+    echo "== mutation check: the testbenches must reject each of these =="
     survived=0
+    module=""
     mutate() {
         local name=$1 sedexpr=$2
-        sed "$sedexpr" "$WORK/ad_fs4_ddc.v" > "$WORK/mutant.v"
-        if cmp -s "$WORK/ad_fs4_ddc.v" "$WORK/mutant.v"; then
+        sed "$sedexpr" "$WORK/$module.v" > "$WORK/mutant.v"
+        if cmp -s "$WORK/$module.v" "$WORK/mutant.v"; then
             echo "   SKIP  $name (mutation did not apply)"; survived=$((survived+1)); return
         fi
-        iverilog -g2005 -o "$WORK/mtb" "$SIM/tb_ad_fs4_ddc.v" "$WORK/mutant.v" 2>/dev/null
+        iverilog -g2005 -o "$WORK/mtb" "$SIM/tb_$module.v" "$WORK/mutant.v" 2>/dev/null
         if vvp "$WORK/mtb" 2>/dev/null | grep -q "^  PASS"; then
             echo "   SURVIVED  $name  <- the testbench does not catch this"
             survived=$((survived+1))
@@ -97,11 +114,28 @@ if [ $MUTATE -eq 1 ]; then
             echo "   caught    $name"
         fi
     }
+
+    module=ad_fs4_ddc
+    echo "   -- $module"
     mutate "phase advances every clock, not every sample" \
            's/^      phase <= phase + 2.d1;/      \/\/removed/'
     mutate "sign error in the -j quadrant"      's/q_out <= -i_in/q_out <= i_in/'
     mutate "I and Q swapped in the +j quadrant" 's/i_out <= -q_in; q_out <=  i_in/i_out <= i_in; q_out <= -q_in/'
     mutate "valid_out not registered"           's/valid_out <= valid_in;/valid_out <= 1'"'"'b1;/'
+
+    module=tx_gpio_bitmap
+    echo "   -- $module"
+    mutate "nibble captured every clock, not every sample" \
+           's/end else if (sample_valid == 1.b1) begin/end else begin/'
+    mutate "pins left tristated while the flag is set" \
+           's/{NBITS{1.b0}} : gpio_t_in/gpio_t_in : gpio_t_in/'
+    mutate "the mux is the wrong way round" \
+           's/? sample_d : gpio_o_in/? gpio_o_in : sample_d/'
+    mutate "the sample is not registered at all" \
+           's/? sample_d : gpio_o_in/? sample : gpio_o_in/'
+    mutate "only one synchroniser stage on the flag" \
+           's/(flag_s == 1.b1)/(flag_m == 1'"'"'b1)/g'
+
     if [ $survived -ne 0 ]; then
         echo "   $survived mutant(s) survived - the testbench is weaker than it looks"
         fail=1

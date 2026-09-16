@@ -1,0 +1,299 @@
+diff --git a/hdl/projects/pluto/system_bd.tcl b/hdl/projects/pluto/system_bd.tcl
+index 8eeff72ab..012e98641 100755
+--- a/hdl/projects/pluto/system_bd.tcl
++++ b/hdl/projects/pluto/system_bd.tcl
+@@ -17,9 +17,17 @@ create_bd_port -dir I spi0_sdo_i
+ create_bd_port -dir O spi0_sdo_o
+ create_bd_port -dir I spi0_sdi_i
+ 
+-create_bd_port -dir I -from 17 -to 0 gpio_i
+-create_bd_port -dir O -from 17 -to 0 gpio_o
+-create_bd_port -dir O -from 17 -to 0 gpio_t
++# 18 EMIO GPIO in the stock design; 22 here. The extra four (bits 21:18) are
++# the header pins that tx_gpio_bitmap hands back to Linux whenever the
++# bit-map flag is clear, so they stay usable as ordinary GPIO.
++create_bd_port -dir I -from 21 -to 0 gpio_i
++create_bd_port -dir O -from 21 -to 0 gpio_o
++create_bd_port -dir O -from 21 -to 0 gpio_t
++
++# The four header pins themselves, driven either by EMIO GPIO or by the low
++# nibble of the transmit sample. See tx_gpio_bitmap.v.
++create_bd_port -dir O -from 3 -to 0 sample_gpio_o
++create_bd_port -dir O -from 3 -to 0 sample_gpio_t
+ 
+ create_bd_port -dir O spi_csn_o
+ create_bd_port -dir I spi_csn_i
+@@ -53,7 +61,7 @@ ad_ip_parameter sys_ps7 CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ 100.0
+ ad_ip_parameter sys_ps7 CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ 200.0
+ 
+ ad_ip_parameter sys_ps7 CONFIG.PCW_GPIO_EMIO_GPIO_ENABLE 1
+-ad_ip_parameter sys_ps7 CONFIG.PCW_GPIO_EMIO_GPIO_IO 18
++ad_ip_parameter sys_ps7 CONFIG.PCW_GPIO_EMIO_GPIO_IO 22
+ ad_ip_parameter sys_ps7 CONFIG.PCW_SPI1_PERIPHERAL_ENABLE 0
+ ad_ip_parameter sys_ps7 CONFIG.PCW_I2C0_PERIPHERAL_ENABLE 0
+ ad_ip_parameter sys_ps7 CONFIG.PCW_SD0_PERIPHERAL_ENABLE 1
+@@ -221,6 +229,38 @@ ad_add_interpolation_filter "tx_fir_interpolator" 8 2 1 {61.44} {7.68} \
+ ad_ip_instance xlslice interp_slice
+ ad_ip_instance util_upack2 tx_upack
+ 
++# TX sample nibble -> header GPIO.
++#
++# The AD9361's DAC is 12 bits and takes dma_data[15:4]; dma_data[3:0] are
++# discarded inside the FPGA. tx_gpio_bitmap puts those four otherwise-wasted
++# bits on four header pins, in lockstep with the sample that carried them, so
++# they can act as a master clock / frame clock / sync line for external
++# receivers. Enabled by bit 1 of the DAC core's GP_CONTROL register
++# (up_dac_gpio_out, AXI offset 0xBC); bit 0 is already the interpolator
++# bypass above.
++#
++# add_files here rather than via adi_project_files in system_project.tcl:
++# this file is sourced from inside adi_project_create, which runs first, so
++# the module is not in the fileset yet.
++add_files -norecurse $ad_hdl_dir/projects/pluto/tx_gpio_bitmap.v
++create_bd_cell -type module -reference tx_gpio_bitmap tx_bitmap
++
++# bit 1 of up_dac_gpio_out = the bit-map enable flag
++ad_ip_instance xlslice bitmap_sel [list \
++  DIN_WIDTH 32 DIN_FROM 1 DIN_TO 1 DOUT_WIDTH 1]
++
++# the low nibble of the RAW DMA sample, before the interpolator - a FIR mixes
++# neighbouring samples together, so the nibble downstream of it would be
++# filter output rather than the pattern the user authored
++ad_ip_instance xlslice nibble_slice [list \
++  DIN_WIDTH 16 DIN_FROM 3 DIN_TO 0 DOUT_WIDTH 4]
++
++# bits 21:18 of the EMIO GPIO, which own the pins when the flag is clear
++ad_ip_instance xlslice gpio_bitmap_o [list \
++  DIN_WIDTH 22 DIN_FROM 21 DIN_TO 18 DOUT_WIDTH 4]
++ad_ip_instance xlslice gpio_bitmap_t [list \
++  DIN_WIDTH 22 DIN_FROM 21 DIN_TO 18 DOUT_WIDTH 4]
++
+ ad_ip_instance axi_dmac axi_ad9361_adc_dma
+ ad_ip_parameter axi_ad9361_adc_dma CONFIG.DMA_TYPE_SRC 2
+ ad_ip_parameter axi_ad9361_adc_dma CONFIG.DMA_TYPE_DEST 0
+@@ -323,6 +363,25 @@ ad_connect  tx_upack/fifo_rd_underflow axi_ad9361/dac_dunf
+ ad_connect axi_ad9361/up_dac_gpio_out interp_slice/Din
+ ad_connect  tx_fir_interpolator/active interp_slice/Dout
+ 
++# TX sample nibble -> header GPIO. fifo_rd_data_0 is channel-0 I straight out
++# of the unpacker (fifo_rd_data_1 is Q, the hook for a future I+Q widening),
++# and fifo_rd_en is its per-sample strobe: in 2R2T mode a sample arrives only
++# every second l_clk, so capturing on the clock instead of on the strobe would
++# double the rate of every authored pattern.
++ad_connect axi_ad9361/l_clk tx_bitmap/clk
++ad_connect axi_ad9361/rst tx_bitmap/rst
++ad_connect tx_upack/fifo_rd_data_0 nibble_slice/Din
++ad_connect nibble_slice/Dout tx_bitmap/sample
++ad_connect logic_or/Res tx_bitmap/sample_valid
++ad_connect axi_ad9361/up_dac_gpio_out bitmap_sel/Din
++ad_connect bitmap_sel/Dout tx_bitmap/flag
++ad_connect sys_ps7/GPIO_O gpio_bitmap_o/Din
++ad_connect sys_ps7/GPIO_T gpio_bitmap_t/Din
++ad_connect gpio_bitmap_o/Dout tx_bitmap/gpio_o_in
++ad_connect gpio_bitmap_t/Dout tx_bitmap/gpio_t_in
++ad_connect tx_bitmap/pin_o sample_gpio_o
++ad_connect tx_bitmap/pin_t sample_gpio_t
++
+ ad_connect  axi_ad9361/l_clk axi_ad9361_adc_dma/fifo_wr_clk
+ ad_connect  axi_ad9361/l_clk axi_ad9361_dac_dma/m_axis_aclk
+ ad_connect  cpack/fifo_wr_overflow axi_ad9361/adc_dovf
+diff --git a/hdl/projects/pluto/system_constr.xdc b/hdl/projects/pluto/system_constr.xdc
+index ff020ba04..410022acb 100755
+--- a/hdl/projects/pluto/system_constr.xdc
++++ b/hdl/projects/pluto/system_constr.xdc
+@@ -50,6 +50,15 @@ set_property  -dict {PACKAGE_PIN  J20 IOSTANDARD LVCMOS25} [get_ports gpio_ctl[3
+ set_property  -dict {PACKAGE_PIN  P20  IOSTANDARD LVCMOS25} [get_ports gpio_en_agc]
+ set_property  -dict {PACKAGE_PIN  R19  IOSTANDARD LVCMOS25} [get_ports gpio_resetb]
+ 
++# Header GPIO, broken out on the expansion connector as 3V3_IO1..4. Free in
++# the stock design; driven here either by Linux (EMIO GPIO) or by the low
++# nibble of the transmit sample. Confirm against your board revision's
++# schematic before trusting these balls.
++set_property  -dict {PACKAGE_PIN  V11  IOSTANDARD LVCMOS33} [get_ports sample_gpio[0]]
++set_property  -dict {PACKAGE_PIN  W9   IOSTANDARD LVCMOS33} [get_ports sample_gpio[1]]
++set_property  -dict {PACKAGE_PIN  T9   IOSTANDARD LVCMOS33} [get_ports sample_gpio[2]]
++set_property  -dict {PACKAGE_PIN  V7   IOSTANDARD LVCMOS33} [get_ports sample_gpio[3]]
++
+ set_property  -dict {PACKAGE_PIN  T15  IOSTANDARD LVCMOS25} [get_ports enable]
+ set_property  -dict {PACKAGE_PIN  P18  IOSTANDARD LVCMOS25} [get_ports txnrx]
+ 
+diff --git a/hdl/projects/pluto/system_top.v b/hdl/projects/pluto/system_top.v
+index 5e4718878..29a903476 100755
+--- a/hdl/projects/pluto/system_top.v
++++ b/hdl/projects/pluto/system_top.v
+@@ -84,6 +84,10 @@ module system_top (
+   inout   [ 3:0]  gpio_ctl,
+   inout   [ 7:0]  gpio_status,
+ 
++  // header pins: EMIO GPIO, or the low nibble of the TX sample when the
++  // bit-map flag (up_dac_gpio_out[1]) is set. See tx_gpio_bitmap.v.
++  inout   [ 3:0]  sample_gpio,
++
+   output          spi_csn,
+   output          spi_clk,
+   output          spi_mosi,
+@@ -96,9 +100,12 @@ module system_top (
+ 
+   // internal signals
+ 
+-  wire    [17:0]  gpio_i;
+-  wire    [17:0]  gpio_o;
+-  wire    [17:0]  gpio_t;
++  wire    [21:0]  gpio_i;
++  wire    [21:0]  gpio_o;
++  wire    [21:0]  gpio_t;
++
++  wire    [ 3:0]  sample_gpio_o;
++  wire    [ 3:0]  sample_gpio_t;
+ 
+   // instantiations
+ 
+@@ -115,6 +122,16 @@ module system_top (
+ 
+   assign gpio_i[16:14] = gpio_o[16:14];
+ 
++  // The bit-map pins. gpio_i[21:18] carries what is actually on them back to
++  // Linux, so reading the GPIO still works while the fabric owns them.
++  ad_iobuf #(
++    .DATA_WIDTH(4)
++  ) i_iobuf_sample_gpio (
++    .dio_t (sample_gpio_t),
++    .dio_i (sample_gpio_o),
++    .dio_o (gpio_i[21:18]),
++    .dio_p (sample_gpio));
++
+ 
+ 
+   system_wrapper i_system_wrapper (
+@@ -143,6 +160,8 @@ module system_top (
+     .gpio_i (gpio_i),
+     .gpio_o (gpio_o),
+     .gpio_t (gpio_t),
++    .sample_gpio_o (sample_gpio_o),
++    .sample_gpio_t (sample_gpio_t),
+     .iic_main_scl_io (iic_scl),
+     .iic_main_sda_io (iic_sda),
+     .rx_clk_in_p (rx_clk_in_p),
+diff --git a/hdl/projects/pluto/tx_gpio_bitmap.v b/hdl/projects/pluto/tx_gpio_bitmap.v
+new file mode 100644
+index 000000000..87ee3614a
+--- /dev/null
++++ b/hdl/projects/pluto/tx_gpio_bitmap.v
+@@ -0,0 +1,117 @@
++// ***************************************************************************
++// ***************************************************************************
++// Copyright (C) 2026 fishball7020-fpga-devkit contributors
++//
++// Distributed under the GNU General Public License version 2, which can be
++// found in the top level directory of this repository (LICENSE), and also
++// online at: <https://www.gnu.org/licenses/old-licenses/gpl-2.0.html>
++//
++// This module is distributed in the hope that it will be useful, but WITHOUT
++// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++// FITNESS FOR A PARTICULAR PURPOSE.
++// ***************************************************************************
++// ***************************************************************************
++
++// tx_gpio_bitmap - drive header pins from the low bits of the transmit sample.
++//
++// WHY THIS EXISTS
++// ---------------
++// The AD9361's transmit DAC is 12 bits wide, but the sample words you write
++// over DMA are 16 bits. The converter takes the top 12 (`dma_data[15:4]`) and
++// the bottom 4 (`dma_data[3:0]`) are thrown away inside the FPGA. They cost
++// nothing and reach nothing.
++//
++// This module takes those four discarded bits and puts them on four header
++// pins instead. Because they ride along with the sample that produced them,
++// each pin transition is locked to the RF that left the antenna port on that
++// same sample clock - no drift, no unknown delay. That is what makes them
++// usable as a master clock, a frame clock or an external sync line for a
++// separate receiver in a multi-channel radar or MIMO setup.
++//
++// The FPGA does not *generate* anything here; it transports. Whatever pattern
++// you author into the low nibble of the samples you transmit is what appears
++// on the pins. Alternate bit 0 between 0 and 1 every sample and that pin is a
++// square wave at half the sample rate; set bit 1 once every 16 samples and
++// that pin is a frame marker. See docs/tx-gpio-bitmap.md.
++//
++// CONTROL
++// -------
++// `flag` selects what owns the pins:
++//
++//   flag = 0   the pins are ordinary EMIO GPIO, driven by Linux (`gpio_*_in`)
++//   flag = 1   the fabric claims them and drives the registered sample bits
++//
++// `flag` comes from bit 1 of the DAC core's GP_CONTROL register
++// (`up_dac_gpio_out`, AXI offset 0xBC); bit 0 is already the interpolator
++// bypass. It is asynchronous to `clk`, so it is synchronised here.
++//
++// GAPPED VALID MATTERS
++// --------------------
++// `sample` is only meaningful on clocks where `sample_valid` is high - in
++// 2R2T mode the datapath presents a new sample every second `l_clk`. The
++// nibble is captured on those clocks only and held in between, so a pattern
++// authored per SAMPLE comes out per sample. Capturing every clock would
++// double the apparent rate and is the mistake the testbench exists to catch.
++
++`timescale 1ns/100ps
++
++module tx_gpio_bitmap #(
++
++  parameter integer NBITS = 4
++) (
++
++  input                    clk,
++  input                    rst,
++
++  // datapath: the raw DMA sample and its valid strobe
++
++  input   [NBITS-1:0]      sample,
++  input                    sample_valid,
++
++  // control: bit 1 of up_dac_gpio_out
++
++  input                    flag,
++
++  // standard-GPIO source, used when flag = 0
++
++  input   [NBITS-1:0]      gpio_o_in,
++  input   [NBITS-1:0]      gpio_t_in,
++
++  // to the pins (via an ad_iobuf at the top level)
++
++  output  [NBITS-1:0]      pin_o,
++  output  [NBITS-1:0]      pin_t
++);
++
++  reg     [NBITS-1:0]      sample_d = {NBITS{1'b0}};
++  reg                      flag_m   = 1'b0;
++  reg                      flag_s   = 1'b0;
++
++  // Capture the nibble once per sample, not once per clock.
++
++  always @(posedge clk) begin
++    if (rst == 1'b1) begin
++      sample_d <= {NBITS{1'b0}};
++    end else if (sample_valid == 1'b1) begin
++      sample_d <= sample;
++    end
++  end
++
++  // Two flip-flops across the clock-domain boundary. The flag is set once by
++  // software and then left alone, so all this has to do is keep a metastable
++  // level out of the fabric.
++
++  always @(posedge clk) begin
++    if (rst == 1'b1) begin
++      flag_m <= 1'b0;
++      flag_s <= 1'b0;
++    end else begin
++      flag_m <= flag;
++      flag_s <= flag_m;
++    end
++  end
++
++  assign pin_o = (flag_s == 1'b1) ? sample_d : gpio_o_in;
++  assign pin_t = (flag_s == 1'b1) ? {NBITS{1'b0}} : gpio_t_in;
++
++endmodule
