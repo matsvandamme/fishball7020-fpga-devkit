@@ -80,3 +80,20 @@ while the build continues blindly.
 Every measurement in the self-test re-reads gain and attenuation and re-asserts
 them if they moved, then reports how often that happened. If a number looks
 wrong and that counter is non-zero, believe the counter.
+
+## A wrong PACKAGE_PIN is not a build error
+
+Vivado will happily place a port on a ball the board leaves unconnected, meet
+timing, and write a clean bitstream that drives a pad wired to nothing. On this
+board V11, W9 and V7 look like plausible header pins and are marked **no
+connect** on the schematic; the real ones are V10, U9, U10, T9. Read the
+schematic, do not pattern-match ball names.
+
+Two related traps from the same episode:
+
+- **Ball names do not tell you the bank.** Grepping for `V1x`/`U1x` suggested
+  the AD9361 LVDS lines shared bank 13 with the header pins. They do not —
+  `get_property IOBANK` in a routed checkpoint is the only authority.
+- **An `.xdc` is a restricted Tcl dialect and rejects `if`.** A guarded
+  constraint block is discarded whole, and the explanation appears in
+  `pluto.runs/*/runme.log`, not the top-level build log. Check the run logs.

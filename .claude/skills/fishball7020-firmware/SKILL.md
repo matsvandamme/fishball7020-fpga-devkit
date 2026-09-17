@@ -41,6 +41,19 @@ you flash the old bitstream:
 rm -rf src/hdl/projects/pluto/pluto.{xpr,cache,gen,hw,ip_user_files,runs,sim,srcs,sdk}
 ```
 
+**Four header pins carry the transmit sample's low nibble.** The 12-bit DAC
+reads `dma_data[15:4]` and discards the bottom four, so this costs nothing;
+`tx_gpio_bitmap.v` routes them to JP5 pins 7/9/11/13 (balls V10, U9, U10, T9,
+bank 13, 3.3 V, pulled down). Enable with
+`echo 1 > /sys/bus/iio/devices/iio:deviceN/tx_sample_gpio_en` on the
+`cf-ad9361-dds-core-lpc` device; it resets to 0, and the pins are ordinary EMIO
+GPIO 978-981 until set. Verify with `tools/tx-gpio-bitmap-check.py` — no scope,
+no antenna, TX stays at maximum attenuation. Three traps: a pin read with
+`direction=out` returns what you *wrote*, not the pad; a pin's level alone
+never says who is driving it, so test the flag by streaming two different
+nibbles; and the nibble must be OR-ed into the samples **last**, after any
+scaling. Full detail in [`docs/tx-gpio-bitmap.md`](../../../docs/tx-gpio-bitmap.md).
+
 **Simulate before you synthesise.** `./sim/run_sim.sh` checks the custom HDL
 against a golden model in about a second; a Vivado build is 20 minutes with
 `--hdl-only` and 70 from cold, and synthesis cannot tell you the logic computes
@@ -72,7 +85,7 @@ rated to about +2.5 dBm; this board measures **+19 dBm** flat out. Fit at least
 
 | | |
 |---|---|
-| `firmware/patches/` | what makes this board's firmware; `setup.sh` applies these |
+| `firmware/patches/` | what makes this board's firmware; `setup.sh` applies these (incl. 0006/0007, the sample-locked GPIO) |
 | `firmware/patches/optional/` | worked examples, **not** applied by default (just the FM channelizer) |
 | `firmware/src/` | upstream source, created by `setup.sh`, not committed |
 | `firmware/output/` | the five SD-card files |
