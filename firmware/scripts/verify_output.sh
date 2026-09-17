@@ -134,7 +134,11 @@ elif [ $stale -ne 0 ]; then
     echo "OK - output/ is ready to flash."
     echo "$stale file(s) on the board differ from this build: it is running older"
     echo "firmware. Update it with  ./tools/flash.sh --all"
-else
+elif [ $CHECK_BOARD -eq 1 ]; then
     echo "OK - output/ is ready to flash, and the board is running it."
+else
+    # Say nothing about the board: without --board it was never looked at, and
+    # stale=0 here only means "not checked".
+    echo "OK - output/ is ready to flash."
 fi
 exit $fail
