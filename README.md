@@ -157,7 +157,6 @@ Then go to [step 4](#4-add-your-own-hdl) to start changing the FPGA logic.
 - [Controlling the USER LED](docs/user-led.md)
 - [Troubleshooting](#troubleshooting)
 - [How this repo came to exist](#how-this-repo-came-to-exist) ·
-  [The end-to-end test](#the-end-to-end-test) ·
   [Vendor resources](#vendor-resources) · [License](#license)
 
 ## Boot modes (BOOT DIP switch)
@@ -1270,67 +1269,6 @@ upstream history was squashed *after* this board's firmware was built, so some
 source has drifted — not recoverable from public sources). The
 [firmware README](firmware/README.md) has the exact patch list, including two
 genuine upstream bugs found along the way.
-
-### The end-to-end test
-
-The claim this repo has to earn is narrow and testable: *a fresh clone, an
-edit, and a rebuild produce firmware whose FPGA actually contains the edit.*
-Re-run before every release, from a clean clone, flashed to a real board.
-
-**A clean clone reproduces stock.**
-
-| | |
-|---|---|
-| Patches applied | 0001, 0002, 0004, 0005, 0006, 0007, 0008 — `optional/0003` skipped, with a message saying so |
-| `devicetree.dtb` | reproduces the factory one exactly, then patch `0008` adds `gpio-line-names` (+152 B) — verified by decompiling and diffing |
-| RX path | no `rx_ddc`, stock `coefile_int.coe`, **72 / 220 DSP48s**, 11 896 LUTs |
-| BOOT.bin | 2 888 788 B, bitstream compressed to 2 329 140 B |
-| Timing | WNS +0.231 ns, 0 failing endpoints of 48 263 |
-| HDL simulation | 2 565 checks against the golden models, all 10 mutants caught |
-| On the board | correct `hw_model`, persistent serial, TX muted at boot, sample-locked GPIO passes its own check, 32 self-test checks passed |
-
-**"Stock" now means two things more than factory.** The kernel config and
-rootfs are still factory-identical, and the device tree still recompiles
-byte-for-byte from the factory one — but the default *bitstream* contains the
-sample-locked GPIO feature, and patch `0008` adds `gpio-line-names` to the
-device tree so those four pins can be found by name. Both are deliberate and
-both are listed above. That costs +3 LUTs and +7 flip-flops and changes no
-radio behaviour, because its enable bit resets to 0 and the four header pins
-stay ordinary GPIO until something sets it.
-
-**An HDL change reaches the fabric** — `optional/0003-wbfm-channelizer.patch`
-applied, Vivado project deleted, `build_all.sh --hdl-only` re-run.
-
-| | |
-|---|---|
-| RX path | `rx_ddc` wired, `coefile_wbfm_102100.coe`, **96 / 220 DSP48s** |
-| Timing | WNS +0.292 ns, 0 failing endpoints of 55 269 |
-| On the board | LO spur moved from **+0 kHz** to **−1000 kHz** |
-
-That last row is the whole test in one number. The AD9361's LO leakage and DC
-offset land at exactly 0 Hz and cannot be moved by anything in software — so a
-spur at −1 MHz can only have been moved by logic running in the FPGA. Engaging
-the ÷8 filter confirms the rest: an out-of-band signal 37.8 dB over the floor
-vanishes, and capture RMS drops from −49.2 to −78.6 dBFS.
-
-**The sample-locked GPIO feature**, measured against a build without it.
-
-| | |
-|---|---|
-| Timing | WNS **+0.231 ns** vs +0.214 without it — *better*, because the patch constrains a clock-domain crossing ADI's design leaves timed as if it were synchronous |
-| Logic | **+3 LUTs, +7 flip-flops**, no DSPs, no block RAM |
-| I/O | **+4 bonded IOBs** — V10, U9, U10, T9, bank 13, `LVCMOS33`, pulled down |
-| Idle state | pins read **0** undriven, confirmed on hardware — they floated to 1 before the pull-down was added |
-| Control | `tx_sample_gpio_en` reads back, and sets register `0xBC` bit 1, confirmed |
-| On the board | all four one-hot nibbles appear on their own pin; authored square wave tracks `N/fs` to 0.1% |
-
-**This is not ceremony.** The v1.1 run found three real defects in the build's
-own self-repair path, each of which would have stopped the next person building
-from a clean clone: it patched the alphabetically-first of 1120 packages
-containing a `COPYING` rather than the one that failed; it recorded the hash of
-a zero-byte download as valid, disabling the check that caught the corruption;
-and it cleared `dl/` without clearing the stamps that stop Buildroot
-re-fetching. None were visible by reading the code.
 
 ## Vendor resources
 
