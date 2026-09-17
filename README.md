@@ -16,16 +16,14 @@
 
 <p align="center"><img src="docs/img/board.jpg" alt="Fishball7020 / PlutoSky SDR board — Zynq XC7Z020 with AD9361, 4x SMA connectors, Ethernet and USB" width="480"></p>
 
-Build your own FPGA/HDL firmware for the **"7020-SDR"** — a Zynq
-XC7Z020-CLG400 + AD9361 software-defined radio with dual TX/RX, also sold as
-**PlutoSky** by OpenSourceSDRLab. From a stock board to your own logic running
-inside it: open the real block design, add HDL next to the AD9361 datapath,
-rebuild every layer (bitstream → FSBL → U-Boot → kernel → rootfs), and flash it
-back — no disassembly.
+Build your own FPGA/HDL firmware for the **"7020-SDR"**, a Zynq XC7Z020-CLG400
++ AD9361 software-defined radio with dual TX/RX, also sold as **PlutoSky** by
+OpenSourceSDRLab. You open the real block design, add your own HDL next to the
+AD9361 datapath, rebuild every layer (bitstream → FSBL → U-Boot → kernel →
+rootfs), and flash it back over the network without opening the case.
 
-New to those terms — bitstream, FSBL, block design? **[How it
-works](docs/how-it-works.md)** explains them from scratch, no prior knowledge
-assumed.
+If bitstream, FSBL and block design are new terms, **[How it
+works](docs/how-it-works.md)** starts from the beginning and assumes nothing.
 
 > **This repo targets one exact board:** the one sold as
 > [**"7020-SDR" (XC7Z020 + AD9361, dual TX/RX)**](https://nl.aliexpress.com/item/1005012055627197.html).
@@ -56,56 +54,60 @@ assumed.
 
 ## What you get
 
-- **A firmware build you can trust** — `devicetree.dtb` comes out byte-for-byte
-  identical to a real unit's; rootfs and bootloader environment
-  content-identical.
-- **One command builds every layer** — bitstream → FSBL → U-Boot → Linux 5.15
-  → Buildroot rootfs → `BOOT.bin`.
-- **The real ADI block design, editable** — put your own HDL directly into the
-  AD9361 datapath.
-- **Four ways onto the board** — SD card, DFU over USB, over SSH from the
-  running board (the only remote route that can update the bitstream), or JTAG
-  for a seconds-long loop.
-- **Four header pins that tick with the transmitted waveform** — the four
-  bits of every transmit sample the 12-bit DAC throws away are routed to
-  expansion-header pins, giving digital outputs locked to the RF sample that
-  carried them. Off by default, costs nothing until enabled. See
-  [Sample-locked GPIO outputs](#sample-locked-gpio-outputs).
+What comes out of a build matches a factory unit. `devicetree.dtb` is
+byte-for-byte identical to the one on a real board, and the rootfs and
+bootloader environment match by content. One command builds the whole stack:
+bitstream → FSBL → U-Boot → Linux 5.15 → Buildroot rootfs → `BOOT.bin`.
+
+The block design is ADI's real one, open in Vivado, so your HDL can sit
+directly in the AD9361 datapath rather than beside it. There are four ways to
+get a build onto the board: SD card, DFU over USB, over SSH from the running
+board (the only remote route that can also replace the bitstream), or JTAG when
+you want an edit-to-test loop measured in seconds.
+
+Two things here behave differently from the stock firmware:
+
 - **The transmitter is off unless you are transmitting.** Stock firmware leaves
   the TX chain biased from power-on, radiating LO leakage with nothing in the
   DAC. This build mutes it and powers the synthesiser down whenever no TX
-  buffer streams. See [Transmitter safety](#transmitter-safety).
-- **Reproducible changes** — they live in `patches/`, so a clean clone rebuilds
-  them anywhere.
-- **The traps are handled** — Vivado `PATH` pollution breaking the kernel
-  build, Buildroot mirror timeouts, host GCC drift. Each cost a debugging
-  session; none will cost you one.
-- **An Agent Skill** in [`.claude/skills/`](.claude/skills/fishball7020-firmware/SKILL.md),
-  loaded automatically by Claude Code, carrying the expensive-to-rediscover
-  parts: flashing rules, the PA power budget, AD9361 gain tables and their
-  discontinuities, libiio and busybox gotchas. Harmless if you don't use an agent.
+  buffer is streaming. See [Transmitter safety](#transmitter-safety).
+- **Four header pins tick with the transmitted waveform.** The AD9361's DAC is
+  12 bits wide and ignores the bottom four bits of every 16-bit sample you send
+  it. Those four bits go to expansion-header pins instead, which gives you
+  digital outputs locked to the RF sample that carried them. Off by default.
+  See [Sample-locked GPIO outputs](#sample-locked-gpio-outputs).
+
+Everything this repo changes to upstream lives in `patches/`, so a clean clone
+rebuilds it anywhere. The known traps are handled already: Vivado's `PATH`
+pollution breaking the kernel build, Buildroot mirror timeouts, host GCC drift.
+
+There is also an Agent Skill in
+[`.claude/skills/`](.claude/skills/fishball7020-firmware/SKILL.md) that Claude
+Code loads on its own. It carries the things that were expensive to work out:
+flashing rules, the PA power budget, the AD9361 gain tables and where they
+jump, libiio and busybox gotchas. Ignore it if you do not use an agent.
 
 ## Quick start
 
 **Just want a working board?** Download the five prebuilt SD-card files from
-the [latest release](../../releases/latest) (checksums included), copy them
-onto a FAT32 microSD card, insert it, power on. If nothing happens, check the
-`BOOT` DIP switch is in SD mode (`0 0`). That is the whole procedure — build
-only when you want to *change* something.
+the [latest release](../../releases/latest), copy them onto a FAT32 microSD
+card, insert it and power on. Checksums come with the release. If nothing
+happens, check the `BOOT` DIP switch is in SD mode (`0 0`). You only need to
+build anything if you want to change it.
 
-> **Back up first.** Copy the five files already on your card somewhere safe —
-> that is your way back. No backup? See
+> **Back up first.** Copy the five files already on your card somewhere safe.
+> That is your way back if a flash goes wrong. If you have no backup, see
 > [recovery](#if-things-go-wrong-recovering-the-factory-firmware).
 
-**Want to change the firmware?** Assumes Vivado/Vitis 2022.2
-([step 1](#1-install-vivadovitis-20222) if not — the only slow part):
+**Want to change the firmware?** You will need Vivado/Vitis 2022.2 first; see
+[step 1](#1-install-vivadovitis-20222), which is much the slowest part of this.
 
 ```bash
 # run from: wherever you want the devkit to live (e.g. ~)
 git clone https://github.com/matsvandamme/fishball7020-fpga-devkit.git
 cd fishball7020-fpga-devkit
 
-./devkit doctor          # can this machine build? checks in a second, not at minute 40
+./devkit doctor          # can this machine build? finds out now, not at minute 40
 ./devkit setup           # clone upstream source + apply patches            (~5 min)
 ./devkit build           # build everything                              (45-90 min)
 ./devkit verify          # is the build sane?
@@ -122,12 +124,13 @@ Then go to [step 4](#4-add-your-own-hdl) to start changing the FPGA logic.
 > ### Before you ever transmit
 >
 > The receive port survives **+2.5 dBm**. This board is sold in a variant with
-> a power amplifier that puts out about **+19 dBm** — roughly 16 dB more than
-> its own receiver tolerates. So: **never loop TX to RX without at least 20 dB
-> of attenuation**, never transmit at power into an open or unterminated port,
-> and remember that most of this board's range is licensed spectrum. Details
-> in [Transmitter safety](#transmitter-safety). This firmware mutes the
-> transmitter whenever nothing is streaming, so an idle board is quiet.
+> a power amplifier that puts out about **+19 dBm**, some 16 dB more than its
+> own receiver tolerates. So **never loop TX back to RX without at least 20 dB
+> of attenuation in between**, and never transmit at power into an open or
+> unterminated port. Bear in mind too that most of this board's range is
+> licensed spectrum. There is more in
+> [Transmitter safety](#transmitter-safety). An idle board is quiet, at least:
+> this firmware mutes the transmitter whenever nothing is streaming.
 
 ## Table of contents
 
@@ -727,38 +730,40 @@ fishball7020-fpga-devkit/
 
 ## Sample-locked GPIO outputs
 
-Four pins on the expansion header that change state **in lockstep with the
-samples you transmit**. Not "roughly when" — each edge is tied to one specific
-sample, with a fixed offset you measure once and then trust. Useful as a master
-clock, a frame marker or a sync line for external hardware that has to stay
-aligned with the transmitted waveform: multi-channel radar, MIMO, anything with
-a receiver that is not this board.
+Four pins on the expansion header change state **in lockstep with the samples
+you transmit**. Every edge belongs to one specific sample, separated from its
+RF by an offset that stays put, so you can measure it once and rely on it
+afterwards. That makes the pins usable as a master clock, a frame marker or a
+sync line for external hardware that has to stay aligned with what you are
+transmitting: multi-channel radar, MIMO, or any receiver that is not this
+board.
 
-It is **built into the base firmware and off by default**, so it costs nothing
-until you ask for it.
+The feature is part of the base firmware and off by default.
 
 ### Why it is free
 
-You hand the AD9361 **16-bit** samples. Its transmit DAC is **12 bits** and
-reads only the top 12 — ADI's own HDL does literally
-`dac_data_out_int <= dma_data[15:4]`. The bottom four bits reach the FPGA and
-stop there, changing nothing about the transmitted signal.
+You hand the AD9361 **16-bit** samples, but its transmit DAC is **12 bits** and
+reads only the top 12. ADI's own HDL does literally
+`dac_data_out_int <= dma_data[15:4]`. The bottom four bits arrive in the FPGA
+and stop there, changing nothing about the transmitted signal.
 
 ```
 your sample:   b15 … b4 │ b3 b2 b1 b0
-               └ the DAC │ └ discarded — this feature routes them to pins
+               └ the DAC │ └ discarded, so this feature takes them
 ```
 
-So at normal sample rates the pins cost no analog performance — the DAC never
-sees those bits — and no extra hardware: +3 LUTs and +7 flip-flops, no DSPs, no
-block RAM. (Below 2.083 MSPS the FPGA interpolator is engaged and filters the
-whole 16-bit word, so the nibble leaks into the DAC data at roughly −70 dBFS —
-see [Limits](docs/tx-gpio-bitmap.md#limits).)
+At normal sample rates, then, the pins cost nothing in analog performance,
+because the DAC never sees those bits. They cost almost nothing in the fabric
+either: 3 LUTs and 7 flip-flops, no DSPs, no block RAM.
+
+There is one exception. Below 2.083 MSPS the FPGA interpolator switches in and
+filters the whole 16-bit word, at which point the nibble does leak into the DAC
+data, at roughly −70 dBFS. See [Limits](docs/tx-gpio-bitmap.md#limits).
 
 ### How the nibble reaches the pin
 
-The four bits branch off early — while the sample is still exactly the 16-bit
-word you wrote — and travel to the pad on their own. Four things happen on the
+The four bits branch off early, while the sample is still exactly the 16-bit
+word you wrote, and travel to the pad on their own. Four things happen on the
 way.
 
 <picture>
@@ -766,52 +771,53 @@ way.
   <img src="docs/img/nibble-path-light.svg" alt="The transmit path from your DDR buffer to the antenna port, with the low four bits branching off at util_upack2 into tx_gpio_bitmap, an IO buffer and JP5 pins 7, 9, 11 and 13" width="760">
 </picture>
 
-**1 — The tap, taken before any filter.** DMA hands the FPGA one long stream of
-bytes; `util_upack2` splits it back into per-channel samples. Its output
+**First, the tap.** DMA hands the FPGA one long stream of bytes, and
+`util_upack2` splits it back into per-channel samples. Its output
 `fifo_rd_data_0[3:0]` is the low nibble of channel 0's **I** sample, still bit
-for bit what you put in the buffer. (`fifo_rd_data_1[3:0]` is Q — the hook for
-widening to eight pins later.) Tapping here and not further down matters: the
-next block is a **FIR interpolator**, a filter that blends neighbouring samples
-to raise the sample rate, and a nibble read after it would be filter output
-rather than the bits you authored.
+for bit what you put in the buffer. (`fifo_rd_data_1[3:0]` is Q, which is where
+a widening to eight pins would start.) It matters that the branch is taken here
+rather than further down. The next block is a **FIR interpolator**, a filter
+that blends neighbouring samples together to raise the sample rate, so a nibble
+read downstream of it would be filter output, not the bits you wrote.
 
-**2 — The capture, once per sample.** A small module, `tx_gpio_bitmap`, latches
-the nibble into a register and holds it until the next sample. It fires on the
-**strobe** — the signal that says "a new word is standing here now" — which in
-this design is `fifo_rd_valid | fifo_rd_underflow`. Two traps live here, and
-both are the kind that simulate fine and only show up on a scope:
+**Then the capture.** A small module called `tx_gpio_bitmap` latches the nibble
+into a register and holds it until the next sample arrives. It fires on the
+**strobe**, meaning the signal that says a new word is standing at the output
+right now, which here is `fifo_rd_valid | fifo_rd_underflow`. Two mistakes are
+easy to make at this point, and both of them simulate perfectly:
 
-- Not `fifo_rd_en`. That one is a *request* for a sample, and `util_upack2`
-  registers its output, so the word appears a clock later. Capture on the
-  request and every pin sits permanently one sample behind the DAC.
-- Not every clock. With both channels running (**2R2T**) a new sample arrives
-  only every *second* FPGA clock, so capturing on the clock would double the
-  rate of every pattern you wrote — a half-rate clock would come out at full
-  rate, a one-sample marker would arrive twice.
+- Using `fifo_rd_en` instead. That signal is a *request* for a sample, and
+  `util_upack2` registers its output, so the word itself only turns up a clock
+  later. Capture on the request and every pin sits permanently one sample
+  behind the DAC.
+- Capturing every clock. With both channels running (**2R2T**) a new sample
+  only arrives every second FPGA clock, so this doubles the rate of whatever
+  pattern you wrote. A half-rate clock comes out at full rate and a one-sample
+  marker arrives twice.
 
-Including `underflow` means that when DMA starves and the DAC is fed zeros, the
-pins carry those zeros too — so "the pins are the low nibble of what the DAC
-got" holds with no exceptions.
+`underflow` is in there so that when DMA starves and the DAC gets fed zeros,
+the pins carry those zeros as well. It keeps the rule "the pins are the low
+nibble of what the DAC got" true without exceptions.
 
-**3 — The switch, one flag bit.** The same module chooses who owns the four
-pads: with the flag clear they are ordinary Linux GPIO; with it set the fabric
-drives them from the captured nibble. The flag is **bit 1 of the DAC core's
-`GP_CONTROL` register** (AXI offset `0xBC`; bit 0 is already the interpolator
-bypass, so software must read-modify-write it — the `tx_sample_gpio_en` file
-below does that for you). Software writes it in one clock domain and the
-datapath reads it in another, so it crosses two flip-flops on the way in and a
-change takes effect two clocks later.
+**Then the switch.** The same module decides who owns the four pads. With the
+flag clear they are ordinary Linux GPIO; with it set, the fabric drives them
+from the captured nibble. The flag is **bit 1 of the DAC core's `GP_CONTROL`
+register**, at AXI offset `0xBC`. Bit 0 there is already the interpolator
+bypass, so software has to read-modify-write it rather than just store a value;
+the `tx_sample_gpio_en` file below handles that. Software writes the register
+in one clock domain and the datapath reads it in another, so the flag crosses
+two flip-flops on the way in and a change lands two clocks later.
 
-**4 — The pad.** An `ad_iobuf` per pin in `system_top.v` connects the module's
-output and tristate control to the package ball, and the ball's input side goes
-back to Linux so the GPIO can still be *read* either way.
+**Finally the pad.** An `ad_iobuf` per pin in `system_top.v` ties the module's
+output and tristate control to the package ball. The ball's input side runs
+back to Linux, so the pin can still be *read* whichever mode it is in.
 
-**What comes out.** A pad changes one clock after the tap. The matching RF is
-much further behind — it still has the interpolator, the AD9361's own digital
-filters and the DAC ahead of it — so **the pins lead the RF by a fixed
-offset**. Fixed is the useful part: it does not drift, and it repeats run to
-run for a given configuration, so it can be calibrated out once. It is not
-zero, and it has not yet been measured here — see
+**What you actually get.** A pad changes one clock after the tap. The matching
+RF is a good deal further behind, with the interpolator, the AD9361's own
+digital filters and the DAC still ahead of it, so **the pins lead the RF by a
+fixed offset**. Fixed is what makes it usable: it does not drift, and for a
+given configuration it repeats from run to run, so you can calibrate it out
+once. It is not zero, and nobody has measured it here yet. See
 [what has actually been verified](docs/tx-gpio-bitmap.md#what-has-actually-been-verified).
 
 ### The pins
@@ -947,24 +953,24 @@ measured cost and timing, and what has and has not been verified on hardware.
 
 ## Transmitter safety
 
-**Stock firmware leaves the transmitter running.** Measured at power-on: the
+**Stock firmware leaves the transmitter running.** Measured at power-on, the
 AD9361 comes up in ENSM `fdd` with the TX synthesiser going and only 10 dB of
-attenuation, so the port emits LO leakage continuously — nothing in the DAC
-DMA, no DDS tone, nobody having asked to transmit. When a transmission ends,
+attenuation, so the port emits LO leakage continuously even though nothing is
+in the DAC DMA and nobody has asked it to transmit. When a transmission ends,
 ADI's driver reverts to a silent DDS but leaves the chain biased.
 
-Idling like that is not itself a damage risk — at maximum attenuation the
-output is negligible (−89.75 dB below full scale). But there is no reason to
-keep a transmitter energised that you are not using, it warms a die already
-above 50 °C, and on the **PA variant this is not a trivial amount of power**.
+Idling like that is not in itself a damage risk, since at maximum attenuation
+the output is negligible (−89.75 dB below full scale). But there is no reason
+to keep a transmitter energised that you are not using. It warms a die already
+above 50 °C, and on the **PA variant it is not a trivial amount of power**.
 
 **Do not transmit at power into an unterminated port.** An open or shorted
 connector reflects everything back into the output stage. Neither the AD9361
 datasheet (TX specified into a matched 100 Ω load, ~6.5 dBm max) nor the
 PGA-102+ PA datasheet (~+17.5 dBm here) states any tolerance for an output
-open, short or high VSWR — treat it as unspecified and always terminate. The
-receiver has a hard number: **+2.5 dBm is the AD9361's absolute-maximum RF
-input**, which is why every loopback here goes through an attenuator.
+open, short or high VSWR, so treat it as unspecified and always terminate. The
+receiver does have a hard number: **+2.5 dBm is the AD9361's absolute-maximum
+RF input**. That is why every loopback here goes through an attenuator.
 
 **This build fixes it in firmware.** `patches/0004` hooks the TX buffer
 lifecycle the DAC driver already has:
@@ -975,13 +981,14 @@ lifecycle the DAC driver already has:
 | a TX buffer starts streaming | TX unmuted — your gain if you set one, else the last you used |
 | the buffer stops | TX muted and the synthesiser powered down, automatically |
 
-It calls `ad9361_tx_mute()`, ADI's own exported helper, which was present in
+It calls `ad9361_tx_mute()`, ADI's own exported helper, which was already in
 the tree but called from nowhere. `patches/0005` exists because restoring the
-cached attenuation *unconditionally* was itself a trap: setting a gain then
-starting the stream is the obvious order, and the unmute would overwrite it a
-moment later with the previous transmission's value — asking for −10 dB could
-put −60 dB on the wire. The unmute now restores the cache only when nothing has
-been set since the mute, so both orders work:
+cached attenuation *unconditionally* turned out to be a trap of its own.
+Setting a gain and then starting the stream is the obvious order to do things
+in, and the unmute would overwrite that gain a moment later with the previous
+transmission's value, so asking for −10 dB could put −60 dB on the wire. The
+unmute now restores the cache only if nothing has been set since the mute,
+which makes both orders work:
 
 | What you do | What you get |
 |---|---|
@@ -993,12 +1000,11 @@ no longer need it — check `/mnt/jffs2/autorun.sh`, since that partition is
 persistent and survives reflashing. `tools/selftest/sdr_selftest.py --ssh`
 lists what is there.
 
-What makes this a guarantee rather than best effort: the IIO core runs the
-buffer's `postdisable` hook on teardown **even when the application crashed or
-was killed**, because teardown happens on file close. A userspace watchdog
-could never promise that. The TX mute needed no device tree change of its
-own — the driver reaches the phy through the DDS node's existing `clocks`
-phandle.
+The reason this holds even when things go wrong is that the IIO core runs the
+buffer's `postdisable` hook on teardown **even if the application crashed or
+was killed**, since teardown happens on file close. No userspace watchdog can
+promise that. The TX mute needed no device tree change of its own, as the
+driver reaches the phy through the DDS node's existing `clocks` phandle.
 
 Measured over a 50 dB attenuated loopback, **the mute costs no output power**:
 commanded and applied attenuation matched to 0.01 dB at every point including
@@ -1210,9 +1216,9 @@ fork
 [`Xiaozhang-code-cloud/Fish-Wan-plutosdr-fw-7020-SDR`](https://github.com/Xiaozhang-code-cloud/Fish-Wan-plutosdr-fw-7020-SDR),
 cross-referenced against:
 
-- **The board's real schematic**, to verify the HDL project's pin constraints
-  by hand — several other candidate projects turned out to target *different*,
-  similarly-named boards despite compiling successfully.
+- **The board's real schematic**, used to check the HDL project's pin
+  constraints by hand. Several other candidate projects compiled perfectly well
+  and turned out to target *different*, similarly-named boards.
 - **A byte-for-byte comparison** against
   [`OpenSourceSDRLab/PlutoSky_7020_AD936X_SDR`](https://github.com/OpenSourceSDRLab/PlutoSky_7020_AD936X_SDR),
   confirming it as the genuine source of the prebuilt binaries (though not of
@@ -1221,11 +1227,11 @@ cross-referenced against:
   firmware's compiled kernel image, proving this rebuild's configuration
   identical rather than merely close.
 
-The result, verified file-by-file against a real unit: the device tree
-recompiles byte-for-byte identical to the factory one (patch `0008` then adds
-`gpio-line-names`, the single deliberate departure — see below); `uEnv.txt` and
-the rootfs file list are
-content-identical; kernel and bootloader are within a few hundred bytes (the
+The result was then verified file by file against a real unit. The device tree
+recompiles byte-for-byte identical to the factory one, with patch `0008` adding
+`gpio-line-names` as the one intentional departure (see below). `uEnv.txt` and
+the rootfs file list are content-identical. Kernel and bootloader come out
+within a few hundred bytes of the originals (the
 upstream history was squashed *after* this board's firmware was built, so some
 source has drifted — not recoverable from public sources). The
 [firmware README](firmware/README.md) has the exact patch list, including two
