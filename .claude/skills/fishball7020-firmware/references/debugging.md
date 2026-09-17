@@ -97,3 +97,34 @@ Two related traps from the same episode:
 - **An `.xdc` is a restricted Tcl dialect and rejects `if`.** A guarded
   constraint block is discarded whole, and the explanation appears in
   `pluto.runs/*/runme.log`, not the top-level build log. Check the run logs.
+
+
+## Patches stack, and both obvious "already applied?" tests are wrong
+
+0004, 0005 and 0007 all edit `cf_axi_dds.c`. Once a later one is applied,
+`git apply --check --reverse` on an earlier one fails - its context is gone -
+so per-patch detection reports a good tree as broken. And `git apply --check
+a.patch b.patch` tests each against the CURRENT tree, not cumulatively, so a
+whole-series check fails the same way. `setup.sh` therefore stamps
+`src/.devkit-patches-applied` with a digest of the patch set; `build_all.sh`
+refuses to build without a matching stamp. Generate a new patch to a stacked
+file against a reconstructed pre-change copy, not a plain `git diff`.
+
+## "Verified" must name the exact file
+
+`verify_output.sh` once picked the smallest `.bit` it could find to check
+compression, and a stale compressed bitstream from an earlier build vouched
+for the fresh one. It now checks exactly `pluto.runs/impl_1/system_top.bit`,
+the file `build_all.sh` packages. The flash script used to print "back after
+7s" while the OLD firmware was still answering ssh during shutdown - it now
+waits for `/proc/uptime` to reset and md5s the card. When a check can be
+satisfied by the wrong artefact, it eventually will be.
+
+## `pgrep -f` and `pkill -f` match the shell that runs them
+
+A waiter loop `while pgrep -f build_all.sh; do sleep 30; done` never exits: its
+own command line contains the pattern. `pkill -f "pattern"` kills the shell
+issuing it (exit 144). Use `pgrep -x <name>` for a process name, or the bracket
+trick `pgrep -f "[b]uild_all"`. A shell `for ...; do [ test ] && echo; done`
+exits 1 when the LAST iteration's test is false, so a wrapper that checks exit
+codes must end such loops with `; true` and judge the output instead.

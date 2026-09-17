@@ -61,7 +61,7 @@ most of its capacity free.
 | **Transmit power** | **+19 dBm** flat out, agreeing to 0.7 dB across six runs |
 | **Transmit mute depth** | **63–70 dB**, into the noise floor |
 | **Supply rails** | all six within **1.1%** of nominal |
-| **FPGA** | 72 of 220 DSP48s used, timing met with **+0.214 ns** to spare |
+| **FPGA** | 72 of 220 DSP48s used, timing met with **+0.214 ns** to spare on the build measured here (the v1.2 default, with the sample-locked GPIO feature, meets at **+0.231 ns**) |
 
 ## Gain accuracy — the number that matters most in practice
 

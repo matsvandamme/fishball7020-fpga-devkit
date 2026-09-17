@@ -68,7 +68,10 @@ note "FIR coefficients: ${coe:-<none found>}"
 
 echo
 echo "== bitstream =="
-bit=$(ls -S "$PRJ"/pluto.runs/impl_1/*.bit "$PRJ"/*.bit 2>/dev/null | tail -1)
+# Exactly the file build_all.sh packages into BOOT.bin - never "the smallest
+# .bit lying around", which once let a stale compressed one from an earlier
+# build vouch for a fresh uncompressed one.
+bit="$PRJ/pluto.runs/impl_1/system_top.bit"
 if [ -n "$bit" ]; then
     sz=$(stat -c%s "$bit")
     # An uncompressed XC7Z020 bitstream is ~4.05 MB. Anything well under that
@@ -97,16 +100,20 @@ if [ $CHECK_BOARD -eq 1 ]; then
     PASS=${BOARD_PASS:-analog}
     if ! command -v sshpass >/dev/null 2>&1; then
         note "sshpass not installed - cannot compare (sudo apt install sshpass)"
-    elif ! sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8 \
-            "root@$BOARD" true 2>/dev/null; then
+    elif ! sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+            -o ConnectTimeout=8 "root@$BOARD" true 2>/dev/null; then
         note "no board at $BOARD - skipping the comparison"
     else
-        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "root@$BOARD" \
-            'mkdir -p /tmp/sd && mount -o ro /dev/mmcblk0p1 /tmp/sd' 2>/dev/null
+        if ! sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                -o LogLevel=ERROR "root@$BOARD" \
+                'mkdir -p /tmp/sd && mount -o ro /dev/mmcblk0p1 /tmp/sd' 2>/dev/null; then
+            note "could not mount /dev/mmcblk0p1 on the board (still mounted from an interrupted flash? try: ssh root@$BOARD umount /tmp/sd)"
+            stale=$((stale+1))
+        else
         for f in BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz; do
             [ -r "$OUT/$f" ] || continue
             want=$(md5sum "$OUT/$f" | cut -d' ' -f1)
-            got=$(sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "root@$BOARD" \
+            got=$(sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "root@$BOARD" \
                   "md5sum /tmp/sd/$f 2>/dev/null" | cut -d' ' -f1)
             if [ -z "$got" ]; then
                 printf '  \033[33mSTALE\033[0m %s\n' "$f is not on the card"
@@ -119,9 +126,10 @@ if [ $CHECK_BOARD -eq 1 ]; then
                 stale=$((stale+1))
             fi
         done
-        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "root@$BOARD" \
-            'cd / && umount /tmp/sd' 2>/dev/null || true
+        sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            -o LogLevel=ERROR "root@$BOARD" 'cd / && umount /tmp/sd' 2>/dev/null || true
         note "the card is what it BOOTS from; a reboot is still needed after flashing"
+        fi
     fi
 fi
 
@@ -133,7 +141,7 @@ elif [ $stale -ne 0 ]; then
     # answer - saying "do not flash" here would be exactly backwards.
     echo "OK - output/ is ready to flash."
     echo "$stale file(s) on the board differ from this build: it is running older"
-    echo "firmware. Update it with  ./tools/flash.sh --all"
+    echo "firmware. Update it with  ./devkit flash --all"
 elif [ $CHECK_BOARD -eq 1 ]; then
     echo "OK - output/ is ready to flash, and the board is running it."
 else

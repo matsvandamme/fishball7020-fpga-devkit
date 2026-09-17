@@ -42,12 +42,19 @@ declare -A NEED=(
   [flex]="the kernel build"
   [dtc]="the device tree (device-tree-compiler)"
   [mkimage]="the uImage and ramdisk (u-boot-tools)"
-  [Xvfb]="the FSBL stage, when there is no DISPLAY (xvfb)"
 )
 for c in "${!NEED[@]}"; do
   if command -v "$c" >/dev/null 2>&1; then ok "$c"
   else bad "$c missing - needed for ${NEED[$c]}"; fi
 done
+# Xvfb is needed only when there is no display: build_all.sh uses $DISPLAY if
+# set and falls back to Xvfb otherwise. Failing a desktop user for it is false.
+if [ -n "${DISPLAY:-}" ]; then ok "DISPLAY set ($DISPLAY) - Vitis can use it for the FSBL stage"
+elif command -v Xvfb >/dev/null 2>&1; then ok "Xvfb (no DISPLAY, so the FSBL stage will use it)"
+else bad "no DISPLAY and no Xvfb - the FSBL stage will fail (sudo apt install xvfb)"; fi
+if command -v python3 >/dev/null 2>&1; then ok "python3"; else bad "python3 missing"; fi
+if [ -x "$VIVADO_DIR/bin/bootgen" ] || [ -x "$VITIS_DIR/bin/bootgen" ]; then ok "bootgen (packages BOOT.bin)"
+else bad "bootgen not found under Vivado or Vitis - packaging will fail"; fi
 # Headers, which are not commands. The kernel's GCC plugins #include <gmp.h>
 # and the failure appears at stage 4 as a bare "gmp.h: No such file".
 for h in gmp.h mpc.h mpfr.h; do
@@ -73,19 +80,22 @@ echo
 echo "== source tree =="
 if [ -d "$FW_DIR/src/.git" ]; then
   ok "src/ present"
-  if [ -f "$FW_DIR/src/.devkit-patches-applied" ]; then ok "patches applied"
-  else soft "patches may not be applied - run ./scripts/setup.sh"; fi
+  stamp="$FW_DIR/src/.devkit-patches-applied"
+  digest="$(cat "$FW_DIR"/patches/*.patch 2>/dev/null | sha256sum | cut -d' ' -f1)"
+  if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$digest" ]; then ok "patches applied (current set)"
+  elif [ -f "$stamp" ]; then soft "patch set has changed since setup ran - run ./devkit setup"
+  else soft "patches may not be applied - run ./devkit setup"; fi
 else
   soft "src/ not present yet - run ./scripts/setup.sh first"
 fi
 
 echo
 echo "== board (optional) =="
-BOARD_IP="${BOARD_IP:-192.168.2.1}"
-if ping -c1 -W1 "$BOARD_IP" >/dev/null 2>&1; then
-  ok "board reachable at $BOARD_IP"
+BOARD="${BOARD:-${BOARD_IP:-192.168.2.1}}"     # same knob as flash.sh, verify and devkit
+if ping -c1 -W1 "$BOARD" >/dev/null 2>&1; then
+  ok "board reachable at $BOARD"
 else
-  soft "no board at $BOARD_IP - fine for building, needed for flashing and tests"
+  soft "no board at $BOARD - fine for building, needed for flashing and tests (set BOARD=<address>)"
 fi
 
 echo

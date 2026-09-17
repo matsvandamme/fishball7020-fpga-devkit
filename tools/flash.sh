@@ -36,23 +36,34 @@ for arg in "$@"; do
         --boot-only)   FILES=(BOOT.bin) ;;
         --kernel-only) FILES=(uImage) ;;
         --no-reboot)   REBOOT=0 ;;
-        -h|--help)     sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help)     sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "unknown option: $arg" >&2; exit 2 ;;
     esac
 done
 
 command -v sshpass >/dev/null || { echo "need sshpass (sudo apt install sshpass)" >&2; exit 2; }
-sh()  { sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
-            "root@$BOARD" "$@"; }
-cpy() { sshpass -p "$PASS" scp -o StrictHostKeyChecking=no "$@"; }
+# UserKnownHostsFile=/dev/null: every board is 192.168.2.1 and each keeps its
+# own host key, so the second board you ever plug in would otherwise make
+# OpenSSH refuse password auth with a "changed key" warning that sshpass hides.
+SSH_OPTS=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+          -o LogLevel=ERROR -o ConnectTimeout=10)
+sh()  { sshpass -p "$PASS" ssh "${SSH_OPTS[@]}" "root@$BOARD" "$@"; }
+# No scp: OpenSSH 9+ defaults scp to SFTP, and the board's dropbear has no
+# sftp-server. A plain pipe over ssh works against every version.
+push() { sshpass -p "$PASS" ssh "${SSH_OPTS[@]}" "root@$BOARD" "cat > '$2'" < "$1"; }
 
 for f in "${FILES[@]}"; do
     [ -r "$OUT/$f" ] || { echo "missing $OUT/$f - build first" >&2; exit 1; }
 done
 
 echo "== board =="
-sh true 2>/dev/null || { echo "cannot reach root@$BOARD" >&2; exit 1; }
+if ! err=$(sh true 2>&1); then
+    echo "cannot reach root@$BOARD: ${err:-no response}" >&2
+    echo "(set BOARD=<address> and BOARD_PASS=<password> if yours differ)" >&2
+    exit 1
+fi
 echo "   $BOARD reachable, flashing: ${FILES[*]}"
+uptime_before=$(sh 'cut -d. -f1 /proc/uptime')
 
 cleanup() { sh 'cd / && umount /tmp/sd 2>/dev/null' >/dev/null 2>&1 || true; }
 trap cleanup EXIT
@@ -81,12 +92,12 @@ echo
 echo "== 2. copy in beside the old, and verify BEFORE swapping =="
 sh 'mount -o rw /dev/mmcblk0p1 /tmp/sd'
 for f in "${FILES[@]}"; do
-    cpy "$OUT/$f" "root@$BOARD:/tmp/sd/$f.new" >/dev/null
+    push "$OUT/$f" "/tmp/sd/$f.new"
     want=$(md5sum "$OUT/$f" | cut -d' ' -f1)
     got=$(sh "md5sum /tmp/sd/$f.new" | cut -d' ' -f1)
     if [ "$want" != "$got" ]; then
-        echo "   $f copied WRONG ($got, wanted $want) - removing it, card untouched" >&2
-        sh "rm -f /tmp/sd/$f.new; cd / && umount /tmp/sd"
+        echo "   $f copied WRONG ($got, wanted $want) - removing every .new, card untouched" >&2
+        sh "rm -f /tmp/sd/*.new; cd / && umount /tmp/sd"
         exit 1
     fi
     echo "   $f verified  ($want)"
@@ -95,7 +106,13 @@ done
 echo
 echo "== 3. swap, flush, unmount =="
 for f in "${FILES[@]}"; do
-    sh "cd /tmp/sd && { [ -r $f ] && cp $f $f.prev || true; } && mv $f.new $f"
+    # Keep the previous copy ON the card. If that copy cannot be made (card
+    # full), stop before the swap rather than swap with no on-card fallback.
+    if ! sh "cd /tmp/sd && { [ ! -r $f ] || cp $f $f.prev; } && mv $f.new $f"; then
+        echo "   could not keep $f.prev (card full?) - $f NOT swapped; card unchanged" >&2
+        sh "rm -f /tmp/sd/*.new; sync; cd / && umount /tmp/sd"
+        exit 1
+    fi
 done
 sh 'sync; cd / && umount /tmp/sd'
 echo "   done - previous copies kept on the card as *.prev"
@@ -110,20 +127,39 @@ fi
 echo
 echo "== 4. reboot =="
 sh '(sleep 1; reboot) >/dev/null 2>&1 &' || true
-sleep 5
-for i in $(seq 1 60); do
+# "It answered ssh" is not "it rebooted": a board tearing down its services can
+# still answer for a few seconds, and that used to print "back after 7s" with
+# the OLD firmware still running. Require the uptime counter to have reset.
+for i in $(seq 1 90); do
     sleep 2
-    if sh 'echo up' >/dev/null 2>&1; then
-        echo "   back after $((i * 2 + 5))s"
-        sh 'cat /opt/VERSIONS 2>/dev/null | head -1' || true
-        echo
-        echo "Flashed. If something is wrong, the previous firmware is on the card"
-        echo "as BOOT.bin.prev (and in $BACKUP_DIR/$stamp)."
-        exit 0
-    fi
+    if up=$(sh 'cut -d. -f1 /proc/uptime' 2>/dev/null) && [ -n "$up" ]; then
+        if [ "$up" -lt "${uptime_before:-999999}" ] && [ "$up" -lt 300 ]; then
+            echo "   back after $((i * 2))s (uptime reset: ${up}s)"
+            echo
+            echo "== 5. confirm the card holds what we sent =="
+            # /tmp is tmpfs - the reboot just erased the mount point.
+            sh 'mkdir -p /tmp/sd && mount -o ro /dev/mmcblk0p1 /tmp/sd'
+            bad=0
+            for f in "${FILES[@]}"; do
+                want=$(md5sum "$OUT/$f" | cut -d' ' -f1)
+                got=$(sh "md5sum /tmp/sd/$f" | cut -d' ' -f1)
+                if [ "$want" = "$got" ]; then echo "   $f  ok"; else echo "   $f  MISMATCH ($got)"; bad=1; fi
+            done
+            sh 'cd / && umount /tmp/sd'
+            sh 'cat /opt/VERSIONS 2>/dev/null | head -1' || true
+            echo
+            if [ $bad -eq 0 ]; then
+                echo "Flashed and booted. Previous firmware is on the card as *.prev"
+                echo "and in $BACKUP_DIR/$stamp."
+                exit 0
+            fi
+            echo "Booted, but the card does not hold what was sent - investigate before trusting it." >&2
+            exit 1
+        fi
+        fi                          # else: still the old instance answering; keep waiting
 done
 
-echo "   board has not come back after ~2 minutes." >&2
+echo "   board has not come back after ~3 minutes." >&2
 echo "   It may still be booting. If it does not return, the previous firmware is" >&2
 echo "   in $BACKUP_DIR/$stamp - restore it with a card reader." >&2
 exit 1

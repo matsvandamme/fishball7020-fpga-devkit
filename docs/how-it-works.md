@@ -161,18 +161,19 @@ expects to find exactly one file in a specific format.
 
 That single fact explains a limitation elsewhere in the README: updating
 over USB (DFU) can replace the kernel, device tree and filesystem, but
-**not** `BOOT.bin`. So any change to your FPGA design needs an SD card —
-DFU cannot help you.
+**not** `BOOT.bin`. So any change to your FPGA design means replacing
+`BOOT.bin` on the card — with `./devkit flash` over the network if the board
+still boots, or with a card reader if it does not. DFU cannot help you.
 
 ## What to rebuild when you change something
 
-| You changed… | Which file changes | Can you use DFU? |
+| You changed… | Which file changes | How it gets onto the board |
 |---|---|---|
-| HDL / block design | `BOOT.bin` (contains the bitstream) | ❌ SD card only |
-| Kernel config or a driver | `uImage` | ✅ |
-| Userspace, packages, init scripts | `uramdisk.image.gz` | ✅ |
-| Hardware description | `devicetree.dtb` | ✅ |
-| Boot settings | `uEnv.txt` | ❌ (edit on the card) |
+| HDL / block design | `BOOT.bin` (contains the bitstream) | `./devkit flash` (network) or card reader — **not DFU** |
+| Kernel config or a driver | `uImage` | `./devkit flash --kernel-only`, card, or DFU |
+| Userspace, packages, init scripts | `uramdisk.image.gz` | `./devkit flash --all`, card, or DFU |
+| Hardware description | `devicetree.dtb` | `./devkit flash --all`, card, or DFU |
+| Boot settings | `uEnv.txt` | `./devkit flash --all` or card — not DFU |
 
 `build_all.sh`'s seven stages are simply this chain in dependency order:
 HDL → bitstream → FSBL (which needs the bitstream) → U-Boot → kernel →

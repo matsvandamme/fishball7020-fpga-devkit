@@ -1,7 +1,7 @@
 ---
 name: fishball7020-firmware
 description: Build, flash, measure and safely transmit with the Fishball7020 / PlutoSky SDR (Zynq XC7Z020 + AD9361, sold also as PlutoSky R1 and 7020-SDR). Use for FPGA and HDL changes, Vivado block-design work, kernel and device-tree patches, BOOT.bin and bitstreams, flashing, libiio/iiod and sysfs access, IQ capture, transmitting, RF loopback measurement, AD9361 gain tables and ENSM, TX muting, and diagnosing a board that misbehaves. Encodes rules that are expensive to rediscover - flash only via the SD partition and never DFU, delete the Vivado project before an HDL change or the build silently reuses the old one, simulate before synthesising, and check /mnt/jffs2 before believing anything about the firmware.
-license: MIT
+license: GPL-2.0
 compatibility: Board reached over its USB Ethernet gadget (default ip:192.168.2.1). HDL builds need Vivado/Vitis 2022.2; HDL simulation needs only iverilog; the host tools need Python 3.8 and nothing else.
 metadata:
   repository: fishball7020-fpga-devkit
@@ -28,9 +28,15 @@ Depth lives in `references/`; load only what the task needs.
 
 ## The rules
 
-**Flash via the SD partition. Never DFU.** DFU has bricked units. Mount
-`/dev/mmcblk0p1` on the board over ssh, copy, sync, reboot. Copy only what
-changed — `uImage` alone for a kernel change, `BOOT.bin` alone for HDL.
+**Flash with `./devkit flash`. Never DFU.** DFU has no `BOOT.bin` target, so it
+can never deliver an HDL change, and on this board it has bricked units. The
+script mounts `/dev/mmcblk0p1` on the running board, backs the card up to
+`firmware/.flash-backups/<stamp>/` (gitignored), md5-verifies each copy BEFORE
+swapping it in, keeps the old files on the card as `*.prev`, unmounts cleanly,
+reboots, and only reports success once `/proc/uptime` has reset and the card
+md5s match. `--boot-only` for HDL, `--kernel-only` for a driver change, `--all`
+for a release. `BOARD` / `BOARD_PASS` override the address and password. A bad
+`BOOT.bin` removes this route entirely - recovery is a card reader.
 
 **Delete the Vivado project before any HDL or coefficient change.**
 `build_hdl.tcl` reuses an existing `pluto.xpr` rather than re-running
@@ -41,18 +47,36 @@ you flash the old bitstream:
 rm -rf src/hdl/projects/pluto/pluto.{xpr,cache,gen,hw,ip_user_files,runs,sim,srcs,sdk}
 ```
 
-**Four header pins carry the transmit sample's low nibble.** The 12-bit DAC
-reads `dma_data[15:4]` and discards the bottom four, so this costs nothing;
-`tx_gpio_bitmap.v` routes them to JP5 pins 7/9/11/13 (balls V10, U9, U10, T9,
-bank 13, 3.3 V, pulled down). Enable with
-`echo 1 > /sys/bus/iio/devices/iio:deviceN/tx_sample_gpio_en` on the
-`cf-ad9361-dds-core-lpc` device; it resets to 0, and the pins are ordinary EMIO
-GPIO 978-981 until set. Verify with `tools/tx-gpio-bitmap-check.py` — no scope,
-no antenna, TX stays at maximum attenuation. Three traps: a pin read with
-`direction=out` returns what you *wrote*, not the pad; a pin's level alone
-never says who is driving it, so test the flag by streaming two different
-nibbles; and the nibble must be OR-ed into the samples **last**, after any
-scaling. Full detail in [`docs/tx-gpio-bitmap.md`](../../../docs/tx-gpio-bitmap.md).
+**Four header pins carry the transmit sample's low nibble** (JP5 7/9/11/13, GPIO
+978–981 when off). Enable: `echo 1 > /sys/bus/iio/devices/iio:deviceN/tx_sample_gpio_en`
+on `cf-ad9361-dds-core-lpc` - resolve `N` by name, never assume the index. Verify
+with `./devkit gpio-check` (no scope, no antenna). The pins LEAD the RF by a
+constant offset of roughly a microsecond; edge-level coherence is designed-for,
+not demonstrated - never write "the pin edge and its RF happen together". Three
+ways to fool yourself: a pin read with `direction=out` returns what you *wrote*;
+a pin's level alone never says who is driving it (stream two different nibbles);
+and the nibble must be OR-ed into the samples **last**. Everything else -
+balls, bank, pull-down, the capture strobe, measured cost - is in
+[`docs/tx-gpio-bitmap.md`](../../../docs/tx-gpio-bitmap.md).
+
+**`./devkit` is the entry point; `doctor` comes first.** `doctor · setup · sim ·
+build · verify · flash · selftest · gpio-check · status`, all from the repo root
+with arguments passed through. `./devkit doctor` checks Vivado/Vitis, host
+packages, `gmp.h`, disk (~25 GB), the patch stamp and the board in a second -
+every check is a failure that once cost an hour. `./devkit verify` before
+flashing; `./devkit verify --board` after: it md5-compares the card against
+`output/` and is the only thing that proves the board runs what you built. A
+STALE verdict means the board is behind, not that the build is bad. `setup.sh`
+is idempotent (it stamps `src/.devkit-patches-applied` with a digest of the
+patch set), and `build_all.sh` refuses an unpatched tree and a Vivado project
+older than its sources.
+
+**Set TX attenuation AFTER a buffer starts, then read it back.** With patch
+0005, starting a stream restores a *cached* attenuation when the chip looks
+muted - so writing −89.75 dB before opening a buffer guarantees nothing during
+it. The selftest, the GPIO checker and the MCP all write after
+`write_samples()` and assert the read-back. The one exception is a one-shot
+buffer, which has finished by then: set first, play out, then mute.
 
 **Simulate before you synthesise.** `./sim/run_sim.sh` checks the custom HDL
 against a golden model in about a second; a Vivado build is 20 minutes with
@@ -85,7 +109,12 @@ rated to about +2.5 dBm; this board measures **+19 dBm** flat out. Fit at least
 
 | | |
 |---|---|
-| `firmware/patches/` | what makes this board's firmware; `setup.sh` applies these (incl. 0006/0007, the sample-locked GPIO) |
+| `devkit` | the entry point - doctor, setup, sim, build, verify, flash, selftest, gpio-check, status |
+| `firmware/scripts/doctor.sh` | can this machine build? run before the hour, not during |
+| `tools/flash.sh` | flash the running board over the network, safely (`./devkit flash`) |
+| `tools/tx-gpio-bitmap-check.py` | verify the sample-locked GPIO outputs on hardware (`./devkit gpio-check`) |
+| `docs/tx-gpio-bitmap.md` | the sample-locked GPIO feature, end to end |
+| `firmware/patches/` | what makes this board's firmware; `setup.sh` applies these |
 | `firmware/patches/optional/` | worked examples, **not** applied by default (just the FM channelizer) |
 | `firmware/src/` | upstream source, created by `setup.sh`, not committed |
 | `firmware/output/` | the five SD-card files |
@@ -98,6 +127,11 @@ rated to about +2.5 dBm; this board measures **+19 dBm** flat out. Fit at least
 The patches, in order: `0001` fixes and a persistent serial; `0002` the device
 tree; `0004` mute TX when no DMA stream; `0005` stop the unmute overwriting a
 gain set before the stream. `optional/0003` is the FM channelizer.
+`0006` routes each TX sample's low nibble - the bits the 12-bit DAC discards - to
+JP5 pins 7/9/11/13 (balls V10/U9/U10/T9, bank 13, 3.3 V, pulled down);
+`0007` adds the `tx_sample_gpio_en` sysfs attribute that enables it. Both edit
+files 0004/0005 also touch (`cf_axi_dds.c`), so a new patch there must be
+generated against a reconstructed pre-change file, never a plain `git diff`.
 
 ## Typical work
 
@@ -134,7 +168,7 @@ for judging whether something is actually wrong.
 | Loop gain, 200 MHz – 1 GHz | ~**+20 dB** through a 20 dB pad |
 | Supply rails | all six within **1.1%** of nominal |
 | Digital interface eye | **157–181** of 256 delay positions pass |
-| FPGA, stock build | 72/220 DSP48s, WNS **+0.214 ns** |
+| FPGA, stock build | 72/220 DSP48s, 11 896 LUTs, WNS **+0.231 ns** (a build without 0006 gives +0.214; 0006's CDC constraint improves it) |
 
 Two channels on one board differed by 1.5 dB in receive and 0.25 dB in
 transmit, so some asymmetry is normal.

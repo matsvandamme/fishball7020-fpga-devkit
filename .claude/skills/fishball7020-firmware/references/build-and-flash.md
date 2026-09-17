@@ -1,5 +1,7 @@
 # Exact command sequences
 
+Run `./devkit doctor` first - it checks everything a build needs in a second.
+
 ## Build
 
 ```bash
@@ -41,33 +43,22 @@ Device tree only: same, with target `zynq-pluto-sdr-fishball.dtb` and
 
 ## Check before flashing
 
-```bash
-./sim/run_sim.sh                # HDL against a golden model, ~1 s
-./scripts/verify_output.sh      # the five files, compression, timing, DSP count
-```
-
-## Flash — SD partition only, never DFU
-
-The board mounts its own SD card and you copy over ssh. Nothing needs to be
-unplugged.
+Use the script. It does the backup, the checksum verification before the
+swap, the clean unmount, the reboot, and confirms the card afterwards:
 
 ```bash
-B=root@192.168.2.1                       # password: analog
-sshpass -p analog ssh $B 'mkdir -p /mnt/sd && mount -t vfat /dev/mmcblk0p1 /mnt/sd'
-for f in BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz; do
-    sshpass -p analog scp output/$f $B:/mnt/sd/$f
-done
-sshpass -p analog ssh $B 'sync; md5sum /mnt/sd/*'      # compare against the host
-md5sum output/*
-sshpass -p analog ssh $B 'umount /mnt/sd; sync; (sleep 1; reboot) &'
+./devkit flash               # BOOT.bin + uImage - the usual case
+./devkit flash --boot-only   # an HDL change
+./devkit flash --kernel-only # a driver change
+./devkit flash --all         # everything, e.g. a release
+BOARD=192.168.1.50 BOARD_PASS=analog ./devkit flash   # a board elsewhere
 ```
 
-Copy only what changed — `uImage` alone for a kernel change, `BOOT.bin` alone
-for an HDL change. The board is back in about 15 seconds.
-
-Two easy mistakes: forgetting `mkdir -p /mnt/sd` after a reboot (the mount
-fails, `scp` writes nothing, and you reboot into the old image believing you
-flashed), and not comparing md5sums.
+It reports success only once `/proc/uptime` has reset (a board shutting down
+still answers ssh for a few seconds) and the card's md5s match `output/`. The
+previous files stay on the card as `*.prev` and in
+`firmware/.flash-backups/<stamp>/`. Never DFU for `BOOT.bin` - it has no target
+for it - and never pull power mid-write. Afterwards, `./devkit verify --board`.
 
 ## After flashing
 

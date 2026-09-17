@@ -139,7 +139,7 @@ you will be 24 dB quiet.
                                  │  sys_ps7 (Zynq PS)   │
                                  │  DDR, USB, ETH, SD,  │
                                  │  UART, QSPI, SPI0,   │
-                                 │  EMIO GPIO ×18       │
+                                 │  EMIO GPIO ×22       │
                                  └─────────────────────┘
                                    │            │
                               axi_iic_main    axi_spi
@@ -158,12 +158,13 @@ The consequences of that show up in [the receive path](#the-receive-path-sample-
 
 ## The IP blocks, one by one
 
-### `sys_ps7` — the Zynq processing system (`system_bd.tcl:35`)
+### `sys_ps7` — the Zynq processing system
 
 Xilinx `processing_system7`. Holds the two ARM cores that run Linux and every
 hard peripheral: DDR controller (MT41K256M16, 32-bit, 1 GB), USB0 (the gadget
 you talk to), ENET0 (the RJ45), SD0 (boot), UART1 (console), QSPI (the 16 MiB
-flash), SPI0 via EMIO (the AD9361's control bus), and 18 EMIO GPIOs.
+flash), SPI0 via EMIO (the AD9361's control bus), and 22 EMIO GPIOs — 18 in
+ADI's stock design plus four for the sample-locked GPIO header pins.
 
 It exports two clocks to the fabric: `FCLK_CLK0` at 100 MHz (`sys_cpu_clk`,
 the AXI-Lite control fabric) and `FCLK_CLK1` at 200 MHz (`sys_200m_clk`, used
@@ -174,7 +175,7 @@ DDR.
 The DDR timing parameters (`PCW_UIPARAM_DDR_*`) are board-specific and were
 tuned for this PCB. See [What not to touch](#what-not-to-touch).
 
-### `axi_ad9361` — the transceiver interface (`system_bd.tcl:204`)
+### `axi_ad9361` — the transceiver interface
 
 ADI's core. It owns the LVDS link to the AD9361 — clock/frame recovery on
 receive, framing on transmit, and the IODELAY calibration that makes a
@@ -193,14 +194,18 @@ Parameters that matter:
 
 It also carries the DC-offset and I/Q-correction blocks, a PN-sequence
 checker for link test, and two GPIO registers — `up_adc_gpio_out` and
-`up_dac_gpio_out` — which the driver writes and which this design uses to
-control the filter bypass muxes (below).
+`up_dac_gpio_out` — which the driver writes. Bit 0 of each drives a filter
+bypass mux (below); bit 1 of `up_dac_gpio_out` is the enable for the
+sample-locked GPIO outputs (`bitmap_sel` → `tx_gpio_bitmap`, see
+[tx-gpio-bitmap.md](tx-gpio-bitmap.md)).
 
 Samples are 12 bits from the converter, **sign-extended into 16** on receive
-(`ad_datafmt.v`). On transmit the DAC takes the full 16-bit word. That
+(`ad_datafmt.v`). On transmit the DAC converts only the **top 12 bits** of the 16-bit word
+(`dma_data[15:4]`); the low nibble is what the sample-locked GPIO feature
+routes to header pins instead of discarding. That
 asymmetry is easy to get wrong when you scale things.
 
-### `rx_fir_decimator` and `tx_fir_interpolator` — the channel-0 filters (`system_bd.tcl:235`, `:219`)
+### `rx_fir_decimator` and `tx_fir_interpolator` — the channel-0 filters
 
 Not IP blocks as such — hierarchies built by `ad_add_decimation_filter` and
 `ad_add_interpolation_filter` in `projects/common/xilinx/adi_fir_filter_bd.tcl`.
@@ -229,7 +234,7 @@ decimated rate to `cf-ad9361-lpc`'s `sampling_frequency`. So the filter is
 **bypassed by default** and only engages on request. If you retune the
 coefficients and see no effect, this is why.
 
-### `cpack` and `tx_upack` — the channel packers (`system_bd.tcl:238`, `:222`)
+### `cpack` and `tx_upack` — the channel packers
 
 `util_cpack2` takes the four receive channels (two after the filter, two raw)
 and packs whichever are `enable`d into one 64-bit-wide stream for the DMA.
@@ -240,7 +245,7 @@ and packs whichever are `enable`d into one 64-bit-wide stream for the DMA.
 on channel 0's timing. Keep that in mind; it's the source of the channel-1
 behaviour described below.
 
-### `axi_ad9361_adc_dma` and `axi_ad9361_dac_dma` — the DMAs (`system_bd.tcl:224`, `:210`)
+### `axi_ad9361_adc_dma` and `axi_ad9361_dac_dma` — the DMAs
 
 ADI's `axi_dmac`, one per direction, 64 bits wide on the fabric side.
 
@@ -255,7 +260,7 @@ ADI's `axi_dmac`, one per direction, 64 bits wide on the fabric side.
 The DMAs are what Linux's `cf-ad9361-lpc` (RX) and `cf-ad9361-dds-core-lpc`
 (TX) devices stream through.
 
-### `axi_iic_main`, `axi_spi` — control-bus peripherals (`system_bd.tcl:175`, `:108`)
+### `axi_iic_main`, `axi_spi` — control-bus peripherals
 
 An AXI I²C master on `iic_scl/iic_sda`, and an AXI Quad SPI master on the
 `pl_spi_*` pins. Neither is on the AD9361's control path — **the AD9361 is
@@ -339,7 +344,7 @@ notes for what the RF chain does.
 
 Roughly in order of ambition.
 
-**Retune the channel-0 filters.** Pure `.coe` change in `system_bd.tcl:235`
+**Retune the channel-0 filters.** Pure `.coe` change in `system_bd.tcl` (the `ad_add_decimation_filter` call)
 or `:219`. Point RX and TX at *different* files. `firmware/scripts/gen_fir_coe.py`
 designs coefficients in the exact format the IP expects (16-bit integers,
 DC gain 2¹⁷ to match stock output level). Remember the filter must be engaged
@@ -372,13 +377,16 @@ fileset yet — `adi_fir_filter_bd.tcl` does the same), then
 `reg` and `compatible`, or Linux won't know it exists. Your userspace then
 talks to it via UIO or a small driver.
 
-**Add pins.** Every currently-constrained PL pin is spoken for (LVDS, AD9361
-GPIOs, I²C, SPI). New I/O means the expansion header, which means the board
-schematic — a pin that turns out to be an input or tied elsewhere can damage
-the board. Pattern in `system_constr.xdc`:
+**Add pins.** The free PL I/O is on expansion header JP5. Four of its pins are
+already mapped and constrained by the sample-locked GPIO feature — balls V10,
+U9, U10, T9 in **bank 13, which is 3.3 V** (`LVCMOS33`), see
+[tx-gpio-bitmap.md](tx-gpio-bitmap.md#the-pins) for the schematic evidence.
+JP5 also carries four 1.8 V differential pairs (`1V8_IO1/3/5/7`) on banks
+34/35 whose balls still need reading off the schematic. Do not guess: V11, W9
+and V7 look plausible and are "no connect". Pattern in `system_constr.xdc`:
 
 ```tcl
-set_property -dict {PACKAGE_PIN <pin> IOSTANDARD LVCMOS25} [get_ports my_sig]
+set_property -dict {PACKAGE_PIN <ball> IOSTANDARD LVCMOS33 PULLTYPE PULLDOWN} [get_ports my_sig]
 ```
 
 plus a matching port in `system_top.v` and a `create_bd_port` in

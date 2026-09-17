@@ -126,7 +126,7 @@ Then rebuild, and capture it as a patch so it survives a clean `setup.sh`:
 ```bash
 # run from: firmware/src
 git diff linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts \
-    > ../patches/0005-led-default-off.patch
+    > ../patches/0008-led-default-off.patch   # number it after the highest existing patch
 ```
 
 Other useful values are `timer`, `mmc0`, or `default-on`.
@@ -134,18 +134,20 @@ Other useful values are `timer`, `mmc0`, or `default-on`.
 ## If you want an LED your FPGA logic drives directly
 
 The `USER` LED can't do this, so you need a pin that actually reaches the PL.
-Every PL pin currently constrained in `system_constr.xdc` is already spoken
-for — the AD9361 LVDS interface, its control/status GPIOs, I²C and the two
-SPI buses. The expansion header on the board is the place to look for free
-ones.
+The easiest ones are the four 3.3 V header pins the sample-locked GPIO feature
+already maps — JP5 pins 7/9/11/13, balls V10/U9/U10/T9, bank 13, `LVCMOS33`
+(see [tx-gpio-bitmap.md](tx-gpio-bitmap.md#the-pins)). With that feature off
+they are ordinary Linux GPIO 978–981, so an LED on one of them needs **no HDL
+at all**: wire LED + resistor from the pin to GND (pin 2 or 20) and drive it
+from `/sys/class/gpio`. To drive one from your own fabric logic instead, take
+the pin over in `system_bd.tcl` the way `tx_gpio_bitmap` does.
 
-Mapping a header pin to an FPGA package pin needs the **board schematic** —
-don't guess, because driving a pin that turns out to be an input, or is tied
-to something else, can damage the board. Once you know the package pin, the
-pattern is the same as every other line in the file:
+Any other header pin needs the **board schematic** first — don't guess, since
+driving a pin that turns out to be an input or tied elsewhere can damage the
+board. The constraint pattern is the same as every other line in the file:
 
 ```tcl
-set_property -dict {PACKAGE_PIN <pin> IOSTANDARD LVCMOS25} [get_ports my_led]
+set_property -dict {PACKAGE_PIN <ball> IOSTANDARD LVCMOS33} [get_ports my_led]
 ```
 
 Add a matching `output my_led` to `system_top.v`, drive it from your logic,

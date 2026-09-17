@@ -23,6 +23,10 @@ inside it: open the real block design, add HDL next to the AD9361 datapath,
 rebuild every layer (bitstream → FSBL → U-Boot → kernel → rootfs), and flash it
 back — no disassembly.
 
+New to those terms — bitstream, FSBL, block design? **[How it
+works](docs/how-it-works.md)** explains them from scratch, no prior knowledge
+assumed.
+
 > **This repo targets one exact board:** the one sold as
 > [**"7020-SDR" (XC7Z020 + AD9361, dual TX/RX)**](https://nl.aliexpress.com/item/1005012055627197.html).
 > Other Zynq/AD936x boards — including the original ADALM-PLUTO (XC7Z010) —
@@ -48,7 +52,7 @@ back — no disassembly.
 | **Toolchain** | Xilinx Vivado/Vitis **2022.2** (free WebPACK — no purchase) |
 | **Host OS** | **Ubuntu 22.04 LTS** — what Vivado 2022.2 officially supports |
 | **Firmware base** | Linux 5.15, U-Boot, Buildroot — a Zynq-7020 port of ADI's `plutosdr-fw` |
-| **Verified against real hardware** | `devicetree.dtb` byte-identical; kernel, bootloader, rootfs content-identical — see [Provenance](#how-this-repo-came-to-exist) |
+| **Verified against real hardware** | `devicetree.dtb` byte-identical; kernel config identical; kernel and bootloader within a few hundred bytes; rootfs file list identical — see [Provenance](#how-this-repo-came-to-exist) |
 
 ## What you get
 
@@ -83,46 +87,52 @@ back — no disassembly.
 
 ## Quick start
 
-Assumes Vivado/Vitis 2022.2 ([step 1](#1-install-vivadovitis-20222) if not —
-it's the only slow part).
+**Just want a working board?** Download the five prebuilt SD-card files from
+the [latest release](../../releases/latest) (checksums included), copy them
+onto a FAT32 microSD card, insert it, power on. If nothing happens, check the
+`BOOT` DIP switch is in SD mode (`0 0`). That is the whole procedure — build
+only when you want to *change* something.
+
+> **Back up first.** Copy the five files already on your card somewhere safe —
+> that is your way back. No backup? See
+> [recovery](#if-things-go-wrong-recovering-the-factory-firmware).
+
+**Want to change the firmware?** Assumes Vivado/Vitis 2022.2
+([step 1](#1-install-vivadovitis-20222) if not — the only slow part):
 
 ```bash
 # run from: wherever you want the devkit to live (e.g. ~)
 git clone https://github.com/matsvandamme/fishball7020-fpga-devkit.git
 cd fishball7020-fpga-devkit
 
-./devkit doctor    # can this machine build? checks in a second, not at minute 40
-./devkit setup     # clone upstream source + apply patches            (~5 min)
-./devkit build     # build everything                              (45-90 min)
-./devkit flash     # copy it onto the running board over the network
+./devkit doctor          # can this machine build? checks in a second, not at minute 40
+./devkit setup           # clone upstream source + apply patches            (~5 min)
+./devkit build           # build everything                              (45-90 min)
+./devkit verify          # is the build sane?
+./devkit flash --all     # copy it onto the running board over the network, reboot
+./devkit verify --board  # is the board actually running it?
 ```
 
-**In a hurry, or just want a working board?** Skip all of that and download the
-prebuilt SD-card files from the [latest release](../../releases/latest) — same
-five files a full build produces, with checksums. Build when you want to
-*change* something.
+`./devkit` wraps the scripts so you never have to remember which lives where:
+`doctor · setup · sim · build · verify · flash · selftest · gpio-check · status`,
+all from the repo root, arguments passed through (`./devkit build --hdl-only`).
+The underlying scripts in `firmware/scripts/` and `tools/` still work directly.
+Then go to [step 4](#4-add-your-own-hdl) to start changing the FPGA logic.
 
-`./devkit` wraps the scripts so you do not have to remember which lives where:
-`doctor`, `setup`, `sim`, `build`, `verify`, `flash`, `selftest`, `gpio-check`,
-`status`. Every one passes arguments through, so `./devkit build --hdl-only`
-works. The underlying scripts are still there if you prefer them.
-
-You end up with exactly five files in `output/`: `BOOT.bin`, `devicetree.dtb`,
-`uEnv.txt`, `uImage`, `uramdisk.image.gz`. Copy all five onto a FAT32 SD card,
-insert, power on. If nothing happens, check the `BOOT` DIP switch is in SD mode
-(`0 0`). Then jump to [step 4](#4-add-your-own-hdl).
-
-New to FPGAs or embedded Linux? **[How it works](docs/how-it-works.md)**
-explains those five files and what happens between power-on and a login prompt.
-
-> **Back up first.** Copy the five files already on your board's SD card
-> somewhere safe — that's your way back. No backup? See
-> [recovery](#if-things-go-wrong-recovering-the-factory-firmware).
+> ### Before you ever transmit
+>
+> The receive port survives **+2.5 dBm**. This board is sold in a variant with
+> a power amplifier that puts out about **+19 dBm** — roughly 16 dB more than
+> its own receiver tolerates. So: **never loop TX to RX without at least 20 dB
+> of attenuation**, never transmit at power into an open or unterminated port,
+> and remember that most of this board's range is licensed spectrum. Details
+> in [Transmitter safety](#transmitter-safety). This firmware mutes the
+> transmitter whenever nothing is streaming, so an idle board is quiet.
 
 ## Table of contents
 
 - [What you get](#what-you-get) · [Quick start](#quick-start)
-- [Boot modes (DIP switch)](#boot-modes-boot-dip-switch) · [Requirements](#requirements)
+- [Boot modes (DIP switch)](#boot-modes-boot-dip-switch) · [LEDs](#leds) · [Requirements](#requirements)
 - **Walkthrough** — [1. Install Vivado](#1-install-vivadovitis-20222) ·
   [2. Get the source](#2-get-the-firmware-source) ·
   [3. Open the block diagram](#3-open-the-block-diagram) ·
@@ -137,7 +147,7 @@ explains those five files and what happens between power-on and a login prompt.
 - [Worked example: an FM channelizer in the FPGA](docs/wbfm-channelizer.md)
 - [Sample-locked GPIO outputs](#sample-locked-gpio-outputs) — four header pins that tick with the transmitted waveform
 - [Transmitter safety](#transmitter-safety) — TX is muted when nothing is being sent
-- [Measured performance](docs/measured-performance.md) — what one board actually does
+- [Measured performance](#measured-performance) — what one board actually does; [full tables](docs/measured-performance.md)
 - [Simulating your HDL first](#simulating-your-hdl-first) — one second instead of twenty minutes
 - [Is the board healthy?](#is-the-board-healthy) — a self-test that measures, cable optional
 - [Controlling the USER LED](docs/user-led.md)
@@ -187,8 +197,11 @@ in practice ship in SD mode — check the switch, not the documentation.
 
 ## Requirements
 
-**Hardware:** the board, a micro-USB cable, and a microSD card with a reader —
-**or** just the USB cable if you'll flash via DFU.
+**Hardware:** the board, a micro-USB cable, and a microSD card with a reader
+(a board that still boots can be reflashed over the network instead — see
+[Option C](#option-c--over-ssh-from-the-running-board-no-card-removal)). If you
+will ever loop TX to RX, **an SMA attenuator of at least 20 dB**. A debug-port
+cable only if you want the serial console or JTAG.
 
 **Software** (Ubuntu 22.04 LTS):
 
@@ -196,8 +209,8 @@ in practice ship in SD mode — check the switch, not the documentation.
 # run on your HOST, from anywhere
 sudo apt update
 sudo apt install -y git build-essential bison flex libssl-dev \
-    device-tree-compiler u-boot-tools dfu-util screen python3 xvfb \
-    libgmp-dev libmpc-dev libmpfr-dev
+    device-tree-compiler u-boot-tools screen python3 xvfb \
+    libgmp-dev libmpc-dev libmpfr-dev sshpass iverilog libiio-utils
 ```
 
 - **No extra GCC needed on 22.04.** Jammy's GCC 11 builds everything. Only on a
@@ -208,7 +221,10 @@ sudo apt install -y git build-essential bison flex libssl-dev \
 - **`xvfb` matters if you build headless.** Vitis (`xsct`) needs an X display
   for the FSBL; without `$DISPLAY` or Xvfb, stage 2 dies with `ERROR: Xvfb is
   not available`. `build_all.sh` checks up front rather than 40 minutes in.
-- `dfu-util` and `screen` are only for USB flashing/debugging (steps 6B/7).
+- `sshpass` is what `./devkit flash`, `verify --board` and `gpio-check` use to
+  reach the board; `iverilog` runs the HDL simulation; `libiio-utils` gives you
+  `iio_attr`/`iio_info` for identifying and inspecting the board. `screen` is
+  only for the serial console.
 
 ## 1. Install Vivado/Vitis 2022.2
 
@@ -244,14 +260,19 @@ This clones the upstream source (a Zynq-7020 port of ADI's `plutosdr-fw`) into
 tree (the [firmware README](firmware/README.md) details each). `src/` is
 gitignored; re-run `setup.sh` any time for a clean slate.
 
-> **Where to run things:** every command runs from **`firmware/`** unless the
-> code block says otherwise. Each block states its directory on the first line.
-> Commands that run *on the board* are marked as such.
+> **Where to run things:** `./devkit …` runs from the **repo root**. The raw
+> scripts run from **`firmware/`** unless the block says otherwise — each block
+> states its directory on the first line. Commands that run *on the board* are
+> marked as such.
 
 ## 3. Open the block diagram
 
 > **[The stock block design](docs/block-design.md)** walks through every IP
 > block, the wiring, clock domains, address map, and what is safe to change.
+
+The project does not exist until the first build — only the `.tcl` that
+generates it — so build once first (`./devkit build`; `--hdl-only` needs a
+previous full build). Then:
 
 ```bash
 # run from: firmware/
@@ -260,9 +281,7 @@ cd src/hdl/projects/pluto
 vivado pluto.xpr
 ```
 
-The project doesn't exist until the first build — only the `.tcl` that
-generates it. Run `./scripts/build_all.sh` once (step 5) to create `pluto.xpr`,
-then open it. In the GUI: **Sources → Design Sources → system_top → system_i**,
+In the GUI: **Sources → Design Sources → system_top → system_i**,
 right-click **Open Block Design**.
 
 ## 4. Add your own HDL
@@ -349,97 +368,13 @@ To keep a change, port it into `system_bd.tcl` and add it to `patches/`.
 
 ## 4b. Change the kernel
 
-The FPGA is half the board. The other half is a Linux kernel with ADI's drivers
-in it, and much of the board's *behaviour* — what appears in `/sys`, when the
-transmitter is muted, what the serial number is — lives there, not in fabric.
-
-Four terms: **the kernel** is Linux itself, built as one file (`uImage`); **a
-driver** is the kernel code operating a device (here: the AD9361 and the FPGA's
-capture/playback blocks); **the device tree** (`devicetree.dtb`) is a data file
-describing what hardware exists and where, compiled from `.dts`; **a defconfig**
-is a saved set of build options. You are **cross-compiling**, hence
-`ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-` everywhere.
-
-### What is already patched, and why
-
-| Patch | Touches | Does |
-|---|---|---|
-| `0001-fishball7020-fixes.patch` | buildroot scripts | six upstream fixes, mints a persistent `hw_serial` on first boot |
-| `0002-add-fishball-devicetree.patch` | `arch/arm/boot/dts/` | the board's device tree, as editable source |
-| `0004-mute-tx-when-no-dma-stream.patch` | `drivers/iio/adc/ad9361.*`, `drivers/iio/frequency/cf_axi_dds*` | mutes the transmitter whenever no DMA buffer streams |
-| `0005-dont-clobber-a-gain-set-before-streaming.patch` | the same two drivers | stops the unmute overwriting a gain you set before starting |
-
-Reading those is the fastest way to see how a change here is structured; `0005`
-is the smallest.
-
-### The build
-
-Step 5 builds the kernel with everything else, but while iterating you want a
-two-minute cycle, not seventy:
-
-```bash
-# run from: firmware/
-SRC=$PWD/src
-PATH="$SRC/buildroot/output/host/bin:$SRC/buildroot/output/host/sbin:$PATH" \
-  make -C "$SRC/linux" -j"$(nproc)" ARCH=arm \
-  CROSS_COMPILE=arm-linux-gnueabihf- uImage UIMAGE_LOADADDR=0x8000
-cp src/linux/arch/arm/boot/uImage output/uImage
-```
-
-Then flash **`uImage` alone** — the other four files haven't changed — and
-reboot; the board is back in about fifteen seconds. The device tree is a
-separate target in the same tree:
-
-```bash
-PATH="..." DTC_FLAGS=-@ make -C "$SRC/linux" ARCH=arm \
-  CROSS_COMPILE=arm-linux-gnueabihf- zynq-pluto-sdr-fishball.dtb
-cp src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dtb output/devicetree.dtb
-```
-
-### Kernel options
-
-Configuration comes from `arch/arm/configs/zynq_pluto_defconfig`, applied by
-`build_all.sh` at the start of **every** full build — so a `menuconfig` change
-is a scratch edit. To keep it, edit the defconfig (and ship it as a patch) or
-use `make savedefconfig`.
-
-```bash
-PATH="..." make -C src/linux ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- menuconfig
-```
-
-`CONFIG_IKCONFIG`/`CONFIG_IKCONFIG_PROC` are on, so `zcat /proc/config.gz` on
-the board reports exactly what it was built with — that is how this repo's
-kernel was proved identical to the factory one.
-
-| Option | Why you would touch it |
-|---|---|
-| `CONFIG_AD9361` | the transceiver driver — already `y` |
-| `CONFIG_CF_AXI_ADC` / `CONFIG_CF_AXI_DDS` | capture and playback behind `cf-ad9361-lpc` and `cf-ad9361-dds-core-lpc` |
-| `CONFIG_IIO_BUFFER` / `CONFIG_IIO_KFIFO_BUF` | the buffered-capture machinery every streaming tool needs |
-| `CONFIG_DYNAMIC_DEBUG` | turns the drivers' `dev_dbg` on at runtime — invaluable, off by default |
-| `CONFIG_FTRACE` / `CONFIG_KPROBES` | both **off**, which is why `dump_stack()` + `dmesg` is the tracing tool of last resort. The architecture supports them, so enable for a debug build if printk isn't enough |
-
-### Debugging a driver change
-
-The board runs busybox, so some habits do not transfer:
-
-- **No ftrace, no kprobes.** A `dev_warn()` plus `dump_stack()` read back with
-  `dmesg` is the substitute — and the `Comm:` line names the *process*, often
-  the whole answer. It was here once: a transmit attenuation that appeared to
-  reset itself turned out to be a userspace script.
-- **No `pkill`** — `ps` and `kill` with a PID.
-- **An empty `dmesg` is information.** The kernel is not doing what you
-  suspect; look in userspace or `/mnt/jffs2`.
-- **`/sys/kernel/debug/iio/iio:device0/`** exposes the AD9361's BIST, every
-  `adi,*` device-tree value, and `calib_mode`.
-
-### Making it stick
-
-`firmware/src/` is regenerated by `setup.sh`, so a change survives only as a
-patch in `firmware/patches/`. Generate it against the applied tree, number it
-after the existing patches, and add an assertion to
-`.github/workflows/verify-patches.yml` — every existing patch has one.
-`CONTRIBUTING.md` has the details.
+The FPGA is half the board. The other half is a Linux kernel with ADI's
+drivers in it, and much of the board's *behaviour* — what appears in `/sys`,
+when the transmitter is muted, what the serial number is — lives there rather
+than in fabric. **[Changing the kernel](docs/kernel.md)** covers what is
+already patched and why, the three-minute kernel-only rebuild loop, the kernel
+options that matter, debugging a driver on a busybox board, and making a change
+stick as a patch. Flash a kernel change with `./devkit flash --kernel-only`.
 
 ## 5. Build the firmware
 
@@ -485,11 +420,12 @@ which looks exactly like a failed build.
 
 ### Option B — DFU over USB (no disassembly)
 
-U-Boot has USB DFU built in, so you can push files onto the SD card's FAT
-partition over the same micro-USB cable. It updates `uImage`,
-`devicetree.dtb` and `uramdisk.image.gz` but **cannot** update `BOOT.bin` —
-there is no DFU target for the bitstream/FSBL/U-Boot. Ideal for kernel or
-rootfs iteration.
+Kept for reference — **prefer Option C**, which does everything DFU does, can
+also update `BOOT.bin`, and backs up and verifies as it goes. U-Boot has USB DFU
+built in and can push `uImage`, `devicetree.dtb` and `uramdisk.image.gz` onto
+the card over the micro-USB cable, but it **cannot** update `BOOT.bin` — there
+is no DFU target for the bitstream/FSBL/U-Boot — and DFU has bricked units on
+this board.
 
 1. Open a serial console (see [step 7](#7-verify-your-build-is-actually-running)),
    power-cycle, press any key within 3 s to stop at `Zynq>`.
@@ -582,7 +518,7 @@ unplugging to "move over" would cut power and lose it.
 **Never program while Linux is running.** Its drivers are bound to the *old*
 PL; swapping underneath them hangs the system.
 
-### C1. Quick method — Hardware Manager, halted at U-Boot
+### D1. Quick method — Hardware Manager, halted at U-Boot
 
 1. Open the debug UART, power-cycle, press a key within 3 s to stop at `Zynq>`.
    The FSBL has configured the PS and enabled the level shifters; Linux has
@@ -609,9 +545,9 @@ means the bitstream didn't take.
 **Caveat.** On Zynq the PS↔PL level shifters and PL resets are managed by
 *software* (`ps7_post_config`), not by programming. Re-loading the PL under a
 PS set up for the previous bitstream can leave AXI in an undefined state —
-usually fine when the AXI topology hasn't changed, otherwise use C2.
+usually fine when the AXI topology hasn't changed, otherwise use D2.
 
-### C2. Robust method — full JTAG bootstrap (ADI's own flow)
+### D2. Robust method — full JTAG bootstrap (ADI's own flow)
 
 Brings the whole board up from JTAG so the PS is initialised *for the bitstream
 you are loading*, in the right order:
@@ -666,10 +602,18 @@ what is actually in the design, so you can see your change landed:
 ```
 == FPGA design ==
   PASS  utilization report present
-        DSP48s 96 / 220   Slice LUTs 12664 / 53200
-        -> channelizer filter (321 taps)
-        block design: rx_ddc (Fs/4 shifter) is wired in
+        DSP48s 72 / 220   Slice LUTs 11896 / 53200
+        -> stock filter
+        block design: stock RX path, no rx_ddc
+== bitstream ==
+  PASS  compressed (2367948 B < 3.9 MB uncompressed)
+== timing ==
+  PASS  no failing setup endpoints
+        WNS 0.231 ns over 48263 endpoints
 ```
+
+(With the optional channelizer applied you would see `96 / 220` DSPs and
+`rx_ddc (Fs/4 shifter) is wired in` instead.)
 
 It exits non-zero on failure, so it works in scripts.
 
@@ -735,7 +679,7 @@ fishball7020-fpga-devkit/
 │       └── references/                  gain tables · measuring · board access · debugging
 │
 ├── devkit                               ← one entry point: doctor · setup · sim · build
-│                                          verify · flash · selftest · status
+│                                          verify · flash · selftest · gpio-check · status
 ├── tools/
 │   ├── env-vivado.sh                    ← source this before any vivado/xsct/bootgen command
 │   ├── flash.sh                         ← flash the running board over the network, safely
@@ -801,8 +745,11 @@ your sample:   b15 … b4 │ b3 b2 b1 b0
                └ the DAC │ └ discarded — this feature routes them to pins
 ```
 
-So the pins cost no analog performance and no extra hardware: +3 LUTs and
-+7 flip-flops, no DSPs, no block RAM.
+So at normal sample rates the pins cost no analog performance — the DAC never
+sees those bits — and no extra hardware: +3 LUTs and +7 flip-flops, no DSPs, no
+block RAM. (Below 2.083 MSPS the FPGA interpolator is engaged and filters the
+whole 16-bit word, so the nibble leaks into the DAC data at roughly −70 dBFS —
+see [Limits](docs/tx-gpio-bitmap.md#limits).)
 
 ### The pins
 
@@ -818,7 +765,8 @@ So the pins cost no analog performance and no extra hardware: +3 LUTs and
 | `sample_gpio[2]` | `3V3_IO3` | 11 | U10 |
 | `sample_gpio[3]` | `3V3_IO4` | 13 | T9 |
 
-Ground on **pin 2 or 20**. The bit number matches the silkscreen, so
+Ground on **pin 2 or 20**. The even pins 4–18 are **1.8 V** differential
+pairs and pins 1/3/5 are power rails (5 V, 3.3 V, 1.8 V) — do not drive them. The bit number matches the silkscreen, so
 `sample_gpio[0]` is the pin labelled `3V3_IO1`. All four are 3.3 V LVCMOS in
 bank 13, whose VCCO the schematic ties to VCC3V3, and each is pulled **down**
 so an idle pin reads a defined low rather than floating.
@@ -830,8 +778,9 @@ clip anything on.
 ### Turning it on
 
 ```sh
-# on the board
-D=/sys/bus/iio/devices/iio:device2          # cf-ad9361-dds-core-lpc
+# on the board - resolve the device by name; the iio:deviceN index is not stable
+D=$(for d in /sys/bus/iio/devices/iio:device*; do
+      [ "$(cat $d/name)" = cf-ad9361-dds-core-lpc ] && echo $d; done)
 echo 1 > $D/tx_sample_gpio_en               # pins carry the sample nibble
 echo 0 > $D/tx_sample_gpio_en               # pins are ordinary GPIO again
 ```
@@ -869,7 +818,7 @@ The fastest a pin can toggle is **half the sample rate** (~30 MHz at
 ### Checking it works
 
 ```bash
-tools/tx-gpio-bitmap-check.py
+./devkit gpio-check
 ```
 
 No scope, no antenna, no jumper: it transmits with attenuation pinned at
@@ -1017,7 +966,7 @@ property of the *cable*.
 | **Harmonic distortion** | **−67 to −79 dBc** |
 | **Transmit power** | **+19 dBm** flat out, agreeing to 0.7 dB across six runs |
 | **Transmit mute depth** | **63–70 dB**, into the noise floor |
-| **FPGA headroom** | 72 of 220 DSP48s used, timing met with **+0.214 ns** to spare |
+| **FPGA headroom** | 72 of 220 DSP48s used, timing met with **+0.231 ns** to spare (v1.2 default; +0.214 without the GPIO feature) |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/loop-gain-dark.svg">
@@ -1235,6 +1184,6 @@ includes editable HDL sources, which is the gap this repo fills.
 
 Several kinds of content under different licenses — see [`LICENSE`](LICENSE)
 for the breakdown. In short: this repo's own scripts, patches and documentation
-are MIT; the cloned upstream source (Linux/U-Boot/Buildroot, fetched by
+are **GPL-2.0** (the `LICENSE` file); the cloned upstream source (Linux/U-Boot/Buildroot, fetched by
 `setup.sh`, never committed here) remains GPL; Xilinx Vivado/Vitis and any AMD
 IP are proprietary and licensed separately.

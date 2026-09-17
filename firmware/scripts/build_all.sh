@@ -85,6 +85,52 @@ if [ -z "${DISPLAY:-}" ] && ! command -v Xvfb >/dev/null 2>&1; then
     echo "       Or, if a desktop is running on this machine:  export DISPLAY=:0" >&2
     preflight_fail=1
 fi
+# --hdl-only reuses u-boot/kernel/rootfs from a previous FULL build. Check for
+# them here, not 25 minutes in after synthesis and the FSBL have already run.
+if [ "$HDL_ONLY" -eq 1 ]; then
+    for f in "$SRC_DIR/u-boot-xlnx/u-boot" "$SRC_DIR/linux/arch/arm/boot/uImage" \
+             "$SRC_DIR/buildroot/output/images/rootfs.cpio.gz"; do
+        [ -f "$f" ] || { echo "ERROR: --hdl-only needs a previous full build; $f is missing." >&2
+                         echo "       Run a plain ./devkit build once first." >&2
+                         preflight_fail=1; }
+    done
+fi
+
+# Building an unpatched tree gives 70 minutes of the wrong firmware. setup.sh
+# stamps src/ with a digest of the patch set it applied; a missing or stale
+# stamp means either setup never finished or a git pull brought new patches.
+STAMP="$SRC_DIR/.devkit-patches-applied"
+PATCH_DIGEST="$(cat "$SCRIPT_DIR"/../patches/*.patch 2>/dev/null | sha256sum | cut -d' ' -f1)"
+if [ ! -f "$STAMP" ]; then
+    echo "ERROR: $SRC_DIR carries no patch stamp - setup.sh has not completed on it." >&2
+    echo "       Run ./devkit setup (safe to re-run), then build." >&2
+    preflight_fail=1
+elif [ "$(cat "$STAMP")" != "$PATCH_DIGEST" ]; then
+    echo "ERROR: the patch set in patches/ has changed since setup.sh last ran." >&2
+    echo "       Run ./devkit setup to apply the new patches, then build." >&2
+    preflight_fail=1
+fi
+
+# A Vivado project that already exists is REUSED by build_hdl.tcl: it re-runs
+# synthesis but never re-sources system_bd.tcl, so an edited block design,
+# top level, constraint file or coefficient set is silently ignored and the
+# old bitstream is rebuilt. Catch that by mtime rather than let it happen.
+PLUTO="$SRC_DIR/hdl/projects/pluto"
+if [ -f "$PLUTO/pluto.xpr" ]; then
+    stale=""
+    for f in "$PLUTO"/system_bd.tcl "$PLUTO"/system_top.v "$PLUTO"/system_constr.xdc \
+             "$PLUTO"/*.v "$SCRIPT_DIR"/coefile_*.coe; do
+        [ -f "$f" ] && [ "$f" -nt "$PLUTO/pluto.xpr" ] && stale="$stale $(basename "$f")"
+    done
+    if [ -n "$stale" ] && [ -z "${FORCE_STALE_PROJECT:-}" ]; then
+        echo "ERROR: these design sources are newer than the existing Vivado project:$stale" >&2
+        echo "       build_hdl.tcl would reuse the OLD block design and ignore them." >&2
+        echo "       Delete the project so it is regenerated from the sources:" >&2
+        echo "           rm -rf $PLUTO/pluto.{xpr,cache,gen,hw,ip_user_files,runs,sim,srcs,sdk}" >&2
+        echo "       (or set FORCE_STALE_PROJECT=1 if you really mean to keep it)" >&2
+        preflight_fail=1
+    fi
+fi
 [ "$preflight_fail" -eq 0 ] || { echo "Preflight failed - fix the above and re-run." >&2; exit 1; }
 
 export CROSS_COMPILE=arm-linux-gnueabihf-

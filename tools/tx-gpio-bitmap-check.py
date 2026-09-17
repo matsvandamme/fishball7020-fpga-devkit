@@ -10,9 +10,12 @@ the board, over the network.
 HOW IT AVOIDS TRANSMITTING
 --------------------------
 The nibble lives in the four bits the 12-bit DAC discards, so the analog path
-sees zeros no matter what pattern is authored. TX attenuation is pinned to
-maximum (-89.75 dB) before anything streams and checked again at the end, so
-the transmitter stays in the same state it idles in.
+sees zeros no matter what pattern is authored. TX attenuation is written to
+maximum (-89.75 dB) AFTER every stream starts and read back - not before:
+on devkit firmware, starting a buffer restores a cached attenuation, so a value
+written beforehand is overwritten by whatever the previous user left. If the
+read-back is not -89.75 the run stops. What still leaves the port is LO
+leakage at maximum attenuation, the same as the board idles with.
 
 TWO TRAPS THIS SCRIPT EXISTS TO AVOID
 -------------------------------------
@@ -29,6 +32,7 @@ TWO TRAPS THIS SCRIPT EXISTS TO AVOID
 
 Needs: python3, sshpass, and network access to the board.
 """
+import shutil
 import subprocess
 import sys
 import time
@@ -46,26 +50,50 @@ CONTROL_OFFSET = 22          # EMIO 22: routed to no pad in this design
 class Board:
     """The parts of the test that need a shell rather than IIO."""
 
-    def __init__(self, host):
+    def __init__(self, host, password="analog"):
         self.host = host
+        self.password = password
         self.base = None
-        self.dds = None
+        self.sysfs = None
+        self.phy = None
 
-    def sh(self, cmd):
+    def sh(self, cmd, check=True):
         r = subprocess.run(
-            ["sshpass", "-p", "analog", "ssh", "-o", "StrictHostKeyChecking=no",
+            ["sshpass", "-p", self.password, "ssh", "-o", "StrictHostKeyChecking=no",
+             "-o", "UserKnownHostsFile=/dev/null", "-o", "LogLevel=ERROR",
              "-o", "ConnectTimeout=10", f"root@{self.host}", cmd],
             capture_output=True, text=True, timeout=60)
+        if check and r.returncode != 0:
+            raise SystemExit(f"ssh to root@{self.host} failed (exit {r.returncode}): "
+                             f"{(r.stderr or r.stdout).strip()[:200] or 'no output'}\n"
+                             f"Check the board is up, and BOARD/BOARD_PASS if it is not "
+                             f"the default 192.168.2.1 / analog.")
         return r.stdout.strip()
 
     def discover(self):
-        self.base = int(self.sh("cat /sys/class/gpio/gpiochip*/base | head -1"))
+        # The Zynq GPIO controller, by label - not "the first gpiochip".
+        # These loops end with a test that is false for the LAST entry, so the
+        # shell exits 1 even on success: run them unchecked and judge the output.
+        base = self.sh('for g in /sys/class/gpio/gpiochip*; do '
+                       '[ "$(cat $g/label)" = zynq_gpio ] && cat $g/base; done; true')
+        if not base.isdigit():
+            raise SystemExit("could not find the zynq_gpio controller in /sys/class/gpio")
+        self.base = int(base)
+        self.phy = self.sh('for d in /sys/bus/iio/devices/iio:device*; do '
+                           f'[ "$(cat $d/name)" = "{PHY}" ] && echo $d; done; true')
+        if not self.phy:
+            raise SystemExit(f"could not find {PHY} in sysfs")
         # The DDS core's sysfs directory, matched by name rather than index.
         self.sysfs = self.sh(
             'for d in /sys/bus/iio/devices/iio:device*; do '
-            f'[ "$(cat $d/name)" = "{TXDEV}" ] && echo $d; done')
+            f'[ "$(cat $d/name)" = "{TXDEV}" ] && echo $d; done; true')
         if not self.sysfs:
-            raise SystemExit(f"could not find {TXDEV} in sysfs")
+            raise SystemExit(f"could not find {TXDEV} in sysfs - is this the devkit firmware?")
+        if self.sh(f"test -e {self.sysfs}/tx_sample_gpio_en && echo yes", check=False) != "yes":
+            raise SystemExit(
+                "this board's firmware has no tx_sample_gpio_en attribute, so it "
+                "predates the sample-locked GPIO feature (devkit patches 0006/0007). "
+                "Build and flash from the devkit first: ./devkit build && ./devkit flash")
         self.pins = [self.base + 54 + 18 + n for n in range(4)]
         self.control = self.base + 54 + CONTROL_OFFSET
         for n in self.pins + [self.control]:
@@ -91,8 +119,14 @@ class Board:
 
 
 def main():
-    host = (sys.argv[1] if len(sys.argv) > 1 else "ip:192.168.2.1").split(":")[-1]
-    board = Board(host)
+    if any(a in ("-h", "--help") for a in sys.argv[1:]):
+        print(__doc__); return 0
+    if not shutil.which("sshpass"):
+        raise SystemExit("needs sshpass (sudo apt install sshpass)")
+    import os
+    default = os.environ.get("BOARD", "192.168.2.1")
+    host = (sys.argv[1] if len(sys.argv) > 1 else f"ip:{default}").split(":")[-1]
+    board = Board(host, os.environ.get("BOARD_PASS", "analog"))
     board.discover()
     print(f"board {host}: gpio base {board.base}, pins {board.pins}, "
           f"control {board.control}")
@@ -102,11 +136,27 @@ def main():
         c.write(PHY, ch, "hardwaregain", MUTED, output=True)
     print(f"transmitter pinned at {c.read(PHY, 'voltage0', 'hardwaregain', True)}\n")
 
+    def pin_attenuation():
+        """Write maximum attenuation AFTER a stream has started and prove it took.
+
+        Starting a buffer on this firmware restores a cached attenuation, which
+        is whatever the previous stream ended with. Writing before the stream
+        therefore proves nothing; write after, read back, refuse to continue if
+        the chip disagrees.
+        """
+        c.write(PHY, "voltage0", "hardwaregain", MUTED, output=True)
+        got = c.read(PHY, "voltage0", "hardwaregain", output=True).split()[0]
+        if abs(float(got) + 89.75) > 0.5:
+            c.close_buffer(TXDEV)
+            raise SystemExit(f"TX0 attenuation is {got} dB during the stream, not {MUTED} - "
+                             f"stopped rather than run with the transmitter louder than intended.")
+
     def stream_and_read(nibble):
         vals = []
         for _ in range(NSAMP):
             vals += [nibble & 0xF, 0]              # I carries the nibble, Q is zero
         c.write_samples(TXDEV, vals, mask_for([0, 1], 4), nchannels=2, cyclic=True)
+        pin_attenuation()
         time.sleep(0.5)
         pins, ctrl = board.read_pins()
         c.close_buffer(TXDEV)
@@ -114,6 +164,21 @@ def main():
         return pins, ctrl
 
     ok = []
+    try:
+        return run_checks(board, c, stream_and_read, ok)
+    finally:
+        # Ctrl-C or a failure must not leave the fabric owning the pins, a
+        # buffer streaming, or the GPIOs exported.
+        try:
+            c.close_buffer(TXDEV)
+        except Exception:
+            pass
+        board.set_flag(False)
+        board.release()
+        c.close()
+
+
+def run_checks(board, c, stream_and_read, ok):
     print("flag ON - each pin must carry its own bit of the nibble")
     board.set_flag(True)
     for name, nib, want in [("all high", 0xF, [1, 1, 1, 1]),
@@ -139,10 +204,8 @@ def main():
 
     ok.append(timing_test(board, c))
 
-    print(f"\ntransmitter still at {c.read(PHY, 'voltage0', 'hardwaregain', True)}")
-    board.set_flag(False)
-    board.release()
-    c.close()
+    print(f"\ntransmitter at {c.read(PHY, 'voltage0', 'hardwaregain', True)} "
+          f"(verified at {MUTED} during every stream)")
     print("\nRESULT:", "PASS" if all(ok) else "FAIL")
     return 0 if all(ok) else 1
 
@@ -160,7 +223,7 @@ def timing_test(board, c):
     the pattern is slow enough to sample through sysfs (~50-150 reads/s).
     """
     print("\ntiming - the pins must track the pattern at the rate the samples imply")
-    rate_attr = "/sys/bus/iio/devices/iio:device0/in_voltage_sampling_frequency"
+    rate_attr = f"{board.phy}/in_voltage_sampling_frequency"
     original = board.sh(f"cat {rate_attr}").strip()
     board.sh(f"echo 2100000 > {rate_attr}")          # the exact minimum is rejected
     fs = int(board.sh(f"cat {rate_attr}").strip())
@@ -171,6 +234,11 @@ def timing_test(board, c):
             vals += [(1 if n < N // 2 else 0) | (2 if (n % (N // 4)) < (N // 8) else 0), 0]
         board.set_flag(True)
         c.write_samples(TXDEV, vals, mask_for([0, 1], 4), nchannels=2, cyclic=True)
+        c.write(PHY, "voltage0", "hardwaregain", MUTED, output=True)
+        got = c.read(PHY, "voltage0", "hardwaregain", output=True).split()[0]
+        if abs(float(got) + 89.75) > 0.5:
+            c.close_buffer(TXDEV)
+            raise SystemExit(f"TX0 attenuation is {got} dB during the stream - stopping.")
         time.sleep(0.5)
         pins = board.pins[:2]
         raw = board.sh(

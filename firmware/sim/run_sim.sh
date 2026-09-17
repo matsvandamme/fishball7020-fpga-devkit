@@ -20,7 +20,8 @@ FW=""
 for arg in "$@"; do
     case "$arg" in
         --mutate) MUTATE=1 ;;
-        -h|--help) sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -*) echo "unknown option: $arg (try --help)" >&2; exit 2 ;;
         *) FW=$arg ;;
     esac
 done
@@ -61,7 +62,7 @@ fetch() {
             grab && /^\+/         { print substr($0, 2) }
         ' "$patchfile" > "$WORK/$module.v"
         [ -s "$WORK/$module.v" ] || { echo "could not extract $module from $patchfile" >&2; exit 2; }
-        origin="patches/optional/${patch%%-*} (extracted; the patch is not applied)"
+        origin="${patchfile#$FW/} (extracted; the patch is not applied)"
     else
         echo "cannot find $module.v in src/ or in patches/optional/" >&2
         exit 2
@@ -111,7 +112,10 @@ if [ $MUTATE -eq 1 ]; then
         if cmp -s "$WORK/$module.v" "$WORK/mutant.v"; then
             echo "   SKIP  $name (mutation did not apply)"; survived=$((survived+1)); return
         fi
-        iverilog -g2005 -o "$WORK/mtb" "$SIM/tb_$module.v" "$WORK/mutant.v" 2>/dev/null
+        rm -f "$WORK/mtb"                       # never rerun the PREVIOUS mutant
+        if ! iverilog -g2005 -o "$WORK/mtb" "$SIM/tb_$module.v" "$WORK/mutant.v" 2>/dev/null; then
+            echo "   caught    $name (does not even compile)"; return
+        fi
         if vvp "$WORK/mtb" 2>/dev/null | grep -q "^  PASS"; then
             echo "   SURVIVED  $name  <- the testbench does not catch this"
             survived=$((survived+1))

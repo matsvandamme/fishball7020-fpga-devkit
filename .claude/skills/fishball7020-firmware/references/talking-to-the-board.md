@@ -62,9 +62,8 @@ DMAs and the LVDS link with no RF at all — remember to set it back to 0.
 ## Mounting the SD card from the board
 
 ```bash
-mkdir -p /mnt/sd && mount -t vfat /dev/mmcblk0p1 /mnt/sd
-# ... copy files in ...
-sync; umount /mnt/sd; sync; reboot
+# Do not flash by hand - ./devkit flash does backup, verify-before-swap, clean
+# unmount, reboot and a post-boot check. See build-and-flash.md.
 ```
 
 Forgetting `mkdir -p` after a reboot is a good way to have `scp` write nothing

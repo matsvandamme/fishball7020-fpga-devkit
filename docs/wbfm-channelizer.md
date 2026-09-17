@@ -174,6 +174,8 @@ build will quietly produce the old filter:
 ```bash
 # run from: firmware/
 ./scripts/setup.sh          # if src/ does not exist yet
+# --hdl-only reuses the kernel, U-Boot and rootfs from a previous FULL build
+# and refuses to run without one - run a plain ./scripts/build_all.sh first.
 
 # This example is NOT applied by default - it narrows RX channel 0 to one
 # broadcast channel, which is not what a general-purpose build should do.

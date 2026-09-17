@@ -1,4 +1,4 @@
-# Firmware 1 — pluto-fw v0.38 port (USB + Ethernet)
+# The firmware: a pluto-fw v0.38 port (USB + Ethernet)
 
 > **Looking for the build/flash workflow** (installing Vivado, opening the block
 > diagram, adding HDL, building, flashing)? That lives in the

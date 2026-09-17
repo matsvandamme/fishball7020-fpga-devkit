@@ -19,7 +19,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FW="$HERE/firmware"
 
-usage() { sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; }
 
 cmd="${1:-}"; shift || true
 case "$cmd" in
@@ -38,8 +38,14 @@ case "$cmd" in
         echo
         echo "== source tree =="
         if [ -d "$FW/src/.git" ]; then
-            echo "   src/ present$([ -f "$FW/src/.devkit-patches-applied" ] \
-                 && echo ', patches applied' || echo ', patches NOT applied - run ./devkit setup')"
+            digest="$(cat "$FW"/patches/*.patch 2>/dev/null | sha256sum | cut -d' ' -f1)"
+            if [ -f "$FW/src/.devkit-patches-applied" ] && [ "$(cat "$FW/src/.devkit-patches-applied")" = "$digest" ]; then
+                echo "   src/ present, patches applied (current set)"
+            elif [ -f "$FW/src/.devkit-patches-applied" ]; then
+                echo "   src/ present, but the patch set changed since setup - run ./devkit setup"
+            else
+                echo "   src/ present, patches NOT applied - run ./devkit setup"
+            fi
         else
             echo "   src/ missing - run ./devkit setup"
         fi

@@ -58,3 +58,4 @@ firmware/src/
 .DS_Store
 *.swp
 __pycache__/
+firmware/.flash-backups/

@@ -130,6 +130,18 @@ for i in $(seq 1 $MAX_ITERS); do
         exit 1
     fi
 
+    # The whole justification for rewriting a hash is that the package is
+    # fetched by GIT COMMIT, so the commit id - not the tarball's bytes - is
+    # the content guarantee and only git-archive repackaging drifted. A plain
+    # https tarball that arrives with the wrong hash is corruption or
+    # substitution, and must never be accepted on the next iteration.
+    mk_file="${hash_file%.hash}.mk"
+    if ! grep -qE '_SITE_METHOD[[:space:]]*=[[:space:]]*git' "$mk_file" 2>/dev/null \
+       && ! printf '%s' "$fname" | grep -qE -- '-[0-9a-f]{40}\.tar\.(gz|xz)$'; then
+        echo "$fname is not a git-fetched package (see $mk_file); a hash mismatch here" | tee -a "$LOG"
+        echo "means a bad download, not repackaging drift. Stopping rather than accepting it." | tee -a "$LOG"
+        exit 1
+    fi
     echo "Fixing $hash_file for $fname -> $got" | tee -a "$LOG"
     python3 - "$hash_file" "$fname" "$got" << 'PYEOF'
 import sys, re

@@ -47,8 +47,11 @@ your sample:   b15 b14 b13 b12 b11 b10 b9 b8 b7 b6 b5 b4 │ b3 b2 b1 b0
 You can see it in ADI's own HDL — `axi_ad9361_tx_channel.v` does literally
 `dac_data_out_int <= dma_data[15:4];`. The bottom four bits (the **low
 nibble**, the usual jargon for "bottom four bits") reach the FPGA and stop
-there. They change nothing about the transmitted signal, because nothing
-downstream reads them.
+there. With the FPGA interpolator bypassed — every sample rate from 2.083 MSPS
+up — nothing downstream reads them, so they change nothing about the
+transmitted signal. (Engage the ÷8 interpolator for lower rates and its FIR
+filters the whole 16-bit word, so the nibble leaks into the DAC data at
+roughly −70 dBFS; see [Limits](#limits).)
 
 So they are free. This feature routes them to four pins on the expansion
 header instead of dropping them.
@@ -394,9 +397,12 @@ Three things to notice:
   period and let the DMA loop it. Make the buffer length an exact multiple of
   your pattern period, or you get a glitch at the wrap.
 - **Only channel 0's I samples carry the nibble** in this build.
-- **Your RF loses 4 bits of resolution on I** — you are overwriting real, if
-  tiny, signal bits, adding roughly a −72 dBFS noise floor on that path.
-  Irrelevant for radar pulses; worth knowing for a sensitive modulation.
+- **Analog cost is zero at normal rates, not quite zero at low ones.** With
+  the FPGA interpolator bypassed (2.083 MSPS and up) the DAC never sees the
+  nibble. Below that the ÷8 interpolator is engaged and its FIR filters the
+  whole 16-bit word, so the nibble leaks into the DAC data at roughly −70 dBFS.
+  Irrelevant for radar pulses; worth knowing for a sensitive modulation at a
+  low sample rate.
 
 **You can exercise the whole digital path with the transmitter muted.** The
 nibble never touches the analog chain, so set TX attenuation to maximum
@@ -437,8 +443,10 @@ Simulate first — it takes a second and needs only `iverilog`:
 ./sim/run_sim.sh --mutate   # and prove the tests can actually fail
 ```
 
-The bitstream lives inside `BOOT.bin`, so this needs a full SD-card update —
-**DFU cannot do it**. See [Flash the board](../README.md#6-flash-the-board).
+The bitstream lives inside `BOOT.bin`, so this needs `BOOT.bin` replaced on
+the card — `./devkit flash` does it over the network from a booting board, or
+use a card reader. **DFU cannot do it.** See
+[Flash the board](../README.md#6-flash-the-board).
 
 ---
 
@@ -495,7 +503,7 @@ flag ON - each pin must carry its own bit of the nibble
   0x1 only bit 0  -> [1, 0, 0, 0]  want [1, 0, 0, 0]  control 0  ok
   ...
 flag OFF - the fabric must let go, so the pins stop following the data
-  nibble 0x0 -> [1, 1, 1, 1]   nibble 0xF -> [1, 1, 1, 1]   released (floating)
+  nibble 0x0 -> [0, 0, 0, 0]   nibble 0xF -> [0, 0, 0, 0]   released (pull-down holds them low)
 
 timing - the pins must track the pattern at the rate the samples imply
   bit0:  52 edges, period   499.6 ms, expected   499.3 ms, error 0.1%  ok
@@ -546,18 +554,13 @@ were hit before the test was right:
   wrote. EMIO bits routed to no pad at all read back perfectly. Every read must
   set `direction=in` first, and the script reads EMIO 22 — deliberately
   connected to nothing — alongside as a control that must never go high.
-- **With the flag clear the pins float, and they float HIGH on this board.**
-  So "the pin reads 1" is not evidence the fabric is driving it. The only sound
-  test of the flag is to stream *two different nibbles*: if the pin follows the
-  data, the fabric owns it; if it reads the same either way, the fabric has let
-  go. Pre-charging the pad to the opposite state does not settle it — a
-  floating CMOS pin with a pull-up returns to 1 regardless.
-
-What this does **not** yet establish is the coherence claim itself: that the
-pin edge sits at a fixed, repeatable offset from the RF. Sysfs reads take
-microseconds and cannot see a pin toggling at megahertz. That needs a scope,
-and until someone does it, treat the timing relationship as designed-for rather
-than demonstrated.
+- **A pin's level never tells you who is driving it.** With the flag clear the
+  fabric releases the pins and the pull-down holds them low — which is also
+  exactly what the fabric drives for a zero nibble, so "the pin reads 0" proves
+  nothing either way. (Before the pull-down was added they floated *high*, and
+  the same ambiguity existed with 1s.) The only sound test of the flag is to
+  stream *two different nibbles*: if the pin follows the data, the fabric owns
+  it; if it reads the same either way, the fabric has let go.
 
 ## Notes for anyone extending it
 

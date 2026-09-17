@@ -12,11 +12,15 @@ on:
     paths:
       - "tools/**"
       - "firmware/scripts/*.py"
+      - "firmware/sim/**"
+      - "firmware/patches/**"
       - ".github/workflows/host-tools.yml"
   pull_request:
     paths:
       - "tools/**"
       - "firmware/scripts/*.py"
+      - "firmware/sim/**"
+      - "firmware/patches/**"
   workflow_dispatch:
 
 jobs:
