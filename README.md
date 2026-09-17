@@ -479,6 +479,7 @@ swap, the clean unmount and the reboot, and keeps the previous firmware both on
 the card and on your disk:
 
 ```bash
+# run from: the repo root
 ./devkit flash              # BOOT.bin + uImage
 ./devkit flash --all        # all five files
 ./devkit flash --boot-only  # just the bitstream
@@ -554,6 +555,8 @@ PL; swapping underneath them hangs the system.
    `xc7z020_1` → Program Device**. Or scripted:
 
    ```tcl
+   # run on your HOST, in the Vivado Tcl console (the working directory does
+   # not matter - the .bit is given by absolute path below)
    open_hw_manager
    connect_hw_server
    open_hw_target
@@ -617,6 +620,7 @@ third-party repo still being online is a weaker net than a folder on your disk.
 flashing and rebooting costs minutes:
 
 ```bash
+# run from: the repo root
 ./devkit verify            # is the build sane?
 ./devkit verify --board    # ...and is the board actually running it?
 ```
@@ -925,6 +929,7 @@ usual — so enabling the feature in the bitstream takes nothing away. They are
 named in the device tree, so no arithmetic is needed:
 
 ```sh
+# on the board
 gpiofind sample_gpio0              # -> gpiochip0 72
 gpioget $(gpiofind sample_gpio0)   # read it
 gpioset $(gpiofind sample_gpio0)=1 # drive it (with the feature off)
@@ -941,6 +946,7 @@ sample. A pin is a clock because you made that bit alternate; it is a frame
 marker because you made it pulse once per frame.
 
 ```python
+# run on your HOST - pyadi-iio reaches the board over the network
 n = np.arange(N)
 bit0 = (n % 2  == 0)       # master clock at half the sample rate
 bit1 = (n % 64 == 0)       # frame marker, one sample every 64
@@ -962,6 +968,7 @@ The fastest a pin can toggle is **half the sample rate** (~30 MHz at
 ### Checking it works
 
 ```bash
+# run from: the repo root (it reaches the board over the network)
 ./devkit gpio-check
 ```
 
@@ -1088,6 +1095,7 @@ synthesises cleanly, meets timing, and is wrong on hardware.
 A green suite means nothing until you have watched it go red:
 
 ```bash
+# run from: firmware/
 ./sim/run_sim.sh --mutate
 ```
 
@@ -1151,6 +1159,7 @@ than "well, it still enumerates". Most checks need nothing plugged in; the rest
 need TX cabled to RX through an **attenuator**.
 
 ```bash
+# run from: the repo root
 cd tools/selftest
 ./sdr_selftest.py --ssh                                     # no cable, never transmits
 ./sdr_selftest.py --ssh --loopback --pad 50                 # + the RF tests
@@ -1187,6 +1196,7 @@ Path loss depends on your cable, so record a baseline while the board is known
 good and compare later:
 
 ```bash
+# run from: tools/selftest/
 ./sdr_selftest.py --ssh --loopback --save-baseline ~/board-healthy.json
 ./sdr_selftest.py --ssh --loopback --baseline     ~/board-healthy.json
 ```

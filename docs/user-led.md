@@ -53,6 +53,7 @@ cd /sys/class/leds/led0:green
 `none` first, or the kernel keeps overwriting your value:
 
 ```sh
+# on the board, in /sys/class/leds/led0:green
 echo none > trigger
 echo 1 > brightness        # on
 echo 0 > brightness        # off
@@ -61,6 +62,7 @@ echo 0 > brightness        # off
 **See what else it can do automatically:**
 
 ```sh
+# on the board, in /sys/class/leds/led0:green
 cat trigger
 ```
 
@@ -71,6 +73,7 @@ card access) and CPU triggers.
 **Blink at your own rate**, with no code at all:
 
 ```sh
+# on the board, in /sys/class/leds/led0:green
 echo timer > trigger
 echo 100 > delay_on        # milliseconds lit
 echo 900 > delay_off       # milliseconds dark
@@ -79,6 +82,7 @@ echo 900 > delay_off       # milliseconds dark
 **Flash it on SD-card activity:**
 
 ```sh
+# on the board, in /sys/class/leds/led0:green
 echo mmc0 > trigger
 ```
 
@@ -87,6 +91,7 @@ echo mmc0 > trigger
 From a shell script:
 
 ```sh
+# on the board - save this as a file, then run it
 #!/bin/sh
 LED=/sys/class/leds/led0:green
 echo none > $LED/trigger
@@ -147,6 +152,7 @@ driving a pin that turns out to be an input or tied elsewhere can damage the
 board. The constraint pattern is the same as every other line in the file:
 
 ```tcl
+# in firmware/src/hdl/projects/pluto/system_constr.xdc
 set_property -dict {PACKAGE_PIN <ball> IOSTANDARD LVCMOS33} [get_ports my_led]
 ```
 

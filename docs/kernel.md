@@ -42,6 +42,7 @@ reboot; the board is back in about fifteen seconds. The device tree is a
 separate target in the same tree:
 
 ```bash
+# run from: firmware/
 PATH="..." DTC_FLAGS=-@ make -C "$SRC/linux" ARCH=arm \
   CROSS_COMPILE=arm-linux-gnueabihf- zynq-pluto-sdr-fishball.dtb
 cp src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dtb output/devicetree.dtb
@@ -55,6 +56,7 @@ is a scratch edit. To keep it, edit the defconfig (and ship it as a patch) or
 use `make savedefconfig`.
 
 ```bash
+# run from: firmware/
 PATH="..." make -C src/linux ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- menuconfig
 ```
 

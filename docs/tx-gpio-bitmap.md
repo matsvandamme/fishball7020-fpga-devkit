@@ -319,6 +319,7 @@ it the only route was poking `direct_reg_access` in debugfs, which still works
 if you are running an older build:
 
 ```sh
+# on the board
 echo "0xBC 0x2" > /sys/kernel/debug/iio/iio:device2/direct_reg_access
 ```
 
@@ -338,6 +339,7 @@ The lines are named in the device tree (patch `0008`), so they can be found by
 name rather than computed:
 
 ```sh
+# on the board
 gpiofind sample_gpio0                 # -> gpiochip0 72
 gpioget  $(gpiofind sample_gpio0)     # read
 gpioset  $(gpiofind sample_gpio0)=1   # drive, with the feature off
@@ -347,6 +349,7 @@ The legacy sysfs path still works and is what the checker uses, because it can
 be driven from a shell loop fast enough to sample a slow pattern:
 
 ```sh
+# on the board
 BASE=$(cat /sys/class/gpio/gpiochip*/base | head -1)   # 906 on this firmware
 N=$((BASE + 54 + 18))                                  # 978 = sample_gpio[0]
 echo $N > /sys/class/gpio/export
@@ -386,6 +389,7 @@ format-conversion step. Anything that multiplies your samples will overwrite
 the bottom bits, because to that code they are noise.
 
 ```python
+# run on your HOST - pyadi-iio reaches the board over the network
 import numpy as np, adi
 
 N  = 4096                      # buffer length in samples
@@ -452,6 +456,7 @@ that opens an existing `pluto.xpr` reuses the old one, so wiring changes never
 reach the fabric.
 
 ```bash
+# run from: the repo root
 cd firmware
 rm -rf src/hdl/projects/pluto/pluto.{xpr,runs,gen,cache,hw,srcs,ip_user_files,sdk}
 ./scripts/build_all.sh --hdl-only
@@ -460,6 +465,7 @@ rm -rf src/hdl/projects/pluto/pluto.{xpr,runs,gen,cache,hw,srcs,ip_user_files,sd
 Simulate first — it takes a second and needs only `iverilog`:
 
 ```bash
+# run from: firmware/
 ./sim/run_sim.sh            # both custom modules, against golden models
 ./sim/run_sim.sh --mutate   # and prove the tests can actually fail
 ```

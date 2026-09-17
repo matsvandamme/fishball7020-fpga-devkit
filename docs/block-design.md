@@ -214,6 +214,7 @@ a `sync_bits` clock-domain crossing for the enable, and per-channel
 `ad_bus_mux` bypass muxes.
 
 ```tcl
+# in firmware/src/hdl/projects/pluto/system_bd.tcl
 ad_add_decimation_filter   "rx_fir_decimator"   8 2 1 {61.44} {61.44} <coe>
 #                           name              rate n_ch paths  clk   sample
 ad_add_interpolation_filter "tx_fir_interpolator" 8 2 1 {61.44} {7.68}  <coe>
@@ -386,6 +387,7 @@ JP5 also carries four 1.8 V differential pairs (`1V8_IO1/3/5/7`) on banks
 and V7 look plausible and are "no connect". Pattern in `system_constr.xdc`:
 
 ```tcl
+# in firmware/src/hdl/projects/pluto/system_constr.xdc
 set_property -dict {PACKAGE_PIN <ball> IOSTANDARD LVCMOS33 PULLTYPE PULLDOWN} [get_ports my_sig]
 ```
 

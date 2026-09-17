@@ -253,6 +253,7 @@ level of the per-point repeatability. The measurements are self-consistent, and
 the separation above is not an artefact of one particular cabling.
 
 ```bash
+# run from: tools/selftest/
 ./sdr_selftest.py --loopback --pad 20 --tx-channel 0 --rx-channel 1 \
     --sweep-points 60 --sweep-start 70e6 --sweep-stop 6e9
 ```
@@ -302,6 +303,7 @@ edge of working shrinks that number long before it starts corrupting samples.
 ## Reproducing it
 
 ```bash
+# run from: the repo root
 cd tools/selftest
 ./sdr_selftest.py --ssh                                    # no cable, never transmits
 ./sdr_selftest.py --ssh --loopback --pad 30 --channel 0     # add the RF tests
