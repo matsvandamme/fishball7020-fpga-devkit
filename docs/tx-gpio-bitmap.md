@@ -1,8 +1,11 @@
 # Four header pins that tick with the transmitted waveform
 
-A worked example of getting something out of the FPGA that no software timing
-can give you: **four digital output pins whose every edge is locked to a
-specific transmitted RF sample**. Not "about a millisecond later, give or take"
+The full reference for a feature of the base firmware: **four digital output
+pins whose every edge is locked to a specific transmitted RF sample**. The
+README has the [short version](../README.md#sample-locked-gpio-outputs); this
+page is the detail behind it.
+
+It gives you something no software timing can offer. Not "about a millisecond later, give or take"
 — a fixed offset you measure once and then trust. You decide, sample by
 sample, what those pins do.
 
@@ -122,7 +125,8 @@ into the low nibble comes out on the pins, one nibble per sample.
 | `hdl/projects/pluto/system_top.v` | the `ad_iobuf` onto the four package pins |
 | `hdl/projects/pluto/system_constr.xdc` | pin assignments and the CDC constraint |
 | `firmware/sim/tb_tx_gpio_bitmap.v` | self-checking testbench, 2092 checks |
-| `firmware/patches/optional/0006-tx-sample-nibble-to-gpio.patch` | all of the above, **opt-in** |
+| `firmware/patches/0006-tx-sample-nibble-to-gpio.patch` | all of the above, applied by `setup.sh` |
+| `firmware/patches/0007-tx-sample-gpio-iio-attribute.patch` | the `tx_sample_gpio_en` sysfs attribute |
 
 ### Where the nibble is tapped, and why there
 
@@ -249,7 +253,12 @@ silkscreen dot, triangle or "1", before you probe. Odd pins run down one
 column, even pins down the other.
 
 `LVCMOS33` is the right standard: sheet 1 ties `VCCO_13_1..4` (balls T8, U11,
-W7, Y10) to **VCC3V3**. Note this differs from the rest of the design, which
+W7, Y10) to **VCC3V3**. Each pin also carries `PULLTYPE PULLDOWN`, so an
+undriven pin reads a defined low. That is safe because each of the four nets
+appears exactly twice in the whole schematic — once at the FPGA ball, once at
+JP5 — so there is no external pull, series part or ESD diode anywhere on them
+for an internal pull to fight. Idle *low* rather than high because a sync line
+that floats high looks asserted to whatever reads it. Note this differs from the rest of the design, which
 declares `LVCMOS25` and `LVDS_25` on banks 34 and 35 that the same sheet
 supplies from **VCC1V8** — an inconsistency inherited from ADI's stock Pluto
 constraints, left alone here because the board demonstrably works.
@@ -283,18 +292,24 @@ either.
 
 ### Turning the bit-map on and off
 
-The enable is **bit 1 of the DAC core's `GP_CONTROL` register, AXI offset
-`0xBC`**. Bit 0 is already taken: it is the interpolator bypass. There is no
-IIO attribute for it yet, so reach it through the debugfs register window:
+```sh
+# on the board
+D=/sys/bus/iio/devices/iio:device2        # cf-ad9361-dds-core-lpc
+cat $D/name                               # confirm before writing
+
+cat   $D/tx_sample_gpio_en                # 0 = GPIO, 1 = sample nibble
+echo 1 > $D/tx_sample_gpio_en             # on
+echo 0 > $D/tx_sample_gpio_en             # off
+```
+
+Underneath, that is **bit 1 of the DAC core's `GP_CONTROL` register, AXI offset
+`0xBC`**. Bit 0 of the same register is the interpolator bypass, so the
+attribute read-modify-writes rather than assigning. Before `patches/0007` added
+it the only route was poking `direct_reg_access` in debugfs, which still works
+if you are running an older build:
 
 ```sh
-# on the board, as root
-D=/sys/kernel/debug/iio/iio:device2        # cf-ad9361-dds-core-lpc
-cat $D/name                                # confirm before writing
-
-echo 0xBC > $D/direct_reg_access ; cat $D/direct_reg_access   # read it
-echo "0xBC 0x2" > $D/direct_reg_access                        # bit-map ON
-echo "0xBC 0x0" > $D/direct_reg_access                        # back to GPIO
+echo "0xBC 0x2" > /sys/kernel/debug/iio/iio:device2/direct_reg_access
 ```
 
 The register resets to 0, so **the pins are ordinary GPIO at power-on** and the
@@ -319,6 +334,11 @@ echo 1   > /sys/class/gpio/gpio$N/value
 
 `sample_gpio[0..3]` are GPIO **978, 979, 980, 981** on this firmware.
 
+> **A pin's level does not tell you who is driving it.** With the flag clear
+> the fabric releases the pins and the pull-down holds them low — which is also
+> what the fabric drives for a zero nibble. So any test of the flag has to
+> stream *two different* nibbles and ask whether the pin follows the data.
+>
 > **Reading a pin back is subtler than it looks.** With `direction=out` the
 > sysfs `value` file returns what you *wrote*, not what is on the pad. This was
 > measured, not assumed: EMIO bits routed to no pad at all read back
@@ -396,18 +416,19 @@ directly.
 
 ## Building and flashing
 
-The patch is **not** applied by `setup.sh`. Opt in:
+`setup.sh` applies `0006` and `0007` along with the rest, so a normal
+`build_all.sh` includes the feature — nothing to opt into.
+
+If you *modify* the module or its wiring, delete the Vivado project before
+rebuilding: the block design is *generated* from `system_bd.tcl`, and a build
+that opens an existing `pluto.xpr` reuses the old one, so wiring changes never
+reach the fabric.
 
 ```bash
 cd firmware
-(cd src && git apply ../patches/optional/0006-tx-sample-nibble-to-gpio.patch)
 rm -rf src/hdl/projects/pluto/pluto.{xpr,runs,gen,cache,hw,srcs,ip_user_files,sdk}
 ./scripts/build_all.sh --hdl-only
 ```
-
-Deleting the Vivado project matters: the block design is *generated* from
-`system_bd.tcl`, and a build that opens an existing `pluto.xpr` reuses the old
-one, so your wiring changes never reach the fabric.
 
 Simulate first — it takes a second and needs only `iverilog`:
 
@@ -455,6 +476,8 @@ Being explicit, because "it builds" and "it works" are different claims:
 | Ball assignments match the schematic | ✅ read off sheet 5 |
 | Bank voltage supports LVCMOS33 | ✅ `VCCO_13` = VCC3V3, sheet 1 |
 | `BOOT.bin` built and flashed, board boots | ✅ AD9361 healthy afterwards |
+| `tx_sample_gpio_en` sets the hardware bit | ✅ attribute and register `0xBC` agree |
+| Pins idle low rather than floating | ✅ read 0 undriven; they read 1 before the pull-down |
 | Nibble reaches the pins, bit for bit | ✅ all four one-hot patterns, on hardware |
 | Bit order matches the header labels | ✅ `sample_gpio[n]` ↔ nibble bit `n` |
 | The flag hands the pins back when cleared | ✅ measured |

@@ -133,10 +133,24 @@ gain and then starting the stream is the obvious order, and the unmute would
 overwrite it with the previous transmission's value. The unmute now restores
 the cache only when nothing has been set since the mute, so both orders work.
 
+### `0006-tx-sample-nibble-to-gpio.patch` and `0007-tx-sample-gpio-iio-attribute.patch`
+
+Routes the four LSBs of each transmit sample — the bits the 12-bit DAC
+discards — to four expansion-header pins, giving digital outputs locked to the
+RF sample that carried them. `0006` is the HDL (a ~30-line module, the
+block-design tap, the pin constraints); `0007` adds the
+`tx_sample_gpio_en` IIO attribute so enabling it is a sysfs write rather than a
+raw register poke through debugfs.
+
+The pins are pulled down and the enable bit resets to 0, so the default
+behaviour of the radio is unchanged and the four pins remain ordinary EMIO
+GPIO. It costs +3 LUTs and +7 flip-flops, no DSPs, no block RAM, and does not
+touch the device tree. See [docs/tx-gpio-bitmap.md](../docs/tx-gpio-bitmap.md).
+
 ### `optional/` — not applied by `setup.sh`
 
-These *change what the radio does* rather than fixing it, so they live apart
-and `setup.sh` leaves them alone. Apply by hand:
+Worked examples that *change what the radio does* rather than fixing it, so
+they live apart and `setup.sh` leaves them alone. Apply by hand:
 `(cd src && git apply ../patches/optional/<name>.patch)`.
 
 - **`0003-wbfm-channelizer.patch`** — a worked example of custom DSP in the
@@ -144,11 +158,7 @@ and `setup.sh` leaves them alone. Apply by hand:
   `rx_fir_decimator` and repoints that filter at narrow-band FM coefficients,
   turning RX channel 0 into a single-station channelizer. See
   [docs/wbfm-channelizer.md](../docs/wbfm-channelizer.md).
-- **`0006-tx-sample-nibble-to-gpio.patch`** — routes the four LSBs of each
-  transmit sample, which the 12-bit DAC discards, to four expansion-header
-  pins. See [docs/tx-gpio-bitmap.md](../docs/tx-gpio-bitmap.md).
-
-Neither touches the device tree, kernel or bootloader, so every provenance
+It does not touch the device tree, kernel or bootloader, so every provenance
 claim above still holds; drop the patch to get the stock datapath back.
 
 ## Build system internals

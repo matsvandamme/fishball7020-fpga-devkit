@@ -120,10 +120,10 @@ index 8eeff72ab..e90f8cb6e 100755
  ad_connect  axi_ad9361/l_clk axi_ad9361_dac_dma/m_axis_aclk
  ad_connect  cpack/fifo_wr_overflow axi_ad9361/adc_dovf
 diff --git a/hdl/projects/pluto/system_constr.xdc b/hdl/projects/pluto/system_constr.xdc
-index ff020ba04..a7cb5ca29 100755
+index ff020ba04..e762a81a0 100755
 --- a/hdl/projects/pluto/system_constr.xdc
 +++ b/hdl/projects/pluto/system_constr.xdc
-@@ -50,6 +50,56 @@ set_property  -dict {PACKAGE_PIN  J20 IOSTANDARD LVCMOS25} [get_ports gpio_ctl[3
+@@ -50,6 +50,64 @@ set_property  -dict {PACKAGE_PIN  J20 IOSTANDARD LVCMOS25} [get_ports gpio_ctl[3
  set_property  -dict {PACKAGE_PIN  P20  IOSTANDARD LVCMOS25} [get_ports gpio_en_agc]
  set_property  -dict {PACKAGE_PIN  R19  IOSTANDARD LVCMOS25} [get_ports gpio_resetb]
  
@@ -146,6 +146,14 @@ index ff020ba04..a7cb5ca29 100755
 +# PACKAGE_PIN is not a build error, it is a bitstream that drives a pad wired
 +# to nothing.
 +#
++# PULLDOWN gives the pins a DEFINED idle state. Each of these four nets appears
++# exactly twice in the whole schematic - once at the FPGA ball, once at JP5 -
++# so there is no external pull, series part or ESD diode anywhere on them, and
++# nothing for an internal pull to fight. Undriven they would genuinely float,
++# which for a line something downstream reads as a trigger is the wrong
++# default: a floating input that drifts high looks asserted. Idle low is the
++# de-asserted state for a sync or frame signal, so pull down rather than up.
++#
 +# These four outputs are deliberately left UNCONSTRAINED, like every other
 +# LVCMOS output in this design. Skew between them is then whatever the router
 +# gives - a few hundred picoseconds, set by placement, not checked by timing
@@ -154,10 +162,10 @@ index ff020ba04..a7cb5ca29 100755
 +# are doing something where it is not irrelevant, add a set_output_delay
 +# against the AD9361 datapath clock and re-run implementation; do not assume
 +# the numbers here have been verified, because they have not been.
-+set_property  -dict {PACKAGE_PIN  V10  IOSTANDARD LVCMOS33} [get_ports sample_gpio[0]]
-+set_property  -dict {PACKAGE_PIN  U9   IOSTANDARD LVCMOS33} [get_ports sample_gpio[1]]
-+set_property  -dict {PACKAGE_PIN  U10  IOSTANDARD LVCMOS33} [get_ports sample_gpio[2]]
-+set_property  -dict {PACKAGE_PIN  T9   IOSTANDARD LVCMOS33} [get_ports sample_gpio[3]]
++set_property  -dict {PACKAGE_PIN  V10  IOSTANDARD LVCMOS33 PULLTYPE PULLDOWN} [get_ports sample_gpio[0]]
++set_property  -dict {PACKAGE_PIN  U9   IOSTANDARD LVCMOS33 PULLTYPE PULLDOWN} [get_ports sample_gpio[1]]
++set_property  -dict {PACKAGE_PIN  U10  IOSTANDARD LVCMOS33 PULLTYPE PULLDOWN} [get_ports sample_gpio[2]]
++set_property  -dict {PACKAGE_PIN  T9   IOSTANDARD LVCMOS33 PULLTYPE PULLDOWN} [get_ports sample_gpio[3]]
 +
 +# The bit-map enable flag is written by software in the AXI clock domain and
 +# read in the AD9361 datapath domain, so it is a clock-domain crossing. That

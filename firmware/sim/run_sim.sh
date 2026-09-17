@@ -36,16 +36,21 @@ fi
 
 fail=0
 
-# Every design under test here ships inside an OPTIONAL patch, so it is only
-# in src/ if that patch has been applied. Take it from there when it is, and
-# otherwise lift it straight out of the patch - checking that the channelizer
-# is correct should not require you to have opted into the channelizer.
+# A design under test is in src/ only once its patch has been applied. Take it
+# from there when it is, and otherwise lift it straight out of the patch file -
+# checking that the channelizer is correct should not require you to have opted
+# into the channelizer.
 #
 #   fetch <module> <patchfile>   ->  $WORK/<module>.v, and sets $origin
+#
+# The patch lives at the top level of patches/ once a module is a shipped
+# feature, and under patches/optional/ while it is still a worked example, so
+# look in both rather than hard-coding either.
 fetch() {
     local module=$1 patch=$2
     local dut=$FW/src/hdl/projects/pluto/$module.v
-    local patchfile=$FW/patches/optional/$patch
+    local patchfile=$FW/patches/$patch
+    [ -r "$patchfile" ] || patchfile=$FW/patches/optional/$patch
     if [ -r "$dut" ]; then
         cp "$dut" "$WORK/$module.v"
         origin="src/ (the patch is applied)"

@@ -21,10 +21,11 @@ TWO TRAPS THIS SCRIPT EXISTS TO AVOID
    `direction=in` first, and gpio 982 - routed to nothing - is read alongside
    as a control that must never go high.
 
-2. With the flag clear the fabric releases the pins and they FLOAT, reading
-   high on this board. So "the pin reads 1" alone proves nothing. The flag
-   test streams two different nibbles: if the pin follows the data the fabric
-   is driving it, and if it reads the same either way the fabric has let go.
+2. A pin's level alone proves nothing about who is driving it. With the flag
+   clear the fabric releases the pins and the XDC pull-down holds them low -
+   which is also what the fabric drives for a zero nibble. The flag test
+   therefore streams two DIFFERENT nibbles: if the pin follows the data the
+   fabric owns it, and if it reads the same either way the fabric has let go.
 
 Needs: python3, sshpass, and network access to the board.
 """
@@ -59,23 +60,21 @@ class Board:
 
     def discover(self):
         self.base = int(self.sh("cat /sys/class/gpio/gpiochip*/base | head -1"))
-        # The DDS core's debugfs directory. debugfs has no "name" file - that
-        # lives in sysfs - so match the name there and reuse the index.
-        self.dds = self.sh(
+        # The DDS core's sysfs directory, matched by name rather than index.
+        self.sysfs = self.sh(
             'for d in /sys/bus/iio/devices/iio:device*; do '
-            f'[ "$(cat $d/name)" = "{TXDEV}" ] && '
-            'echo /sys/kernel/debug/iio/$(basename $d); done')
-        if not self.dds:
-            raise SystemExit(f"could not find {TXDEV} in debugfs (are you root?)")
+            f'[ "$(cat $d/name)" = "{TXDEV}" ] && echo $d; done')
+        if not self.sysfs:
+            raise SystemExit(f"could not find {TXDEV} in sysfs")
         self.pins = [self.base + 54 + 18 + n for n in range(4)]
         self.control = self.base + 54 + CONTROL_OFFSET
         for n in self.pins + [self.control]:
             self.sh(f"[ -d /sys/class/gpio/gpio{n} ] || echo {n} > /sys/class/gpio/export")
 
     def set_flag(self, on):
-        self.sh(f'echo "0xBC 0x{2 if on else 0:x}" > {self.dds}/direct_reg_access')
-        self.sh(f"echo 0xBC > {self.dds}/direct_reg_access")
-        return self.sh(f"cat {self.dds}/direct_reg_access")
+        """Enable/disable via the IIO attribute, the documented interface."""
+        self.sh(f"echo {1 if on else 0} > {self.sysfs}/tx_sample_gpio_en")
+        return self.sh(f"cat {self.sysfs}/tx_sample_gpio_en")
 
     def read_pins(self):
         """Read the four pads plus the control, always as inputs."""
@@ -136,7 +135,7 @@ def main():
     released = low == high
     ok.append(released)
     print(f"  nibble 0x0 -> {low}   nibble 0xF -> {high}   "
-          f"{'released (floating)' if released else 'STILL DRIVEN - flag not gating'}")
+          f"{'released (pull-down holds them low)' if released else 'STILL DRIVEN - flag not gating'}")
 
     ok.append(timing_test(board, c))
 

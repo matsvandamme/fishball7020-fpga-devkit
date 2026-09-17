@@ -73,7 +73,7 @@ rated to about +2.5 dBm; this board measures **+19 dBm** flat out. Fit at least
 | | |
 |---|---|
 | `firmware/patches/` | what makes this board's firmware; `setup.sh` applies these |
-| `firmware/patches/optional/` | worked examples, **not** applied by default |
+| `firmware/patches/optional/` | worked examples, **not** applied by default (just the FM channelizer) |
 | `firmware/src/` | upstream source, created by `setup.sh`, not committed |
 | `firmware/output/` | the five SD-card files |
 | `firmware/sim/` | Icarus Verilog testbenches for the custom HDL |

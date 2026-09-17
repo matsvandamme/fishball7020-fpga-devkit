@@ -62,6 +62,11 @@ back — no disassembly.
 - **Four ways onto the board** — SD card, DFU over USB, over SSH from the
   running board (the only remote route that can update the bitstream), or JTAG
   for a seconds-long loop.
+- **Four header pins that tick with the transmitted waveform** — the four
+  bits of every transmit sample the 12-bit DAC throws away are routed to
+  expansion-header pins, giving digital outputs locked to the RF sample that
+  carried them. Off by default, costs nothing until enabled. See
+  [Sample-locked GPIO outputs](#sample-locked-gpio-outputs).
 - **The transmitter is off unless you are transmitting.** Stock firmware leaves
   the TX chain biased from power-on, radiating LO leakage with nothing in the
   DAC. This build mutes it and powers the synthesiser down whenever no TX
@@ -118,7 +123,7 @@ explains those five files and what happens between power-on and a login prompt.
 - [How it works](docs/how-it-works.md) — the boot chain explained from scratch
 - [The stock block design: IPs, wiring, and what you can change](docs/block-design.md)
 - [Worked example: an FM channelizer in the FPGA](docs/wbfm-channelizer.md)
-- [Worked example: TX sample bits on header pins](docs/tx-gpio-bitmap.md) — four outputs locked to the transmitted waveform
+- [Sample-locked GPIO outputs](#sample-locked-gpio-outputs) — four header pins that tick with the transmitted waveform
 - [Transmitter safety](#transmitter-safety) — TX is muted when nothing is being sent
 - [Measured performance](docs/measured-performance.md) — what one board actually does
 - [Simulating your HDL first](#simulating-your-hdl-first) — one second instead of twenty minutes
@@ -303,15 +308,16 @@ entirely:
 > interpolator are passed **the same** file, so editing it in place changes
 > both.
 
-> **Two worked examples do all of this for real.**
+> **A worked example does all of this for real.**
 > **[Isolating one FM channel in the FPGA](docs/wbfm-channelizer.md)** inserts a
 > custom Verilog block into the channel-0 RX path, designs and verifies new FIR
 > coefficients from a script, and explains why the obvious approach — "just
 > lowpass the channel" — cannot work.
-> **[Four header pins that tick with the transmitted waveform](docs/tx-gpio-bitmap.md)**
-> goes the other way: it taps the four bits of every transmit sample that the
-> 12-bit DAC discards and puts them on header pins, giving four digital outputs
-> locked to the RF sample that carried them, at no analog cost.
+>
+> For a second, smaller reference design that ships **enabled in the base
+> firmware**, see [Sample-locked GPIO outputs](#sample-locked-gpio-outputs) —
+> `tx_gpio_bitmap.v` is about thirty lines and shows the whole pattern: a
+> module, a block-design tap, a pin constraint and a driver attribute.
 
 ### Rebuilding after a GUI block-design edit
 
@@ -710,11 +716,12 @@ fishball7020-fpga-devkit/
 └── firmware/       the only firmware target — factory-default USB+Ethernet build
     ├── README.md                       deep reference: exact patch list, provenance,
     │                                   byte-for-byte comparison against real hardware
-    ├── patches/                        0001 fixes + hw_serial · 0002 device tree
+    ├── patches/                        applied by setup.sh:
+    │   │                               0001 fixes + hw_serial · 0002 device tree
     │   │                               0004 TX mute · 0005 keep a gain set before streaming
-    │   └── optional/                   NOT applied by setup.sh — worked examples
-    │       ├── 0003-wbfm-channelizer.patch         (docs/wbfm-channelizer.md)
-    │       └── 0006-tx-sample-nibble-to-gpio.patch (docs/tx-gpio-bitmap.md)
+    │   │                               0006 sample-locked GPIO · 0007 its IIO attribute
+    │   └── optional/                   NOT applied — worked examples
+    │       └── 0003-wbfm-channelizer.patch         (docs/wbfm-channelizer.md)
     ├── scripts/
     │   ├── setup.sh                    (run once) clones upstream into src/, applies patches
     │   ├── build_all.sh                (run every time) full build → output/
@@ -735,6 +742,111 @@ fishball7020-fpga-devkit/
     │   ├── linux/  u-boot-xlnx/  buildroot/
     └── output/                         ← the 5 final SD-card files
 ```
+
+## Sample-locked GPIO outputs
+
+Four pins on the expansion header that change state **in lockstep with the
+samples you transmit**. Not "roughly when" — each edge is tied to one specific
+sample, with a fixed offset you measure once and then trust. Useful as a master
+clock, a frame marker or a sync line for external hardware that has to stay
+aligned with the transmitted waveform: multi-channel radar, MIMO, anything with
+a receiver that is not this board.
+
+It is **built into the base firmware and off by default**, so it costs nothing
+until you ask for it.
+
+### Why it is free
+
+You hand the AD9361 **16-bit** samples. Its transmit DAC is **12 bits** and
+reads only the top 12 — ADI's own HDL does literally
+`dac_data_out_int <= dma_data[15:4]`. The bottom four bits reach the FPGA and
+stop there, changing nothing about the transmitted signal.
+
+```
+your sample:   b15 … b4 │ b3 b2 b1 b0
+               └ the DAC │ └ discarded — this feature routes them to pins
+```
+
+So the pins cost no analog performance and no extra hardware: +3 LUTs and
++7 flip-flops, no DSPs, no block RAM.
+
+### The pins
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/jp5-pinout-dark.svg">
+  <img src="docs/img/jp5-pinout-light.svg" alt="JP5 pinout: a 2x10 header with pins 7, 9, 11, 13 carrying sample_gpio[0..3] and grounds on pins 2 and 20" width="700">
+</picture>
+
+| Signal | Header net | JP5 pin | FPGA ball |
+|---|---|---|---|
+| `sample_gpio[0]` | `3V3_IO1` | 7 | V10 |
+| `sample_gpio[1]` | `3V3_IO2` | 9 | U9 |
+| `sample_gpio[2]` | `3V3_IO3` | 11 | U10 |
+| `sample_gpio[3]` | `3V3_IO4` | 13 | T9 |
+
+Ground on **pin 2 or 20**. The bit number matches the silkscreen, so
+`sample_gpio[0]` is the pin labelled `3V3_IO1`. All four are 3.3 V LVCMOS in
+bank 13, whose VCCO the schematic ties to VCC3V3, and each is pulled **down**
+so an idle pin reads a defined low rather than floating.
+
+Pin *numbering* is certain; which physical end of the connector is pin 1 is not
+marked on the schematic — find the square pad or the silkscreen dot before you
+clip anything on.
+
+### Turning it on
+
+```sh
+# on the board
+D=/sys/bus/iio/devices/iio:device2          # cf-ad9361-dds-core-lpc
+echo 1 > $D/tx_sample_gpio_en               # pins carry the sample nibble
+echo 0 > $D/tx_sample_gpio_en               # pins are ordinary GPIO again
+```
+
+With it off, the four pins are plain EMIO GPIO (numbers 978–981 on this
+firmware) that Linux can drive and read as usual — so enabling the feature in
+the bitstream takes nothing away.
+
+### Using it
+
+There is no "clock mode" register. **The pattern is data**: whatever you put in
+the low nibble of each transmit sample appears on the pins, one nibble per
+sample. A pin is a clock because you made that bit alternate; it is a frame
+marker because you made it pulse once per frame.
+
+```python
+n = np.arange(N)
+bit0 = (n % 2  == 0)       # master clock at half the sample rate
+bit1 = (n % 64 == 0)       # frame marker, one sample every 64
+nibble = (bit0 | bit1 << 1).astype(np.int16)
+
+i16 = (i16 & ~0x000F) | nibble      # OR it in LAST, after any scaling
+sdr.tx_cyclic_buffer = True         # loop one period for a continuous clock
+sdr.tx([i16, q16])
+```
+
+**OR the nibble in last.** Any gain or format step applied afterwards
+overwrites the bottom bits, because to that code they are noise. This also
+means GNU Radio's ordinary complex-float path cannot carry it — work at
+`short` level or render the buffer with numpy.
+
+The fastest a pin can toggle is **half the sample rate** (~30 MHz at
+61.44 MSPS), and every pattern is a whole-number division of it.
+
+### Checking it works
+
+```bash
+tools/tx-gpio-bitmap-check.py
+```
+
+No scope, no antenna, no jumper: it transmits with attenuation pinned at
+maximum — the nibble lives in bits the DAC discards, so the analog chain sees
+zeros — and reads the pins back through sysfs. It verifies each bit reaches its
+own pin, that the flag releases them, and that an authored square wave comes
+out at the period the sample rate implies.
+
+**Full reference:** [docs/tx-gpio-bitmap.md](docs/tx-gpio-bitmap.md) — the
+datapath, why the capture strobe is what it is, the block-design wiring,
+measured cost and timing, and what has and has not been verified on hardware.
 
 ## Transmitter safety
 
@@ -1026,13 +1138,20 @@ Re-run before every release, from a clean clone, flashed to a real board.
 
 | | |
 |---|---|
-| Patches applied | 0001, 0002, 0004, 0005 — optional ones skipped, with a message saying so |
+| Patches applied | 0001, 0002, 0004, 0005, 0006, 0007 — `optional/0003` skipped, with a message saying so |
 | `devicetree.dtb` | byte-for-byte identical to the factory board's |
-| RX path | no `rx_ddc`, stock `coefile_int.coe`, **72 / 220 DSP48s**, 11 893 LUTs |
-| BOOT.bin | 2 849 940 B, bitstream compressed to 2 329 140 B |
-| Timing | WNS +0.214 ns, 0 failing endpoints of 48 248 |
+| RX path | no `rx_ddc`, stock `coefile_int.coe`, **72 / 220 DSP48s**, 11 896 LUTs |
+| BOOT.bin | 2 888 788 B, bitstream compressed to 2 329 140 B |
+| Timing | WNS +0.231 ns, 0 failing endpoints of 48 263 |
 | HDL simulation | 2 565 checks against the golden models, all 10 mutants caught |
-| On the board | correct `hw_model`, persistent serial, TX muted at boot, 32 self-test checks passed |
+| On the board | correct `hw_model`, persistent serial, TX muted at boot, sample-locked GPIO passes its own check, 32 self-test checks passed |
+
+**"Stock" now means one thing more than factory.** The firmware layers are
+still factory-identical — `devicetree.dtb` byte-for-byte, kernel config, rootfs
+— but the default *bitstream* contains the sample-locked GPIO feature, which
+the factory one does not. That costs +3 LUTs and +7 flip-flops and changes no
+radio behaviour, because its enable bit resets to 0 and the four header pins
+stay ordinary GPIO until something sets it.
 
 **An HDL change reaches the fabric** — `optional/0003-wbfm-channelizer.patch`
 applied, Vivado project deleted, `build_all.sh --hdl-only` re-run.
@@ -1049,15 +1168,16 @@ spur at −1 MHz can only have been moved by logic running in the FPGA. Engaging
 the ÷8 filter confirms the rest: an out-of-band signal 37.8 dB over the floor
 vanishes, and capture RMS drops from −49.2 to −78.6 dBFS.
 
-**A second HDL change, measured the same way** —
-`optional/0006-tx-sample-nibble-to-gpio.patch`.
+**The sample-locked GPIO feature**, measured against a build without it.
 
 | | |
 |---|---|
-| Timing | WNS **+0.231 ns**, 0 failing of 48 263 — *better* than stock, because the patch constrains a clock-domain crossing that would otherwise be timed as synchronous |
+| Timing | WNS **+0.231 ns** vs +0.214 without it — *better*, because the patch constrains a clock-domain crossing ADI's design leaves timed as if it were synchronous |
 | Logic | **+3 LUTs, +7 flip-flops**, no DSPs, no block RAM |
-| I/O | **+4 bonded IOBs** — V10, U9, U10, T9, bank 13, `LVCMOS33` |
-| On the board | all four one-hot nibbles appear on their own pin; pattern period tracks `N/fs` to 0.1% |
+| I/O | **+4 bonded IOBs** — V10, U9, U10, T9, bank 13, `LVCMOS33`, pulled down |
+| Idle state | pins read **0** undriven, confirmed on hardware — they floated to 1 before the pull-down was added |
+| Control | `tx_sample_gpio_en` reads back, and sets register `0xBC` bit 1, confirmed |
+| On the board | all four one-hot nibbles appear on their own pin; authored square wave tracks `N/fs` to 0.1% |
 
 **This is not ceremony.** The v1.1 run found three real defects in the build's
 own self-repair path, each of which would have stopped the next person building
