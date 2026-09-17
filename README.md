@@ -135,7 +135,8 @@ Then go to [step 4](#4-add-your-own-hdl) to start changing the FPGA logic.
 ## Table of contents
 
 - [What you get](#what-you-get) · [Quick start](#quick-start)
-- [Boot modes (DIP switch)](#boot-modes-boot-dip-switch) · [LEDs](#leds) · [Requirements](#requirements)
+- [Boot modes (DIP switch)](#boot-modes-boot-dip-switch) · [LEDs](#leds) ·
+  [What is on the board](#what-is-on-the-board) · [Requirements](#requirements)
 - **Walkthrough** — [1. Install Vivado](#1-install-vivadovitis-20222) ·
   [2. Get the source](#2-get-the-firmware-source) ·
   [3. Open the block diagram](#3-open-the-block-diagram) ·
@@ -197,6 +198,29 @@ in practice ship in SD mode — check the switch, not the documentation.
 | `PWR` | Power present |
 | `DONE` | FPGA configured — the same DONE that Vivado reports as `End of startup status: HIGH` |
 | `USER` | Driven by Linux (PS GPIO); blinks via the kernel heartbeat trigger — [how to control it](docs/user-led.md) |
+
+## What is on the board
+
+<img src="docs/img/board-map.png" alt="The board photographed from above, with EXT_CLK, the JP5 expansion header, the Zynq, the RJ45 jack, the four SMA ports, the TX_LO and RX_LO U.FL connectors, the AD9361, the two DDR3 chips, the BOOT switch, the microSD slot and the two USB-C sockets each labelled" width="860">
+
+| | |
+|---|---|
+| Radio | **AD9361**, 2×2 transceiver, 70 MHz – 6 GHz |
+| SoC | **XC7Z020-CLG400**, two Cortex-A9 cores alongside Artix-7 fabric |
+| Memory | 2 × **MT41K256M16** DDR3L, 1 GB on a 32-bit bus; 16 MB **W25Q128** QSPI flash |
+| Transmit PA | 2 × Mini-Circuits **PGA-102+**, one per channel, about +19 dBm flat out |
+| Reference | 40 MHz, with its tuning voltage on JP5 pin 15 so it can be disciplined from outside |
+| Host links | gigabit Ethernet (**RTL8211F**), USB OTG (**USB3320C**), JTAG and serial console together on one socket (**FT2232HL**) |
+
+There are three U.FL connectors people often miss: `EXT_CLK` for an external
+reference, and `TX_LO` and `RX_LO`, which bring the AD9361's local oscillators
+out. Those are what you would reach for to run two boards coherently.
+
+Everything was read off [the vendor schematic](docs/vendor/7020_936x_SDR-schematic.pdf),
+sheet by sheet, and checked against a running board where that was possible.
+The full list, with clocks, connectors, supply rails and the things the
+schematic does *not* settle, is in
+**[What is on the board](docs/hardware.md)**.
 
 ## Requirements
 
