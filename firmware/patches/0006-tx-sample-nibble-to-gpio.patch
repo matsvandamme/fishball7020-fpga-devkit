@@ -132,7 +132,7 @@ index ff020ba04..e762a81a0 100755
 +# low nibble of the transmit sample.
 +#
 +# Balls read off the vendor schematic, sheet 5 (U1G, "PL端BANK13"):
-+#   3V3_IO1 = V10 (IO_L20P)   3V3_IO3 = U10 (IO_L12N)
++#   3V3_IO1 = V10 (IO_L20N)   3V3_IO3 = U10 (IO_L12N)
 +#   3V3_IO2 = U9  (IO_L16P)   3V3_IO4 = T9  (IO_L12P)
 +# sample_gpio[n] is wired to 3V3_IO(n+1), so the bit number matches the silk.
 +#

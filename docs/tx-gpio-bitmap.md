@@ -232,7 +232,7 @@ design. Read off the vendor schematic, sheet 5 (`U1G`, "PL端BANK13"):
 
 | Signal | Header net | JP5 pin | FPGA ball | FPGA pin name |
 |---|---|---|---|---|
-| `sample_gpio[0]` | `3V3_IO1` | 7 | **V10** | IO_L20P |
+| `sample_gpio[0]` | `3V3_IO1` | 7 | **V10** | IO_L20N |
 | `sample_gpio[1]` | `3V3_IO2` | 9 | **U9** | IO_L16P |
 | `sample_gpio[2]` | `3V3_IO3` | 11 | **U10** | IO_L12N |
 | `sample_gpio[3]` | `3V3_IO4` | 13 | **T9** | IO_L12P |
@@ -268,9 +268,12 @@ constraints, left alone here because the board demonstrably works.
 
 > **Do not guess these balls.** V11, W9 and V7 are adjacent bank-13 balls and
 > look like plausible candidates — an earlier version of this feature used
-> them. The schematic marks all three **"no connect"**. Vivado accepted them
-> without complaint and produced a clean, timing-met bitstream that drove three
-> pads wired to nothing, because a wrong `PACKAGE_PIN` is not a build error.
+> them. V11 is the worst of the three, because it is `IO_L20P`, the other half
+> of the same differential pair as V10: adjacent ball, adjacent pin name, and
+> wired to nothing. The schematic marks all three **"no connect"**. Vivado
+> accepted them without complaint and produced a clean, timing-met bitstream
+> that drove three pads wired to nothing, because a wrong `PACKAGE_PIN` is not
+> a build error.
 
 ### What it costs
 
