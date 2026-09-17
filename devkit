@@ -38,13 +38,20 @@ case "$cmd" in
         echo
         echo "== source tree =="
         if [ -d "$FW/src/.git" ]; then
-            digest="$(cat "$FW"/patches/*.patch 2>/dev/null | sha256sum | cut -d' ' -f1)"
-            if [ -f "$FW/src/.devkit-patches-applied" ] && [ "$(cat "$FW/src/.devkit-patches-applied")" = "$digest" ]; then
-                echo "   src/ present, patches applied (current set)"
-            elif [ -f "$FW/src/.devkit-patches-applied" ]; then
-                echo "   src/ present, but the patch set changed since setup - run ./devkit setup"
-            else
+            stamp="$FW/src/.devkit-patches-applied"
+            if [ ! -f "$stamp" ]; then
                 echo "   src/ present, patches NOT applied - run ./devkit setup"
+            else
+                missing=0
+                for p in "$FW"/patches/*.patch; do
+                    grep -qxF "$(sha256sum "$p" | cut -d' ' -f1)  $(basename "$p")" "$stamp" \
+                        || missing=$((missing+1))
+                done
+                if [ "$missing" -eq 0 ]; then
+                    echo "   src/ present, all $(ls "$FW"/patches/*.patch | wc -l) patches applied"
+                else
+                    echo "   src/ present, $missing patch(es) not applied - run ./devkit setup"
+                fi
             fi
         else
             echo "   src/ missing - run ./devkit setup"

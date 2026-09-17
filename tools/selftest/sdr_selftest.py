@@ -1570,8 +1570,13 @@ def build_parser():
     p = argparse.ArgumentParser(
         description="Check a Fishball7020 / PlutoSky board for damage.",
         epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--uri", default=os.environ.get("SDR_URI", "ip:192.168.2.1"),
-                   help="board address (default: %(default)s)")
+    # One board knob across the whole devkit: BOARD and BOARD_PASS are what
+    # ./devkit flash, verify --board and gpio-check use, so a user who moves
+    # the board sets them once. SDR_URI stays accepted for anything that
+    # already scripts against it.
+    _default_uri = os.environ.get("SDR_URI") or f"ip:{os.environ.get('BOARD', '192.168.2.1')}"
+    p.add_argument("--uri", default=_default_uri,
+                   help="board address (default: %(default)s; or set BOARD)")
     p.add_argument("--loopback", action="store_true",
                    help="run the RF tests. THIS TRANSMITS. Needs TX1 cabled to "
                         "RX1 through an attenuator")
@@ -1600,9 +1605,11 @@ def build_parser():
                    help="lowest TX attenuation the script may use, dB "
                         "(default: %(default)s). Lowering this raises transmit "
                         "power; only do it if you know what is on the cable")
-    p.add_argument("--ssh", nargs="?", const="analog", metavar="PASSWORD",
+    p.add_argument("--ssh", nargs="?", const=os.environ.get("BOARD_PASS", "analog"),
+                   metavar="PASSWORD",
                    help="also run the AD9361 BIST checks, which need shell "
-                        "access to the board (default password: analog)")
+                        "access to the board (default password: analog, or "
+                        "set BOARD_PASS)")
     p.add_argument("--quick", action="store_true",
                    help="only three frequency points, for a fast check")
     p.add_argument("--sweep-points", type=int, default=8, metavar="N",

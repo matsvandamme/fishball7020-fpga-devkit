@@ -66,55 +66,79 @@ cd "$SRC_DIR"
 #     (cd src && git apply ../patches/optional/0003-wbfm-channelizer.patch)
 echo "=== Applying patches ==="
 
-# Patches STACK: 0004 and 0005 both edit cf_axi_dds.c, so once both are applied
-# "git apply --check --reverse 0004" fails - 0005 sits on top and the context
-# no longer matches. Asking patch-by-patch therefore reports a fully patched
-# tree as broken, and simply running setup.sh twice looked like a serious
+# Patches STACK: 0004, 0005 and 0007 all edit cf_axi_dds.c, and 0008 edits the
+# device tree 0002 creates. Once a later patch is applied, "git apply --check
+# --reverse" on an earlier one fails - the later patch sits on top and the
+# context no longer matches. Asking patch-by-patch therefore reports a fully
+# patched tree as broken, and running setup.sh twice looked like a serious
 # failure with a message about upstream drift.
 #
 # Nor can the series be tested in one go: "git apply --check" given several
 # patches checks each against the CURRENT tree rather than cumulatively, so it
 # fails for exactly the same reason.
 #
-# So record what was applied. The stamp holds a digest of the patch files
-# themselves, which means it also notices when the patch set has changed (a
-# git pull bringing new ones) rather than just that setup ran once.
+# So record WHICH patches were applied, one "sha256  name" line each. An
+# aggregate digest was the first attempt and was too coarse: adding a patch
+# changed the digest, which sent the whole series back through the per-patch
+# loop and straight into the stacking problem above. Per-patch lines mean a
+# new patch applies on its own and the rest are left alone.
 STAMP="$SRC_DIR/.devkit-patches-applied"
-PATCH_DIGEST="$(cat "$FW1_DIR"/patches/*.patch | sha256sum | cut -d" " -f1)"
 
-# A tree patched before this stamp existed has no stamp but is perfectly fine.
-# Recognise it: if the LAST patch in the series reverses cleanly then the series
-# was applied in order, because nothing else edits those regions on top of it.
+patch_line() { printf '%s  %s\n' "$(sha256sum "$1" | cut -d" " -f1)" "$(basename "$1")"; }
+
+# A tree patched before this stamp existed, or by the older aggregate-digest
+# version, has no usable stamp but is perfectly fine. Recognise it: if the LAST
+# patch in the series reverses cleanly then the series was applied in order,
+# because nothing sits on top of it.
 LAST_PATCH="$(ls "$FW1_DIR"/patches/*.patch | sort | tail -1)"
-if [ ! -f "$STAMP" ] && [ -n "$LAST_PATCH" ] \
-   && git apply --check --reverse "$LAST_PATCH" 2>/dev/null; then
-    echo "  series already applied (no stamp yet) - recording one"
-    echo "$PATCH_DIGEST" > "$STAMP"
+if [ -n "$LAST_PATCH" ] && git apply --check --reverse "$LAST_PATCH" 2>/dev/null; then
+    if [ ! -f "$STAMP" ] || ! grep -q "  $(basename "$LAST_PATCH")$" "$STAMP" 2>/dev/null; then
+        echo "  series already applied - recording a per-patch stamp"
+        : > "$STAMP"
+        for p in "$FW1_DIR"/patches/*.patch; do patch_line "$p" >> "$STAMP"; done
+    fi
 fi
 
-if [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$PATCH_DIGEST" ]; then
-    echo "  all patches already applied (stamp matches) - nothing to do"
-else
-    for p in "$FW1_DIR"/patches/*.patch; do
-        echo "  -> $(basename "$p")"
-        if git apply --check "$p" 2>/dev/null; then
-            git apply "$p"
-        elif git apply --check --reverse "$p" 2>/dev/null; then
-            echo "     already applied - skipping"
-        else
-            echo "ERROR: $(basename "$p") does not apply cleanly, and isn't already applied." >&2
-            echo "       $SRC_DIR is not in the state this patch expects." >&2
-            echo "" >&2
-            echo "       Nothing in src/ is yours - it is cloned and patched by this" >&2
-            echo "       script - so the surest fix is to start clean:" >&2
-            echo "           rm -rf \"$SRC_DIR\" && ./devkit setup      (from the repo root)" >&2
-            echo "" >&2
-            echo "       If that still fails, upstream has drifted from the pinned" >&2
-            echo "       commit ($UPSTREAM_COMMIT)." >&2
-            exit 1
+applied=0
+skipped=0
+for p in "$FW1_DIR"/patches/*.patch; do
+    name=$(basename "$p")
+    if [ -f "$STAMP" ] && grep -qxF "$(patch_line "$p")" "$STAMP"; then
+        skipped=$((skipped + 1))
+        continue
+    fi
+    echo "  -> $name"
+    if git apply --check "$p" 2>/dev/null; then
+        git apply "$p"
+        applied=$((applied + 1))
+    elif git apply --check --reverse "$p" 2>/dev/null; then
+        echo "     already applied - recording it"
+    else
+        echo "ERROR: $name does not apply cleanly, and isn't already applied." >&2
+        echo "       $SRC_DIR is not in the state this patch expects." >&2
+        echo "" >&2
+        if [ -f "$STAMP" ] && grep -q "  $name$" "$STAMP"; then
+            echo "       This patch IS in the stamp but its contents have changed," >&2
+            echo "       so an older version of it is already in the tree. A patch" >&2
+            echo "       cannot be re-applied over its own earlier version." >&2
         fi
-    done
-    echo "$PATCH_DIGEST" > "$STAMP"
+        echo "       Nothing in src/ is yours - it is cloned and patched by this" >&2
+        echo "       script - so the surest fix is to start clean:" >&2
+        echo "           rm -rf \"$SRC_DIR\" && ./devkit setup      (from the repo root)" >&2
+        echo "" >&2
+        echo "       If that still fails, upstream has drifted from the pinned" >&2
+        echo "       commit ($UPSTREAM_COMMIT)." >&2
+        exit 1
+    fi
+    # Record it immediately, so an interrupted run does not claim patches it
+    # never reached.
+    patch_line "$p" >> "$STAMP"
+done
+
+if [ "$applied" -eq 0 ]; then
+    echo "  all $skipped patch(es) already applied - nothing to do"
+else
+    echo "  applied $applied, skipped $skipped already-applied"
 fi
 
 if ls "$FW1_DIR"/patches/optional/*.patch >/dev/null 2>&1; then

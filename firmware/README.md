@@ -21,7 +21,11 @@ Every fix in `patches/` was derived by building this exact source and diffing
 the result file-by-file against a genuine `SD Card Firmware/` dump from a real
 unit:
 
-- **`devicetree.dtb` builds byte-for-byte identical.**
+- **The device tree recompiles byte-for-byte identical** to the factory one
+  from patch `0002`. Patch `0008` then adds `gpio-line-names` — the one
+  deliberate departure, so the sample-locked GPIO pins can be found by name
+  rather than by arithmetic. Drop `0008` and the `.dtb` is factory-identical
+  again, which is the point of keeping it a separate patch.
 - **`uEnv.txt`** is content-identical; the only difference is the *order*
   U-Boot's environment hash table dumps variables in, which cannot affect boot
   (variables are looked up by name).
@@ -93,6 +97,25 @@ variants upstream (base/revb/revc) matched the real board — each had at least
 one different node — so this file is the real board's own `devicetree.dtb`,
 decompiled with `dtc` and confirmed to recompile byte-for-byte identical
 through the actual kernel build path.
+
+### `0008-name-the-sample-gpio-lines.patch`
+
+Adds `gpio-line-names` to the Zynq GPIO controller so the four sample-locked
+GPIO pins appear as `sample_gpio0`..`sample_gpio3`:
+
+```sh
+gpiofind sample_gpio0        # -> gpiochip0 72
+gpioget $(gpiofind sample_gpio0)
+```
+
+Without it a user has to compute `gpiochip base + 54 + 18` and trust the
+result. The controller is 54 MIO lines followed by 64 EMIO, and the property is
+positional from line 0, hence the 72 empty placeholders before the four names.
+
+**This is the only patch that changes `devicetree.dtb`** (+152 bytes), so it is
+deliberately separate: drop it and the device tree is byte-identical to the
+factory one again. Verified on the board — `gpiofind` resolves all four, and
+the numeric path (GPIO 978–981) still works exactly as before.
 
 ### `0004-mute-tx-when-no-dma-stream.patch`
 

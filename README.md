@@ -52,7 +52,7 @@ assumed.
 | **Toolchain** | Xilinx Vivado/Vitis **2022.2** (free WebPACK — no purchase) |
 | **Host OS** | **Ubuntu 22.04 LTS** — what Vivado 2022.2 officially supports |
 | **Firmware base** | Linux 5.15, U-Boot, Buildroot — a Zynq-7020 port of ADI's `plutosdr-fw` |
-| **Verified against real hardware** | `devicetree.dtb` byte-identical; kernel config identical; kernel and bootloader within a few hundred bytes; rootfs file list identical — see [Provenance](#how-this-repo-came-to-exist) |
+| **Verified against real hardware** | device tree reproduces the factory one exactly (plus one named-GPIO addition); kernel config identical; kernel and bootloader within a few hundred bytes; rootfs file list identical — see [Provenance](#how-this-repo-came-to-exist) |
 
 ## What you get
 
@@ -684,6 +684,8 @@ fishball7020-fpga-devkit/
 │   ├── env-vivado.sh                    ← source this before any vivado/xsct/bootgen command
 │   ├── flash.sh                         ← flash the running board over the network, safely
 │   ├── tx-gpio-bitmap-check.py          verifies the TX-nibble-to-GPIO feature on hardware
+│   ├── flash.sh                         flash the running board over the network, safely
+│   ├── setup-hardware-runner.sh         register this machine as the hardware-CI runner
 │   ├── selftest/                        ← is the board damaged? measures and says (see below)
 │   │   ├── sdr_selftest.py              rails, BIST, receiver, and an RF loopback sweep
 │   │   ├── iiod_min.py                  libiio's network protocol over a socket, stdlib only
@@ -697,6 +699,7 @@ fishball7020-fpga-devkit/
     │   │                               0001 fixes + hw_serial · 0002 device tree
     │   │                               0004 TX mute · 0005 keep a gain set before streaming
     │   │                               0006 sample-locked GPIO · 0007 its IIO attribute
+    │   │                               0008 gpio-line-names for those four pins
     │   └── optional/                   NOT applied — worked examples
     │       └── 0003-wbfm-channelizer.patch         (docs/wbfm-channelizer.md)
     ├── scripts/
@@ -785,9 +788,18 @@ echo 1 > $D/tx_sample_gpio_en               # pins carry the sample nibble
 echo 0 > $D/tx_sample_gpio_en               # pins are ordinary GPIO again
 ```
 
-With it off, the four pins are plain EMIO GPIO (numbers 978–981 on this
-firmware) that Linux can drive and read as usual — so enabling the feature in
-the bitstream takes nothing away.
+With it off, the four pins are plain Linux GPIO that you can drive and read as
+usual — so enabling the feature in the bitstream takes nothing away. They are
+named in the device tree, so no arithmetic is needed:
+
+```sh
+gpiofind sample_gpio0              # -> gpiochip0 72
+gpioget $(gpiofind sample_gpio0)   # read it
+gpioset $(gpiofind sample_gpio0)=1 # drive it (with the feature off)
+```
+
+The legacy numeric path still works if you prefer it: GPIO **978–981**, which
+is `gpiochip base + 54 + 18` (54 MIO lines, then EMIO 18–21).
 
 ### Using it
 
@@ -882,8 +894,9 @@ lists what is there.
 What makes this a guarantee rather than best effort: the IIO core runs the
 buffer's `postdisable` hook on teardown **even when the application crashed or
 was killed**, because teardown happens on file close. A userspace watchdog
-could never promise that. No device tree change was needed, so
-`devicetree.dtb` stays byte-identical to the factory firmware.
+could never promise that. The TX mute needed no device tree change of its
+own — the driver reaches the phy through the DDS node's existing `clocks`
+phandle.
 
 Measured over a 50 dB attenuated loopback, **the mute costs no output power**:
 commanded and applied attenuation matched to 0.01 dB at every point including
@@ -900,9 +913,12 @@ commanded and applied attenuation matched to 0.01 dB at every point including
 > |---|---|---|---|---|---|---|
 > | **Gain (dB)** | **17.7** | 15.9 | 14.0 | 12.5 | 11.5 | 10.4 |
 >
-> with P1dB around **+17.5 dBm**. Measured at 900 MHz through a 50 dB pad, flat
-> out it delivers about **+18.5 dBm** — roughly **16 dB above what its own
-> receive port survives**.
+> with P1dB around **+17.5 dBm**. Measured flat out: **+18.5 dBm at 900 MHz**,
+> and **+19 dBm** as the across-band figure, the six runs agreeing to 0.7 dB —
+> roughly **16 dB above what its own receive port survives**.
+>
+> <sub>This table and these figures are the canonical copy; `tools/selftest/README.md`
+> and the agent skill point here. Update them here first.</sub>
 >
 > **Fit at least 20 dB of attenuation** in any loopback; 40–50 dB is
 > comfortable and still leaves 60 dB of SNR. Start at maximum attenuation and
@@ -1103,8 +1119,10 @@ cross-referenced against:
   firmware's compiled kernel image, proving this rebuild's configuration
   identical rather than merely close.
 
-The result, verified file-by-file against a real unit: `devicetree.dtb` builds
-byte-for-byte identical; `uEnv.txt` and the rootfs file list are
+The result, verified file-by-file against a real unit: the device tree
+recompiles byte-for-byte identical to the factory one (patch `0008` then adds
+`gpio-line-names`, the single deliberate departure — see below); `uEnv.txt` and
+the rootfs file list are
 content-identical; kernel and bootloader are within a few hundred bytes (the
 upstream history was squashed *after* this board's firmware was built, so some
 source has drifted — not recoverable from public sources). The
@@ -1121,18 +1139,20 @@ Re-run before every release, from a clean clone, flashed to a real board.
 
 | | |
 |---|---|
-| Patches applied | 0001, 0002, 0004, 0005, 0006, 0007 — `optional/0003` skipped, with a message saying so |
-| `devicetree.dtb` | byte-for-byte identical to the factory board's |
+| Patches applied | 0001, 0002, 0004, 0005, 0006, 0007, 0008 — `optional/0003` skipped, with a message saying so |
+| `devicetree.dtb` | reproduces the factory one exactly, then patch `0008` adds `gpio-line-names` (+152 B) — verified by decompiling and diffing |
 | RX path | no `rx_ddc`, stock `coefile_int.coe`, **72 / 220 DSP48s**, 11 896 LUTs |
 | BOOT.bin | 2 888 788 B, bitstream compressed to 2 329 140 B |
 | Timing | WNS +0.231 ns, 0 failing endpoints of 48 263 |
 | HDL simulation | 2 565 checks against the golden models, all 10 mutants caught |
 | On the board | correct `hw_model`, persistent serial, TX muted at boot, sample-locked GPIO passes its own check, 32 self-test checks passed |
 
-**"Stock" now means one thing more than factory.** The firmware layers are
-still factory-identical — `devicetree.dtb` byte-for-byte, kernel config, rootfs
-— but the default *bitstream* contains the sample-locked GPIO feature, which
-the factory one does not. That costs +3 LUTs and +7 flip-flops and changes no
+**"Stock" now means two things more than factory.** The kernel config and
+rootfs are still factory-identical, and the device tree still recompiles
+byte-for-byte from the factory one — but the default *bitstream* contains the
+sample-locked GPIO feature, and patch `0008` adds `gpio-line-names` to the
+device tree so those four pins can be found by name. Both are deliberate and
+both are listed above. That costs +3 LUTs and +7 flip-flops and changes no
 radio behaviour, because its enable bit resets to 0 and the four header pins
 stay ordinary GPIO until something sets it.
 

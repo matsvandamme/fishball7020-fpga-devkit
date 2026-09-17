@@ -43,6 +43,10 @@ jobs:
           grep -q ad9361_tx_is_muted firmware/src/linux/drivers/iio/adc/ad9361.h
           grep -q 'ad9361_tx_is_muted(phy) && ad9361_tx_mute' \
             firmware/src/linux/drivers/iio/frequency/cf_axi_dds.c
+      - name: Confirm the GPIO lines are named in the device tree
+        run: |
+          grep -q gpio-line-names firmware/src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
+          grep -q sample_gpio0 firmware/src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
       - name: Confirm the sample-locked GPIO feature landed
         run: |
           grep -q tx_gpio_bitmap firmware/src/hdl/projects/pluto/system_bd.tcl

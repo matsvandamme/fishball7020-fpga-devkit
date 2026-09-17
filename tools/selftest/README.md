@@ -86,13 +86,11 @@ The receiver is the fragile end: the AD9361's RX input is rated to about
 transmit — a Mini-Circuits [PGA-102+](https://www.minicircuits.com/pdfs/PGA-102+.pdf)
 whose gain is strongly frequency dependent:
 
-| GHz | 0.05 | 0.8 | 2.0 | 3.0 | 4.0 | 6.0 |
-|---|---|---|---|---|---|---|
-| **Gain (dB)** | **17.7** | 15.9 | 14.0 | 12.5 | 11.5 | 10.4 |
-
-P1dB is about +17.5 dBm. Measured here at 900 MHz through a 50 dB pad, the
-board delivers roughly **+18.5 dBm** flat out — about **16 dB above what its
-own receive port survives**. Sizing a loopback for a bare AD9361, as most Pluto
+whose gain runs from **17.7 dB at 50 MHz down to 10.4 dB at 6 GHz** (full
+table in the [README](../../README.md#transmitter-safety), which is the
+canonical copy). P1dB is about +17.5 dBm, and flat out the board delivers
+**+18.5 to +19 dBm** — about **16 dB above what its own receive port
+survives**. Sizing a loopback for a bare AD9361, as most Pluto
 advice does, gets this dangerously wrong.
 
 So the script never transmits with less than **35 dB** of its own attenuation:

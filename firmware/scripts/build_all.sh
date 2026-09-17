@@ -100,15 +100,22 @@ fi
 # stamps src/ with a digest of the patch set it applied; a missing or stale
 # stamp means either setup never finished or a git pull brought new patches.
 STAMP="$SRC_DIR/.devkit-patches-applied"
-PATCH_DIGEST="$(cat "$SCRIPT_DIR"/../patches/*.patch 2>/dev/null | sha256sum | cut -d' ' -f1)"
 if [ ! -f "$STAMP" ]; then
     echo "ERROR: $SRC_DIR carries no patch stamp - setup.sh has not completed on it." >&2
     echo "       Run ./devkit setup (safe to re-run), then build." >&2
     preflight_fail=1
-elif [ "$(cat "$STAMP")" != "$PATCH_DIGEST" ]; then
-    echo "ERROR: the patch set in patches/ has changed since setup.sh last ran." >&2
-    echo "       Run ./devkit setup to apply the new patches, then build." >&2
-    preflight_fail=1
+else
+    # The stamp lists one "sha256  name" line per applied patch. Anything in
+    # patches/ that is not in it has not been applied - a git pull bringing a
+    # new patch is the common case - and building without it produces firmware
+    # that silently lacks the change.
+    for p in "$SCRIPT_DIR"/../patches/*.patch; do
+        line="$(sha256sum "$p" | cut -d' ' -f1)  $(basename "$p")"
+        grep -qxF "$line" "$STAMP" || {
+            echo "ERROR: $(basename "$p") is not applied (or has changed since it was)." >&2
+            echo "       Run ./devkit setup, then build." >&2
+            preflight_fail=1; }
+    done
 fi
 
 # A Vivado project that already exists is REUSED by build_hdl.tcl: it re-runs

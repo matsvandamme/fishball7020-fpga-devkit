@@ -1,0 +1,118 @@
+name: Hardware
+
+# Everything in the other workflows runs without a radio. This one needs the
+# board, so it runs on a SELF-HOSTED runner on the machine the board is plugged
+# into. It is what turns "verified once, by hand" into "verified on every push".
+#
+# ---------------------------------------------------------------------------
+# SECURITY - read before registering a runner
+# ---------------------------------------------------------------------------
+# A self-hosted runner executes workflow code from this repository on your
+# machine. GitHub's own guidance is not to use one on a PUBLIC repository
+# without care, because anyone who opens a pull request can propose workflow
+# changes, and on some settings those run.
+#
+# This workflow therefore:
+#   * does NOT trigger on pull_request at all - only on pushes to main (which
+#     only a collaborator can make) and on manual dispatch;
+#   * never transmits at power: the self-test runs without --loopback, and the
+#     GPIO check keeps TX attenuation at maximum and asserts it;
+#   * leaves the board as it found it.
+#
+# Before enabling this, also set, in repo Settings -> Actions -> General:
+#   "Fork pull request workflows from outside collaborators" = Require approval
+#     for all outside collaborators.
+#
+# ---------------------------------------------------------------------------
+# REGISTERING THE RUNNER (one time, on the machine with the board)
+# ---------------------------------------------------------------------------
+#   ./tools/setup-hardware-runner.sh
+#
+# That script fetches a registration token, installs the runner under
+# ~/actions-runner-fishball with the label "fishball-board", and offers to run
+# it as a service. Nothing here works until it has been run.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/patches/**"
+      - "firmware/sim/**"
+      - "firmware/scripts/**"
+      - "tools/**"
+      - "devkit"
+      - ".github/workflows/hardware.yml"
+  workflow_dispatch:
+  schedule:
+    # Once a week: catches a board that has drifted, a card that has rotted, or
+    # firmware someone flashed by hand and forgot about.
+    - cron: "0 6 * * 1"
+
+concurrency:
+  # One job at a time: there is one board, and two jobs would fight over it.
+  group: fishball-hardware
+  cancel-in-progress: false
+
+jobs:
+  hardware:
+    runs-on: [self-hosted, fishball-board]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Is the board there?
+        run: |
+          BOARD="${BOARD:-192.168.2.1}"
+          for i in $(seq 1 10); do
+            ping -c1 -W1 "$BOARD" >/dev/null 2>&1 && { echo "board at $BOARD"; exit 0; }
+            sleep 2
+          done
+          echo "no board at $BOARD - is it powered and enumerated?" >&2
+          exit 1
+
+      - name: Toolchain and prerequisites
+        run: ./devkit doctor
+
+      - name: HDL simulation and mutation testing
+        run: ./devkit sim --mutate
+
+      - name: Board self-test (no cable, never transmits)
+        run: ./devkit selftest --ssh
+
+      - name: Sample-locked GPIO outputs
+        # Verifies the feature end to end on the pads, with TX attenuation
+        # pinned at maximum and read back during every stream.
+        run: ./devkit gpio-check
+
+      - name: Is the board running what this tree builds?
+        # Informational: a STALE verdict means the board needs reflashing, not
+        # that the tree is broken, so it must not fail the run.
+        continue-on-error: true
+        run: ./devkit verify --board
+
+      - name: MCP unit tests and protocol smoke test
+        run: |
+          if [ -d "$HOME/Fishball7020-mcp" ]; then
+            cd "$HOME/Fishball7020-mcp"
+            python3 evaluation/test_units.py
+            python3 evaluation/smoke_test.py
+          else
+            echo "MCP checkout not found at ~/Fishball7020-mcp - skipping"
+          fi
+
+      - name: Leave the transmitter quiet
+        if: always()
+        run: |
+          BOARD="${BOARD:-192.168.2.1}"
+          PASS="${BOARD_PASS:-analog}"
+          command -v sshpass >/dev/null || exit 0
+          sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "root@$BOARD" '
+            D=/sys/bus/iio/devices/iio:device0
+            echo -89.75 > $D/out_voltage0_hardwaregain
+            echo -89.75 > $D/out_voltage1_hardwaregain
+            DDS=$(for d in /sys/bus/iio/devices/iio:device*; do
+                    [ "$(cat $d/name)" = cf-ad9361-dds-core-lpc ] && echo $d; done; true)
+            for ch in $DDS/out_altvoltage*_scale; do echo 0 > $ch 2>/dev/null; done
+            echo "TX left at $(cat $D/out_voltage0_hardwaregain)"
+          ' || true

@@ -30,11 +30,32 @@ clear_package_build_dirs() {
 }
 
 cd "$SRC_DIR"
+# Buildroot's own output is thousands of lines, so it goes to a log rather than
+# the terminal - but a stage that prints NOTHING for thirty-plus minutes is
+# indistinguishable from a hang, and this is the longest stage in the build.
+# Print where the log is, then a heartbeat naming the package currently being
+# built, so there is always evidence of progress.
+heartbeat() {
+    local logfile=$1
+    while sleep 30; do
+        [ -r "$logfile" ] || continue
+        local pkg
+        pkg=$(grep -oE '^>>> [^ ]+ [^ ]+' "$logfile" | tail -1)
+        printf '    ... %s  (%s lines)%s\n' "${pkg:-building}" "$(wc -l < "$logfile")" \
+               "$( [ -n "$pkg" ] && echo "" )"
+    done
+}
+
 for i in $(seq 1 $MAX_ITERS); do
     echo "=== iteration $i ===" | tee -a "$LOG"
-    make -C buildroot "$@" > "/tmp/buildroot_iter_${i}_$$.log" 2>&1
+    iter_log="/tmp/buildroot_iter_${i}_$$.log"
+    echo "    full output: $iter_log   (tail -f it to watch)" | tee -a "$LOG"
+    heartbeat "$iter_log" &
+    hb_pid=$!
+    make -C buildroot "$@" > "$iter_log" 2>&1
     make_rc=$?
-    cat "/tmp/buildroot_iter_${i}_$$.log" >> "$LOG"
+    kill "$hb_pid" 2>/dev/null; wait "$hb_pid" 2>/dev/null
+    cat "$iter_log" >> "$LOG"
 
     # Judge success by make's own exit code, not by the presence of
     # rootfs.cpio.gz. That artifact only appears for the "all" target, so the
@@ -46,7 +67,6 @@ for i in $(seq 1 $MAX_ITERS); do
         exit 0
     fi
 
-    iter_log="/tmp/buildroot_iter_${i}_$$.log"
     fname=$(grep "has wrong sha256 hash:" "$iter_log" | tail -1 | sed -n 's/ERROR: \(.*\) has wrong sha256 hash:/\1/p')
     got=$(grep -A2 "has wrong sha256 hash:" "$iter_log" | tail -3 | sed -n 's/ERROR: got     : //p')
 

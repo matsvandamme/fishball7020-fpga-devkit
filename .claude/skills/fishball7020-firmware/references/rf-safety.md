@@ -13,9 +13,13 @@ strongly frequency dependent:
 |---|---|---|---|---|---|---|
 | **Gain (dB)** | **17.7** | 15.9 | 14.0 | 12.5 | 11.5 | 10.4 |
 
-P1dB is about +17.5 dBm. Measured on a PA-equipped unit at 900 MHz, consistent
-to 0.7 dB across six runs and three attenuator values: **+19 dBm flat out**,
-roughly **16 dB above what its own receive port survives**.
+P1dB is about +17.5 dBm. Measured on a PA-equipped unit: **+18.5 dBm at
+900 MHz**, **+19 dBm** across the band, the six runs and three attenuator
+values agreeing to 0.7 dB - roughly **16 dB above what its own receive port
+survives**.
+
+<sub>Canonical copy of this table: the repo README's "Transmitter safety"
+section. Change it there first, then mirror it here.</sub>
 
 Sizing a loopback for a bare AD9361 (+7 dBm) is therefore wrong by 10-18 dB,
 and most Pluto advice on the internet does exactly that.

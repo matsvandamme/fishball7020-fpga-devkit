@@ -81,17 +81,23 @@ echo "== source tree =="
 if [ -d "$FW_DIR/src/.git" ]; then
   ok "src/ present"
   stamp="$FW_DIR/src/.devkit-patches-applied"
-  digest="$(cat "$FW_DIR"/patches/*.patch 2>/dev/null | sha256sum | cut -d' ' -f1)"
-  if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$digest" ]; then ok "patches applied (current set)"
-  elif [ -f "$stamp" ]; then soft "patch set has changed since setup ran - run ./devkit setup"
-  else soft "patches may not be applied - run ./devkit setup"; fi
+  if [ ! -f "$stamp" ]; then
+    soft "patches not applied - run ./devkit setup"
+  else
+    missing=0
+    for p in "$FW_DIR"/patches/*.patch; do
+      grep -qxF "$(sha256sum "$p" | cut -d' ' -f1)  $(basename "$p")" "$stamp" || missing=$((missing+1))
+    done
+    if [ "$missing" -eq 0 ]; then ok "patches applied (current set)"
+    else soft "$missing patch(es) not applied - run ./devkit setup"; fi
+  fi
 else
   soft "src/ not present yet - run ./scripts/setup.sh first"
 fi
 
 echo
 echo "== board (optional) =="
-BOARD="${BOARD:-${BOARD_IP:-192.168.2.1}}"     # same knob as flash.sh, verify and devkit
+BOARD="${BOARD:-192.168.2.1}"     # the one knob: flash, verify, gpio-check, selftest
 if ping -c1 -W1 "$BOARD" >/dev/null 2>&1; then
   ok "board reachable at $BOARD"
 else

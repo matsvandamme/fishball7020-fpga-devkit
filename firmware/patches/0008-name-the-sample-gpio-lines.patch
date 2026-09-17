@@ -1,0 +1,27 @@
+diff --git a/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts b/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
+--- a/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
++++ b/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
+@@ -161,6 +161,23 @@
+ 			interrupts = <0x00 0x14 0x04>;
+ 			reg = <0xe000a000 0x1000>;
+ 			phandle = <0x09>;
++
++			/*
++			 * Name the four sample-locked GPIO pins, so they can be
++			 * found by name instead of by arithmetic. The Zynq
++			 * controller is 54 MIO lines followed by 64 EMIO, and
++			 * these pins are EMIO 18..21 - controller lines 72..75.
++			 * gpio-line-names is positional from line 0, hence the
++			 * 72 empty placeholders.
++			 *
++			 * On the board:  gpiofind sample_gpio0  ->  gpiochip0 72
++			 */
++			gpio-line-names =
++				"", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
++				"", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
++				"", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
++				"", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
++				"sample_gpio0", "sample_gpio1", "sample_gpio2", "sample_gpio3";
+ 		};
+ 
+ 		i2c@e0004000 {

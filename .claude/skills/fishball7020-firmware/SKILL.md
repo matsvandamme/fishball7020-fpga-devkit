@@ -96,10 +96,12 @@ in the firmware source, and can rewrite IIO attributes underneath an
 application. Three kernel rebuilds were once spent chasing a "firmware bug" that
 was a script on this partition. `sdr_selftest.py --ssh` lists what is there.
 
-**Do not change the device tree without a strong reason.** `devicetree.dtb`
-builds byte-for-byte identical to the factory board's, which is a load-bearing
-provenance claim. Most things people reach for it for belong in `S21misc` or in
-the driver.
+**Do not change the device tree without a strong reason.** It recompiles
+byte-for-byte identical to the factory board's, which is a load-bearing
+provenance claim; patch `0008` (`gpio-line-names`, so the sample-locked pins
+resolve via `gpiofind sample_gpio0`) is the single deliberate exception, kept
+as its own patch so dropping it restores the factory `.dtb`. Most things people
+reach for the device tree for belong in `S21misc` or in the driver instead.
 
 **A loopback without an attenuator destroys the receiver.** The RX input is
 rated to about +2.5 dBm; this board measures **+19 dBm** flat out. Fit at least

@@ -1,0 +1,107 @@
+name: Release
+
+# Cutting a release used to be a manual sequence: build, copy five files out of
+# firmware/output/, sha256sum them, write the notes, upload. Every step is a
+# chance to ship a checksum that does not match the file beside it, or notes
+# that describe a build nobody kept.
+#
+# This does the packaging half. It deliberately does NOT build the firmware -
+# Vivado cannot run on a hosted runner and a 25 GB toolchain has no business in
+# CI - so the artifacts come from a build you made and verified yourself, and
+# the workflow's job is to check them and publish them unaltered.
+#
+#     ./devkit build && ./devkit verify --board      # on your machine, with a board
+#     gh workflow run release.yml -f tag=v1.3        # attaches firmware/output/ from
+#                                                    # the self-hosted runner
+#
+# Or push a tag and upload the five files by hand into the draft it creates.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v1.3). Must already exist."
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    # Runs where the build is. A hosted runner has no firmware/output/, so this
+    # needs the same self-hosted runner the hardware checks use; see
+    # .github/workflows/hardware.yml for how that is registered.
+    runs-on: [self-hosted, fishball-board]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: The five SD-card files must all be present
+        run: |
+          cd firmware/output
+          missing=0
+          for f in BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz; do
+            if [ -r "$f" ]; then
+              printf '  %-20s %10s B\n' "$f" "$(stat -c%s "$f")"
+            else
+              echo "  MISSING $f" >&2; missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] || {
+            echo "Build first: ./devkit build" >&2; exit 1; }
+
+      - name: The build must pass its own verification
+        run: ./devkit verify
+
+      - name: The board must be running exactly these files
+        # A release whose artifacts were never booted is a guess. This is the
+        # whole reason the job runs on the machine with the board attached.
+        run: ./devkit verify --board
+
+      - name: Checksums
+        run: |
+          cd firmware/output
+          sha256sum BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Record what is in this bitstream
+        id: facts
+        run: |
+          PRJ=firmware/src/hdl/projects/pluto
+          {
+            echo "luts=$(grep -E '^\| Slice LUTs' $PRJ/utilization.rpt | head -1 | awk -F'|' '{gsub(/ /,"",$3); print $3}')"
+            echo "dsps=$(grep -E '^\| DSPs' $PRJ/utilization.rpt | head -1 | awk -F'|' '{gsub(/ /,"",$3); print $3}')"
+            echo "wns=$(grep -A6 'Design Timing Summary' $PRJ/timing.rpt | awk 'NF>=8 && $1 ~ /^-?[0-9.]+$/ {print $1; exit}')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          cd firmware/output
+          gh release create "$TAG" \
+            BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz SHA256SUMS \
+            --repo "${{ github.repository }}" \
+            --title "$TAG" \
+            --draft \
+            --notes "Prebuilt SD-card files. Copy all five onto a FAT32 card, or
+          update a running board with \`./devkit flash --all\`.
+
+          Built and verified on hardware before publishing: \`./devkit verify\`
+          passed, and \`./devkit verify --board\` confirmed the board was running
+          exactly these files.
+
+          | | |
+          |---|---|
+          | Slice LUTs | ${{ steps.facts.outputs.luts }} |
+          | DSP48s | ${{ steps.facts.outputs.dsps }} / 220 |
+          | Timing | WNS ${{ steps.facts.outputs.wns }} ns, no failing endpoints |
+
+          Checksums in \`SHA256SUMS\`. Draft - edit the notes, then publish."
+          echo "Draft release created for $TAG. Edit the notes and publish when ready."

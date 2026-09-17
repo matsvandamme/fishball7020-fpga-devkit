@@ -214,9 +214,11 @@ Read the converter rate back. If the AD9361 landed on something other than
 4224000, the channel is no longer at exactly Fs/4 and will sit off-centre.
 
 The flowgraph in `docs/grc/fishball_wbfm_rx.grc` is written to do all of this
-for you — **but it has not yet been run against hardware**, so treat it as a
-starting point rather than a verified receiver. The FPGA filter itself has been
-measured (see above); the GNU Radio side has not.
+for you — **but as of 2026-09-17 it has not been run against hardware**, so
+treat it as a starting point rather than a verified receiver. The FPGA filter
+itself has been measured on the board (see above, and the README's end-to-end
+test); it is the GNU Radio side that is untested. If you run it, please say so
+in an issue or PR so this caveat can be removed.
 
 It sets both rates from a Python snippet that runs after initialisation, because gr-iio programs
 the AD9361 on its own and does not know about the FPGA decimator.

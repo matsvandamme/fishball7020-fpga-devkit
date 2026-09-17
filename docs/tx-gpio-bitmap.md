@@ -327,6 +327,18 @@ bypassing the FPGA interpolation filter leaves bit 1 alone.
 With the flag clear, the four pins are EMIO GPIO bits 18–21. On Zynq the EMIO
 lines follow the 54 MIO ones:
 
+The lines are named in the device tree (patch `0008`), so they can be found by
+name rather than computed:
+
+```sh
+gpiofind sample_gpio0                 # -> gpiochip0 72
+gpioget  $(gpiofind sample_gpio0)     # read
+gpioset  $(gpiofind sample_gpio0)=1   # drive, with the feature off
+```
+
+The legacy sysfs path still works and is what the checker uses, because it can
+be driven from a shell loop fast enough to sample a slow pattern:
+
 ```sh
 BASE=$(cat /sys/class/gpio/gpiochip*/base | head -1)   # 906 on this firmware
 N=$((BASE + 54 + 18))                                  # 978 = sample_gpio[0]
@@ -335,7 +347,9 @@ echo out > /sys/class/gpio/gpio$N/direction
 echo 1   > /sys/class/gpio/gpio$N/value
 ```
 
-`sample_gpio[0..3]` are GPIO **978, 979, 980, 981** on this firmware.
+`sample_gpio[0..3]` are GPIO **978, 979, 980, 981** on this firmware — the Zynq
+controller is 54 MIO lines followed by 64 EMIO, so these are controller lines
+72–75.
 
 > **A pin's level does not tell you who is driving it.** With the flag clear
 > the fabric releases the pins and the pull-down holds them low — which is also
