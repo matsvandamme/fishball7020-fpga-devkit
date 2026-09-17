@@ -838,6 +838,43 @@ Pin *numbering* is certain; which physical end of the connector is pin 1 is not
 marked on the schematic — find the square pad or the silkscreen dot before you
 clip anything on.
 
+<details>
+<summary><b>Where these numbers come from</b> — the three vendor schematic sheets, annotated</summary>
+
+<br>
+
+The schematic PDF itself is not in this repository — it is the board vendor's
+document and ships with the board. These are annotated crops of the three pages
+that fix the assignment, drawn by
+[`docs/img/make_schematic_figures.py`](docs/img/make_schematic_figures.py).
+Every highlight is positioned from the PDF's own text coordinates, so a box
+cannot drift off the word it marks; point the script at your copy of the PDF
+and it reproduces these exactly.
+
+**Sheet 5 — which FPGA ball carries which header net.** Also the three balls
+that look right and are not: V11, W9 and V7 sit in the same bank, next to the
+real ones, and the schematic marks all three *no connect*. An early version of
+this feature drove them, and Vivado produced a clean, timing-met bitstream
+anyway — a wrong `PACKAGE_PIN` is not a build error.
+
+![Sheet 5 of the vendor schematic, FPGA bank 13, with each 3V3_IO net boxed together with its ball and the three no-connect balls marked](docs/img/schematic-sheet5-fpga-balls.png)
+
+**Sheet 13 — which JP5 pin carries which net.** Net labels sit a fixed distance
+above their pin row, which leaves two possible readings; only one of them frees
+pins 2 and 20 for the two GND symbols and puts the power rails on 1, 3 and 5.
+The other would shift every net by one pin.
+
+![Sheet 13 of the vendor schematic, connector JP5, with each 3V3_IO net boxed together with its pin number and the two GND symbols marked](docs/img/schematic-sheet13-jp5-pins.png)
+
+**Sheet 1 — bank 13's I/O supply, and why `LVCMOS33`.** `VCCO` is what a bank's
+output drivers run from, so it fixes the voltage these pins swing to. Same
+ambiguity, same kind of cross-check: only one reading puts the DDR3L memory
+bank on 1.35 V, and that reading is the one that puts bank 13 on 3.3 V.
+
+![Sheet 1 of the vendor schematic, with VCCO_13_1..4 boxed against the VCC3V3 rail symbol and the DDR bank's 1.35 V rail marked as the cross-check](docs/img/schematic-sheet1-bank13-vcco.png)
+
+</details>
+
 ### Turning it on
 
 ```sh

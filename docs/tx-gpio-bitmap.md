@@ -228,7 +228,10 @@ back to `gpio_i[21:18]`.
 ### The pins
 
 Four free single-ended 3.3 V I/O on connector **JP5**, unused by the stock
-design. Read off the vendor schematic, sheet 5 (`U1G`, "PL端BANK13"):
+design. Read off the vendor schematic, sheet 5 (`U1G`, "PL端BANK13") —
+annotated crops of that sheet and the two others that fix this assignment are
+in the README, under
+[Where these numbers come from](../README.md#the-pins):
 
 | Signal | Header net | JP5 pin | FPGA ball | FPGA pin name |
 |---|---|---|---|---|
