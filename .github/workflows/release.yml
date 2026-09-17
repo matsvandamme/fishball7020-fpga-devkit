@@ -36,6 +36,9 @@ jobs:
     # needs the same self-hosted runner the hardware checks use; see
     # .github/workflows/hardware.yml for how that is registered.
     runs-on: [self-hosted, fishball-board]
+    # Same gate as hardware.yml: without a registered runner this would queue
+    # forever instead of failing visibly.
+    if: vars.HARDWARE_RUNNER == 'enabled'
     steps:
       - uses: actions/checkout@v4
         with:

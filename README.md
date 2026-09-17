@@ -686,6 +686,7 @@ fishball7020-fpga-devkit/
 │   ├── tx-gpio-bitmap-check.py          verifies the TX-nibble-to-GPIO feature on hardware
 │   ├── flash.sh                         flash the running board over the network, safely
 │   ├── setup-hardware-runner.sh         register this machine as the hardware-CI runner
+│                                          (workflows stay inert until you do)
 │   ├── selftest/                        ← is the board damaged? measures and says (see below)
 │   │   ├── sdr_selftest.py              rails, BIST, receiver, and an RF loopback sweep
 │   │   ├── iiod_min.py                  libiio's network protocol over a socket, stdlib only

@@ -53,6 +53,26 @@ token() {
         exit 1; }
 }
 
+# The workflows are gated on a repository variable so they stay inert - rather
+# than queued forever against a runner that does not exist - until one is
+# registered. "gh variable" only exists in gh >= 2.34, so go through the API,
+# which works on every version and needs no extra subcommand.
+set_runner_flag() {
+    local value=$1
+    if gh api -X PATCH "repos/$REPO/actions/variables/HARDWARE_RUNNER" \
+            -f name=HARDWARE_RUNNER -f value="$value" >/dev/null 2>&1; then
+        echo "   repository variable HARDWARE_RUNNER=$value"
+    elif gh api -X POST "repos/$REPO/actions/variables" \
+            -f name=HARDWARE_RUNNER -f value="$value" >/dev/null 2>&1; then
+        echo "   repository variable HARDWARE_RUNNER=$value (created)"
+    else
+        echo "   NOTE: could not set HARDWARE_RUNNER=$value automatically." >&2
+        echo "         Set it by hand, or the workflows stay inert:" >&2
+        echo "         gh api -X POST repos/$REPO/actions/variables \\" >&2
+        echo "             -f name=HARDWARE_RUNNER -f value=$value" >&2
+    fi
+}
+
 if [ "$MODE" = "remove" ]; then
     [ -d "$DIR" ] || { echo "nothing at $DIR"; exit 0; }
     cd "$DIR"
@@ -61,6 +81,7 @@ if [ "$MODE" = "remove" ]; then
     ./config.sh remove --token "$rm_token" || true
     cd - >/dev/null
     rm -rf "$DIR"
+    set_runner_flag disabled
     echo "runner removed and $DIR deleted."
     exit 0
 fi
@@ -113,10 +134,16 @@ if [ "$MODE" = "service" ]; then
     sudo ./svc.sh install "$USER"
     sudo ./svc.sh start
     sudo ./svc.sh status | head -5
+    set_runner_flag enabled
     echo
     echo "Runner is live. .github/workflows/hardware.yml will now run on pushes"
     echo "to main. Stop it with: cd $DIR && sudo ./svc.sh stop"
 else
+    echo
+    echo "NOTE: the workflows stay inert until the repository variable is set:"
+    echo "    gh api -X POST repos/$REPO/actions/variables \\"
+    echo "        -f name=HARDWARE_RUNNER -f value=enabled"
+    echo "  (or re-run this script with --service, which sets it for you)"
     echo
     echo "Configured. Start it in the foreground with:"
     echo "    cd $DIR && ./run.sh"
