@@ -755,6 +755,65 @@ block RAM. (Below 2.083 MSPS the FPGA interpolator is engaged and filters the
 whole 16-bit word, so the nibble leaks into the DAC data at roughly −70 dBFS —
 see [Limits](docs/tx-gpio-bitmap.md#limits).)
 
+### How the nibble reaches the pin
+
+The four bits branch off early — while the sample is still exactly the 16-bit
+word you wrote — and travel to the pad on their own. Four things happen on the
+way.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/nibble-path-dark.svg">
+  <img src="docs/img/nibble-path-light.svg" alt="The transmit path from your DDR buffer to the antenna port, with the low four bits branching off at util_upack2 into tx_gpio_bitmap, an IO buffer and JP5 pins 7, 9, 11 and 13" width="760">
+</picture>
+
+**1 — The tap, taken before any filter.** DMA hands the FPGA one long stream of
+bytes; `util_upack2` splits it back into per-channel samples. Its output
+`fifo_rd_data_0[3:0]` is the low nibble of channel 0's **I** sample, still bit
+for bit what you put in the buffer. (`fifo_rd_data_1[3:0]` is Q — the hook for
+widening to eight pins later.) Tapping here and not further down matters: the
+next block is a **FIR interpolator**, a filter that blends neighbouring samples
+to raise the sample rate, and a nibble read after it would be filter output
+rather than the bits you authored.
+
+**2 — The capture, once per sample.** A small module, `tx_gpio_bitmap`, latches
+the nibble into a register and holds it until the next sample. It fires on the
+**strobe** — the signal that says "a new word is standing here now" — which in
+this design is `fifo_rd_valid | fifo_rd_underflow`. Two traps live here, and
+both are the kind that simulate fine and only show up on a scope:
+
+- Not `fifo_rd_en`. That one is a *request* for a sample, and `util_upack2`
+  registers its output, so the word appears a clock later. Capture on the
+  request and every pin sits permanently one sample behind the DAC.
+- Not every clock. With both channels running (**2R2T**) a new sample arrives
+  only every *second* FPGA clock, so capturing on the clock would double the
+  rate of every pattern you wrote — a half-rate clock would come out at full
+  rate, a one-sample marker would arrive twice.
+
+Including `underflow` means that when DMA starves and the DAC is fed zeros, the
+pins carry those zeros too — so "the pins are the low nibble of what the DAC
+got" holds with no exceptions.
+
+**3 — The switch, one flag bit.** The same module chooses who owns the four
+pads: with the flag clear they are ordinary Linux GPIO; with it set the fabric
+drives them from the captured nibble. The flag is **bit 1 of the DAC core's
+`GP_CONTROL` register** (AXI offset `0xBC`; bit 0 is already the interpolator
+bypass, so software must read-modify-write it — the `tx_sample_gpio_en` file
+below does that for you). Software writes it in one clock domain and the
+datapath reads it in another, so it crosses two flip-flops on the way in and a
+change takes effect two clocks later.
+
+**4 — The pad.** An `ad_iobuf` per pin in `system_top.v` connects the module's
+output and tristate control to the package ball, and the ball's input side goes
+back to Linux so the GPIO can still be *read* either way.
+
+**What comes out.** A pad changes one clock after the tap. The matching RF is
+much further behind — it still has the interpolator, the AD9361's own digital
+filters and the DAC ahead of it — so **the pins lead the RF by a fixed
+offset**. Fixed is the useful part: it does not drift, and it repeats run to
+run for a given configuration, so it can be calibrated out once. It is not
+zero, and it has not yet been measured here — see
+[what has actually been verified](docs/tx-gpio-bitmap.md#what-has-actually-been-verified).
+
 ### The pins
 
 <picture>

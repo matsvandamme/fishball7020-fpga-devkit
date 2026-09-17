@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="836" viewBox="0 0 880 836" font-family="DejaVu Sans, Helvetica, Arial, sans-serif">
+<rect width="880" height="836" fill="#fcfcfb"/>
+<defs><marker id="alight" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 z" fill="#8a8985"/></marker><marker id="slight" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 z" fill="#eb6834"/></marker><marker id="clight" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 z" fill="#2a78d6"/></marker></defs>
+<text x="44" y="34" font-size="17" font-weight="600" fill="#0b0b0b">Where the low four bits leave the transmit path</text>
+<text x="44" y="56" font-size="12.5" fill="#52514e">Box names are real instances in system_bd.tcl. The two paths split at util_upack2.</text>
+<rect x="44" y="86" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#d8d7d2" stroke-width="1.4"/>
+<text x="60" y="109" font-size="14" font-weight="600" fill="#0b0b0b">Your program</text>
+<text x="60" y="128" font-size="12" fill="#52514e">16-bit I/Q words in a DDR buffer</text>
+<rect x="44" y="166" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#d8d7d2" stroke-width="1.4"/>
+<text x="60" y="189" font-size="14" font-weight="600" fill="#0b0b0b">TX DMA</text>
+<text x="60" y="208" font-size="12" fill="#52514e">axi_ad9361_dac_dma</text>
+<rect x="44" y="246" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#eb6834" stroke-width="2.2"/>
+<text x="60" y="269" font-size="14" font-weight="600" fill="#0b0b0b">util_upack2</text>
+<text x="60" y="288" font-size="12" fill="#52514e">the sample stands at its output</text>
+<rect x="44" y="406" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#d8d7d2" stroke-width="1.4"/>
+<text x="60" y="429" font-size="14" font-weight="600" fill="#0b0b0b">FIR interpolator</text>
+<text x="60" y="448" font-size="12" fill="#52514e">bypassed above 2.083 MSPS</text>
+<rect x="44" y="486" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#d8d7d2" stroke-width="1.4"/>
+<text x="60" y="509" font-size="14" font-weight="600" fill="#0b0b0b">axi_ad9361</text>
+<text x="60" y="528" font-size="12" fill="#52514e">DAC core, then LVDS to the chip</text>
+<rect x="44" y="566" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#d8d7d2" stroke-width="1.4"/>
+<text x="60" y="589" font-size="14" font-weight="600" fill="#0b0b0b">AD9361</text>
+<text x="60" y="608" font-size="12" fill="#52514e">12-bit DAC — takes bits [15:4]</text>
+<rect x="44" y="646" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#8a8985" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="60" y="669" font-size="14" font-weight="600" fill="#0b0b0b">RF out</text>
+<text x="60" y="688" font-size="12" fill="#52514e">antenna port</text>
+<rect x="500" y="86" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#2a78d6" stroke-width="1.4"/>
+<text x="516" y="109" font-size="14" font-weight="600" fill="#0b0b0b">GP_CONTROL bit 1</text>
+<text x="516" y="128" font-size="12" fill="#52514e">AXI 0xBC — the enable flag</text>
+<rect x="500" y="166" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#2a78d6" stroke-width="1.4"/>
+<text x="516" y="189" font-size="14" font-weight="600" fill="#0b0b0b">EMIO GPIO 21:18</text>
+<text x="516" y="208" font-size="12" fill="#52514e">what the pins do when the flag is 0</text>
+<rect x="500" y="246" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#eb6834" stroke-width="2.2"/>
+<text x="516" y="269" font-size="14" font-weight="600" fill="#0b0b0b">tx_gpio_bitmap</text>
+<text x="516" y="288" font-size="12" fill="#52514e">one capture per sample, then choose</text>
+<rect x="500" y="326" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#eb6834" stroke-width="2.2"/>
+<text x="516" y="349" font-size="14" font-weight="600" fill="#0b0b0b">ad_iobuf</text>
+<text x="516" y="368" font-size="12" fill="#52514e">one per pin, in system_top.v</text>
+<rect x="500" y="406" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#eb6834" stroke-width="2.2"/>
+<text x="516" y="429" font-size="14" font-weight="600" fill="#0b0b0b">JP5 pins 7, 9, 11, 13</text>
+<text x="516" y="448" font-size="12" fill="#52514e">balls V10, U9, U10, T9</text>
+<path d="M199.0,140 L199.0,162" stroke="#8a8985" stroke-width="1.8" fill="none" marker-end="url(#alight)"/>
+<path d="M199.0,220 L199.0,242" stroke="#8a8985" stroke-width="1.8" fill="none" marker-end="url(#alight)"/>
+<path d="M199.0,460 L199.0,482" stroke="#8a8985" stroke-width="1.8" fill="none" marker-end="url(#alight)"/>
+<path d="M199.0,540 L199.0,562" stroke="#8a8985" stroke-width="1.8" fill="none" marker-end="url(#alight)"/>
+<path d="M199.0,620 L199.0,642" stroke="#8a8985" stroke-width="1.8" fill="none" marker-end="url(#alight)"/>
+<path d="M199.0,300 L199.0,402" stroke="#8a8985" stroke-width="1.8" fill="none" marker-end="url(#alight)"/>
+<text x="211.0" y="334" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="normal">bits [15:4] — the only ones the DAC reads</text>
+<text x="211.0" y="352" font-size="11.5" fill="#8a8985" text-anchor="start" font-weight="normal">bits [3:0] carry on down and are dropped here</text>
+<path d="M354,273.0 L496,273.0" stroke="#eb6834" stroke-width="1.8" fill="none" marker-end="url(#slight)"/>
+<text x="370" y="263.0" font-size="13" fill="#eb6834" text-anchor="start" font-weight="600">bits [3:0]</text>
+<text x="370" y="297.0" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="normal">the tap</text>
+<path d="M655.0,140 L655.0,162" stroke="#2a78d6" stroke-width="1.8" fill="none" marker-end="url(#clight)" stroke-dasharray="6 5"/>
+<path d="M655.0,220 L655.0,242" stroke="#2a78d6" stroke-width="1.8" fill="none" marker-end="url(#clight)" stroke-dasharray="6 5"/>
+<text x="818" y="157" font-size="11.5" fill="#2a78d6" text-anchor="start" font-weight="normal">flag = 1</text>
+<text x="818" y="237" font-size="11.5" fill="#2a78d6" text-anchor="start" font-weight="normal">flag = 0</text>
+<path d="M655.0,300 L655.0,322" stroke="#eb6834" stroke-width="1.8" fill="none" marker-end="url(#slight)"/>
+<path d="M655.0,380 L655.0,402" stroke="#eb6834" stroke-width="1.8" fill="none" marker-end="url(#slight)"/>
+<rect x="44" y="730" width="792" height="78" rx="7" fill="#e6e5e1" stroke="none"/>
+<text x="60" y="754" font-size="12.5" fill="#0b0b0b" text-anchor="start" font-weight="600">The pins lead the RF by a fixed offset.</text>
+<text x="60" y="774" font-size="12" fill="#52514e" text-anchor="start" font-weight="normal">Capture strobe: fifo_rd_valid | fifo_rd_underflow — never fifo_rd_en, which asks one clock too early.</text>
+<text x="60" y="793" font-size="12" fill="#52514e" text-anchor="start" font-weight="normal">A pad changes one clock after the tap. The matching RF still has the interpolator, the AD9361 and the DAC ahead of it.</text>
+</svg>
