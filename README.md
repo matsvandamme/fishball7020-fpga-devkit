@@ -89,11 +89,23 @@ it's the only slow part).
 ```bash
 # run from: wherever you want the devkit to live (e.g. ~)
 git clone https://github.com/matsvandamme/fishball7020-fpga-devkit.git
-cd fishball7020-fpga-devkit/firmware
+cd fishball7020-fpga-devkit
 
-./scripts/setup.sh        # clone upstream source + apply patches  (~5 min)
-./scripts/build_all.sh    # build everything                    (45-90 min)
+./devkit doctor    # can this machine build? checks in a second, not at minute 40
+./devkit setup     # clone upstream source + apply patches            (~5 min)
+./devkit build     # build everything                              (45-90 min)
+./devkit flash     # copy it onto the running board over the network
 ```
+
+**In a hurry, or just want a working board?** Skip all of that and download the
+prebuilt SD-card files from the [latest release](../../releases/latest) — same
+five files a full build produces, with checksums. Build when you want to
+*change* something.
+
+`./devkit` wraps the scripts so you do not have to remember which lives where:
+`doctor`, `setup`, `sim`, `build`, `verify`, `flash`, `selftest`, `gpio-check`,
+`status`. Every one passes arguments through, so `./devkit build --hdl-only`
+works. The underlying scripts are still there if you prefer them.
 
 You end up with exactly five files in `output/`: `BOOT.bin`, `devicetree.dtb`,
 `uEnv.txt`, `uImage`, `uramdisk.image.gz`. Copy all five onto a FAT32 SD card,
@@ -499,6 +511,18 @@ If the board still boots, it can rewrite its own SD card. The FAT partition
 `BOOT.bin` and reboot over the network. **This is the only remote option that
 can update the FPGA bitstream.**
 
+**Use the script** — it does the backup, the checksum verification before the
+swap, the clean unmount and the reboot, and keeps the previous firmware both on
+the card and on your disk:
+
+```bash
+./devkit flash              # BOOT.bin + uImage
+./devkit flash --all        # all five files
+./devkit flash --boot-only  # just the bitstream
+```
+
+What it does, if you would rather do it by hand:
+
 ```bash
 # run from: firmware/   (BOARD is the running board)
 BOARD=root@192.168.2.1
@@ -630,8 +654,8 @@ third-party repo still being online is a weaker net than a folder on your disk.
 flashing and rebooting costs minutes:
 
 ```bash
-# run from: firmware/
-./scripts/verify_output.sh
+./devkit verify            # is the build sane?
+./devkit verify --board    # ...and is the board actually running it?
 ```
 
 It asserts the five files are present and non-trivial, that the bitstream is
@@ -648,6 +672,12 @@ what is actually in the design, so you can see your change landed:
 ```
 
 It exits non-zero on failure, so it works in scripts.
+
+`--board` answers a different question: it mounts the board's SD card and
+compares every file against `output/` by checksum. Worth knowing because a
+board whose card holds a *different* build of the same size looks entirely
+normal, and every symptom of that is indistinguishable from "my change did not
+work". A stale board is reported as such rather than as a bad build.
 
 **Which USB port is which** — the two do completely different things:
 
@@ -704,8 +734,11 @@ fishball7020-fpga-devkit/
 │       ├── SKILL.md                     the rules, the map, what a healthy board measures
 │       └── references/                  gain tables · measuring · board access · debugging
 │
+├── devkit                               ← one entry point: doctor · setup · sim · build
+│                                          verify · flash · selftest · status
 ├── tools/
 │   ├── env-vivado.sh                    ← source this before any vivado/xsct/bootgen command
+│   ├── flash.sh                         ← flash the running board over the network, safely
 │   ├── tx-gpio-bitmap-check.py          verifies the TX-nibble-to-GPIO feature on hardware
 │   ├── selftest/                        ← is the board damaged? measures and says (see below)
 │   │   ├── sdr_selftest.py              rails, BIST, receiver, and an RF loopback sweep
@@ -723,6 +756,7 @@ fishball7020-fpga-devkit/
     │   └── optional/                   NOT applied — worked examples
     │       └── 0003-wbfm-channelizer.patch         (docs/wbfm-channelizer.md)
     ├── scripts/
+    │   ├── doctor.sh                   (run first) can this machine build? checks before the hour
     │   ├── setup.sh                    (run once) clones upstream into src/, applies patches
     │   ├── build_all.sh                (run every time) full build → output/
     │   ├── build_hdl.tcl               Vivado batch: synth → impl → export platform

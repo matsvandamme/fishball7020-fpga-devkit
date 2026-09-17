@@ -1,0 +1,69 @@
+#!/bin/bash
+# One entry point, so you do not have to remember which script lives where or
+# which directory it wants to run from.
+#
+#     ./devkit doctor      can this machine build? (checks before the hour, not during)
+#     ./devkit setup       clone the upstream source and apply the patches
+#     ./devkit sim         simulate the custom HDL (a second, needs only iverilog)
+#     ./devkit build       build everything          (45-90 min)
+#     ./devkit build --hdl-only   rebuild just the FPGA side  (~20 min)
+#     ./devkit verify      is the build sane? add --board to compare against the board
+#     ./devkit flash       copy it onto the running board over the network
+#     ./devkit selftest    is the board damaged? measures and says
+#     ./devkit gpio-check  verify the sample-locked GPIO outputs on hardware
+#     ./devkit status      where am I? what is built, what is the board running
+#
+# Every subcommand passes extra arguments straight through, so
+# "./devkit build --hdl-only" and "./devkit selftest --loopback --pad 50" work.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FW="$HERE/firmware"
+
+usage() { sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+    doctor)     exec "$FW/scripts/doctor.sh" "$@" ;;
+    setup)      cd "$FW" && exec ./scripts/setup.sh "$@" ;;
+    build)      cd "$FW" && exec ./scripts/build_all.sh "$@" ;;
+    verify)     cd "$FW" && exec ./scripts/verify_output.sh "$@" ;;
+    sim)        cd "$FW" && exec ./sim/run_sim.sh "$@" ;;
+    flash)      exec "$HERE/tools/flash.sh" "$@" ;;
+    selftest)   cd "$HERE/tools/selftest" && exec ./sdr_selftest.py "$@" ;;
+    gpio-check) exec "$HERE/tools/tx-gpio-bitmap-check.py" "$@" ;;
+
+    status)
+        echo "== repo =="
+        echo "   $(git -C "$HERE" log --oneline -1 2>/dev/null || echo 'not a git checkout')"
+        echo
+        echo "== source tree =="
+        if [ -d "$FW/src/.git" ]; then
+            echo "   src/ present$([ -f "$FW/src/.devkit-patches-applied" ] \
+                 && echo ', patches applied' || echo ', patches NOT applied - run ./devkit setup')"
+        else
+            echo "   src/ missing - run ./devkit setup"
+        fi
+        echo
+        echo "== last build =="
+        if [ -r "$FW/output/BOOT.bin" ]; then
+            for f in BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz; do
+                [ -r "$FW/output/$f" ] && printf '   %-20s %10s B  %s\n' "$f" \
+                    "$(stat -c%s "$FW/output/$f")" "$(date -r "$FW/output/$f" '+%Y-%m-%d %H:%M')"
+            done
+        else
+            echo "   nothing in output/ - run ./devkit build"
+        fi
+        echo
+        echo "== board =="
+        BOARD="${BOARD:-192.168.2.1}"
+        if ping -c1 -W1 "$BOARD" >/dev/null 2>&1; then
+            echo "   reachable at $BOARD"
+            echo "   run './devkit verify --board' to check it is running this build"
+        else
+            echo "   not reachable at $BOARD"
+        fi
+        ;;
+
+    ""|-h|--help|help) usage ;;
+    *) echo "unknown command: $cmd" >&2; echo >&2; usage >&2; exit 2 ;;
+esac
