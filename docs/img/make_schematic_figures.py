@@ -4,28 +4,28 @@ the sample-GPIO pin assignment, with the exact nets highlighted.
 
     python3 docs/img/make_schematic_figures.py
 
-Needs the vendor schematic PDF, which is NOT in this repository: it is the
-board vendor's document, not ours to redistribute. It ships with the board, in
-the download folder, as 硬件资料/7020_936x_SDR原理图.pdf. Point the script at your copy:
+Reads the vendor schematic that ships in this repository at
+docs/vendor/7020_936x_SDR-schematic.pdf. Point it at a different copy with:
 
     FISHBALL_SCHEMATIC=/path/to/schematic.pdf python3 docs/img/make_schematic_figures.py
+
+Note that the schematic the vendor publishes on their own GitHub is a
+DIFFERENT board revision with no JP5 at all - see docs/vendor/README.md.
 
 Also needs poppler-utils (pdftotext, pdftoppm) and rsvg-convert.
 
 WHY THIS IS A SCRIPT AND NOT THREE HAND-DRAWN PICTURES
 Every highlight box is positioned from the PDF's own text coordinates
 (pdftotext -bbox), so a box cannot drift away from the word it marks, and
-anyone with the vendor PDF can re-run this and get the same picture. Three of
-the four pins in the first version of this feature were guessed, and wrong.
-This is the evidence that the current four are not.
+anyone can re-run this and get the same picture. Three of the four pins in
+the first version of this feature were guessed, and wrong. This is the
+evidence that the current four are not.
 """
 import base64, html, os, re, subprocess, sys, tempfile
 
-SRC = os.environ.get("FISHBALL_SCHEMATIC") or os.path.expanduser(
-    "~/Downloads/New version_7020_AD936X_SDR资料/"
-    "新版7020_AD936X_SDR资料/"
-    "硬件资料/7020_936x_SDR原理图.pdf")
 OUT = os.path.dirname(os.path.abspath(__file__))
+SRC = os.environ.get("FISHBALL_SCHEMATIC") or os.path.join(
+    OUT, os.pardir, "vendor", "7020_936x_SDR-schematic.pdf")
 TMP = None                          # scratch dir, set by prepare()
 DPI = 420
 S = DPI / 72.0                      # PDF points -> pixels
@@ -40,8 +40,8 @@ def prepare(pages=(1, 5, 13)):
     """Extract per-word bounding boxes for the pages we annotate."""
     global TMP
     if not os.path.isfile(SRC):
-        sys.exit(f"vendor schematic not found:\n  {SRC}\n"
-                 "Set FISHBALL_SCHEMATIC to your copy (see the docstring).")
+        sys.exit(f"schematic not found:\n  {os.path.abspath(SRC)}\n"
+                 "Expected it at docs/vendor/, or set FISHBALL_SCHEMATIC.")
     TMP = tempfile.mkdtemp(prefix="fishball-schematic-")
     for p in pages:
         subprocess.run(["pdftotext", "-f", str(p), "-l", str(p), "-bbox",

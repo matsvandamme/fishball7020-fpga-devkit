@@ -843,13 +843,18 @@ clip anything on.
 
 <br>
 
-The schematic PDF itself is not in this repository — it is the board vendor's
-document and ships with the board. These are annotated crops of the three pages
-that fix the assignment, drawn by
-[`docs/img/make_schematic_figures.py`](docs/img/make_schematic_figures.py).
-Every highlight is positioned from the PDF's own text coordinates, so a box
-cannot drift off the word it marks; point the script at your copy of the PDF
-and it reproduces these exactly.
+The vendor's schematic is in this repository:
+[`docs/vendor/7020_936x_SDR-schematic.pdf`](docs/vendor/7020_936x_SDR-schematic.pdf).
+Below are annotated crops of the three pages that fix the assignment, drawn
+from it by
+[`docs/img/make_schematic_figures.py`](docs/img/make_schematic_figures.py) —
+run it and you get these back. Every highlight is positioned from the PDF's own
+text coordinates, so a box cannot drift off the word it marks.
+
+> Use that copy. The schematic the vendor publishes on their **GitHub** is a
+> different board revision: 15 pages, no `JP5`, no `3V3_IO` nets, connectors
+> numbered `J1`–`J12`. It does not describe this board. See
+> [docs/vendor/](docs/vendor/README.md).
 
 **Sheet 5 — which FPGA ball carries which header net.** Also the three balls
 that look right and are not: V11, W9 and V7 sit in the same bank, next to the
@@ -1292,6 +1297,9 @@ re-fetching. None were visible by reading the code.
 Published by the board's distributor — useful primary reference, but none of it
 includes editable HDL sources, which is the gap this repo fills.
 
+- [**Hardware schematic**](docs/vendor/7020_936x_SDR-schematic.pdf) — kept here,
+  because the vendor's own GitHub copy is a **different revision** that does not
+  describe this board. [Which is which](docs/vendor/README.md).
 - [**PlutoSky R1 write-up**](https://blog.opensourcesdrlab.com/archives/PlutoSky-R1)
 - [**Vendor file archive**](https://workupload.com/archive/kc2v7ryVZZ)
 - [`OpenSourceSDRLab/PlutoSky_7020_AD936X_SDR`](https://github.com/OpenSourceSDRLab/PlutoSky_7020_AD936X_SDR)
