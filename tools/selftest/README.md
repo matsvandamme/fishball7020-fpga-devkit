@@ -5,6 +5,7 @@ this radio been damaged?* — and it answers it with measurements rather than
 with "well, it still enumerates".
 
 ```bash
+# run from: tools/selftest/
 ./sdr_selftest.py                 # no cable, never transmits
 ./sdr_selftest.py --loopback      # + the RF tests
 ```
@@ -64,7 +65,7 @@ here and they need no cable, so they are worth the extra access. Without
 ### With a loopback — this transmits
 
 ```
-TX1 ---[ 20 or 30 dB pad ]--- RX1        (both in series is fine)
+TX1 ---[ 20 dB pad ]--- RX1        (bigger is safe too; 20 dB measures best)
 ```
 
 | What it checks | What a failure means |
@@ -84,13 +85,13 @@ TX1 ---[ 20 or 30 dB pad ]--- RX1        (both in series is fine)
 The receiver is the fragile end: the AD9361's RX input is rated to about
 **+2.5 dBm**. And this board is sold in a variant with a **power amplifier** on
 transmit — a Mini-Circuits [PGA-102+](https://www.minicircuits.com/pdfs/PGA-102+.pdf)
-whose gain is strongly frequency dependent:
-
 whose gain runs from **17.7 dB at 50 MHz down to 10.4 dB at 6 GHz** (full
 table in the [README](../../README.md#transmitter-safety), which is the
-canonical copy). P1dB is about +17.5 dBm, and flat out the board delivers
-**+18.5 to +19 dBm** — about **16 dB above what its own receive port
-survives**. Sizing a loopback for a bare AD9361, as most Pluto
+canonical copy). P1dB is about +17.5 dBm, and flat out the board should be
+taken to deliver **about +19 dBm** — about **16 dB above what its own receive
+port survives**. That is this script's own estimate, scaled up from a quieter
+measurement and stopped at the amplifier's compression point, not a power
+meter reading. Sizing a loopback for a bare AD9361, as most Pluto
 advice does, gets this dangerously wrong.
 
 So the script never transmits with less than **35 dB** of its own attenuation:
@@ -106,6 +107,14 @@ scale, highest PA gain, two ports joined by a barrel. Sweeps *start* at 50 dB,
 measure the loop, and only then work downward toward the floor. A 25 dB span is
 ample to prove the gain chain is linear, so there is nothing to gain from going
 louder. `--min-tx-atten` can lower it and prints the resulting power budget.
+
+**Use a single 20 dB pad for measuring.** Larger pads are just as safe, but
+the board leaks a little transmit signal straight into its own receiver, and
+the weaker the cable loop, the more that leak distorts the result. With 50 dB
+on channel 0, above about 1.5 GHz the leak is as strong as the loop and the
+frequency response reads up to 13 dB wrong. Through 20 dB it stays within
+about ±2 dB. Measured in
+[docs/measured-performance.md](../../docs/measured-performance.md#the-boards-own-tx-to-rx-leak).
 
 **It also asks how much attenuation is in your cable**, then checks your answer
 against what it measures and says so if the two disagree by more than 8 dB. A
@@ -141,7 +150,8 @@ The board has two transmit and two receive ports. `--channel both` measures
 pair 0, then asks you to move the loopback to TX2/RX2 and press Enter:
 
 ```bash
-./sdr_selftest.py --ssh --loopback --pad 50 --channel both
+# run from: tools/selftest/
+./sdr_selftest.py --ssh --loopback --pad 20 --channel both
 ```
 
 With one set of attenuators you can only test one pair at a time, which is why
@@ -159,6 +169,7 @@ nowhere in the firmware source however hard you look. A common helper watches
 the transmit buffer and applies a working gain shortly after a stream starts:
 
 ```sh
+# on the board: an example of what such a script contains - not something to run
 ACTIVE_GAIN="-10.000000"
 # on buffer/enable 0 -> 1:  sleep 2; iio_attr -o -c ad9361-phy voltage0 hardwaregain $ACTIVE_GAIN
 # on buffer/enable 1 -> 0:  iio_attr ... hardwaregain -89.750000
@@ -190,17 +201,21 @@ Some things have absolute answers: a supply rail is in spec or it is not, and
 a gain slope that should be 1.00 dB/dB either is or is not. Those pass or fail
 on their own.
 
-Path loss does not. It depends on your cable, your attenuator and your
-connectors, so there is no universal number to compare against. Record a
+Path loss does not. It depends on your cable and your attenuator, and on this
+board also on a small leak from each transmitter straight into its own
+receiver, which adds a fixed pattern that differs for every pad. So there is no
+universal number to compare against. Record a
 baseline while the board is known good:
 
 ```bash
+# run from: tools/selftest/
 ./sdr_selftest.py --loopback --ssh --save-baseline ~/board-healthy.json
 ```
 
 and compare against it whenever you suspect something:
 
 ```bash
+# run from: tools/selftest/
 ./sdr_selftest.py --loopback --ssh --baseline ~/board-healthy.json
 ```
 

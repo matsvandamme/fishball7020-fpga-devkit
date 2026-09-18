@@ -1100,16 +1100,20 @@ commanded and applied attenuation matched to 0.01 dB at every point including
 > |---|---|---|---|---|---|---|
 > | **Gain (dB)** | **17.7** | 15.9 | 14.0 | 12.5 | 11.5 | 10.4 |
 >
-> with P1dB around **+17.5 dBm**. Measured flat out: **+18.5 dBm at 900 MHz**,
-> and **+19 dBm** as the across-band figure, the six runs agreeing to 0.7 dB —
-> roughly **16 dB above what its own receive port survives**.
+> with P1dB around **+17.5 dBm**. Plan for **about +19 dBm** flat out, roughly
+> **16 dB above what its own receive port survives**. That figure is the
+> self-test's estimate, scaled up from a quieter measurement and stopped at the
+> amplifier's compression point; nobody has put a power meter on the port.
 >
 > <sub>This table and these figures are the canonical copy; `tools/selftest/README.md`
 > and the agent skill point here. Update them here first.</sub>
 >
-> **Fit at least 20 dB of attenuation** in any loopback; 40–50 dB is
-> comfortable and still leaves 60 dB of SNR. Start at maximum attenuation and
-> raise power in steps. `tools/selftest/` does all of this and never transmits
+> **Fit at least 20 dB of attenuation** in any loopback. More is safe too, but
+> for *measuring* the board, 20 dB is also the best choice: the board leaks some
+> transmit signal straight into its own receiver, and with 50 dB in the cable
+> that leak is as strong as the loop above about 1.5 GHz
+> ([details](docs/measured-performance.md#the-boards-own-tx-to-rx-leak)). Start
+> at maximum attenuation and raise power in steps. `tools/selftest/` does all of this and never transmits
 > with less than 35 dB of its own attenuation. The non-PA variant is 10–18 dB
 > quieter — check which you have before relying on that.
 
@@ -1159,44 +1163,55 @@ over the stale value. If you add HDL, add a testbench beside these.
 
 ## Measured performance
 
-One board, six runs — both channels, through 20 dB, 30 dB and 50 dB
-attenuators. Measuring three ways separates a property of the *board* from a
-property of the *cable*.
+One board, 28 runs on 2026-09-18 with the v1.3 firmware: both channels through
+20 dB, 30 dB and 50 dB of attenuation, and both *crossed* combinations (TX1A
+into RX2A, TX2A into RX1A). The crossed runs are what make it possible to tell
+the transmit chain from the receive chain.
 
 | | |
 |---|---|
-| **Gain accuracy** | 12 slope measurements, every one within **1.4% of unity** |
-| **Image rejection** | **55–63 dBc** after calibration (41–48 dBc as found) |
-| **Harmonic distortion** | **−67 to −79 dBc** |
-| **Transmit power** | **+19 dBm** flat out, agreeing to 0.7 dB across six runs |
-| **Transmit mute depth** | **63–70 dB**, into the noise floor |
-| **FPGA headroom** | 72 of 220 DSP48s used, timing met with **+0.231 ns** to spare (v1.2 default; +0.214 without the GPIO feature) |
+| **Gain accuracy** | 56 slope measurements, every one within **1.7% of 1.000 dB per dB** |
+| **Image rejection** | **44–60 dBc** after calibration (31–54 dBc as found), 5–7 dB worse into RX2 |
+| **Harmonic distortion** | 2nd **−64 to −80 dBc**, 3rd **−71 to −85 dBc** |
+| **Transmit mute depth** | **at least 75 dB**: the tone vanished into the noise every time |
+| **Loop gain, 200 MHz – 1 GHz** | about **+20 dB**, flat to 2 dB |
+| **Channel matching** | transmitters within **0.2 dB**; RX2 **1.5 dB** more sensitive than RX1 |
+| **FPGA headroom** | 72 of 220 DSP48s used, timing met with **+0.231 ns** to spare (+0.214 without the GPIO feature) |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/loop-gain-dark.svg">
-  <img alt="TX to RX loop gain against frequency for both channels, 100 MHz to 5 GHz. Both peak near +20 dB around 300-700 MHz and roll off to +5 to +9 dB at 5 GHz. A shaded band shows the spread across three attenuator values: about 1-2 dB below 2 GHz, widening to 6-8 dB at 5 GHz." src="docs/img/loop-gain-light.svg">
+  <img alt="TX to RX loop gain for both channels from 70 MHz to 6 GHz, through the same 20 dB attenuator. Both rise from 12-14 dB at 70 MHz to a plateau near +20 dB between 200 MHz and 1 GHz, then fall to about +2 dB at 6 GHz. Channel 1 runs about 1.5 dB hotter. A step up at 4 GHz is marked as the AD9361 changing RX gain table. The region above 3 GHz is shaded where the board's own TX-to-RX leak can add up to 2 dB." src="docs/img/loop-gain-light.svg">
 </picture>
 
-The gain figure is what matters in practice: **a link budget you compute is the
-one you get.** Ask for 6 dB less and you get 6.0, not 5.2.
+The gain accuracy is what matters most in practice: **a link budget you compute
+is the one you get.** Ask for 6 dB less and you get 6.0, not 5.2.
 
-The **step at 4 GHz is not the hardware** — the AD9361 swaps RX gain table
-there and the two tables label their steps differently, so a calibration made
-below 4 GHz is wrong above it by about 5 dB on channel 0 and 7 dB on channel 1.
+**The step at 4 GHz is not the hardware.** The AD9361 swaps receive gain table
+there, and the two tables label their steps differently. A gain calibration
+made below 4 GHz is wrong above it, by about 5 dB on channel 0 and 7 dB on
+channel 1.
 
-The spread is the second result. Repeated passes on the same cable agree to
-0.06 dB; across three *different* attenuators the same frequencies scatter by
-6–8 dB above 2 GHz. Same board, same instrument — the variable is the SMA
-connectors. That is why the self-test compares against a baseline you record
-with your own cable rather than absolute thresholds.
+**Above 2 GHz, repeat passes agree to 0.06 dB.** Lower down they scatter more:
+0.7 dB between 200 MHz and 1 GHz, and up to 5 dB below 200 MHz.
 
-**Crossed** measurements — TX0 into RX1 and TX1 into RX0 — separate the
-transmit chain from the receive chain, which a straight loopback cannot. The
-transmitters match to 0.25 dB, the receivers differ by 1.5 dB, and the 4 GHz
-step lives entirely in the receiver, exactly as an RX gain-table change must.
-With both crosses the system is over-determined and closes to −0.05 dB.
+**The board leaks some of its own transmit signal into its receiver.** You can
+see it with the cable unplugged from the receive port: the tone still arrives.
+On channel 0 above about 1.5 GHz, the leak is as strong as a cable loop with
+50 dB of attenuation in it, so a loopback through 50 dB there measures the
+leak as much as the cable, and it read up to 13 dB wrong. Through a single
+20 dB pad the effect stays within about ±2 dB. So the self-test compares
+against a baseline you record with your own cable, and 20 dB is the pad to use.
 
-Full tables, method and caveats in
+**Crossed** runs separate the chains. The transmitters match to 0.1–0.25 dB.
+The receivers differ by 1.5 dB, and the 4 GHz step sits entirely in the
+receiver, as a receive gain-table change must. With both crosses measured the
+four results can be checked against each other, and they agree to a median of
+0.03 dB.
+
+Transmit power at full drive was not measured. The +19 dBm the self-test
+prints is its estimate, capped at the power amplifier's compression point.
+
+Full tables, the leak measurement, method and caveats are in
 **[docs/measured-performance.md](docs/measured-performance.md)**.
 
 ## Is the board healthy?

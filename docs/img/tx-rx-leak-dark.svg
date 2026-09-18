@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="380" viewBox="0 0 760 380" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" role="img" aria-label="The board&#8217;s own transmit-to-receive leak on each channel, expressed as the attenuator a cable loop would need to be as strong. It falls with frequency, from 60-90 dB below 1 GHz to 33-58 dB above 3 GHz, and channel 0 leaks more than channel 1.">
+<rect width="760" height="380" fill="#1a1a19"/>
+<line x1="62" y1="295.3" x2="610" y2="295.3" stroke="#33322f" stroke-width="1"/>
+<text x="52" y="299.3" text-anchor="end" font-size="12" fill="#c3c2b7">20</text>
+<line x1="62" y1="230.0" x2="610" y2="230.0" stroke="#33322f" stroke-width="1"/>
+<text x="52" y="234.0" text-anchor="end" font-size="12" fill="#c3c2b7">40</text>
+<line x1="62" y1="164.7" x2="610" y2="164.7" stroke="#33322f" stroke-width="1"/>
+<text x="52" y="168.7" text-anchor="end" font-size="12" fill="#c3c2b7">60</text>
+<line x1="62" y1="99.3" x2="610" y2="99.3" stroke="#33322f" stroke-width="1"/>
+<text x="52" y="103.3" text-anchor="end" font-size="12" fill="#c3c2b7">80</text>
+<line x1="62" y1="34.0" x2="610" y2="34.0" stroke="#33322f" stroke-width="1"/>
+<text x="52" y="38.0" text-anchor="end" font-size="12" fill="#c3c2b7">100</text>
+<line x1="74.3" y1="328" x2="74.3" y2="333" stroke="#33322f" stroke-width="1"/>
+<text x="74.3" y="349" text-anchor="middle" font-size="12" fill="#c3c2b7">70</text>
+<line x1="116.1" y1="328" x2="116.1" y2="333" stroke="#33322f" stroke-width="1"/>
+<text x="116.1" y="349" text-anchor="middle" font-size="12" fill="#c3c2b7">100</text>
+<line x1="197.2" y1="328" x2="197.2" y2="333" stroke="#33322f" stroke-width="1"/>
+<text x="197.2" y="349" text-anchor="middle" font-size="12" fill="#c3c2b7">200</text>
+<line x1="304.5" y1="328" x2="304.5" y2="333" stroke="#33322f" stroke-width="1"/>
+<text x="304.5" y="349" text-anchor="middle" font-size="12" fill="#c3c2b7">500</text>
+<line x1="385.6" y1="328" x2="385.6" y2="333" stroke="#33322f" stroke-width="1"/>
+<text x="385.6" y="349" text-anchor="middle" font-size="12" fill="#c3c2b7">1 GHz</text>
+<line x1="466.8" y1="328" x2="466.8" y2="333" stroke="#33322f" stroke-width="1"/>
+<text x="466.8" y="349" text-anchor="middle" font-size="12" fill="#c3c2b7">2</text>
+<line x1="574.0" y1="328" x2="574.0" y2="333" stroke="#33322f" stroke-width="1"/>
+<text x="574.0" y="349" text-anchor="middle" font-size="12" fill="#c3c2b7">5</text>
+<text x="336" y="368" text-anchor="middle" font-size="12" fill="#c3c2b7">Frequency (MHz, log scale)</text>
+<text x="16" y="181" text-anchor="middle" font-size="12" fill="#c3c2b7" transform="rotate(-90 16 181)">Leak, as an equivalent pad (dB)</text>
+<line x1="62" y1="295.3" x2="610" y2="295.3" stroke="#8a8985" stroke-width="1" stroke-dasharray="4 3"/>
+<text x="70" y="290.3" font-size="11.5" fill="#8a8985">20 dB pad</text>
+<line x1="62" y1="262.7" x2="610" y2="262.7" stroke="#8a8985" stroke-width="1" stroke-dasharray="4 3"/>
+<text x="70" y="257.7" font-size="11.5" fill="#8a8985">30 dB pad</text>
+<line x1="62" y1="197.3" x2="610" y2="197.3" stroke="#8a8985" stroke-width="1" stroke-dasharray="4 3"/>
+<text x="70" y="192.3" font-size="11.5" fill="#8a8985">50 dB pad</text>
+<polyline points="74.3,172.0 83.2,160.8 92.0,160.5 100.8,164.3 109.7,163.4 118.5,164.8 127.3,157.3 136.1,160.2 145.0,155.4 153.8,163.6 162.6,158.0 171.5,157.9 180.3,152.4 189.1,150.4 198.0,150.4 206.8,136.4 215.6,141.3 224.5,138.0 233.3,149.7 242.1,117.1 250.9,139.4 259.8,123.0 268.6,138.1 277.4,112.5 286.3,110.0 295.1,121.7 303.9,134.4 312.8,154.9 321.6,129.7 330.4,149.5 339.3,157.0 348.1,155.1 356.9,162.0 365.7,164.2 374.6,168.0 383.4,170.5 392.2,179.7 401.1,186.4 409.9,185.9 418.7,198.3 427.6,199.8 436.4,203.6 445.2,193.1 454.1,188.7 462.9,180.2 471.7,167.6 480.5,164.3 489.4,166.5 498.2,177.4 507.0,192.8 515.9,194.1 524.7,202.0 533.5,204.9 542.4,219.6 551.2,232.0 560.0,218.6 568.9,215.3 577.7,231.2 586.5,254.3 595.3,239.6" fill="none" stroke="#3987e5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="74.3,65.7 83.2,65.2 92.0,92.6 100.8,99.2 109.7,100.3 118.5,109.1 127.3,100.2 136.1,101.2 145.0,94.1 153.8,99.6 162.6,102.1 171.5,108.4 180.3,99.4 189.1,106.2 198.0,109.3 206.8,106.3 215.6,108.0 224.5,110.9 233.3,111.3 242.1,117.0 250.9,111.0 259.8,113.2 268.6,109.9 277.4,120.8 286.3,114.7 295.1,118.9 303.9,117.2 312.8,117.6 321.6,108.5 330.4,115.4 339.3,113.6 348.1,128.3 356.9,116.7 365.7,113.7 374.6,128.8 383.4,117.1 392.2,125.6 401.1,142.3 409.9,137.5 418.7,150.0 427.6,155.7 436.4,162.4 445.2,162.3 454.1,160.3 462.9,155.3 471.7,154.5 480.5,158.7 489.4,156.9 498.2,168.4 507.0,173.5 515.9,170.7 524.7,176.5 533.5,176.2 542.4,188.9 551.2,204.1 560.0,209.3 568.9,203.7 577.7,192.1 586.5,213.5 595.3,178.0" fill="none" stroke="#d95926" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="605.3" y="182.0" font-size="13" fill="#ffffff">Channel 1</text>
+<text x="605.3" y="243.6" font-size="13" fill="#ffffff">Channel 0</text>
+<line x1="460" y1="46" x2="478" y2="46" stroke="#3987e5" stroke-width="2" stroke-linecap="round"/>
+<text x="485" y="50" font-size="12" fill="#ffffff">Channel 0 (own RX)</text>
+<line x1="460" y1="63" x2="478" y2="63" stroke="#d95926" stroke-width="2" stroke-linecap="round"/>
+<text x="485" y="67" font-size="12" fill="#ffffff">Channel 1 (own RX)</text>
+</svg>

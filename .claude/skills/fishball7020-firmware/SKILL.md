@@ -112,8 +112,9 @@ as its own patch so dropping it restores the factory `.dtb`. Most things people
 reach for the device tree for belong in `S21misc` or in the driver instead.
 
 **A loopback without an attenuator destroys the receiver.** The RX input is
-rated to about +2.5 dBm; this board measures **+19 dBm** flat out. Fit at least
-20 dB; 40–50 dB is comfortable. Details in `rf-safety.md`.
+rated to about +2.5 dBm; plan for **about +19 dBm** flat out (an estimate, not
+a meter reading). Fit at least 20 dB, and measure through exactly 20 dB: bigger
+pads let the board's own TX->RX leak into the result. Details in `rf-safety.md`.
 
 ## Where things are
 
@@ -170,15 +171,17 @@ for judging whether something is actually wrong.
 
 | | |
 |---|---|
-| Gain slopes (TX attenuator, RX gain) | within **1.4% of 1.000 dB/dB** |
-| Image rejection, after a fresh TX quad calibration | **55–63 dBc** (41–48 as found) |
-| Harmonics | **−67 to −79 dBc** |
-| Transmit power flat out | **+19 dBm** |
-| TX mute depth | **63–70 dB** |
-| Loop gain, 200 MHz – 1 GHz | ~**+20 dB** through a 20 dB pad |
-| Supply rails | all six within **1.1%** of nominal |
+| Gain slopes (TX attenuator, RX gain) | within **1.7% of 1.000 dB/dB** (56 slopes) |
+| Image rejection, after a fresh TX quad calibration | **44–60 dBc** (31–54 as found), 5–7 dB worse into RX2, varies up to 10 dB run to run |
+| Harmonics | 2nd **−64 to −80 dBc**, 3rd **−71 to −85 dBc** |
+| Transmit power flat out | about **+19 dBm** - the self-test's capped estimate, never metered |
+| TX mute depth | **at least 75 dB** - every reading hit the noise floor |
+| Loop gain, 200 MHz – 1 GHz | ~**+20 dB** (flat to 2 dB), pad added back |
+| Board's own TX->RX leak, as an equivalent pad | channel 0: 58–77 dB below 1 GHz, **33–51 dB** at 3–6 GHz; channel 1 ~10 dB weaker; crossed paths 10–35 dB weaker still |
+| Supply rails | all six within **1.6%** of nominal |
 | Digital interface eye | **157–181** of 256 delay positions pass |
 | FPGA, stock build | 72/220 DSP48s, 11 896 LUTs, WNS **+0.231 ns** (a build without 0006 gives +0.214; 0006's CDC constraint improves it) |
 
-Two channels on one board differed by 1.5 dB in receive and 0.25 dB in
-transmit, so some asymmetry is normal.
+Two channels on one board differed by 1.5 dB in receive and 0.1–0.25 dB in
+transmit, so some asymmetry is normal. Full data:
+`docs/img/data/measured-performance.json`.

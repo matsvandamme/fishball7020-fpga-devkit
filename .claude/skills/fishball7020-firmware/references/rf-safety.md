@@ -13,10 +13,10 @@ strongly frequency dependent:
 |---|---|---|---|---|---|---|
 | **Gain (dB)** | **17.7** | 15.9 | 14.0 | 12.5 | 11.5 | 10.4 |
 
-P1dB is about +17.5 dBm. Measured on a PA-equipped unit: **+18.5 dBm at
-900 MHz**, **+19 dBm** across the band, the six runs and three attenuator
-values agreeing to 0.7 dB - roughly **16 dB above what its own receive port
-survives**.
+P1dB is about +17.5 dBm. Plan for **about +19 dBm** flat out - roughly
+**16 dB above what its own receive port survives**. That is the self-test's
+estimate (scaled up from a quiet measurement, capped at the PA's compression
+point), not a power-meter reading: never write "+19 dBm measured".
 
 <sub>Canonical copy of this table: the repo README's "Transmitter safety"
 section. Change it there first, then mirror it here.</sub>
@@ -29,8 +29,10 @@ by comparing measured loop gain against both models.
 
 ## Rules
 
-- **Never loop TX to RX without an attenuator.** Fit at least 20 dB; 40-50 dB
-  is comfortable and still leaves ~60 dB of signal-to-noise.
+- **Never loop TX to RX without an attenuator.** Fit at least 20 dB. More is
+  equally safe, but for *measurement* 20 dB is also the right choice: the
+  board's own TX->RX leak equals a 33-60 dB pad on channel 0 above 1 GHz, so a
+  50 dB loop there measures the leak as much as the cable (see `measuring.md`).
 - **Never transmit into an antenna** unless you hold a licence for the
   frequency. This board covers the FM broadcast band, and with the PA it is
   not a trivial transmitter.

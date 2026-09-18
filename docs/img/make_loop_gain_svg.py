@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """Redraw docs/img/loop-gain-{light,dark}.svg from measured sweep data.
 
-Input is a JSON file (default /tmp/chartdata.json) of the form
+Reads docs/img/data/measured-performance.json (the 2026-09-18 campaign, built
+from `sdr_selftest.py --json` runs) and plots, per channel, the straight
+loopback through the single 20 dB pad: three passes each, the pad ADDED BACK so
+the curve describes the board rather than the cable. The line is the median of
+the passes and the band their spread.
 
-    {"ch0": [[freq_hz, median_db, min_db, max_db], ...], "ch1": [...]}
-
-holding TX->RX loop gain with the external attenuator ADDED BACK, so the curve
-describes the board rather than the cable. Build it from one or more runs:
-
-    ./sdr_selftest.py --loopback --pad 20 --channel 0 \\
-        --sweep-points 60 --sweep-start 70e6 --sweep-stop 6e9 --json run1.json
-
-then take the median/min/max of each frequency's `chN_path_loss_curve` value
-across runs and add the pad. Two or more runs give the band; one gives a line.
+Why the 20 dB runs and not the 30 or 50: the board leaks a little of its own
+transmit signal straight into its receiver (see "The board's own TX-to-RX
+leak" in docs/measured-performance.md). The weaker the cable loop, the more
+that leak corrupts it, so the strongest loop is the truest picture of the
+board.
 
 Standard library only, matching the rest of this repo. The two series colours
 are slots 1 and 2 of the validated reference palette at agentskills.io - they
@@ -21,14 +20,26 @@ Do not substitute them by eye.
 
 Usage:  python3 make_loop_gain_svg.py [output_dir]
 """
-import json, math, pathlib, sys
+import json, math, pathlib, statistics, sys
 
-data = json.load(open("/tmp/chartdata.json"))       # {"ch0":[[f,med,lo,hi],...], ...}
+HERE = pathlib.Path(__file__).resolve().parent
+PAD = 20
+_ds = json.load(open(HERE / "data" / "measured-performance.json"))
+data = {}
+for ch in (0, 1):
+    runs = [r["loop"]["path_loss_curve"] for r in _ds["runs"]
+            if r["tx_channel"] == ch and r["rx_channel"] == ch
+            and r["pad_db"] == PAD and not r["stacked_pads"]]
+    data[f"ch{ch}"] = [[int(f), statistics.median(c[f] for c in runs) + PAD,
+                        min(c[f] for c in runs) + PAD, max(c[f] for c in runs) + PAD]
+                       for f in sorted(runs[0], key=int)]
+NPASS = len(runs)
+TOP = max(r[3] for v in data.values() for r in v)       # highest point of any band
 W, H = 760, 400
 L, R, T, B = 62, 118, 40, 52
 PW, PH = W - L - R, H - T - B
 FMIN, FMAX = 63e6, 6800e6
-YMIN, YMAX = 0.0, 26.0
+YMIN, YMAX = 0.0, 28.0
 def x(f): return L + PW*(math.log10(f)-math.log10(FMIN))/(math.log10(FMAX)-math.log10(FMIN))
 def y(v): return T + PH*(1-(v-YMIN)/(YMAX-YMIN))
 TH = {"light": dict(surface="#fcfcfb", primary="#0b0b0b", secondary="#52514e",
@@ -44,7 +55,7 @@ def build(t):
              f'font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" role="img" '
              f'aria-label="Transmit to receive loop gain against frequency, 70 MHz to 6 GHz">')
     o.append(f'<rect width="{W}" height="{H}" fill="{c["surface"]}"/>')
-    o.append(f'<rect x="{x(2000e6):.1f}" y="{T}" width="{x(FMAX)-x(2000e6):.1f}" height="{PH}" fill="{c["muted"]}" opacity="0.07"/>')
+    o.append(f'<rect x="{x(3000e6):.1f}" y="{T}" width="{x(FMAX)-x(3000e6):.1f}" height="{PH}" fill="{c["muted"]}" opacity="0.07"/>')
     for v in range(0, 27, 5):
         o.append(f'<line x1="{L}" y1="{y(v):.1f}" x2="{L+PW}" y2="{y(v):.1f}" stroke="{c["grid"]}" stroke-width="1"/>')
         o.append(f'<text x="{L-10}" y="{y(v)+4:.1f}" text-anchor="end" font-size="12" fill="{c["secondary"]}">{v}</text>')
@@ -83,22 +94,22 @@ def build(t):
             o.append(f'<text x="{lx+25}" y="{yy}" font-size="12" fill="{c["primary"]}">{name}</text>')
     # Caveats live bottom-left, where the plot is empty at every frequency.
     o.append(f'<text x="{L+14}" y="{y(3.0):.1f}" font-size="11.5" fill="{c["muted"]}">'
-             f'105 points per channel; band = spread over repeated passes, median under 0.1 dB</text>')
+             f'{NPASS} passes per channel, one 20 dB pad; band = their spread</text>')
     o.append(f'<text x="{L+14}" y="{y(1.3):.1f}" font-size="11.5" fill="{c["muted"]}">'
-             f'above 2 GHz, recabling shifts the whole curve by 6&#8211;8 dB</text>')
+             f'shaded: the board&#8217;s own TX&#8594;RX leak can add up to &#177;2 dB</text>')
     # The AD9361 swaps RX gain table at 4 GHz. The step in the curve is that,
     # not the hardware, so mark it rather than leave it looking like a fault.
-    # Label goes above the data - the curve never exceeds 21.2 dB - so it
-    # cannot collide whatever the trace does.
+    # Label goes above the highest point of any band, so it cannot collide
+    # whatever the traces do.
     gx = x(3986e6)
-    o.append(f'<line x1="{gx:.1f}" y1="{y(22.4):.1f}" x2="{gx:.1f}" y2="{y(3.8):.1f}" '
+    o.append(f'<line x1="{gx:.1f}" y1="{y(TOP+2.0):.1f}" x2="{gx:.1f}" y2="{y(3.8):.1f}" '
              f'stroke="{c["muted"]}" stroke-width="1" stroke-dasharray="3 3"/>')
-    o.append(f'<text x="{gx-8:.1f}" y="{y(23.4):.1f}" text-anchor="end" font-size="11.5" '
+    o.append(f'<text x="{gx-8:.1f}" y="{y(TOP+3.4):.1f}" text-anchor="end" font-size="11.5" '
              f'fill="{c["muted"]}">AD9361 swaps RX gain table at 4 GHz &#8212; hence the step</text>')
     o.append('</svg>')
     return "\n".join(o)
 
-out = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "/home/matthieu/fishball7020-fpga-devkit/docs/img")
+out = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else HERE
 for t in TH:
     (out / f"loop-gain-{t}.svg").write_text(build(t))
 print(f"wrote {len(keys)} series to {out}/loop-gain-{{light,dark}}.svg")

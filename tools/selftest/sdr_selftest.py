@@ -653,6 +653,11 @@ def _implied_pad_db(system_gain, freq_hz, with_pa=True):
     hardest on the assumed constants. That is ample for what it is for -
     telling a 20 dB pad from a 50 dB one, or from a bare cable - and the
     cross-check only fires above 8 dB of disagreement.
+
+    Re-measured over 28 runs (docs/measured-performance.md): every single pad
+    within 1.1 dB. The one large miss, a stacked 50 dB on channel 0 reading up
+    to +3.9, is the board's own TX->RX leak - at 900 MHz it equals a ~58 dB
+    pad, only 8 dB below so weak a loop - not the constants.
     """
     reference = BARE_LOOP_GAIN_DB + (pa_gain_db(freq_hz) if with_pa else 0.0)
     return reference - system_gain
