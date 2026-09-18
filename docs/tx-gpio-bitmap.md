@@ -388,33 +388,64 @@ The rule that matters: **OR the nibble in last**, after every scaling, gain or
 format-conversion step. Anything that multiplies your samples will overwrite
 the bottom bits, because to that code they are noise.
 
+A complete program, not a fragment. It runs as written and was run against a
+board before being put here.
+
 ```python
-# run on your HOST - pyadi-iio reaches the board over the network
-import numpy as np, adi
+# run on your HOST (not the board):  pip install pyadi-iio numpy
+import adi, iio, numpy as np
 
-N  = 4096                      # buffer length in samples
-n  = np.arange(N)
-fs = 61.44e6
+URI = "ip:192.168.2.1"
+N   = 4096                     # buffer length in samples
 
-# 1. the RF you actually want to transmit, scaled to full-scale int16
+# 1. Turn the bit-map on. It is an attribute of the DAC core rather than of
+#    the radio, so pyadi-iio does not expose it - reach it through libiio.
+dac = iio.Context(URI).find_device("cf-ad9361-dds-core-lpc")
+dac.attrs["tx_sample_gpio_en"].value = "1"
+
+# 2. The radio. -89.75 dB is maximum attenuation: silent, and the pins still
+#    work, because the nibble never reaches the DAC.
+sdr = adi.ad9361(uri=URI)
+sdr.tx_enabled_channels = [0]
+sdr.sample_rate = int(30.72e6)
+sdr.tx_lo = int(2.4e9)
+sdr.tx_hardwaregain_chan0 = -89.75
+sdr.tx_cyclic_buffer = True    # repeat the buffer forever -> a steady clock
+fs = sdr.sample_rate
+
+# 3. The RF you actually want to transmit, as int16.
+n   = np.arange(N)
 sig = 0.5 * 2**15 * np.exp(2j * np.pi * 1e6 * n / fs)
 i16 = sig.real.astype(np.int16)
 q16 = sig.imag.astype(np.int16)
 
-# 2. the digital side-channel, one bit per pin, as a function of sample index
-bit0 = (n % 2  == 0)           # master clock: square wave at fs/2
-bit1 = (n % 64 == 0)           # frame clock: one sample high every 64
-bit2 = (n == 0)                # sync: a single pulse at the top of the buffer
-bit3 = 0
-nibble = (bit0 | bit1 << 1 | bit2 << 2 | bit3 << 3).astype(np.int16)
+# 4. The digital side-channel: one bit per pin, as a function of sample index.
+bit0 = (n % 2  == 0)                   # master clock: square wave at fs/2
+bit1 = (n % 64 == 0)                   # frame clock: one sample high per 64
+bit2 = (n == 0)                        # sync: one pulse at the top of the buffer
+bit3 = np.zeros(N, dtype=bool)         # spare
+nibble = (bit0 | (bit1 << 1) | (bit2 << 2) | (bit3 << 3)).astype(np.int16)
 
-# 3. LAST: clear the low nibble of I and drop the pattern in
-i16 = (i16 & ~0x000F) | nibble
+# 5. LAST: clear the low nibble of I and drop the pattern in.
+i16 = (i16 & ~np.int16(0x000F)) | nibble
 
-sdr = adi.Pluto("ip:192.168.2.1")
-sdr.tx_cyclic_buffer = True    # repeat the buffer forever -> a steady clock
-sdr.tx([i16, q16])             # libiio hands these to the DAC bit for bit
+# pyadi-iio casts real and imaginary straight to int16, so integer-valued
+# complex input reaches the DAC bit for bit.
+sdr.tx(i16.astype(np.complex128) + 1j * q16.astype(np.complex128))
+print(f"streaming at {fs/1e6:g} MSPS; sample_gpio[0] is a {fs/2e6:g} MHz square wave")
 ```
+
+The pins keep going until the buffer is destroyed. To stop and hand them back
+to Linux:
+
+```python
+# run on your HOST, in the same session
+sdr.tx_destroy_buffer()
+dac.attrs["tx_sample_gpio_en"].value = "0"
+```
+
+[`tools/sample_gpio_clock.py`](../tools/sample_gpio_clock.py) is this with
+command-line arguments and that teardown wired to Ctrl-C.
 
 Three things to notice:
 
