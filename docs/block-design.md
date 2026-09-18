@@ -357,7 +357,7 @@ differently (`cpack/fifo_wr_en` takes the decimator's valid alone) and works.
 Baseband source per channel is selectable at runtime by the DDS core's driver:
 DMA buffer, internal DDS tone generators (`altvoltage0..7` in IIO), or zero.
 When a TX buffer stops, the driver reverts to DDS; with the DDS scales at 0
-that's silence in baseband — but see the [transmitter safety](../README.md#transmitter-safety)
+that's silence in baseband — but see the [transmitter safety](transmitter-safety.md)
 notes for what the RF chain does.
 
 ## What you can change

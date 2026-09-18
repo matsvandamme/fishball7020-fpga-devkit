@@ -18,8 +18,8 @@ P1dB is about +17.5 dBm. Plan for **about +19 dBm** flat out - roughly
 estimate (scaled up from a quiet measurement, capped at the PA's compression
 point), not a power-meter reading: never write "+19 dBm measured".
 
-<sub>Canonical copy of this table: the repo README's "Transmitter safety"
-section. Change it there first, then mirror it here.</sub>
+<sub>Canonical copy of this table: `docs/transmitter-safety.md`. Change it
+there first, then mirror it here.</sub>
 
 Sizing a loopback for a bare AD9361 (+7 dBm) is therefore wrong by 10-18 dB,
 and most Pluto advice on the internet does exactly that.

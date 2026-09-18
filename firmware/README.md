@@ -43,8 +43,8 @@ unit:
 **Confirmed on real hardware (2026-09-12):** a full `build_all.sh` output,
 flashed and booted, initialises the AD9361 cleanly and reports
 `fw_version: 95aad-dirty` / `hw_model: FISH Ball PlutoSDR Rev.A (Z7020-AD9361)`
-over both the serial console and `iio_info` — see the root README's
-[verification step](../README.md#7-verify-your-build-is-actually-running).
+over both the serial console and `iio_info` — see
+[Verify your build is actually running](../docs/flashing.md#verify-your-build-is-actually-running).
 
 **Confirmed on real hardware (2026-09-14), current `patches/`:** the TX
 safeguard holds across the full cycle — attenuated at boot, the user's gain
@@ -190,8 +190,8 @@ claim above still holds; drop the patch to get the stock datapath back.
 `Makefile` — it reimplements the steps so that Vivado's `settings64.sh`
 (sourced for the HDL/FSBL/packaging steps only) never leaks its bundled
 cross-toolchain `PATH` entries into the u-boot/kernel/buildroot steps, which
-broke the kernel build the first time this was tried (see the root README's
-[Troubleshooting](../README.md#troubleshooting)).
+broke the kernel build the first time this was tried (see
+[Troubleshooting](../docs/troubleshooting.md)).
 
 It does replicate one upstream step exactly: writing
 `buildroot/board/pluto/VERSIONS` and running Buildroot's `legal-info` to

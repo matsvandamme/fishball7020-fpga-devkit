@@ -95,7 +95,7 @@ those 256 KB. It does three things, in this order:
 Then it loads the next stage into the now-working DDR and jumps to it.
 
 > That ordering — configure PS, load bitstream, *then* post-config — is
-> exactly why the JTAG procedure in the README looks the way it does.
+> exactly why the [JTAG procedure](flashing.md#option-d--jtag-temporary-but-the-fastest-hdl-loop) looks the way it does.
 
 ### 3. U-Boot — the bootloader you can actually talk to
 
@@ -159,7 +159,7 @@ The one that catches people out is **`BOOT.bin` containing three separate
 things**. A tool called `bootgen` staples them together, because BootROM
 expects to find exactly one file in a specific format.
 
-That single fact explains a limitation elsewhere in the README: updating
+That single fact explains a limitation in [flashing](flashing.md): updating
 over USB (DFU) can replace the kernel, device tree and filesystem, but
 **not** `BOOT.bin`. So any change to your FPGA design means replacing
 `BOOT.bin` on the card — with `./devkit flash` over the network if the board
@@ -181,7 +181,7 @@ root filesystem → package it all into `BOOT.bin`.
 
 ## Watching it happen
 
-Connect the serial console (README [step 7](../README.md#7-verify-your-build-is-actually-running))
+Connect the serial console ([Flashing the board](flashing.md#verify-your-build-is-actually-running))
 and you can watch every stage announce itself:
 
 ```

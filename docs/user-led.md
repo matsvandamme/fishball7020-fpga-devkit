@@ -158,7 +158,7 @@ set_property -dict {PACKAGE_PIN <ball> IOSTANDARD LVCMOS33} [get_ports my_led]
 
 Add a matching `output my_led` to `system_top.v`, drive it from your logic,
 and rebuild. A counter off `axi_ad9361/l_clk` makes a good first test — see
-[step 4](../README.md#4-add-your-own-hdl).
+[Add your own HDL](building.md#add-your-own-hdl).
 
 **The pragmatic middle ground:** if you just want the `USER` LED to reflect
 something happening inside the PL, expose that state in an AXI register your

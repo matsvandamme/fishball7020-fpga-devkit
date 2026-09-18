@@ -46,4 +46,4 @@ in this repository was read off **this** PDF.
 
 [`../img/make_schematic_figures.py`](../img/make_schematic_figures.py) draws
 annotated crops of those three sheets straight from this file. The figures are
-in the [README](../../README.md#the-pins).
+in [the GPIO reference](../tx-gpio-bitmap.md#where-the-pin-numbers-come-from).

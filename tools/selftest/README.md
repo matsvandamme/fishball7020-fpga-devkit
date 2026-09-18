@@ -86,7 +86,7 @@ The receiver is the fragile end: the AD9361's RX input is rated to about
 **+2.5 dBm**. And this board is sold in a variant with a **power amplifier** on
 transmit — a Mini-Circuits [PGA-102+](https://www.minicircuits.com/pdfs/PGA-102+.pdf)
 whose gain runs from **17.7 dB at 50 MHz down to 10.4 dB at 6 GHz** (full
-table in the [README](../../README.md#transmitter-safety), which is the
+table in [Transmitter safety](../../docs/transmitter-safety.md), which is the
 canonical copy). P1dB is about +17.5 dBm, and flat out the board should be
 taken to deliver **about +19 dBm** — about **16 dB above what its own receive
 port survives**. That is this script's own estimate, scaled up from a quieter

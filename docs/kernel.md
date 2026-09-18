@@ -94,4 +94,4 @@ after the existing patches, and add an assertion to
 `.github/workflows/verify-patches.yml` — every existing patch has one.
 `CONTRIBUTING.md` has the details.
 
-Back to the [README](../README.md#4b-change-the-kernel).
+Back to [Building your own firmware](building.md#change-the-kernel).

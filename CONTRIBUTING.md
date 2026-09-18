@@ -36,8 +36,9 @@ Number it after the highest existing patch. Two traps:
    landed (a `grep` for something it introduces). Every existing patch has one;
    it is what catches a patch that silently stops applying against upstream.
 5. Measured numbers in the docs come from real builds and a real board. If your
-   change moves them (LUTs, WNS, `BOOT.bin` size), update the README's
-   end-to-end table from your own build rather than leaving stale figures.
+   change moves them (LUTs, WNS, `BOOT.bin` size), update them from your own
+   build rather than leaving stale figures: `docs/measured-performance.md`,
+   `docs/tx-gpio-bitmap.md` and the agent skill's healthy-board table.
 
 ## What CI does and does not do
 

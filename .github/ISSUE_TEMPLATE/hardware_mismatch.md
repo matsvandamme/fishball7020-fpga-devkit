@@ -9,11 +9,11 @@ labels: hardware
 in the README — there are several similarly-named Zynq/AD936x boards with
 different pin constraints):
 
-**What you flashed, and how** (SD card / DFU — see the README's flashing
-section):
+**What you flashed, and how** (SD card / over SSH / DFU — see
+`docs/flashing.md`):
 
 **Serial console output** (a full boot log is the most useful thing you
-can attach — see the README's "Verify your build is actually running"
-section for how to capture one with `screen -L`):
+can attach — see "Verify your build is actually running" in
+`docs/flashing.md` for how to capture one with `screen -L`):
 
 **What you expected vs. what actually happened:**

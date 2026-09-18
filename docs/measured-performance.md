@@ -156,7 +156,7 @@ receiver's own offset. With the attenuators muted, a residual carrier remained
 26 dB above the noise. Powering down the transmit synthesiser as well removed a
 further 19.9 dB, to within 6 dB of the noise: about −89 dBm at the port. Both
 steps earn their place, and neither is enough alone. See
-[Transmitter safety](../README.md#transmitter-safety).
+[Transmitter safety](transmitter-safety.md).
 
 ## Frequency response
 

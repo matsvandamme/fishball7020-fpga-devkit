@@ -52,7 +52,7 @@ AD9361 does is derived from it, so its accuracy is the radio's accuracy.
 | 4 × SMA | `TX1A`, `RX1A`, `TX2A`, `RX2A`. **Read the silkscreen** rather than counting positions |
 | `RF1` | `EXT_CLK`, U.FL — feed the board an external reference instead of `Y3` |
 | `RF2` `RF3` | `TX_LO` and `RX_LO`, U.FL — the AD9361's local oscillators, brought out |
-| `JP5` | the 2×10 expansion header. Pins 7/9/11/13 are `sample_gpio[3:0]`; see [the pinout](../README.md#the-pins) |
+| `JP5` | the 2×10 expansion header. Pins 7/9/11/13 are `sample_gpio[3:0]`; see [the pinout](tx-gpio-bitmap.md#the-pins) |
 | `JP1`–`JP4` | further headers |
 | `BOOT1` | the 2-position boot switch: SD `0 0`, QSPI `1 0`, JTAG `1 1` |
 | `RJ1`, 2 × USB-C, microSD, `FAN1` | network, host connections, boot media, fan |
@@ -61,7 +61,7 @@ AD9361 does is derived from it, so its accuracy is the radio's accuracy.
 `RF1`, `RF2` and `RF3` are worth knowing about. An external reference and
 brought-out LOs are what you would use to run two of these boards coherently,
 which is the same problem the [sample-locked GPIO
-outputs](../README.md#sample-locked-gpio-outputs) address from the digital
+outputs](tx-gpio-bitmap.md) address from the digital
 side.
 
 ## Supply rails
@@ -69,7 +69,7 @@ side.
 From sheet 1: **VCC5V**, **VCC3V3**, **VCC1V8**, **VCC1V35** (the DDR3L bank)
 and **1V3_A** (the AD9361's analogue supply). Which rail feeds which FPGA bank
 matters when you constrain a pin, and that is set out with the evidence under
-[the pins](../README.md#the-pins) — bank 13, where the sample-locked GPIO pins
+[the pins](tx-gpio-bitmap.md#the-pins) — bank 13, where the sample-locked GPIO pins
 live, runs from VCC3V3.
 
 ## What this page cannot tell you
