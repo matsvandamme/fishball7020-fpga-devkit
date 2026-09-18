@@ -154,13 +154,13 @@ pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 
 ## What is on the board
 
-<img src="docs/img/board-map.png" alt="The board photographed from above, with EXT_CLK, the JP5 expansion header, the Zynq, the RJ45 jack, the four SMA ports, the TX_LO and RX_LO U.FL connectors, the AD9361, the two DDR3 chips, the BOOT switch, the microSD slot and the two USB-C sockets each labelled" width="860">
+<img src="docs/img/board-map.png" alt="The board photographed from above, with 22 labels: the four SMA ports, EXT_CLK, TX_LO and RX_LO, the AD9361, the Zynq XC7Z020, two MT41K256M16 DDR3L chips, the RTL8211F Ethernet PHY, the HR911130A RJ45 jack, the JP5 header, the BOOT DIP switch, the reset button, the microSD card and both USB-C sockets. Parts inferred from package and position rather than a legible marking have dashed rings and say likely: the four RF baluns, the two PGA-102+ amplifiers, the 40 MHz VCTCXO, the USB3320C, the FT2232H, the W25Q128 flash and the FAN1 header." width="860">
 
 An **AD9361** transceiver (70 MHz – 6 GHz, two channels), a **Zynq
 XC7Z020** (two ARM cores plus FPGA fabric), 1 GB of DDR3L, a power amplifier
-on each transmit port, gigabit Ethernet and USB. Every chip, clock, connector
-and supply rail, read off the vendor schematic: **[What is on the
-board](docs/hardware.md)**.
+on each transmit port, gigabit Ethernet and USB. Every chip with its
+datasheet, plus the clocks, connectors and supply rails, read off the vendor
+schematic: **[What is on the board](docs/hardware.md)**.
 
 ## Sample-locked GPIO outputs
 

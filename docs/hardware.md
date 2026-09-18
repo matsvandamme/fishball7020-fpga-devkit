@@ -11,25 +11,38 @@ something could not be determined at all, it is in
 [What this page cannot tell you](#what-this-page-cannot-tell-you) rather than
 guessed at.
 
-<img src="img/board-map.png" alt="The board photographed from above, with EXT_CLK, the JP5 expansion header, the Zynq, the RJ45 jack, the four SMA ports, the TX_LO and RX_LO U.FL connectors, the AD9361, the two DDR3 chips, the BOOT switch, the microSD slot and the two USB-C sockets each labelled" width="900">
+<img src="img/board-map.png" alt="The board photographed from above, with 22 labels: the four SMA ports, EXT_CLK, TX_LO and RX_LO, the AD9361, the Zynq XC7Z020, two MT41K256M16 DDR3L chips, the RTL8211F Ethernet PHY, the HR911130A RJ45 jack, the JP5 header, the BOOT DIP switch, the reset button, the microSD card and both USB-C sockets. Parts inferred from package and position rather than a legible marking have dashed rings and say likely: the four RF baluns, the two PGA-102+ amplifiers, the 40 MHz VCTCXO, the USB3320C, the FT2232H, the W25Q128 flash and the FAN1 header." width="900">
 
 ## The main devices
 
-| Ref | Part | What it does | Sheet | Corroborated by |
-|---|---|---|---|---|
-| `U1` | Xilinx **XC7Z020-CLG400** | Zynq-7000: two Cortex-A9 cores plus Artix-7 fabric | 1, 2, 3, 5, 6 | legible on the package |
-| `U2` `U3` | Micron **MT41K256M16TW-107IT:P** | DDR3L, 4 Gbit ×16 each, so **1 GB** across a 32-bit bus | 3 | board reports `MemTotal: 1027848 kB` |
-| `U11` | Analog Devices **AD9361** | the radio: 2×2 transceiver, 70 MHz – 6 GHz | 10, 11, 12 | `ad9361-phy` in IIO |
-| `U12` `U13` | Mini-Circuits **PGA-102+** | transmit power amplifier, one per channel | 12 | self-test measures ~15.7 dB of gain at 900 MHz |
-| `U8` | FTDI **FT2232HL** | USB to JTAG *and* serial console, on one socket | 8 | two `ttyUSB` ports enumerate together |
-| `U9` | Microchip **USB3320C-EZK** | USB 2.0 OTG PHY | 9 | the `usb0` network interface |
-| `IC2` | Realtek **RTL8211F-CG** | gigabit Ethernet PHY | 4 | `eth0` |
-| `RJ1` | HanRun **HR911130A** | RJ45 with integrated magnetics | 4 | legible on the part |
-| — | Winbond **W25Q128JVSIQ** | 16 MB QSPI flash: FSBL, U-Boot, its environment, a small Linux image | 2 | four MTD partitions totalling 16 MB |
-| `IC1` | **MAX809TTRG** | reset supervisor | 2 | |
-| `IC7` | TI **TXS02612RTWR** | SD-card level shifter and 2-port expander | 7 | |
-| `IC4` | serial EEPROM *(inferred)* | holds the FT2232's USB descriptors; the schematic shows `EEDAT`, `DI`, `DO` against the FT2232 | 8 | |
-| `K1` `Q3` | **AQY-221N2VW** solid-state relay + **AO3400A** MOSFET | the PTT switch, brought out on JP5 pin 17 | 13 | |
+On the picture above, a solid ring means the part was identified from the part
+itself: a legible marking, a logo, or silkscreen. A dashed ring and the word
+"likely" mean the marking is not legible in the photo, but the package and
+position fit exactly one part in the schematic. The two SOT-89 parts beside the
+outer SMA ports are one example: they are the only SOT-89s on the RF side, and
+the PGA-102+ is a SOT-89.
+
+| Ref | Part | What it does | Sheet | Corroborated by | Datasheet |
+|---|---|---|---|---|---|
+| `U1` | Xilinx **XC7Z020-CLG400** | Zynq-7000: two Cortex-A9 cores plus Artix-7 fabric | 1, 2, 3, 5, 6 | legible on the package | [DS187](https://docs.amd.com/v/u/en-US/ds187-XC7Z010-XC7Z020-Data-Sheet) · [DS190 overview](https://docs.amd.com/v/u/en-US/ds190-Zynq-7000-Overview) |
+| `U2` `U3` | Micron **MT41K256M16TW-107IT:P** | DDR3L, 4 Gbit ×16 each, so **1 GB** across a 32-bit bus | 3 | Micron logo and FBGA code `D9SHD` legible; board reports `MemTotal: 1027848 kB` | [Micron part page](https://www.micron.com/products/memory/dram-components/ddr3-sdram/part-catalog/part-detail/mt41k256m16tw-107-it-p) |
+| `U11` | Analog Devices **AD9361** | the radio: 2×2 transceiver, 70 MHz – 6 GHz | 10, 11, 12 | ADI logo legible; `ad9361-phy` in IIO | [AD9361](https://www.analog.com/media/en/technical-documentation/data-sheets/ad9361.pdf) |
+| `U12` `U13` | Mini-Circuits **PGA-102+** | transmit power amplifier, one per channel | 12 | SOT-89 packages beside the outer SMA ports; self-test measures ~15.7 dB of gain at 900 MHz | [PGA-102+](https://www.minicircuits.com/pdfs/PGA-102+.pdf) |
+| `T1`–`T4` | RF baluns (the schematic gives no part number) | single-ended SMA ↔ the AD9361's differential RF pins | 12 | four square 6-pad parts around the AD9361 | — |
+| `U8` | FTDI **FT2232HL** | USB to JTAG *and* serial console, on one socket | 8 | two `ttyUSB` ports enumerate together | [FT2232H](https://ftdichip.com/wp-content/uploads/2024/09/DS_FT2232H.pdf) |
+| `U9` | Microchip **USB3320C-EZK** | USB 2.0 OTG PHY | 9 | the `usb0` network interface | [USB3320](https://ww1.microchip.com/downloads/en/DeviceDoc/00001792E.pdf) |
+| `IC2` | Realtek **RTL8211F-CG** | gigabit Ethernet PHY | 4 | Realtek logo legible; `eth0` | [Realtek product page](https://www.realtek.com/Product/Index?id=3975&cate_id=786) |
+| `RJ1` | HanRun **HR911130A** | RJ45 with integrated magnetics | 4 | legible on the part | [LCSC page, with datasheet](https://lcsc.com/product-detail/Ethernet-Connectors-Modular-Connectors-RJ45-RJ11_HANRUN-Zhongshan-HanRun-Elec-HR911130A_C54408.html) |
+| — | Winbond **W25Q128JVSIQ** | 16 MB QSPI flash: FSBL, U-Boot, its environment, a small Linux image | 2 | four MTD partitions totalling 16 MB | [W25Q128JV](https://www.winbond.com/resource-files/w25q128jv%20revf%2003272018%20plus.pdf) |
+| `IC1` | onsemi **MAX809TTRG** | reset supervisor, behind the `RST` button (`SW1`) | 2 | | [MAX809](https://www.onsemi.com/pdf/datasheet/max809s-d.pdf) |
+| `IC7` | TI **TXS02612RTWR** | SD-card level shifter and 2-port expander | 7 | | [TXS02612](https://www.ti.com/lit/ds/symlink/txs02612.pdf) |
+| `IC4` | serial EEPROM *(inferred)* | holds the FT2232's USB descriptors; the schematic shows `EEDAT`, `DI`, `DO` against the FT2232 | 8 | | — |
+| `K1` `Q3` | Panasonic **AQY221N2VW** solid-state relay + AOS **AO3400A** MOSFET | the PTT switch, brought out on JP5 pin 17 | 13 | | [AQY221N2VW](https://industry.panasonic.com/global/en/products/control/relay/photomos/number/aqy221n2vw) · [AO3400A](https://www.aosmd.com/res/datasheets/AO3400A.pdf) |
+
+Not on the picture: the MAX809, the TXS02612, the EEPROM, the relay and the
+LEDs are too small to find reliably in an 800-pixel photo. The power
+regulators are not in the published schematic at all, so this page cannot name
+them. For the RTL8211F the link is Realtek's product page, the official source.
 
 ## Clocks
 
