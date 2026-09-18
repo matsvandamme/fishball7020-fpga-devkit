@@ -1004,6 +1004,17 @@ The fastest a pin can toggle is **half the sample rate** (~30 MHz at
 
 ### Checking it works
 
+This is what the four pins look like on a logic analyser, carrying a counter:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/saleae-timing-dark.svg">
+  <img src="docs/img/saleae-timing-light.svg" alt="Logic-analyser capture of the four sample-locked GPIO pins carrying a 4-bit counter at 5 MSPS, with the decoded value D, E, F, 0, 1 and so on under each 200 ns sample" width="760">
+</picture>
+
+More measurements, including the RF at full power, are in
+[what has actually been verified](docs/tx-gpio-bitmap.md#what-has-actually-been-verified).
+To check your own board without an analyser:
+
 ```bash
 # run from: the repo root (it reaches the board over the network)
 ./devkit gpio-check

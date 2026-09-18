@@ -528,6 +528,12 @@ use a card reader. **DFU cannot do it.** See
   yourself. pyadi-iio and the MCP server never do: below 2.083 MSPS they use
   the AD9361's own filters instead, and the pins were measured correct at
   1 MSPS that way.
+
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="img/saleae-interp-dark.svg">
+    <img src="img/saleae-interp-light.svg" alt="Two spectra of the same 1 MSPS tone buffer: sent the normal way the tone arrives cleanly; through the FPGA divide-by-8 interpolator no tone arrives at all" width="760">
+  </picture>
+
 - **The pins only move while a TX buffer is streaming.** Between streams the
   last nibble is held. This firmware also mutes the transmitter and powers down
   the TX synthesiser between streams (see the README's transmitter-safety
@@ -636,6 +642,25 @@ repeated samples, pin-to-pin timing and frequency together. With four channels
 the analyser samples at 50 MS/s, 20 ns apart; the skew figure is finer than
 that because the board's clock and the analyser's drift against each other, so
 averaging over about 500,000 edges recovers sub-nanosecond timing.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/saleae-timing-dark.svg">
+  <img src="img/saleae-timing-light.svg" alt="Logic-analyser capture of the four sample-locked GPIO pins carrying a 4-bit counter at 5 MSPS, with the decoded value D, E, F, 0, 1 and so on under each 200 ns sample" width="760">
+</picture>
+
+At full transmit power the pins still swing cleanly between their logic levels:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/saleae-analog-dark.svg">
+  <img src="img/saleae-analog-light.svg" alt="Analog trace of JP5 pin 7 at full transmit power, switching cleanly between 0.04 V and 3.28 V" width="760">
+</picture>
+
+And the transmitted signal does not notice them - the claim this feature rests on:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/saleae-spectrum-dark.svg">
+  <img src="img/saleae-spectrum-light.svg" alt="Received spectrum at full transmit power with the pins toggling and with the pins off: the two traces overlap, and nothing appears at the pin frequencies" width="760">
+</picture>
 
 The one thing the pins cannot tell you is the *fixed offset between a pin edge
 and its RF*, the calibration constant this feature exists to provide. That
