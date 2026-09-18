@@ -47,11 +47,10 @@ your sample:   b15 b14 b13 b12 b11 b10 b9 b8 b7 b6 b5 b4 │ b3 b2 b1 b0
 You can see it in ADI's own HDL — `axi_ad9361_tx_channel.v` does literally
 `dac_data_out_int <= dma_data[15:4];`. The bottom four bits (the **low
 nibble**, the usual jargon for "bottom four bits") reach the FPGA and stop
-there. With the FPGA interpolator bypassed — every sample rate from 2.083 MSPS
-up — nothing downstream reads them, so they change nothing about the
-transmitted signal. (Engage the ÷8 interpolator for lower rates and its FIR
-filters the whole 16-bit word, so the nibble leaks into the DAC data at
-roughly −70 dBFS; see [Limits](#limits).)
+there. Nothing downstream reads them, so they change nothing about the
+transmitted signal, at any sample rate you reach the normal way. (The one path
+that would feed them to the DAC is the FPGA's ÷8 transmit interpolator, which
+does not work on this board anyway; see [Limits](#limits).)
 
 So they are free. This feature routes them to four pins on the expansion
 header instead of dropping them.
@@ -64,8 +63,8 @@ matters enough to spell out.
 
 The pins carry bits `b0..b3` of a sample; bits `b4..b15` of that same sample
 become RF. But the pin is driven one FPGA clock after the sample leaves the
-DMA unpacker, while the RF still has to cross the fabric interpolation filter,
-the AD9361's own digital filters, the DAC and the analog transmit chain. **So
+DMA unpacker, while the RF still has to cross the rest of the FPGA's transmit
+path, the AD9361's own digital filters, the DAC and the analog transmit chain. **So
 the pins lead the RF**, by something on the order of a microsecond depending
 on how the filters are configured.
 
@@ -453,12 +452,11 @@ Three things to notice:
   period and let the DMA loop it. Make the buffer length an exact multiple of
   your pattern period, or you get a glitch at the wrap.
 - **Only channel 0's I samples carry the nibble** in this build.
-- **Analog cost is zero at normal rates, not quite zero at low ones.** With
-  the FPGA interpolator bypassed (2.083 MSPS and up) the DAC never sees the
-  nibble. Below that the ÷8 interpolator is engaged and its FIR filters the
-  whole 16-bit word, so the nibble leaks into the DAC data at roughly −70 dBFS.
-  Irrelevant for radar pulses; worth knowing for a sensitive modulation at a
-  low sample rate.
+- **Analog cost is zero, and measured.** At full transmit power into a
+  loopback, the received tone was identical to within 0.04 dB with the nibble
+  absent, present in the data, and driving the pins at 30 MHz, and nothing
+  appeared at the pin frequencies down to the noise floor, about 64 dB below
+  the carrier. The same holds at low sample rates reached the normal way.
 
 **You can exercise the whole digital path with the transmitter muted.** The
 nibble never touches the analog chain, so set TX attenuation to maximum
@@ -511,11 +509,22 @@ use a card reader. **DFU cannot do it.** See
 ## Limits
 
 - **Rate.** One nibble per sample, so the fastest a pin can toggle is half the
-  sample rate — about 30 MHz at 61.44 MSPS. "Sample rate" means the one libiio
-  reports, the rate of the buffer *you* write. When the FPGA interpolator is
-  engaged for low sample rates that is one eighth of the rate the AD9361 runs
-  internally, and the pins follow your buffer, not the chip. Every pattern is a
-  whole-number division of that rate — you cannot get an arbitrary frequency.
+  sample rate — 30.72 MHz at 61.44 MSPS, measured. "Sample rate" means the rate
+  of the buffer *you* write. Every pattern is a whole-number division of that
+  rate — you cannot get an arbitrary frequency.
+- **Do not engage the FPGA's ÷8 transmit interpolator.** It is broken on this
+  board, independently of this feature: a clean tone sent through it comes out
+  as a spray of components, while the same tone with it bypassed is spotless.
+  The cause is in the upstream block design, before any of this repository's
+  patches: `tx_upack` is read on `interpolator valid OR dac_valid_i1`, and this
+  board runs both transmit channels (2R2T), so channel 1's direct path keeps
+  emptying the shared FIFO at the full rate while channel 0's interpolator
+  catches only some of the samples. The pins show it plainly, running at twelve
+  times the buffer rate. You only reach it by setting the DAC core's
+  `out_voltage_sampling_frequency` to one eighth of the AD9361's rate
+  yourself. pyadi-iio and the MCP server never do: below 2.083 MSPS they use
+  the AD9361's own filters instead, and the pins were measured correct at
+  1 MSPS that way.
 - **The pins only move while a TX buffer is streaming.** Between streams the
   last nibble is held. This firmware also mutes the transmitter and powers down
   the TX synthesiser between streams (see the README's transmitter-safety
@@ -523,10 +532,15 @@ use a card reader. **DFU cannot do it.** See
 - **I only, four pins**, unless you widen `NBITS`.
 - **3.3 V LVCMOS**, single-ended, no series termination on the board. Keep the
   wires short; buffer anything long.
-- **Skew between the four pins is unconstrained** — a few hundred picoseconds
-  of routing, not checked by timing analysis. Nothing against a 16 ns sample
-  period, but do not build a picosecond-accurate instrument on it without
-  adding output constraints and re-running implementation.
+- **Skew between the four pins is not constrained by timing analysis**, but it
+  is measured: all four switch within 1.5 ns of each other, a figure that
+  includes the logic analyser's own channel skew. Nothing against a 16 ns
+  sample period, but do not build a picosecond-accurate instrument on it
+  without adding output constraints and re-running implementation.
+- **Long parallel wires cross-couple.** A pin toggling at 15–30 MHz put 20 ns
+  glitches on the pin next to it through a logic analyser's unshielded leads;
+  the board itself was clean. Keep wires short and give each signal its own
+  ground (JP5 pin 2 or 20) when a fast clock sits next to a slow signal.
 - **Nothing validates your pattern.** The nibble is copied through untouched,
   which is the entire point and also means a typo goes straight to the pins.
 
@@ -548,7 +562,17 @@ Being explicit, because "it builds" and "it works" are different claims:
 | Bit order matches the header labels | ✅ `sample_gpio[n]` ↔ nibble bit `n` |
 | The flag hands the pins back when cleared | ✅ measured |
 | Pins track the pattern **in time**, at the rate the samples imply | ✅ two bits at once, 0.0–0.1 % period error |
-| **Edge-level timing and coherence with the RF** | ❌ **not yet done** — needs a scope |
+| Every sample reaches the pins, in order, edge by edge | ✅ 1,002,706 consecutive samples, 0 errors (logic analyser) |
+| …with both transmit channels on (the every-other-clock case) | ✅ 0 errors at 5 MSPS and at 61.44 MSPS |
+| …while both receive channels stream at the same time | ✅ about 187 million samples, 0 slips |
+| Full rate: pin 0 at 30.72 MHz, from 61.44 MSPS | ✅ every sample present |
+| The four pins switch together | ✅ within 1.5 ns, same-direction edges |
+| Electrical levels | ✅ 0.04 V / 3.28 V, 2–8 mV noise; ~30 mV idle |
+| DMA underflow drives the pins to zero | ✅ on the very next sample |
+| The RF is unaffected, at full transmit power | ✅ identical to 0.04 dB, pins toggling or not |
+| Pins work as ordinary Linux GPIO when the feature is off | ✅ driven from `gpioset`, seen on the pads |
+| Switching the feature on/off mid-stream | ✅ one partial sample at the switch, nothing else |
+| **Offset between a pin edge and its RF** | ❌ **not yet measured** — needs an RF detector on the analyser |
 
 Run the hardware check yourself with `tools/tx-gpio-bitmap-check.py`. It needs
 no scope, no jumper and no antenna, and it never transmits at power — TX
@@ -597,11 +621,24 @@ a dozen seconds. That is the coherence mechanism showing itself: the pins are
 clocked by the sample stream and by nothing else. If anything else were driving
 them the period would not track the sample rate at all.
 
-It is still not an edge-level result. Sysfs reads take milliseconds and cannot
-see a pin toggling at megahertz, so the *fixed offset between a pin edge and
-its RF* — the calibration constant the feature exists to provide — remains
-designed-for rather than demonstrated. Measuring it needs a scope on a pin and
-the RF together, or a loopback with cross-correlation.
+Sysfs reads take milliseconds and cannot see a pin toggling at megahertz, so
+this check cannot give edge-level timing. That came next, from a logic analyser.
+
+### Measured on a logic analyser
+
+A Saleae Logic 8 on the four pins, with the transmitter muted except where the
+table above says full power. The pattern was a counter, `nibble = n & 0xF`, so
+every sample has a known value and one capture checks the mapping, dropped or
+repeated samples, pin-to-pin timing and frequency together. With four channels
+the analyser samples at 50 MS/s, 20 ns apart; the skew figure is finer than
+that because the board's clock and the analyser's drift against each other, so
+averaging over about 500,000 edges recovers sub-nanosecond timing.
+
+The one thing the pins cannot tell you is the *fixed offset between a pin edge
+and its RF*, the calibration constant this feature exists to provide. That
+needs the RF and a pin on the same clock: an RF detector off a coupler in the
+transmit line, feeding a spare analyser channel. It remains designed-for, not
+demonstrated.
 
 ### Two traps that check exists to avoid
 

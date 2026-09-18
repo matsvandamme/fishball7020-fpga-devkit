@@ -97,9 +97,11 @@ In plain words, before the detailed version further down.
 7. Linux's IIO subsystem hands it to your application as `cf-ad9361-lpc`.
 
 Transmit is the same in reverse, with one asymmetry worth remembering: **receive
-samples are 12-bit sign-extended into 16, but the transmit DAC uses all 16
-bits.** Scale transmit samples to ±2047 as though they were receive samples and
-you will be 24 dB quiet.
+samples are 12-bit sign-extended into 16 (right-aligned), but transmit samples
+are MSB-aligned: the 12-bit DAC takes the top 12 of your 16 bits.** Scale
+transmit samples to ±2047 as though they were receive samples and you will be
+24 dB quiet. The bottom four transmit bits are discarded, which is what the
+[sample-locked GPIO outputs](tx-gpio-bitmap.md) reuse.
 
 ## The picture
 
@@ -331,9 +333,25 @@ usable receiver with the filter bypassed. This is stock ADI behaviour.
 
 The mirror image, with one difference: `tx_upack/fifo_rd_en` is the OR of the
 interpolator's valid and channel 1's DAC valid, so channel 1 does participate
-in transmit timing. `axi_ad9361`'s `dac_data_*` inputs are 16-bit and the DAC
-uses all 16 — measured: digital amplitude 32767 produces 24 dB more output
-than 2047, cleanly. Scale to ±32767, not ±2047.
+in transmit timing. `axi_ad9361`'s `dac_data_*` inputs are 16-bit and
+**MSB-aligned**: the 12-bit DAC takes bits [15:4] and discards [3:0], which is
+what the sample-locked GPIO feature reuses. Measured: digital amplitude 32767
+produces 24 dB more output than 2047, exactly the factor of 16 that alignment
+predicts. Scale to ±32767, not ±2047.
+
+**That OR also breaks the transmit interpolator on this board.** With the
+interpolator engaged, channel 0 should draw one sample in eight from
+`tx_upack`, but `util_upack2` pops every channel together and channel 1's DAC
+valid keeps firing at the full rate, because channel 1 has no interpolator and
+this board runs 2R2T. Channel 0's interpolator then sees only a fraction of its
+samples, and the transmitted signal is garbage: measured, a clean DMA tone came
+out as a spray of components, while the same tone with the interpolator
+bypassed was spotless. It is upstream's wiring, not something this
+repository's patches added. You only reach it by setting the DAC core's
+`out_voltage_sampling_frequency` to one eighth of the AD9361's rate;
+pyadi-iio, libiio's usual helpers and the MCP server reach low rates with the
+AD9361's own filters and never engage it. The receive decimator is wired
+differently (`cpack/fifo_wr_en` takes the decimator's valid alone) and works.
 
 Baseband source per channel is selectable at runtime by the DDS core's driver:
 DMA buffer, internal DDS tone generators (`altvoltage0..7` in IIO), or zero.

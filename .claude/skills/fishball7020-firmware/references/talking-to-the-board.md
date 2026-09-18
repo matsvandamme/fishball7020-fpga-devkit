@@ -26,6 +26,20 @@ All confirmed against a live board running IIOD 0.25.
 - **Receive is 12-bit sign-extended into int16** (full scale ±2047). **Transmit
   is the full 16 bits.** Scaling transmit samples to ±2047 emits 24 dB low.
 
+## pyadi-iio returns receive data from BEFORE your last change
+
+libiio keeps a few kernel blocks queued for a receive buffer. Once they fill,
+the DMA stops and the old blocks wait. So after changing any setting, the next
+few `sdr.rx()` calls return samples captured at the PREVIOUS setting. Every
+reading lags one step, which looks exactly like "TX attenuation does nothing" -
+it cost five runs to find, and the firmware's mute patches were fine. Call
+`sdr.rx_destroy_buffer()` before each measurement that follows a change.
+
+After a low-rate run through pyadi (below 2.083 MSPS) the AD9361's own FIR is
+left enabled in x4 mode. Restore by setting the rate back with pyadi's setter
+FIRST, then `in_out_voltage_filter_fir_en = 0`; the other order is invalid
+below 2.083 MSPS. Check `rx_path_rates` afterwards.
+
 ## Two applications cannot hold the board at once
 
 Opening it in SDRangel or anything else that claims the USB device reconfigures

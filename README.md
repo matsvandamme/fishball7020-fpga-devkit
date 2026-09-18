@@ -779,13 +779,18 @@ your sample:   b15 … b4 │ b3 b2 b1 b0
                └ the DAC │ └ discarded, so this feature takes them
 ```
 
-At normal sample rates, then, the pins cost nothing in analog performance,
-because the DAC never sees those bits. They cost almost nothing in the fabric
-either: 3 LUTs and 7 flip-flops, no DSPs, no block RAM.
+So the pins cost nothing in analog performance, because the DAC never sees
+those bits. That was measured at full transmit power: the RF was identical to
+within 0.04 dB whether the nibble was absent, present, or driving the pins at
+30 MHz. They cost almost nothing in the fabric either: 3 LUTs and 7 flip-flops,
+no DSPs, no block RAM.
 
-There is one exception. Below 2.083 MSPS the FPGA interpolator switches in and
-filters the whole 16-bit word, at which point the nibble does leak into the DAC
-data, at roughly −70 dBFS. See [Limits](docs/tx-gpio-bitmap.md#limits).
+That holds at low sample rates too. pyadi-iio and the MCP server reach rates
+below the AD9361's 2.083 MSPS floor using the chip's own filters, which keeps
+the FPGA's ÷8 interpolator out of the path; the pins were measured running
+correctly at 1 MSPS this way. Do not switch that FPGA interpolator on yourself:
+on this board it corrupts the transmitted signal, feature or no feature. See
+[Limits](docs/tx-gpio-bitmap.md#limits).
 
 ### How the nibble reaches the pin
 

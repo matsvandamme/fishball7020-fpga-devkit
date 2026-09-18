@@ -20,7 +20,7 @@
 <text x="60" y="316" font-size="12" fill="#52514e">the sample stands at its output</text>
 <rect x="44" y="462" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#d8d7d2" stroke-width="1.4"/>
 <text x="60" y="485" font-size="14" font-weight="600" fill="#0b0b0b">FIR interpolator</text>
-<text x="60" y="504" font-size="12" fill="#52514e">bypassed above 2.083 MSPS</text>
+<text x="60" y="504" font-size="12" fill="#52514e">bypassed in normal use</text>
 <rect x="44" y="556" width="310" height="54" rx="7" fill="#fcfcfb" stroke="#d8d7d2" stroke-width="1.4"/>
 <text x="60" y="579" font-size="14" font-weight="600" fill="#0b0b0b">axi_ad9361</text>
 <text x="60" y="598" font-size="12" fill="#52514e">DAC core, then LVDS to the chip</text>

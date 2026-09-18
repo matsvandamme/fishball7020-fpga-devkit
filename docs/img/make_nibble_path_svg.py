@@ -28,7 +28,7 @@ LEFT = [
     (86,  "Your program", "16-bit I/Q words in a DDR buffer", "plain"),
     (86 + (BH + GAP), "TX DMA", "axi_ad9361_dac_dma", "plain"),
     (86 + 2 * (BH + GAP), "util_upack2", "the sample stands at its output", "tap"),
-    (86 + 4 * (BH + GAP), "FIR interpolator", "bypassed above 2.083 MSPS", "plain"),
+    (86 + 4 * (BH + GAP), "FIR interpolator", "bypassed in normal use", "plain"),
     (86 + 5 * (BH + GAP), "axi_ad9361", "DAC core, then LVDS to the chip", "plain"),
     (86 + 6 * (BH + GAP), "AD9361", "12-bit DAC — takes bits [15:4]", "plain"),
     (86 + 7 * (BH + GAP), "RF out", "antenna port", "rf"),
