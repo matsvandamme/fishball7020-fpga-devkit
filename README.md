@@ -944,22 +944,54 @@ the low nibble of each transmit sample appears on the pins, one nibble per
 sample. A pin is a clock because you made that bit alternate; it is a frame
 marker because you made it pulse once per frame.
 
-```python
-# run on your HOST - pyadi-iio reaches the board over the network
-n = np.arange(N)
-bit0 = (n % 2  == 0)       # master clock at half the sample rate
-bit1 = (n % 64 == 0)       # frame marker, one sample every 64
-nibble = (bit0 | bit1 << 1).astype(np.int16)
+This is a complete program, not a fragment. It runs as written, against a
+board on the default address, and leaves the transmitter silent.
 
-i16 = (i16 & ~0x000F) | nibble      # OR it in LAST, after any scaling
-sdr.tx_cyclic_buffer = True         # loop one period for a continuous clock
-sdr.tx([i16, q16])
+```python
+# run on your HOST (not the board):  pip install pyadi-iio numpy
+import adi, iio, numpy as np
+
+URI = "ip:192.168.2.1"
+
+# 1. Turn the feature on. It is an attribute of the DAC core rather than of
+#    the radio, so pyadi-iio does not expose it - reach it through libiio.
+dac = iio.Context(URI).find_device("cf-ad9361-dds-core-lpc")
+dac.attrs["tx_sample_gpio_en"].value = "1"
+
+# 2. The radio. -89.75 dB is maximum attenuation: silent, and the pins still
+#    work, because the nibble never reaches the DAC.
+sdr = adi.ad9361(uri=URI)
+sdr.tx_enabled_channels = [0]
+sdr.sample_rate = int(30.72e6)
+sdr.tx_lo = int(2.4e9)
+sdr.tx_hardwaregain_chan0 = -89.75
+sdr.tx_cyclic_buffer = True          # loop it, for a continuous clock
+
+# 3. A carrier in the top 12 bits, your pattern in the bottom 4.
+n = np.arange(16384)
+i16 = (8192 * np.cos(2 * np.pi * n / 64)).astype(np.int16)
+q16 = (8192 * np.sin(2 * np.pi * n / 64)).astype(np.int16)
+nibble = ((n % 2 == 0) | ((n % 64 == 0) << 1)).astype(np.int16)
+i16 = (i16 & ~np.int16(0x000F)) | nibble     # OR it in LAST, after any scaling
+
+sdr.tx(i16.astype(np.complex128) + 1j * q16.astype(np.complex128))
+# The pins tick until you call sdr.tx_destroy_buffer().
 ```
 
+`sample_gpio[0]` is now a 15.36 MHz square wave on JP5 pin 7 and
+`sample_gpio[1]` a marker every 64 samples on pin 9. Ground your probe on pin
+2 or 20.
+
+[`tools/sample_gpio_clock.py`](tools/sample_gpio_clock.py) is the same thing
+with arguments, all four bits used, and a teardown that mutes the transmitter
+and hands the pins back to Linux on Ctrl-C.
+
 **OR the nibble in last.** Any gain or format step applied afterwards
-overwrites the bottom bits, because to that code they are noise. This also
-means GNU Radio's ordinary complex-float path cannot carry it — work at
-`short` level or render the buffer with numpy.
+overwrites the bottom bits, because to that code they are noise. That is also
+why the samples go out as `complex128` holding integer values: pyadi-iio casts
+the real and imaginary parts straight to `int16`, so the bits you wrote are the
+bits the DAC gets. It is why GNU Radio's ordinary complex-float path cannot
+carry this — work at `short` level, or render the buffer with numpy.
 
 The fastest a pin can toggle is **half the sample rate** (~30 MHz at
 61.44 MSPS), and every pattern is a whole-number division of it.
