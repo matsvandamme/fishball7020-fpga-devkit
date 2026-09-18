@@ -339,15 +339,16 @@ what the sample-locked GPIO feature reuses. Measured: digital amplitude 32767
 produces 24 dB more output than 2047, exactly the factor of 16 that alignment
 predicts. Scale to ±32767, not ±2047.
 
-**That OR also breaks the transmit interpolator on this board.** With the
-interpolator engaged, channel 0 should draw one sample in eight from
-`tx_upack`, but `util_upack2` pops every channel together and channel 1's DAC
-valid keeps firing at the full rate, because channel 1 has no interpolator and
-this board runs 2R2T. Channel 0's interpolator then sees only a fraction of its
-samples, and the transmitted signal is garbage: measured, a clean DMA tone came
-out as a spray of components, while the same tone with the interpolator
-bypassed was spotless. It is upstream's wiring, not something this
-repository's patches added. You only reach it by setting the DAC core's
+**The transmit interpolator does not work on this board, and that OR is the
+likely reason.** With the interpolator engaged, channel 0 should draw one sample
+in eight from `tx_upack`. But `util_upack2` pops every channel together, and
+channel 1's DAC valid keeps firing at the full rate, because channel 1 has no
+interpolator and this board runs 2R2T. Measured: `tx_upack` was read at twelve
+times the buffer rate, and a DMA tone sent through the interpolator did not
+come out at all. The received spectrum matched the transmitter muted to within
+1.2 dB, while the same buffer sent the normal way arrived clean. Why the result
+is silence rather than distortion has not been established. The wiring is
+upstream's, not something this repository's patches added. You only reach it by setting the DAC core's
 `out_voltage_sampling_frequency` to one eighth of the AD9361's rate;
 pyadi-iio, libiio's usual helpers and the MCP server reach low rates with the
 AD9361's own filters and never engage it. The receive decimator is wired

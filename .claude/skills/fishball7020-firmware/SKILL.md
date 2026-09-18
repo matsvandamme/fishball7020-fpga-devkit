@@ -56,7 +56,10 @@ the pins LEAD the RF by a constant offset of roughly a microsecond that is still
 designed-for, not measured - never write "the pin edge and its RF happen
 together". **Never engage the FPGA ÷8 TX interpolator** (DAC core rate = AD
 rate / 8): upstream's `tx_upack` read-enable ORs in channel 1's DAC valid, the
-board runs 2R2T, and channel 0's RF comes out as garbage. pyadi-iio and the MCP
+board runs 2R2T; measured, TX1 then emits nothing (spectrum = TX muted, within
+1.2 dB). Always compare against a muted reference in absolute dBFS - a
+normalised spectrum made that silence look like "a spray of components" once.
+pyadi-iio and the MCP
 use the AD9361's own FIR below 2.083 MSPS and never touch it. Three
 ways to fool yourself: a pin read with `direction=out` returns what you *wrote*;
 a pin's level alone never says who is driving it (stream two different nibbles);

@@ -789,7 +789,8 @@ That holds at low sample rates too. pyadi-iio and the MCP server reach rates
 below the AD9361's 2.083 MSPS floor using the chip's own filters, which keeps
 the FPGA's ÷8 interpolator out of the path; the pins were measured running
 correctly at 1 MSPS this way. Do not switch that FPGA interpolator on yourself:
-on this board it corrupts the transmitted signal, feature or no feature. See
+on this board it stops the transmitter producing anything at all, feature or
+no feature. See
 [Limits](docs/tx-gpio-bitmap.md#limits).
 
 ### How the nibble reaches the pin

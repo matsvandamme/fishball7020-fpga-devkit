@@ -512,15 +512,18 @@ use a card reader. **DFU cannot do it.** See
   sample rate — 30.72 MHz at 61.44 MSPS, measured. "Sample rate" means the rate
   of the buffer *you* write. Every pattern is a whole-number division of that
   rate — you cannot get an arbitrary frequency.
-- **Do not engage the FPGA's ÷8 transmit interpolator.** It is broken on this
-  board, independently of this feature: a clean tone sent through it comes out
-  as a spray of components, while the same tone with it bypassed is spotless.
-  The cause is in the upstream block design, before any of this repository's
-  patches: `tx_upack` is read on `interpolator valid OR dac_valid_i1`, and this
-  board runs both transmit channels (2R2T), so channel 1's direct path keeps
-  emptying the shared FIFO at the full rate while channel 0's interpolator
-  catches only some of the samples. The pins show it plainly, running at twelve
-  times the buffer rate. You only reach it by setting the DAC core's
+- **Do not engage the FPGA's ÷8 transmit interpolator.** It does not work on
+  this board, independently of this feature: a tone sent through it does not
+  come out at all. The received spectrum matched the transmitter muted to within
+  1.2 dB of total power, while the same buffer sent the normal way arrived
+  clean. The pins show part of what goes wrong: in this mode `tx_upack` is read
+  at twelve times the buffer rate instead of once per sample. The likely reason
+  is in the upstream block design, before any of this repository's patches:
+  `tx_upack` is read on `interpolator valid OR dac_valid_i1`, and this board
+  runs both transmit channels (2R2T), so channel 1's direct path keeps
+  emptying the shared FIFO at the full rate. Why that leaves the output silent
+  rather than merely distorted has not been established. You only reach this
+  mode by setting the DAC core's
   `out_voltage_sampling_frequency` to one eighth of the AD9361's rate
   yourself. pyadi-iio and the MCP server never do: below 2.083 MSPS they use
   the AD9361's own filters instead, and the pins were measured correct at
