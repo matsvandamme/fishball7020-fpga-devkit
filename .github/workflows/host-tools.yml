@@ -12,6 +12,8 @@ on:
     paths:
       - "tools/**"
       - "firmware/scripts/*.py"
+      - "firmware/scripts/*.sh"
+      - "devkit"
       - "firmware/sim/**"
       - "firmware/patches/**"
       - ".github/workflows/host-tools.yml"
@@ -19,6 +21,8 @@ on:
     paths:
       - "tools/**"
       - "firmware/scripts/*.py"
+      - "firmware/scripts/*.sh"
+      - "devkit"
       - "firmware/sim/**"
       - "firmware/patches/**"
   workflow_dispatch:
@@ -72,3 +76,38 @@ jobs:
         run: cd firmware && ./sim/run_sim.sh
       - name: Prove the testbench can still fail
         run: cd firmware && ./sim/run_sim.sh --mutate
+
+  # The build script's preflight is the one part of it that can run without
+  # Vivado, and the part a new user hits first. It once referenced a variable
+  # it never set; under `set -u` every fresh clone died on line 112, while the
+  # author's shells had it set by an earlier `source tools/env-vivado.sh` and
+  # never saw it. So run it the way a new user does: an empty environment.
+  build-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The build's preflight runs to the end in an empty environment
+        run: |
+          set -euo pipefail
+          # A fake source tree: stamped with the real patch set, plus a Vivado
+          # project older than its sources, so the checks that read patches/
+          # and the coefficient files both actually execute.
+          mkdir -p firmware/src/hdl/projects/pluto
+          for p in firmware/patches/*.patch; do
+              echo "$(sha256sum "$p" | cut -d' ' -f1)  $(basename "$p")"
+          done > firmware/src/.devkit-patches-applied
+          touch -d 2000-01-01 firmware/src/hdl/projects/pluto/pluto.xpr
+          touch firmware/src/hdl/projects/pluto/system_bd.tcl
+
+          run() { env -i HOME="$HOME" PATH=/usr/bin:/bin bash firmware/scripts/build_all.sh --preflight-only > out.txt 2>&1 || true; cat out.txt; }
+
+          run
+          ! grep -q "unbound variable" out.txt
+          grep -q "newer than the existing Vivado project:.*system_bd.tcl" out.txt
+          grep -q "newer than the existing Vivado project:.*coefile_" out.txt
+          ! grep -q "is not applied" out.txt
+
+          # A patch the stamp does not list must be caught.
+          sed -i '$d' firmware/src/.devkit-patches-applied
+          run
+          grep -q "is not applied" out.txt

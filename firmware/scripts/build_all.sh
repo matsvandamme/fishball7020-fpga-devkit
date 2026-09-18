@@ -35,13 +35,16 @@ fi
 # --hdl-only reuses what is already in src/ and rebuilds just the parts that
 # actually depend on the bitstream: HDL -> FSBL -> uEnv.txt -> BOOT.bin.
 HDL_ONLY=0
+PREFLIGHT_ONLY=0
 for arg in "$@"; do
     case "$arg" in
         --hdl-only) HDL_ONLY=1 ;;
+        --preflight-only) PREFLIGHT_ONLY=1 ;;
         -h|--help)
-            echo "Usage: $(basename "$0") [--hdl-only]"
-            echo "  --hdl-only   rebuild HDL, FSBL and packaging only, reusing the"
-            echo "               existing kernel, u-boot and root filesystem."
+            echo "Usage: $(basename "$0") [--hdl-only] [--preflight-only]"
+            echo "  --hdl-only        rebuild HDL, FSBL and packaging only, reusing the"
+            echo "                    existing kernel, u-boot and root filesystem."
+            echo "  --preflight-only  run the checks that guard the build, then stop."
             exit 0 ;;
         *) echo "ERROR: unknown option '$arg' (try --help)" >&2; exit 1 ;;
     esac
@@ -109,7 +112,7 @@ else
     # patches/ that is not in it has not been applied - a git pull bringing a
     # new patch is the common case - and building without it produces firmware
     # that silently lacks the change.
-    for p in "$SCRIPT_DIR"/../patches/*.patch; do
+    for p in "$FW1_DIR"/patches/*.patch; do
         line="$(sha256sum "$p" | cut -d' ' -f1)  $(basename "$p")"
         grep -qxF "$line" "$STAMP" || {
             echo "ERROR: $(basename "$p") is not applied (or has changed since it was)." >&2
@@ -126,7 +129,7 @@ PLUTO="$SRC_DIR/hdl/projects/pluto"
 if [ -f "$PLUTO/pluto.xpr" ]; then
     stale=""
     for f in "$PLUTO"/system_bd.tcl "$PLUTO"/system_top.v "$PLUTO"/system_constr.xdc \
-             "$PLUTO"/*.v "$SCRIPT_DIR"/coefile_*.coe; do
+             "$PLUTO"/*.v "$BUILD_ALL_DIR"/coefile_*.coe; do
         [ -f "$f" ] && [ "$f" -nt "$PLUTO/pluto.xpr" ] && stale="$stale $(basename "$f")"
     done
     if [ -n "$stale" ] && [ -z "${FORCE_STALE_PROJECT:-}" ]; then
@@ -139,6 +142,7 @@ if [ -f "$PLUTO/pluto.xpr" ]; then
     fi
 fi
 [ "$preflight_fail" -eq 0 ] || { echo "Preflight failed - fix the above and re-run." >&2; exit 1; }
+[ "$PREFLIGHT_ONLY" -eq 1 ] && { echo "Preflight passed."; exit 0; }
 
 export CROSS_COMPILE=arm-linux-gnueabihf-
 
