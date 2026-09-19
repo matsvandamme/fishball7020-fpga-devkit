@@ -306,6 +306,7 @@ fishball7020-fpga-devkit/
     │   │                               0004 TX mute · 0005 keep a gain set before streaming
     │   │                               0006 sample-locked GPIO · 0007 its IIO attribute
     │   │                               0008 gpio-line-names for those four pins
+    │   │                               0009 the bit-map flag's CDC constraint, fixed
     │   └── optional/                   NOT applied — worked examples
     │       └── 0003-wbfm-channelizer.patch         (docs/wbfm-channelizer.md)
     ├── scripts/

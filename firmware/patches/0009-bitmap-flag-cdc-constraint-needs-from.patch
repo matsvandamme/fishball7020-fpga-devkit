@@ -1,0 +1,39 @@
+diff --git a/hdl/projects/pluto/system_constr.xdc b/hdl/projects/pluto/system_constr.xdc
+index 60d9ce7..503fac1 100755
+--- a/hdl/projects/pluto/system_constr.xdc
++++ b/hdl/projects/pluto/system_constr.xdc
+@@ -93,12 +93,21 @@ set_property  -dict {PACKAGE_PIN  T9   IOSTANDARD LVCMOS33 PULLTYPE PULLDOWN} [g
+ # The bit-map enable flag is written by software in the AXI clock domain and
+ # read in the AD9361 datapath domain, so it is a clock-domain crossing. That
+ # is exactly what the two flip-flops inside tx_gpio_bitmap are for. Timing it
+-# as an ordinary synchronous path is not conservative, it is meaningless - and
+-# measured, it made this the worst path in the whole design (+0.186 ns, where
+-# the stock design has +0.214 ns) for no reason. Bound the crossing instead:
++# as an ordinary synchronous path is not conservative, it is meaningless: it
++# gets 2 ns (the gap between the two clocks' edges) and can become the worst
++# path in the whole design for no reason. Bound the crossing instead:
+ # -datapath_only keeps the two synchroniser flops close enough together for
+ # metastability to settle, without pretending the launch edge means anything.
+ #
++# Both ends must be named (patch 0009). "set_max_delay -datapath_only" with
++# only -to is an error (Constraints 18-540, "requires -from to be
++# non-empty"), and in an .xdc that error drops the line without a word in the
++# build log. Patch 0006 wrote it with only -to, so until 0009 the crossing was
++# in fact timed as a 2 ns path, and passed on its own. To see that the limit
++# is really applied, open the routed design and run
++#   report_timing -to [get_cells -hier *flag_m_reg]
++# The requirement must read "(MaxDelay Path 4.000ns)", not two clock edges.
++#
+ # Written as a single command: an .xdc is a restricted Tcl dialect and "if" is
+ # NOT one of the commands it accepts - Vivado answers a guarded version with
+ # "Command 'if' is not supported in the xdc constraint file" and silently drops
+@@ -106,7 +115,8 @@ set_property  -dict {PACKAGE_PIN  T9   IOSTANDARD LVCMOS33 PULLTYPE PULLDOWN} [g
+ # build log.) No guard is needed anyway: these lines only exist in the file
+ # once the bit-map patch is applied, and then the cell always exists.
+ set_max_delay -datapath_only 4.000 \
+-  -to [get_pins -quiet -hier -filter {NAME =~ *tx_bitmap*flag_m_reg/D}]
++  -from [get_cells -quiet -hier -filter {NAME =~ *up_dac_gpio_out_int_reg*}] \
++  -to   [get_cells -quiet -hier -filter {NAME =~ *tx_bitmap*flag_m_reg}]
+ 
+ set_property  -dict {PACKAGE_PIN  T15  IOSTANDARD LVCMOS25} [get_ports enable]
+ set_property  -dict {PACKAGE_PIN  P18  IOSTANDARD LVCMOS25} [get_ports txnrx]

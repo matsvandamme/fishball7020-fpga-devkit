@@ -170,6 +170,22 @@ behaviour of the radio is unchanged and the four pins remain ordinary EMIO
 GPIO. It costs +3 LUTs and +7 flip-flops, no DSPs, no block RAM, and does not
 touch the device tree. See [docs/tx-gpio-bitmap.md](../docs/tx-gpio-bitmap.md).
 
+### `0009-bitmap-flag-cdc-constraint-needs-from.patch`
+
+The enable flag crosses from the AXI clock into the AD9361's clock, and
+`0006` tells Vivado to limit only the wire length there
+(`set_max_delay -datapath_only`), instead of timing it as one clock. But it
+named only the end point. `-datapath_only` without `-from` is an error
+(`Constraints 18-540`), and in an `.xdc` the error just drops the line. The
+build log says nothing. So until this patch, the crossing was timed as an
+ordinary 2 ns path and passed on its own. `0009` names both ends. In the routed
+design the crossing now reads `MaxDelay Path 4.000ns`, with 2.46 ns to spare.
+
+It is a separate patch rather than an edit to `0006` on purpose. `setup.sh`
+cannot re-apply a changed patch over its earlier version, so editing `0006`
+would have forced every existing tree back to a fresh clone. `verify-patches`
+now checks that every datapath-only delay in the constraints has a `-from`.
+
 ### `optional/` — not applied by `setup.sh`
 
 Worked examples that *change what the radio does* rather than fixing it, so

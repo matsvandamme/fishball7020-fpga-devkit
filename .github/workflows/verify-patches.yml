@@ -53,6 +53,20 @@ jobs:
           test -f firmware/src/hdl/projects/pluto/tx_gpio_bitmap.v
           grep -q 'PACKAGE_PIN  V10' firmware/src/hdl/projects/pluto/system_constr.xdc
           grep -q tx_sample_gpio_en firmware/src/linux/drivers/iio/frequency/cf_axi_dds.c
+      - name: Confirm every datapath-only delay names both ends (patch 0009)
+        run: |
+          # "set_max_delay -datapath_only" without -from is an error, and an
+          # .xdc drops such a line without a word in the build log - which is
+          # how the bit-map flag's crossing went unconstrained until 0009.
+          python3 - <<'PY'
+          x = open("firmware/src/hdl/projects/pluto/system_constr.xdc").read()
+          lines = x.replace("\\\n", " ").splitlines()
+          cmds = [l for l in lines if l.lstrip().startswith("set_max_delay") and "-datapath_only" in l]
+          bad = [l for l in cmds if "-from" not in l]
+          assert cmds, "no datapath-only delays found at all"
+          assert not bad, "missing -from: " + " | ".join(bad)
+          print(len(cmds), "datapath-only delays, all with -from")
+          PY
       # setup.sh deliberately skips patches/optional/. Check they still apply
       # anyway, so a worked example cannot rot against upstream unnoticed.
       - name: Confirm optional patches still apply cleanly

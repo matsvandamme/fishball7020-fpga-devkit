@@ -143,6 +143,11 @@ JP5 pins 7/9/11/13 (balls V10/U9/U10/T9, bank 13, 3.3 V, pulled down);
 `0007` adds the `tx_sample_gpio_en` sysfs attribute that enables it. Both edit
 files 0004/0005 also touch (`cf_axi_dds.c`), so a new patch there must be
 generated against a reconstructed pre-change file, never a plain `git diff`.
+`0008` names those GPIO lines in the device tree. `0009` gives the bit-map
+flag's clock-crossing constraint the `-from` it lacked. Without it, Vivado
+dropped the line silently: `set_max_delay -datapath_only` needs both ends.
+To fix an applied patch, add a new one on top. Editing it would break every
+existing tree: `setup.sh` cannot re-apply a patch over its earlier version.
 
 ## Typical work
 
@@ -180,7 +185,7 @@ for judging whether something is actually wrong.
 | Board's own TX->RX leak, as an equivalent pad | channel 0: 58–77 dB below 1 GHz, **33–51 dB** at 3–6 GHz; channel 1 ~10 dB weaker; crossed paths 10–35 dB weaker still |
 | Supply rails | all six within **1.6%** of nominal |
 | Digital interface eye | **157–181** of 256 delay positions pass |
-| FPGA, stock build | 72/220 DSP48s, 11 896 LUTs, WNS **+0.231 ns** (a build without 0006 gives +0.214; 0006's CDC constraint improves it) |
+| FPGA, stock build | 72/220 DSP48s, 11 896 LUTs, WNS **+0.205 ns** (with 0009; builds vary by a few hundredths - the worst path is in ADI's DMA) |
 
 Two channels on one board differed by 1.5 dB in receive and 0.1–0.25 dB in
 transmit, so some asymmetry is normal. Full data:

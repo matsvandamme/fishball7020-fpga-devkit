@@ -341,12 +341,20 @@ Measured against a stock build of the same tree:
 | Slice registers | 20 851 | **+7** (4 nibble + 2 synchroniser + 1) |
 | Bonded IOBs | 57 | **+4** |
 | DSPs / block RAM | 72 / 2 | **no change** |
-| Timing | WNS +0.214 ns | **WNS +0.231 ns**, 0 failing of 48 263 |
+| Timing | WNS +0.214 ns | **WNS +0.205 ns**, 0 failing of 48 263 |
 
-Timing comes out *better* than stock because the patch also constrains the
-enable flag's clock-domain crossing, which Vivado would otherwise time as if it
-were an ordinary synchronous path — and ADI's stock design never constrained it
-either.
+Timing is met either way; differences of a few hundredths of a nanosecond
+between builds are layout variation, not the feature. The worst path is in
+ADI's DMA, not here.
+
+The enable flag's clock-domain crossing is constrained so Vivado does not time
+it as an ordinary synchronous path, which would give it just 2 ns. That
+constraint only works since patch `0009`. Patch `0006` wrote it with only an end
+point (`-to`), and `set_max_delay -datapath_only` without `-from` is an error
+that an `.xdc` drops without a word in the build log. So earlier builds timed
+the crossing as a 2 ns path, and it happened to pass: a +0.231 ns build
+reported before 2026-09-19 was measured that way. With `0009` the crossing
+reads `MaxDelay Path 4.000ns` and meets it with 2.46 ns to spare.
 
 ---
 
@@ -754,5 +762,10 @@ Four things cost a build each to discover, none of them visible to simulation:
 - **A wrong `PACKAGE_PIN` is not an error.** Vivado will happily place a port on
   a ball the board leaves unconnected, and report perfect timing.
 - **Clock-domain crossings are timed as if they were synchronous** unless you
-  say otherwise. The flag crossing made this feature the critical path of the
-  whole design until a `set_max_delay -datapath_only` fixed the analysis.
+  say otherwise, and **the constraint that says otherwise can vanish**.
+  `set_max_delay -datapath_only` needs both `-from` and `-to`. With only `-to`
+  it is an error (`Constraints 18-540`), and an `.xdc` drops the line silently.
+  This feature's own constraint was dropped that way until patch `0009`. Check
+  what was applied, not what you wrote: open the routed design and run
+  `report_timing -from <source cells> -to <synchroniser cell>`. The
+  requirement must read `MaxDelay Path`, not two clock edges.

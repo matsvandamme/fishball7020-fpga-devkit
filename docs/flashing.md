@@ -265,7 +265,7 @@ what is actually in the design, so you can see your change landed:
   PASS  compressed (2367948 B < 3.9 MB uncompressed)
 == timing ==
   PASS  no failing setup endpoints
-        WNS 0.231 ns over 48263 endpoints
+        WNS 0.205 ns over 48263 endpoints
 ```
 
 (With the optional channelizer applied you would see `96 / 220` DSPs and

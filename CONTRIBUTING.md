@@ -11,7 +11,7 @@ patched. A fix to anything in there is a patch under `firmware/patches/`:
 
 ```bash
 # from firmware/src, with the tree patched and your edit made
-git diff -- path/to/file > ../patches/0008-what-it-does.patch
+git diff -- path/to/file > ../patches/0010-what-it-does.patch
 ```
 
 Number it after the highest existing patch. Two traps:

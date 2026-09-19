@@ -78,7 +78,7 @@ receiver is about 1.5 dB more sensitive than the first.
 | **Transmitter vs transmitter** | within **0.2 dB** of each other |
 | **Receiver vs receiver** | RX2 is **1.5 dB** more sensitive than RX1 |
 | **Supply rails** | all six within **1.6%** of nominal |
-| **FPGA** | 72 of 220 DSP48s used, timing met with **+0.231 ns** to spare |
+| **FPGA** | 72 of 220 DSP48s used, timing met with **+0.205 ns** to spare (with patch `0009`) |
 
 Transmit power at full drive is **not** in this table because none of these
 runs measured it. The self-test estimates it by scaling up from a quiet

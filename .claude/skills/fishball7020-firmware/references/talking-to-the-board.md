@@ -73,6 +73,26 @@ clock/data delay combinations with a PRBS running and prints the eye. `loopback`
 = 1 routes DAC data back into the ADC path inside the chip, which exercises both
 DMAs and the LVDS link with no RF at all — remember to set it back to 0.
 
+**FPGA core registers: set bit 31 of the address.** The two cores' debug
+register access (`direct_reg_access`, pylibiio `dev.reg_read/reg_write`)
+decides by bit 31 where an address goes. On **`cf-ad9361-lpc`** (the ADC core)
+a plain address such as `0xB8` is passed to the **AD9361 over SPI**. Only
+`0x800000B8` reaches the FPGA core's register. The DAC core happens to run in
+"standalone" mode and maps plain addresses to itself, so the same code
+"works" on one core and silently reads and writes radio-chip registers on the
+other. Always use the flag for core registers:
+
+```python
+# pylibiio: the ADC core's GP input and GP_CONTROL registers
+adc.reg_read(0x80000000 | 0xB8)
+adc.reg_write(0x80000000 | 0xBC, value)   # read-modify-write: bit 0 is the kernel's
+```
+
+(`drivers/iio/adc/cf_axi_adc_core.c`, `axiadc_reg_access`. Found when the ADC
+core's GP input read 0 while the design drove it. The value read, from the
+AD9361, happened to be 0, so writing it back changed nothing. Had it not
+been, a read-modify-write would have rewritten a radio register.)
+
 ## Mounting the SD card from the board
 
 ```bash
