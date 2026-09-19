@@ -37,7 +37,11 @@ for arg in "$@"; do
         --kernel-only) FILES=(uImage) ;;
         --no-reboot)   REBOOT=0 ;;
         -h|--help)     sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
-        *) echo "unknown option: $arg" >&2; exit 2 ;;
+        *) echo "unknown option: $arg" >&2
+           case "$arg" in -all|-boot-only|-kernel-only|-no-reboot)
+               echo "did you mean -$arg? (options take two dashes)" >&2 ;; esac
+           echo "options: --all  --boot-only  --kernel-only  --no-reboot  --help" >&2
+           exit 2 ;;
     esac
 done
 
