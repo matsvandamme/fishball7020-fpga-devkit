@@ -84,6 +84,17 @@ fi
 
 echo
 echo "== timing =="
+# A build that fails timing leaves timing.rpt where it was and writes a fresh
+# report inside the run directory, so reading timing.rpt alone will happily
+# vouch for an earlier build while the newest one has failed. That nearly put
+# a bitstream on a board it was never built for.
+newest_impl=$(ls -t "$PRJ"/pluto.runs/impl_1/*timing_summary_postroute*.rpt 2>/dev/null | head -1)
+if [ -n "$newest_impl" ] && [ -r "$PRJ/timing.rpt" ]    && [ "$newest_impl" -nt "$PRJ/timing.rpt" ]; then
+    ck "the reports describe the newest build" "false"
+    note "a later build ran and did not finish: $(basename "$newest_impl") is newer"
+    note "than timing.rpt, so everything below is from an earlier build."
+    note "Check the build log before flashing any of this."
+fi
 if [ -r "$PRJ/timing.rpt" ]; then
     read -r wns _ tnsfail total < <(grep -A6 'Design Timing Summary' "$PRJ/timing.rpt" \
         | awk 'NF>=8 && $1 ~ /^-?[0-9.]+$/ {print $1, $2, $3, $4; exit}')
