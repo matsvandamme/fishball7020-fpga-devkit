@@ -227,6 +227,10 @@ into its receiver, which spoils loopback measurements through large
 attenuators: use 20 dB. The full tables, the leak, and how the numbers were
 checked: **[docs/measured-performance.md](docs/measured-performance.md)**.
 
+How it behaves with real modulated signals — QPSK and 16-QAM at the full
+61.44 MSPS, where the streaming ceiling actually comes from, and why it is not
+the radio: **[docs/modulation-and-throughput.md](docs/modulation-and-throughput.md)**.
+
 ## Repository layout
 
 ```

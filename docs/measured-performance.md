@@ -396,6 +396,14 @@ while a test pattern runs. 157 passing positions is a wide margin: a link on the
 edge of working loses passing positions long before it starts corrupting
 samples.
 
+## What this page does not cover
+
+These are tone measurements from the self-test: gain, linearity, harmonics and
+leak. How the board behaves with **modulated signals at high sample rates** — EVM
+for QPSK, 16-QAM and OFDM, capture integrity, and where the throughput limits
+really sit — is measured separately in
+[modulation-and-throughput.md](modulation-and-throughput.md).
+
 ## What these numbers are not
 
 - **One board, one evening, room temperature.** Nothing here is a
