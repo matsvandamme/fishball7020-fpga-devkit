@@ -33,8 +33,52 @@ That has one important consequence:
 > not appear in `system_top.v` or `system_constr.xdc`, and no amount of
 > block-design work will connect it. Driving it is a *software* job.
 
-That `linux,default-trigger = "heartbeat"` line is also why the LED pulses
-on a healthy board — it's the kernel's heartbeat trigger, not your firmware.
+That `linux,default-trigger = "heartbeat"` line is what the *factory* firmware
+uses — the kernel's heartbeat trigger, not your firmware. This repo's builds
+leave the device tree exactly as it is and point the LED somewhere more useful
+at boot instead; that is the next section.
+
+## What it does by default here: it follows the transmitter
+
+On a board that reaches about **+19 dBm**, a light that says "the CPU is alive"
+is worth less than one that says **whether RF can leave the port**. So these
+builds ship a kernel LED trigger called `tx-active`, and
+[`S21misc`](../firmware/patches/0012-user-led-follows-the-transmitter.patch)
+selects it at boot:
+
+> **Lit** whenever either transmit chain is out of full attenuation.
+> **Dark** when both sit at the −89.75 dB mute floor.
+
+The trigger is driven from `ad9361_set_tx_atten()` in the AD9361 driver — the
+one point every attenuation change passes through, whether that is the kernel's
+own mute when a DMA stream is torn down (patches `0004`/`0005`) or a plain
+sysfs write. There is no polling loop.
+
+**Why the attenuator and not the DMA buffer.** Attenuation can be raised with
+no buffer open at all: the driver accepts it and drives the real attenuator, so
+a stream-only indicator would sit dark while the LO leaks out of the SMA. That
+is the case worth having a light for. The trade is the mirror image — a DMA
+stream running into a fully attenuated chain leaves the LED dark, because
+nothing is actually getting out. Measured on hardware:
+
+| State | LED |
+|---|---|
+| both channels muted, no buffer | dark |
+| TX1 raised, no buffer | **lit** |
+| TX2 raised, no buffer | **lit** |
+| both raised | **lit** |
+| gain set, then a DMA stream running | **lit** |
+| DMA stream running, both channels still muted | dark |
+| stream ends, kernel re-mutes | dark |
+
+**To opt out** and keep the heartbeat, set a U-Boot variable and reboot:
+
+```bash
+# on the board
+fw_setenv tx_led 0
+```
+
+Or just pick another trigger at runtime, as below — nothing stops you.
 
 ## Taking control from Linux
 
@@ -116,25 +160,36 @@ Remember the root filesystem is a **ramdisk** — a script you write on the
 board vanishes at reboot unless you either put it in `/mnt/jffs2` or, better,
 add it to `firmware/patches/` so it becomes part of every build.
 
-## Making your setting the default at boot
+## Making your own setting the default at boot
 
-Rather than reconfiguring after every boot, change the device tree so the LED
-comes up the way you want. Edit
-`firmware/src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts`:
+The obvious route — editing `linux,default-trigger` in
+`zynq-pluto-sdr-fishball.dts` — is the **wrong** one here. That device tree
+recompiles byte-for-byte identical to the factory board's, which is a
+load-bearing provenance claim for this repo ([how it was
+verified](provenance.md)); changing it to set an LED throws that away for no
+good reason.
 
-```dts
-linux,default-trigger = "none";     /* was "heartbeat" */
+Do it the way patch `0012` does instead: pick the trigger from `S21misc`, the
+rootfs init script, which leaves the `.dtb` untouched.
+
+```sh
+# in firmware/src/buildroot/board/pluto/S21misc, inside the start case
+echo timer > /sys/class/leds/led0:green/trigger
 ```
 
-Then rebuild, and capture it as a patch so it survives a clean `setup.sh`:
+Then capture it as a patch so it survives a clean `setup.sh`, numbering it
+after the highest existing one:
 
 ```bash
 # run from: firmware/src
-git diff linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts \
-    > ../patches/0010-led-default-off.patch   # number it after the highest existing patch
+diff -u <pristine copy of S21misc> buildroot/board/pluto/S21misc \
+    > ../patches/0013-my-led-default.patch
 ```
 
-Other useful values are `timer`, `mmc0`, or `default-on`.
+Generate it against a *pristine copy* rather than with `git diff` — `S21misc`
+is already touched by patches `0004` and `0012`, so a plain `git diff` would
+sweep their changes into yours. Other useful trigger values are `timer`,
+`mmc0`, `none` and `default-on`.
 
 ## If you want an LED your FPGA logic drives directly
 

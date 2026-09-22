@@ -5,6 +5,7 @@
 #     ./tools/flash.sh --all           # all five SD-card files
 #     ./tools/flash.sh --boot-only     # just the bitstream/FSBL/U-Boot
 #     ./tools/flash.sh --kernel-only   # just uImage
+#     ./tools/flash.sh --rootfs-only   # just uramdisk.image.gz
 #     ./tools/flash.sh --no-reboot     # copy, verify, leave it running
 #
 # The board's FAT partition is /dev/mmcblk0p1, normally unmounted, so a running
@@ -35,12 +36,13 @@ for arg in "$@"; do
         --all)         FILES=(BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz) ;;
         --boot-only)   FILES=(BOOT.bin) ;;
         --kernel-only) FILES=(uImage) ;;
+        --rootfs-only) FILES=(uramdisk.image.gz) ;;
         --no-reboot)   REBOOT=0 ;;
         -h|--help)     sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "unknown option: $arg" >&2
-           case "$arg" in -all|-boot-only|-kernel-only|-no-reboot)
+           case "$arg" in -all|-boot-only|-kernel-only|-rootfs-only|-no-reboot)
                echo "did you mean -$arg? (options take two dashes)" >&2 ;; esac
-           echo "options: --all  --boot-only  --kernel-only  --no-reboot  --help" >&2
+           echo "options: --all  --boot-only  --kernel-only  --rootfs-only  --no-reboot  --help" >&2
            exit 2 ;;
     esac
 done

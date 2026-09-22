@@ -1,0 +1,164 @@
+The USER LED follows the transmitter
+
+The board's USER LED runs the kernel's heartbeat trigger, which tells you
+the CPU is alive and nothing else. On a board that reaches about +19 dBm,
+the more useful thing for it to say is whether RF can leave the port.
+
+This registers a "tx-active" LED trigger driven from ad9361_set_tx_atten(),
+the single point every attenuation change passes through - the kernel's own
+mute on DMA teardown (patches 0004/0005) and a plain sysfs write alike. The
+LED is lit whenever either transmit chain is out of full attenuation and
+dark when both sit at the -89.75 dB floor.
+
+Hooking the attenuator rather than the DMA buffer is deliberate. Attenuation
+can be raised with no buffer open at all - the driver accepts it and drives
+the real attenuator - so a stream-only indicator would sit dark while the LO
+leaks out of the SMA. Measured on hardware: TX1 alone, TX2 alone, both, and
+a running DMA stream each light it; returning to the floor puts it out.
+
+The LED hangs off PS MIO pin 0, so it cannot be reached from the PL and this
+has to be software (docs/user-led.md). The trigger is selected in S21misc
+rather than the device tree, so the .dtb stays byte-for-byte identical to
+the factory one. Set tx_led=0 in the U-Boot environment to keep the
+heartbeat instead.
+
+CONFIG_LEDS_TRIGGERS is already enabled in the running kernel, so the
+kernel .config is unchanged.
+
+diff --git a/buildroot/board/pluto/S21misc b/buildroot/board/pluto/S21misc
+--- a/buildroot/board/pluto/S21misc
++++ b/buildroot/board/pluto/S21misc
+@@ -44,6 +44,32 @@
+ }
+ 
+ 
++tx_led() {
++
++	# Point the USER LED at the transmitter.
++	#
++	# The kernel registers a "tx-active" LED trigger (see patches/0012) that
++	# follows the AD9361's attenuators: lit whenever either transmit chain is
++	# out of full attenuation, dark when both are muted. That covers a DMA
++	# stream AND an attenuation raised with no buffer open - the case a
++	# stream-only indicator would miss.
++	#
++	# Selected here rather than in the device tree, which asks for
++	# "heartbeat" and is kept byte-for-byte identical to the factory one.
++	#
++	# Set tx_led=0 in the U-Boot environment to keep the heartbeat:
++	#   fw_setenv tx_led 0
++
++	[ "`fw_printenv -n tx_led 2> /dev/null`" = "0" ] && return
++
++	LED=/sys/class/leds/led0:green
++	[ -w "${LED}/trigger" ] || return
++	grep -q tx-active "${LED}/trigger" || return
++
++	echo tx-active > ${LED}/trigger
++}
++
++
+ case "$1" in
+ 	start|"")
+ 		echo -n "Starting miscellaneous setup: "
+@@ -53,6 +79,7 @@
+ 		[[ -d /mnt/jffs2/root/.ssh ]] && cd /mnt/jffs2/root/.ssh && md5sum -s -c keys.md5 && mkdir /root/.ssh && cp authorized_keys /root/.ssh
+ 		xo_correction
+ 		tx_quiesce
++		tx_led
+ 		MAX_BS=`fw_printenv -n iio_max_block_size 2> /dev/null || echo 67108864`
+ 		echo ${MAX_BS} > /sys/module/industrialio_buffer_dma/parameters/max_block_size
+ 		[ $? = 0 ] && echo "OK" || echo "FAIL"
+diff --git a/linux/drivers/iio/adc/ad9361.c b/linux/drivers/iio/adc/ad9361.c
+--- a/linux/drivers/iio/adc/ad9361.c
++++ b/linux/drivers/iio/adc/ad9361.c
+@@ -19,6 +19,7 @@
+ #include <linux/debugfs.h>
+ #include <linux/uaccess.h>
+ #include <linux/firmware.h>
++#include <linux/leds.h>
+ 
+ #include <linux/of.h>
+ #include <linux/of_gpio.h>
+@@ -38,6 +39,24 @@
+ #include "ad9361.h"
+ #include "ad9361_private.h"
+ 
++/*
++ * USER LED trigger: lit whenever either transmit chain is out of full
++ * attenuation, dark when both are muted.
++ *
++ * Driven from ad9361_set_tx_atten(), which every attenuation change goes
++ * through - the kernel's own mute on DMA teardown (patches 0004/0005) and a
++ * plain sysfs write alike. Hooking the attenuator rather than the buffer is
++ * deliberate: attenuation can be raised with no buffer open at all, and a
++ * stream-only indicator would sit dark while the LO leaks out of the SMA.
++ *
++ * The LED is on PS MIO pin 0, so it cannot be reached from the PL; see
++ * docs/user-led.md. S21misc selects this trigger at boot, which leaves the
++ * device tree byte-for-byte identical to the factory one.
++ */
++DEFINE_LED_TRIGGER(ad9361_tx_active_led);
++
++static void ad9361_tx_active_led_update(struct ad9361_rf_phy *phy);
++
+ static const struct SynthLUT SynthLUT_FDD[LUT_FTDD_ENT][SYNTH_LUT_SIZE] = {
+ {
+ 	{12605, 13, 1, 4, 2, 15, 12, 7, 14, 6, 14, 5, 15},  /* 40 MHz */
+@@ -1264,6 +1283,8 @@
+ 		ad9361_spi_writef(phy->spi, REG_TX2_DIG_ATTEN,
+ 				IMMEDIATELY_UPDATE_TPC_ATTEN, 1);
+ 
++	ad9361_tx_active_led_update(phy);
++
+ 	return ret;
+ }
+ 
+@@ -1325,6 +1346,18 @@
+ }
+ EXPORT_SYMBOL(ad9361_tx_is_muted);
+ 
++/*
++ * Re-evaluate the USER LED after an attenuation change. Reads both attenuators
++ * back over SPI rather than trusting the value just written, so the LED follows
++ * what the chip is actually doing. Called on every attenuation write, which is
++ * not a hot path.
++ */
++static void ad9361_tx_active_led_update(struct ad9361_rf_phy *phy)
++{
++	led_trigger_event(ad9361_tx_active_led,
++			  ad9361_tx_is_muted(phy) ? LED_OFF : LED_FULL);
++}
++
+ static int ad9361_trx_ext_lo_control(struct ad9361_rf_phy *phy,
+ 				     bool tx, bool enable)
+ {
+@@ -9531,6 +9564,11 @@
+ 	of_clk_del_provider(of_node);
+ }
+ 
++static void ad9361_tx_active_led_remove(void *unused)
++{
++	led_trigger_unregister_simple(ad9361_tx_active_led);
++}
++
+ static int ad9361_probe(struct spi_device *spi)
+ {
+ 	struct iio_dev *indio_dev;
+@@ -9558,6 +9596,16 @@
+ 	phy = iio_priv(indio_dev);
+ 	phy->state = st;
+ 	phy->indio_dev = indio_dev;
++
++	/*
++	 * Registered before anything sets an attenuation, so the very first
++	 * write - the driver's own probe-time one - already moves the LED.
++	 */
++	led_trigger_register_simple("tx-active", &ad9361_tx_active_led);
++	ret = devm_add_action_or_reset(&spi->dev, ad9361_tx_active_led_remove,
++				       NULL);
++	if (ret)
++		return ret;
+ 	phy->spi = spi;
+ 	phy->clk_refin = clk;
+ 	mutex_init(&phy->lock);

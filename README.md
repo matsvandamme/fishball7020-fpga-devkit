@@ -53,6 +53,9 @@ use different pins and will not work with this firmware unchanged.
   datapath rather than beside it. ([The block design, IP by IP](docs/block-design.md))
 - **A transmitter that is off unless you are transmitting.** Stock firmware
   leaves it energised from power-on. ([Transmitter safety](docs/transmitter-safety.md))
+- **A USER LED that means something.** Lit whenever RF can leave either port,
+  dark when both chains are muted — instead of blinking a heartbeat.
+  ([Controlling the USER LED](docs/user-led.md))
 - **Four header pins that tick with the transmitted waveform**, carrying bits
   the DAC throws away. ([Sample-locked GPIO outputs](#sample-locked-gpio-outputs))
 - **A self-test** that tells you whether the radio is damaged, with measurements.

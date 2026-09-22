@@ -67,6 +67,24 @@ jobs:
           assert not bad, "missing -from: " + " | ".join(bad)
           print(len(cmds), "datapath-only delays, all with -from")
           PY
+      - name: Confirm the USER LED follows the transmitter (patch 0012)
+        run: |
+          # The kernel half: a "tx-active" trigger driven from the one place
+          # every attenuation change passes through.
+          grep -q 'DEFINE_LED_TRIGGER(ad9361_tx_active_led)' \
+            firmware/src/linux/drivers/iio/adc/ad9361.c
+          grep -q 'led_trigger_register_simple("tx-active"' \
+            firmware/src/linux/drivers/iio/adc/ad9361.c
+          grep -q 'ad9361_tx_active_led_update(phy)' \
+            firmware/src/linux/drivers/iio/adc/ad9361.c
+          # The rootfs half: selected at boot, so the device tree stays
+          # byte-for-byte identical to the factory one.
+          grep -q 'echo tx-active' firmware/src/buildroot/board/pluto/S21misc
+          grep -q 'tx_led$' firmware/src/buildroot/board/pluto/S21misc
+          # ...and the .dtb must still ask for heartbeat, never tx-active.
+          ! grep -q 'tx-active' \
+            firmware/src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
+
       # setup.sh deliberately skips patches/optional/. Check they still apply
       # anyway, so a worked example cannot rot against upstream unnoticed.
       - name: Confirm optional patches still apply cleanly
