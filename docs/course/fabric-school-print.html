@@ -5712,18 +5712,37 @@ fractional 3 dB bandwidth = 1 / Q
   </div>
 
   <div class="box trap">
-    <p class="bt">Adding a third component to widen the band makes it narrower</p>
+    <p class="bt">A third component does not widen the band — and a fourth might</p>
     <p>The obvious move when an L network is too narrow is to go to a pi or a T. Both work by cascading
       two L sections through a <em>virtual</em> resistance — smaller than both endpoints for a pi, larger
       than both for a T — and that third degree of freedom does let you set Q.</p>
-    <p>But only upward. The textbook states it flatly: <em>"it is not possible to have a lower Q with a
-      three-element matching network than the Q of a two-element matching network."</em> Pi and T
-      networks exist to give you <strong>harmonic rejection</strong>, <strong>realisable component
-      values</strong>, or a way to absorb the source and load's own reactance — not bandwidth.</p>
-    <p>And above it all sits the <strong>Bode–Fano limit</strong>: for a reactive load, the achievable
-      match and the bandwidth over which you get it trade against each other, roughly as
-      <code>Γ_min ≈ exp(−π / (Q·FBW))</code>, for <em>any</em> lossless network however complicated. If
-      the match is too narrow, the answer is a lower-Q load — a better antenna — not more components.</p>
+    <p>But only upward. Steer's derivation concludes: <em>"it is not possible to have a lower Q with a
+      three-element matching network than the Q of a two-element matching network"</em> — and the
+      qualification in his opening line matters, because it is proved <em>"for a network having at most
+      three elements"</em>. Two subsections earlier he says the rest of it: <em>"However, lower Q can be
+      obtained with more than three elements."</em></p>
+    <p>So the rule is narrower than it is usually quoted. Within the standard pi/T procedure you cannot
+      get <em>below</em> the L network's Q, which is why pi and T networks are reached for to gain
+      <strong>harmonic rejection</strong>, <strong>realisable component values</strong>, or a way to
+      absorb the source and load's own reactance. Go to four or more elements and broadbanding is back on
+      the table — that is what a cascade of L sections through an intermediate resistance is for.</p>
+    <p>Two more things the derivation assumes, both easy to carry off by accident. It is worked for
+      <strong>purely resistive</strong> source and load; and its Q is the <em>nodal design</em> Q,
+      X/R per leg, not a measured 3 dB bandwidth. For a reactive load — an antenna — more elements
+      unambiguously buy bandwidth, and none of this applies.</p>
+    <p>What does apply to an antenna is the <strong>Bode–Fano limit</strong>:</p>
+    <div class="code">
+      <div class="code-bar"><span class="f">the bandwidth–match trade, for any lossless network</span><span class="t">Γ_avg is the average |Γ| in the passband</span></div>
+<pre><code>Gamma_avg  &gt;=  exp( -pi / (Q_load * FBW) )
+                            ^^^^^^
+                            the Q of the LOAD, not of your matching network
+</code></pre>
+    </div>
+    <p>It is a <em>bound</em>, not an estimate — approached only in the limit of infinitely many elements,
+      so every real network does worse. And Γ<sub>avg</sub> is the average reflection across the band, not
+      the best value you hit: a real network dips to nearly zero at its reflection zeros and still obeys
+      it. If the match is too narrow, the answer is a lower-Q load — a better antenna — not more
+      components.</p>
   </div>
 
   <h3>Copper: when a trace becomes a transmission line</h3>
@@ -5745,19 +5764,21 @@ fractional 3 dB bandwidth = 1 / Q
 
   <div class="box why">
     <p class="bt">Why FR-4 runs out, with numbers</p>
-    <p>FR-4 is not one material, and it is not frequency-flat. One widely used laminate publishes:</p>
+    <p>FR-4 is not one material, and it is not frequency-flat. Here is <em>one</em> construction &mdash;
+      Isola 370HR core, 56&nbsp;% resin, 0.0048&nbsp;in &mdash; from that laminate's own
+      Dk/Df construction table:</p>
     <div class="tw"><table>
       <thead><tr><th></th><th>100 MHz</th><th>1 GHz</th><th>2 GHz</th><th>10 GHz</th></tr></thead>
       <tbody>
-        <tr><td>Dielectric constant</td><td class="num">4.24</td><td class="num">4.17</td><td class="num">4.04</td><td class="num">3.92</td></tr>
-        <tr><td>Loss tangent</td><td class="num">0.0150</td><td class="num">0.0161</td><td class="num">0.0210</td><td class="num">0.0250</td></tr>
+        <tr><td>Dielectric constant</td><td class="num">4.14</td><td class="num">4.08</td><td class="num">4.04</td><td class="num">3.92</td></tr>
+        <tr><td>Loss tangent</td><td class="num">0.016</td><td class="num">0.020</td><td class="num">0.021</td><td class="num">0.025</td></tr>
       </tbody>
     </table></div>
-    <p>Two problems. The loss tangent rises by 65 % from 100 MHz to 10 GHz — and worse, the dielectric
+    <p>Two problems. The loss tangent rises by 56 % from 100 MHz to 10 GHz — and worse, the dielectric
       constant is a <strong>property of the build, not of "FR-4"</strong>: across the same vendor's own
       constructions it spans <strong>3.73 to 4.39 at 1 GHz</strong> depending on glass style and resin
       content. Your 50 Ω trace is ±8 % before anyone makes a mistake.</p>
-    <p>A microwave laminate fixes both: 3.48 ± 0.05 at 10 GHz with a loss tangent of 0.0037, roughly seven
+    <p>A microwave laminate fixes both &mdash; Rogers RO4350B is specified at 3.48 ± 0.05 at 10 GHz with a loss tangent of 0.0037, roughly seven
       times less dielectric loss. That is what you pay for, and below about 1 GHz you usually do not need
       to.</p>
   </div>
