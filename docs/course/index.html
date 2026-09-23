@@ -228,7 +228,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-off
     <li><a href="#l0"><span class="n">0</span><span>What a radio does</span></a></li>
     <li><a href="#l1"><span class="n">1</span><span>What an FPGA is</span></a></li>
     <li><a href="#l2"><span class="n">2</span><span>What's on this board</span></a></li>
-    <li><a href="#l3"><span class="n">3</span><span>The toolchain</span></a></li>
+    <li><a href="#l3"><span class="n">3</span><span>The toolchain and the build system</span></a></li>
   </ol>
   <h4>Verilog from nothing</h4>
   <ol>
@@ -473,8 +473,8 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-off
 </section>
 
 <section class="part" id="l3">
-  <div class="part-head"><span class="part-n">3</span><h2>The toolchain, and what each tool is for</h2></div>
-  <p class="lede">Five programs with confusing names. Here is which one does what.</p>
+  <div class="part-head"><span class="part-n">3</span><h2>The toolchain and the build system</h2></div>
+  <p class="lede">Six programs with confusing names, one of them optional. Here is which one does what.</p>
 
   <div class="tw"><table>
     <thead><tr><th>Tool</th><th>What it does</th></tr></thead>
@@ -487,6 +487,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-off
         so you can check it does the right thing — in about a second.</td></tr>
       <tr><td><strong>Buildroot</strong></td><td>Builds the Linux root filesystem that runs on the ARM
         cores.</td></tr>
+      <tr><td><strong>Podman</strong> (or Docker)</td><td>Optional, and the easiest way to get Vivado
+        running at all. Runs the whole build inside a <em>container</em> &mdash; a packaged Linux
+        userspace that ignores whichever Linux you happen to have. See below.</td></tr>
       <tr><td><strong><code>./devkit</code></strong></td><td>This repo's wrapper. It drives all of the
         above in the right order with the right options, and refuses to do dangerous things.</td></tr>
     </tbody>
@@ -511,6 +514,130 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-off
     <p>Simulation takes <strong>one second</strong>. A build takes <strong>twenty minutes</strong>.
       That ratio is 1200:1, and it is the reason the habits in lesson 10 are not optional pedantry.
       Every question you can answer in the simulator, you answer in the simulator.</p>
+  </div>
+
+  <h3>Why a wrapper, and not just the commands</h3>
+  <p>Nothing <code>./devkit</code> does is magic; every step is a script you can read. What it buys you
+    is <em>order</em> and <em>refusal</em>. The build has seven stages that must happen in sequence, each
+    with arguments that are easy to get subtly wrong, and several of the mistakes are silent &mdash; they
+    do not fail, they produce a working-looking file that is wrong. A wrapper that refuses is worth more
+    than one that is merely convenient.</p>
+
+  <div class="box why">
+    <p class="bt">Four refusals worth knowing about</p>
+    <p><strong>It checks before the hour, not during.</strong> <code>doctor</code> tests the compilers,
+      the headers, the disk and the board in about a second. A missing <code>gmp.h</code> otherwise fails
+      forty minutes in, at stage&nbsp;4, with a message about a header you have never heard of.</p>
+    <p><strong>It refuses an unpatched source tree.</strong> The build stamps which patches were applied.
+      Add one and forget to re-run <code>setup</code>, and it stops rather than quietly building the old
+      design.</p>
+    <p><strong>It verifies a copy before swapping it in.</strong> <code>flash</code> backs the SD card up,
+      checksums the new file <em>on the board</em>, and only then moves it into place &mdash; keeping the
+      old one alongside. A bad <code>BOOT.bin</code> means a board that will not boot, and then the
+      network route is gone and recovery needs a card reader.</p>
+    <p><strong>It will not use DFU.</strong> The USB recovery path has no <code>BOOT.bin</code> target, so
+      it can never deliver an FPGA change &mdash; and on this board it has bricked units.</p>
+  </div>
+
+  <h3>The loop you will actually live in</h3>
+  <p>Almost all of your time is one short cycle. The long commands are for the first day and for
+    releases.</p>
+  <div class="tw"><table>
+    <thead><tr><th>When</th><th>What you run</th><th>Costs</th></tr></thead>
+    <tbody>
+      <tr><td>Once, ever</td><td><code>doctor</code> &rarr; <code>setup</code></td><td>~5 min</td></tr>
+      <tr><td>Every edit to your Verilog</td><td><code>sim</code></td><td><strong>~1 s</strong></td></tr>
+      <tr><td>When the logic is right and you want it on the chip</td><td><code>build --hdl-only</code>
+        &rarr; <code>verify</code> &rarr; <code>flash</code></td><td>~20 min</td></tr>
+      <tr><td>Changed the kernel or a driver</td><td><code>build</code> &rarr;
+        <code>flash --kernel-only</code></td><td>45&ndash;90 min</td></tr>
+      <tr><td>Before a release, from a clean clone</td><td><code>build</code> &rarr; <code>verify</code>
+        &rarr; <code>verify --board</code></td><td>45&ndash;90 min</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Which build, and which flash</h3>
+  <p>Both commands take options that say <em>how much</em> to redo. Picking the smallest one that covers
+    your change is the difference between a twenty-minute loop and an hour one &mdash; and, when
+    flashing, between rewriting one file and rewriting the one that can stop the board booting.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Option</th><th>Use it when</th></tr></thead>
+    <tbody>
+      <tr><td><code>build --hdl-only</code></td><td>You changed Verilog, the block design or filter
+        coefficients. Rebuilds the FPGA side and repackages <code>BOOT.bin</code>, reusing the kernel,
+        u-boot and root filesystem. <strong>Needs a full build to have happened first</strong> &mdash;
+        there is nothing to reuse on a fresh clone.</td></tr>
+      <tr><td><code>build --preflight-only</code></td><td>You just want the guards to run, without
+        building anything.</td></tr>
+      <tr><td><code>flash</code> (no option)</td><td>The common case: <code>BOOT.bin</code> and
+        <code>uImage</code>.</td></tr>
+      <tr><td><code>flash --boot-only</code></td><td>An FPGA change. This is the only remote route that
+        can update the bitstream at all.</td></tr>
+      <tr><td><code>flash --kernel-only</code></td><td>A driver or kernel change.</td></tr>
+      <tr><td><code>flash --rootfs-only</code></td><td>Only the root filesystem moved. Leaves
+        <code>BOOT.bin</code> untouched, which is the file worth not rewriting for no reason.</td></tr>
+      <tr><td><code>flash --all</code></td><td>All five files. Use for a release, or when you are not
+        sure what changed.</td></tr>
+      <tr><td><code>flash --no-reboot</code></td><td>Copy and verify, but leave the board running the
+        old firmware until you reboot it yourself.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="box trap">
+    <p class="bt">The one that catches everybody: a changed design that does not get built</p>
+    <p>Vivado builds are slow, so the build script reuses an existing Vivado project rather than
+      recreating it. That is usually what you want &mdash; except that the project is where the block
+      design and the filter coefficients live. Change either, leave the project in place, and the build
+      <em>succeeds</em> using the old ones. You then flash a bitstream that does not contain your change
+      and spend an afternoon wondering why the hardware ignores you.</p>
+    <p>Delete the project directory before any change to the block design or a <code>.coe</code> file.
+      <code>verify</code> prints the DSP count and which coefficient file is in use, so you can see your
+      change actually landed.</p>
+  </div>
+
+  <h3>Vivado in a container, and why you might want it</h3>
+  <p>Vivado 2022.2 supports <strong>Ubuntu 18.04, 20.04 and 22.04</strong> and nothing newer. That is not
+    a suggestion you can ignore: on a newer distribution it fails to start, and so does its own installer,
+    which is the same application underneath. Meanwhile the version is pinned here on purpose &mdash; a
+    different Vivado produces a different bitstream, and this repository makes claims about the bitstream
+    it produces.</p>
+  <p>A <em>container</em> resolves the standoff. It is a packaged Linux userspace &mdash; the libraries
+    and programs an application expects &mdash; that runs on your own kernel. The build gets the 22.04 it
+    wants; your laptop stays whatever it is.</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">terminal</span><span class="t">Shell</span></div>
+<pre><code><span class="c"># run from: the repo root</span>
+./devkit container build-image      <span class="c"># once, ~3 min</span>
+./devkit container install ~/Downloads/Xilinx_Unified_2022.2_*.bin
+./devkit container doctor
+./devkit container setup
+./devkit container build            <span class="c"># the same build, in the container</span>
+</code></pre>
+  </div>
+  <p>Vivado is <em>not</em> inside the image. The image carries the userspace; your installation of Vivado
+    is handed to it at run time as a <em>bind mount</em> &mdash; a directory on your machine made visible
+    inside the container. That keeps the image about a gigabyte instead of forty-five, and means the
+    toolchain you test is the one you already have.</p>
+
+  <div class="box why">
+    <p class="bt">It is the same build, and that was checked rather than assumed</p>
+    <p>Vivado was installed by the container into a directory the host had never used, and a build run
+      against it with the host's own installation not mounted at all. <code>BOOT.bin</code> came out
+      <strong>byte-for-byte identical</strong> to the host build, with routing utilisation agreeing to
+      five decimal places.</p>
+    <p>Separately, a clean clone of this repository built in the container produces the stock design's
+      documented figures exactly: <strong>72 of 220 DSP48s, 11&thinsp;896 LUTs, 0.205&nbsp;ns of timing
+      slack</strong>. If your own clean build disagrees with those three numbers, something in your
+      toolchain differs &mdash; and that is a much better thing to discover here than on the bench.</p>
+  </div>
+
+  <div class="box jargon">
+    <p class="bt">Four words used above</p>
+    <p><strong>Bitstream</strong> &mdash; the file that configures the FPGA fabric. <strong>FSBL</strong>
+      &mdash; first stage boot loader, the small program that runs on the ARM core at power-on and loads
+      the bitstream. <strong>Image</strong> &mdash; the packaged filesystem a container starts from.
+      <strong>Bind mount</strong> &mdash; a directory on your machine made visible inside the container,
+      so the two share the same files rather than copies.</p>
   </div>
 </section>
 <section class="part" id="l4">
