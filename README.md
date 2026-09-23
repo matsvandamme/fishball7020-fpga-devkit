@@ -176,6 +176,7 @@ pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 | get my build onto the board | [Flashing the board](docs/flashing.md) |
 | iterate on the FPGA in seconds over JTAG | [Option D — JTAG](docs/flashing.md#option-d--jtag-temporary-but-the-fastest-hdl-loop) |
 | blink the USER LED | [Controlling the USER LED](docs/user-led.md) |
+| build on an OS Vivado 2022.2 does not support | [Building in a container](docs/building-in-a-container.md) — pinned toolchain, byte-identical output |
 | fix a build that fails | [Troubleshooting](docs/troubleshooting.md) |
 
 ## What is on the board

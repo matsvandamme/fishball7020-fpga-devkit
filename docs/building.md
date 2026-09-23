@@ -23,6 +23,14 @@ cable only if you want the serial console or JTAG.
 
 **Software** (Ubuntu 22.04 LTS):
 
+> On anything else, don't fight it — build in a container instead. Vivado
+> 2022.2 supports 18.04, 20.04 and 22.04 and nothing newer, and it is pinned
+> here because a toolchain bump changes the bitstream. `./devkit container`
+> runs the whole build inside a pinned image with `/tools/Xilinx` mounted from
+> the host, and produces a byte-for-byte identical `BOOT.bin`. See
+> [Building in a container](building-in-a-container.md).
+
+
 ```bash
 # run on your HOST, from anywhere
 sudo apt update
@@ -62,7 +70,11 @@ license file.
 Vivado 2022.2 is linked against `libtinfo.so.5`, `libncurses.so.5` and
 `libssl.so.1.1`, absent from a default 22.04. The script prepends vendored
 copies to `LD_LIBRARY_PATH` before sourcing `settings64.sh`, touching nothing
-system-wide.
+system-wide — but only where the distribution has no `libtinfo.so.5` of its
+own. Those copies were extracted on 22.04 and link `GLIBC_2.33`, so forcing
+them onto an older release breaks Vivado with
+`librdi_commontasks.so: GLIBC_2.33 not found`, an error naming a library that
+is not the problem.
 
 ## Get the firmware source
 

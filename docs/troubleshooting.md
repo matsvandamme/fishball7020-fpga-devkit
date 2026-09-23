@@ -12,6 +12,19 @@ misbehaves rather than the build, run the [self-test](../tools/selftest/README.m
 - **`vivado`/`xsct`/`bootgen` fail to start, or complain about missing shared
   libraries** — you sourced Vivado's `settings64.sh` instead of
   `tools/env-vivado.sh`.
+- **Vivado dies mid-synthesis with `tcmalloc: large alloc 115875935977472
+  bytes` or `realloc(): invalid pointer`, in a container.** That 115 TB
+  request is an integer underflow. Vivado's licence manager `dlopen`s
+  `libudev.so.1` and enumerates every device to fingerprint the host, by which
+  point its bundled tcmalloc has replaced `malloc` process-wide while libudev
+  still frees through glibc. `./devkit container` loads a stub libudev that
+  answers with an empty list — see
+  [Building in a container](building-in-a-container.md). Do **not** silence it
+  with `MALLOC_CHECK_`: that hides real heap corruption in the tool that
+  builds your bitstream.
+- **The FSBL stage fails with a bare `Channel closed` from `xsct`.** Vitis is
+  Eclipse-based and needs GTK3 plus the SWT libraries, while Vivado's own GUI
+  wants GTK2. Install both, or build in the container, which carries both.
 - **The kernel build fails with `GLIBC_2.xx not found` in a `gcc-plugins`
   step** — you sourced `env-vivado.sh` in the same shell you then built the
   kernel in; it injects Xilinx toolchain directories into `PATH` that conflict.
