@@ -82,7 +82,9 @@ def main():
     src  = read(SRC)
     css  = read(CSS)
     secs = sections(src)
-    lessons = [s for s in secs if s[1].isdigit()]
+    # A lesson inserted between two others carries a letter suffix (3A), so
+    # classify on the first character: digits are lessons, the appendix is 'A'.
+    lessons = [s for s in secs if s[1][:1].isdigit()]
 
     body = []
     for _, _, _, markup in secs:

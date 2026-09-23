@@ -1,7 +1,7 @@
 # Fabric School
 
 A ground-up course in software-defined radio, and in the FPGA inside this one.
-Fifty-two lessons and an appendix, written against **this** board — its block
+Fifty-three lessons and an appendix, written against **this** board — its block
 design, its clocks, its measured numbers.
 
 It assumes you have never written a line of Verilog, never opened Vivado, and
@@ -11,7 +11,7 @@ is either. Every term is defined the first time it appears.
 | File | What it is |
 |---|---|
 | [`index.html`](index.html) | The course. One self-contained file, no build step, day/night theme, twenty-two live calculators. |
-| [`Fabric-School.pdf`](Fabric-School.pdf) | The same content as a 164-page book, for reading away from a screen. |
+| [`Fabric-School.pdf`](Fabric-School.pdf) | The same content as a 176-page book, for reading away from a screen. |
 | `fabric-school-print.html` | Generated. The print layout the PDF is rendered from. |
 | `print.css` · `make_print_html.py` | The print stylesheet and the script that applies it. |
 
@@ -38,6 +38,7 @@ yourself" answer already open.
 | Lessons | |
 |---|---|
 | **0–3** | What a radio is, what an FPGA is, what is on this board, what each tool does |
+| **3A** | Reaching the board over a network, and changing its IP address |
 | **4–10** | Verilog from nothing: modules, clocks, the two assignments, widths, fixed point, testbenches |
 | **11–16** | The radio's datapath: IQ samples, sampling and aliasing, the block design, clock domains, the packers, DMA into memory |
 | **17–23** | Changing the fabric: a worked example, Tcl, packaging your logic as an IP and splicing it into the TX/RX paths, constraints, driving Vivado, clock crossings, registers |

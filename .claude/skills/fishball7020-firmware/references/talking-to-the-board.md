@@ -8,6 +8,38 @@
 | ssh `root@192.168.2.1` (password `analog`) | sysfs, debugfs, the filesystem | busybox — see limits below |
 | USB mass storage / serial console | firmware images, boot messages | the debug port's UART shows the whole boot; the OTG port's only appears after Linux is up |
 
+## Where the board's address lives, and the file that is a decoy
+
+The addresses are in the **U-Boot environment in QSPI flash** (`/dev/mtd1`, per
+`/etc/fw_env.config`), not on the SD card. `S40network` regenerates
+`/etc/network/interfaces`, `/etc/udhcpd.conf` and `/opt/config.txt` from it at
+every boot, so editing those files is a fine way to test and a guaranteed way to
+lose the setting. Because it is QSPI, address settings **survive
+`./devkit flash --all`**.
+
+`ipaddr_eth` is a switch, not just a value: set = static `eth0`, unset = DHCP.
+`fw_setenv ipaddr_eth` with no value deletes it and returns the board to DHCP.
+
+**`uEnv.txt` on the SD card does not change the Linux address.** U-Boot reads it
+with `env import`, which touches only the in-RAM environment - there is no
+`saveenv` in the SD boot path - and Linux's `fw_printenv` reads `/dev/mtd1`.
+The trap is that `uEnv.txt` ships `ipaddr=192.168.2.1` while the QSPI env has no
+`ipaddr` at all, and `S40network`'s compiled-in default is the same number, so
+"I edited uEnv.txt and it worked" is indistinguishable from the file never being
+read. Verified on hardware: `fw_printenv ipaddr` returns `"ipaddr" not defined`.
+
+**A static address has no default route and no DNS.** The static branch writes
+only `address` and `netmask`; nothing writes `/etc/resolv.conf`. Measured: two
+link-scope routes, no `default via`, `ping 8.8.8.8` fails. DHCP does set both
+(udhcpc's `default.script`). Prefer a DHCP reservation on the router, or add the
+route in `/mnt/jffs2/autorun.sh`.
+
+Finding a board whose address you do not know: `iio_info -s` (DNS-SD, prints
+address + model + serial and confirms IIOD is up), or `ip:pluto.local` as a URI
+and never hard-code an address. `usb0` keeps 192.168.2.1 whatever you did to
+`eth0`, so a USB cable is always the way back in. Full write-up:
+[`docs/networking.md`](../../../../docs/networking.md).
+
 ## IIOD protocol gotchas
 
 All confirmed against a live board running IIOD 0.25.

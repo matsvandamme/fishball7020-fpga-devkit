@@ -14,7 +14,7 @@
 # Fishball7020 FPGA Devkit
 
 <p align="center">
-  <a href="https://matsvandamme.github.io/fishball7020-fpga-devkit/course/"><img src="https://img.shields.io/badge/course-Fabric%20School%20%C2%B7%2052%20lessons-8A3FFC" alt="Fabric School: a 52-lesson SDR and FPGA course for this board"></a>
+  <a href="https://matsvandamme.github.io/fishball7020-fpga-devkit/course/"><img src="https://img.shields.io/badge/course-Fabric%20School%20%C2%B7%2053%20lessons-8A3FFC" alt="Fabric School: a 53-lesson SDR and FPGA course for this board"></a>
   <img src="https://img.shields.io/badge/board-Zynq%20XC7Z020%20%2B%20AD9361-blue" alt="Board: Zynq XC7Z020 + AD9361">
   <img src="https://img.shields.io/badge/toolchain-Vivado%2FVitis%202022.2-orange" alt="Toolchain: Vivado/Vitis 2022.2">
   <img src="https://img.shields.io/badge/host%20OS-Ubuntu%2022.04%20LTS-e95420" alt="Host OS: Ubuntu 22.04 LTS">
@@ -36,7 +36,7 @@ works](docs/how-it-works.md)** starts from the beginning and assumes nothing.
 
 > ### 📚 [Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/) — learn all of this from nothing
 >
-> A 52-lesson course written against **this** board: its block design, its
+> A 53-lesson course written against **this** board: its block design, its
 > clocks, its measured numbers. From what a radio *is* and what a decibel means,
 > through Verilog and Vivado, to packaging your own logic as an IP and splicing
 > it into the AD9361 datapath — then filters, modulation, OFDM, coding, routing,
@@ -46,7 +46,7 @@ works](docs/how-it-works.md)** starts from the beginning and assumes nothing.
 > It assumes no Verilog, no Vivado, no FPGA experience and no signal processing.
 > Twenty-two live calculators, day/night, one self-contained page.
 > **[Read it online](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)**
-> · **[164-page PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)**
+> · **[176-page PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)**
 > · [source](docs/course/)
 
 ## Is this your board?
@@ -193,11 +193,17 @@ something, `./devkit verify --board` checks the board is really running it.
 **Talk to it.** To software it is a Pluto at `ip:192.168.2.1`, so libiio,
 pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 
+**Put it on your network.** The Ethernet socket asks your router for an address
+by default, and `iio_info -s` finds the board without you knowing it. To give it
+a fixed address instead — or to understand why the obvious file on the SD card is
+not the one that does it — see [changing the board's IP
+address](docs/networking.md).
+
 ## Making changes
 
 | I want to… | Start here |
 |---|---|
-| learn this from nothing — SDR, Verilog and Vivado | **[Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)** — a 52-lesson course written against this board ([PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)) |
+| learn this from nothing — SDR, Verilog and Vivado | **[Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)** — a 53-lesson course written against this board ([PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)) |
 | understand what the build produces and why | [How it works](docs/how-it-works.md) |
 | install the tools and build on the host | [Building your own firmware](docs/building.md) — needs Ubuntu 18.04/20.04/22.04 |
 | add my own HDL to the radio's datapath | [Add your own HDL](docs/building.md#add-your-own-hdl) · [the block design](docs/block-design.md) |
@@ -212,6 +218,7 @@ pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 | blink the USER LED | [Controlling the USER LED](docs/user-led.md) |
 | build without caring what Linux I run | **[Building in a container](docs/building-in-a-container.md)** — the recommended route; installs Vivado too, byte-identical output |
 | drive the radio from an AI assistant | the sibling **[Fishball7020-mcp](https://github.com/matsvandamme/Fishball7020-mcp)** — 21 MCP tools: tune, sweep, capture, transmit |
+| put the board on my router, or give it a fixed IP | [Changing the board's IP address](docs/networking.md) — the four routes, and the SD-card file that looks like it works |
 | fix a build that fails | [Troubleshooting](docs/troubleshooting.md) |
 
 ## What is on the board

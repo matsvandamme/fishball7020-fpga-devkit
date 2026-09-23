@@ -229,6 +229,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-off
     <li><a href="#l1"><span class="n">1</span><span>What an FPGA is</span></a></li>
     <li><a href="#l2"><span class="n">2</span><span>The Fishball7020, part by part</span></a></li>
     <li><a href="#l3"><span class="n">3</span><span>The toolchain and the build system</span></a></li>
+    <li><a href="#l3a"><span class="n">3A</span><span>Reaching the board over a network</span></a></li>
   </ol>
   <h4>Verilog from nothing</h4>
   <ol>
@@ -743,6 +744,195 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-off
       <strong>Bind mount</strong> &mdash; a directory on your machine made visible inside the container,
       so the two share the same files rather than copies.</p>
   </div>
+</section>
+<section class="part" id="l3a">
+  <div class="part-head"><span class="part-n">3A</span><h2>Reaching the board, and changing its address</h2></div>
+  <p class="lede">The board answers on 192.168.2.1 over USB and asks your router for an address over
+    Ethernet. Changing either is three words of shell &mdash; but the file that looks like it should do it
+    is not the file that does.</p>
+
+  <div class="box jargon">
+    <p class="bt">Words used here</p>
+    <p><strong>DHCP</strong> &mdash; a router handing out addresses automatically. <strong>Static
+      address</strong> &mdash; one you fix yourself, which the router does not choose.
+      <strong>Default route</strong>, or <strong>gateway</strong> &mdash; the address a device sends
+      traffic to when the destination is not on its own network; without one a device can talk to its
+      neighbours and nothing further. <strong>U-Boot</strong> &mdash; the small program that runs before
+      Linux and loads it. <strong>QSPI flash</strong> &mdash; a small flash chip soldered to the board,
+      separate from the SD card. <strong>mDNS</strong> &mdash; a way for a device to announce its own
+      name on the local network, so <code>pluto.local</code> resolves with no server involved.</p>
+  </div>
+
+  <h3>Where the addresses actually live</h3>
+  <p>Not on the SD card. They live in the <span class="newterm">U-Boot environment</span>, a 128 KB block
+    in the board's QSPI flash chip. At every boot a startup script called <code>S40network</code> reads
+    that block and <em>generates</em> the Linux network configuration from it.</p>
+
+  <div class="code">
+    <div class="code-bar"><span class="f">terminal</span><span class="t">Shell</span></div>
+<pre><code><span class="c"># run on the board</span>
+cat /etc/fw_env.config
+<span class="c">#   /dev/mtd1    0x0000    0x20000    0x20000</span>
+cat /proc/mtd | grep mtd1
+<span class="c">#   mtd1: 00020000 00010000 "qspi-uboot-env"</span>
+</code></pre>
+  </div>
+
+  <p>Two things follow from "generated at every boot", and they are the two mistakes people make. The
+    first is editing <code>/etc/network/interfaces</code>: it works beautifully until you reboot, at which
+    point the script writes over it. The second is subtler &mdash; the variables have defaults compiled
+    into the script, stored nowhere, so <code>fw_printenv ipaddr</code> answering
+    <code>"ipaddr" not defined</code> does <em>not</em> mean the board has no USB address. It means the
+    script fell back to <code>192.168.2.1</code>.</p>
+
+  <p>One happy consequence: because the environment is in QSPI and not on the card, <strong>your address
+    settings survive reflashing the SD card</strong>, including <code>./devkit flash --all</code>.</p>
+
+  <h3>The switch that chooses DHCP or static</h3>
+  <p>There is no "mode" setting. There is one variable, <code>ipaddr_eth</code>, and the script branches on
+    whether it has a value at all:</p>
+
+  <div class="code">
+    <div class="code-bar"><span class="f">/etc/init.d/S40network, trimmed</span><span class="t">Shell</span></div>
+<pre><code>if [ -n "$ETH_IPADDR" ]; then
+        echo "iface eth0 inet static"   &gt;&gt; $IFAC
+        echo "\taddress $ETH_IPADDR"    &gt;&gt; $IFAC
+        echo "\tnetmask $ETH_NETMASK"   &gt;&gt; $IFAC
+else
+        echo "iface eth0 inet dhcp"     &gt;&gt; $IFAC
+fi
+</code></pre>
+  </div>
+
+  <p>So "go back to DHCP" means <em>deleting</em> the variable, which is what <code>fw_setenv</code> with
+    no value does:</p>
+
+  <div class="code">
+    <div class="code-bar"><span class="f">terminal</span><span class="t">Shell</span></div>
+<pre><code><span class="c"># run on the board</span>
+fw_setenv ipaddr_eth 192.168.1.50    <span class="c"># a fixed address on your router's network</span>
+fw_setenv netmask_eth 255.255.255.0
+fw_printenv ipaddr_eth netmask_eth   <span class="c"># read it back BEFORE rebooting</span>
+reboot
+
+fw_setenv ipaddr_eth                 <span class="c"># no value = delete = back to DHCP</span>
+fw_setenv netmask_eth
+reboot
+</code></pre>
+  </div>
+
+  <p>The other variables the same script reads: <code>ipaddr</code> (the board's own address over the USB
+    cable, default <code>192.168.2.1</code>), <code>ipaddr_host</code> (the single address the board's own
+    DHCP server hands <em>your PC</em> over USB, default <code>192.168.2.10</code>),
+    <code>netmask</code>, <code>hostname</code> &mdash; which is also the mDNS name &mdash; and
+    <code>ssid_wlan</code>/<code>pwd_wlan</code> if you fit a USB Wi-Fi dongle.</p>
+
+  <h3>The file that looks like it works</h3>
+  <p>The SD card contains <code>uEnv.txt</code>. It is plain text, it is right there, and it already
+    contains the exact lines you want to change &mdash; <code>ipaddr=192.168.2.1</code> among them.
+    Editing them changes nothing about the running Linux system.</p>
+
+  <p>U-Boot reads <code>uEnv.txt</code> with <code>env import</code>, which loads it into the environment
+    U-Boot holds <em>in RAM</em>. There is no <code>saveenv</code> anywhere in the SD boot path, so
+    nothing is written to flash. Those values live for as long as U-Boot runs, get used for U-Boot's own
+    networking, and are gone before Linux starts. Linux's <code>fw_printenv</code> reads
+    <code>/dev/mtd1</code>, which <code>env import</code> never touched.</p>
+
+  <div class="box trap">
+    <p class="bt">Why this one fools everybody</p>
+    <p>You can watch the two disagree. The SD card says <code>ipaddr=192.168.2.1</code>; the environment
+      Linux reads has no such variable at all; and the board is <em>nevertheless</em> reachable on
+      192.168.2.1, because the script's built-in default happens to be the same number. So the
+      experiment "I edited uEnv.txt, rebooted, and it still works" returns a pass either way. Every
+      symptom of success is produced by a file that was never read. If you want an SD-card edit to
+      stick you must make U-Boot save it, from the U-Boot console over serial &mdash;
+      <code>setenv ipaddr_eth …</code>, then <code>saveenv</code>, then <code>boot</code> &mdash; which
+      writes QSPI, and is <code>fw_setenv</code> with extra steps.</p>
+  </div>
+
+  <h3>The route that needs no shell: config.txt</h3>
+  <p>Plugged into a PC, the board also appears as a small USB flash drive holding
+    <code>config.txt</code>. Edit it, set <code>reset = 1</code> under <code>[ACTIONS]</code>, save, and
+    <strong>eject the drive</strong> &mdash; the eject is what the board watches for. A daemon compares
+    the file's md5 against a stored copy, parses it, and writes every value in one batch through the
+    same <code>fw_setenv</code>. It leaves a file called <code>SUCCESS_ENV_UPDATE</code> on the drive if
+    the write worked, or <code>FAILED_INVALID_UBOOT_ENV</code> if it did not.</p>
+
+  <div class="box trap">
+    <p class="bt">The section heading is wrong for this board</p>
+    <p><code>ipaddr_eth</code> and <code>netmask_eth</code> sit under a heading called
+      <code>[USB_ETHERNET]</code>, but on the Fishball7020 they configure the <strong>RJ45 gigabit
+      socket</strong> driven by the RTL8211F PHY. The name is inherited from the ADALM-Pluto, which has
+      no Ethernet PHY at all &mdash; the only way a Pluto could ever get an <code>eth0</code> was a USB
+      Ethernet dongle. Same variable, same interface name, different silicon behind it. Edit it for the
+      RJ45 socket regardless of what the heading says.</p>
+  </div>
+
+  <h3>What static mode leaves out</h3>
+  <p>Look again at the static branch above: it writes an address and a netmask, and there is no
+    <code>gateway</code> line. Nothing writes <code>/etc/resolv.conf</code> either. So a statically
+    addressed board has <strong>no default route and no DNS</strong>. Measured on a board set to
+    192.168.129.200:</p>
+
+  <div class="code">
+    <div class="code-bar"><span class="f">terminal</span><span class="t">Shell</span></div>
+<pre><code><span class="c"># run on the board</span>
+ip route
+<span class="c">#   192.168.2.0/24     dev usb0 scope link  src 192.168.2.1</span>
+<span class="c">#   192.168.128.0/23   dev eth0 scope link  src 192.168.129.200</span>
+cat /etc/resolv.conf     <span class="c"># No such file or directory</span>
+ping -c1 8.8.8.8         <span class="c"># fails: no route</span>
+</code></pre>
+  </div>
+
+  <p>Two link-scope routes and no <code>default via</code> anything. The board can reach its own subnet
+    and nothing else. For radio work that is usually irrelevant &mdash; libiio talks to it directly and
+    your PC is on the same subnet &mdash; but <code>ntpd</code>, <code>git</code>, <code>wget</code> and
+    anything that resolves a name will fail, for a reason nothing tells you.</p>
+
+  <p>DHCP does not have this problem: udhcpc's script sets both the default route and the nameserver. So
+    if you want a fixed address <em>and</em> working internet, the clean answer is a <strong>DHCP
+    reservation on your router</strong> &mdash; leave <code>ipaddr_eth</code> unset and let the router
+    always hand out the same address. You get a predictable address, a gateway, DNS, and nothing to undo
+    on the board when you move it to another network. Failing that, add what static mode omits to
+    <code>/mnt/jffs2/autorun.sh</code>, the board's one writable persistent partition, which runs at
+    every boot.</p>
+
+  <h3>Finding the board again</h3>
+  <p>If you switched to DHCP, you do not need to know the address. The board announces itself:</p>
+
+  <div class="code">
+    <div class="code-bar"><span class="f">terminal</span><span class="t">Shell</span></div>
+<pre><code><span class="c"># run from: your HOST</span>
+iio_info -s
+<span class="c">#   1: 192.168.129.200 (FISH Ball PlutoSDR Rev.A (Z7020-AD9361)),</span>
+<span class="c">#      serial=b8f4c99de8525565d3f4fe3c917ad834 [ip:pluto.local]</span>
+
+avahi-resolve -n pluto.local
+<span class="c">#   pluto.local	192.168.129.200</span>
+</code></pre>
+  </div>
+
+  <p><code>iio_info -s</code> is the single most useful command here: it gives you the address, the model,
+    the serial, and proof that the radio service is up. Better still, use <code>ip:pluto.local</code> as
+    the libiio URI everywhere and never hard-code an address at all. The mDNS name follows the
+    <code>hostname</code> variable, so <code>fw_setenv hostname fishball</code> makes it
+    <code>fishball.local</code>.</p>
+
+  <div class="box why">
+    <p class="bt">Why you cannot really lock yourself out</p>
+    <p><code>ipaddr_eth</code> touches only <code>eth0</code>. The USB interface keeps its own static
+      address whatever you do to Ethernet, so a USB cable and <code>ssh root@192.168.2.1</code> is always
+      the way back in. After that: <code>config.txt</code> on the USB drive needs no shell and no
+      network; the serial console at 115200 baud is independent of every network setting; and the U-Boot
+      prompt, reached by interrupting the three-second boot delay, can <code>setenv</code> and
+      <code>saveenv</code> directly. What will <em>not</em> help is reflashing the SD card &mdash; the
+      addresses are in QSPI, and a fresh card does not touch them.</p>
+  </div>
+
+  <p>The full version of this lesson, including the temporary no-reboot commands and the five other ways
+    to discover a board's address, is <a href="../networking.md">changing the board's IP address</a> in
+    the repository documentation.</p>
 </section>
 <section class="part" id="l4">
   <p class="band">Verilog from nothing</p>
