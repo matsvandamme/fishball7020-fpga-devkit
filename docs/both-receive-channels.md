@@ -40,22 +40,47 @@ becomes a defect only on a 2R2T board like this one.
 
 ## Measured, before and after
 
-`TX2A` → 20 dB attenuator → `RX2A`. Converter at 61.44 MSPS, decimator engaged
-so the fabric delivers 7.68 MSPS — a window of ±3.84 MHz. A tone was generated
-in the FPGA at **10 MHz**, deliberately outside that window.
+`TX2A` → 20 dB attenuator → `RX2A`, tuned to 900 MHz. The converter runs at
+61.44 MSPS and the decimator is engaged, so the fabric delivers 7.68 MSPS — a
+window of **±3.84 MHz**. A tone was generated inside the FPGA and swept from
+0.2 MHz to 20 MHz, and each level was compared against that same tone captured
+with the decimator bypassed. The difference between the two is the channel's
+**anti-alias response**: how hard it pushes a tone down *before* that tone gets
+the chance to fold into the window.
 
-| Channel 1, filter engaged | Strongest bin | Level |
-|---|---|---|
-| **Stock** | **+2.320 MHz** — an alias | **70.1 dB** |
-| **With this patch** | 0.000 MHz (DC offset) | −2.8 dB |
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="img/channel1-alias-dark.svg">
+  <img alt="Two panels measured on the board. Left: the swept anti-alias response of channel 1 from 0.2 to 20 MHz. The stock build is flat at plus 1.4 dB across the whole sweep — no attenuation at all. The patched build sits at minus 4.6 dB through the passband, rolls off at the 3.84 MHz window edge, and reaches about minus 70 dB beyond 5 MHz. Right: the spectrum channel 1 delivers for a 10 MHz tone at 7.68 MSPS. The stock build has a tall spike at plus 2.32 MHz — the alias — while the patched build shows only a small DC bump and noise." src="img/channel1-alias-light.svg">
+</picture>
 
-2.320 MHz is exactly 10 − 7.68: the out-of-band tone folding in. Stock, it
-arrives at essentially full strength. Patched, it is gone — **better than 70 dB
-of suppression**, which is the filter's stopband doing the job it was always
-meant to do on this channel.
+**Stock, the line is flat.** Channel 1 attenuates a 20 MHz tone by exactly as
+much as it attenuates a 200 kHz one: nothing — +1.4 dB, right across the sweep.
+That is what "no filter" looks like when you measure it. Every tone above
+3.84 MHz arrives at full strength and lands *somewhere* in the window.
 
-With the filter bypassed both builds behave identically (tone at +9.999 MHz), so
-nothing is lost in the default case.
+**Patched, both channels roll off in lockstep.** Flat at −4.6 dB through the
+passband, −10.6 dB at the window edge, and an average of **−70.1 dB** past
+5 MHz.
+
+| Tone | Folds in at | Stock | With this patch |
+|---|---|---|---|
+| 1.00 MHz | 1.00 MHz — in band | +1.4 dB | −4.6 dB |
+| 3.84 MHz | 3.84 MHz — the edge | +1.4 dB | −10.6 dB |
+| 5.00 MHz | −2.68 MHz | +1.4 dB | **−69.6 dB** |
+| 10.00 MHz | +2.32 MHz | +1.4 dB | **−70.4 dB** |
+| 20.00 MHz | −3.04 MHz | +1.2 dB | **−66.0 dB** |
+
+The right-hand panel is the 10 MHz row drawn as a spectrum. 2.32 MHz is exactly
+10 − 7.68 — the tone folded down by one output sample rate, which is what
+aliasing does to anything above the window edge. Stock, that alias peaks at
+**+18.75 dB**, indistinguishable from the real tone. Patched, the strongest bin
+in the entire capture is the DC offset at **−50.92 dB**; the alias is not
+visible above the noise at all. That is at least **69.7 dB of suppression**, and
+it is simply the filter's stopband finally being applied to this channel.
+
+With the decimator bypassed the two builds measure the same — the swept
+reference levels agree within 0.05 dB over most of the range — so nothing is
+lost in the default case.
 
 ## What the patch does
 
