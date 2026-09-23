@@ -106,7 +106,7 @@ details.check .ans p{margin:0 0 2mm}
   <p class="kick">Fishball7020 &middot; PlutoSky &middot; 7020-SDR</p>
   <h1>Fabric School</h1>
   <p class="sub">A ground-up course in software-defined radio, and in the FPGA inside this one.
-     46 lessons, from what a radio <em>is</em> to your own signal processing running in
+     52 lessons, from what a radio <em>is</em> to your own signal processing running in
      the AD9361 datapath &mdash; by way of spectra, noise, filters, modulation and link budgets.</p>
   <p class="sub" style="font-size:10.5pt;color:#5C6A77">Assumes no Verilog, no Vivado, no FPGA
      experience, and no signal processing. Every term is defined the first time it appears.</p>
@@ -160,21 +160,28 @@ details.check .ans p{margin:0 0 2mm}
 <li><span class="tn">33</span><span>OFDM, and why this board finds it hard</span></li>
 <li><span class="tn">34</span><span>Equalisation: undoing a channel that is not flat</span></li>
 <li><span class="tn">35</span><span>Channel coding: buying decibels with redundancy</span></li>
-<li><span class="tn">36</span><span>Packets: framing, addressing, and everything above the symbols</span></li>
+<li><span class="tn">36</span><span>Iterative decoding: how turbo and LDPC actually work</span></li>
+<li class="bd">From a link to a network</li>
+<li><span class="tn">37</span><span>Packets: framing, addressing, and everything above the symbols</span></li>
+<li><span class="tn">38</span><span>Beyond one link: protocols, routing, and what a network adds</span></li>
+<li><span class="tn">39</span><span>Security: the part a working link still does not have</span></li>
 <li class="bd">Measuring, and getting on the air</li>
-<li><span class="tn">37</span><span>Measuring what you built</span></li>
-<li><span class="tn">38</span><span>Link budgets: will it actually work over the air?</span></li>
-<li><span class="tn">39</span><span>Antennas and the RF front end: what happens after the SMA</span></li>
-<li><span class="tn">40</span><span>IQ files, and the metadata that turns them into measurements</span></li>
+<li><span class="tn">40</span><span>Measuring what you built</span></li>
+<li><span class="tn">41</span><span>Link budgets: will it actually work over the air?</span></li>
+<li><span class="tn">42</span><span>Antennas and the RF front end: what happens after the SMA</span></li>
+<li><span class="tn">43</span><span>RF design: Smith charts, matching networks and layout</span></li>
+<li><span class="tn">44</span><span>IQ files, and the metadata that turns them into measurements</span></li>
 <li class="bd">Two receivers, and the chip that feeds them</li>
-<li><span class="tn">41</span><span>Two coherent receivers: what this board can do that most cannot</span></li>
-<li><span class="tn">42</span><span>MIMO and beamforming: what more than one antenna buys</span></li>
-<li><span class="tn">43</span><span>The AD9361 itself: the chip in front of your fabric</span></li>
+<li><span class="tn">45</span><span>Two coherent receivers: what this board can do that most cannot</span></li>
+<li><span class="tn">46</span><span>MIMO and beamforming: what more than one antenna buys</span></li>
+<li><span class="tn">47</span><span>The AD9361 itself: the chip in front of your fabric</span></li>
+<li><span class="tn">48</span><span>The AD9361, register by register</span></li>
 <li class="bd">Onward</li>
-<li><span class="tn">44</span><span>Projects, in order of difficulty</span></li>
-<li><span class="tn">45</span><span>The rules worth taping to the wall</span></li>
+<li><span class="tn">49</span><span>The theory underneath: detection, estimation, information</span></li>
+<li><span class="tn">50</span><span>Projects, in order of difficulty</span></li>
+<li><span class="tn">51</span><span>The rules worth taping to the wall</span></li>
 <li class="bd">Appendix</li>
-<li><span class="tn">A</span><span>Where to go for more, and what this course still leaves out</span></li>
+<li><span class="tn">A</span><span>Where the numbers came from, and what is still not here</span></li>
 </ol></div>
 <section class="part" id="l0">
   <p class="band">Before any code</p>
@@ -2538,7 +2545,7 @@ rm -rf firmware/src/hdl/projects/pluto/pluto.{xpr,cache,gen,hw,ip_user_files,run
         cares about latency <em>differences</em> — so the answer is that the other three channels have to
         have the same one cycle, or the four streams in the buffer no longer line up.</p>
       <p>And if you are doing anything that compares the two receivers — the direction-finding of
-        lesson 42, or simply trusting that sample <em>n</em> on channel 0 and channel 1 happened at the
+        lesson 46, or simply trusting that sample <em>n</em> on channel 0 and channel 1 happened at the
         same instant — then a one-cycle difference is a phase error that scales with frequency, and it
         will look like a real measurement.</p>
     </div>
@@ -2873,7 +2880,7 @@ iio_attr -u ip:192.168.2.1 -d cf-ad9361-dds-core-lpc tx_sample_gpio_en 1
       nothing about the signal changed.</p>
     <p>A quoted noise floor is therefore meaningless without the FFT length beside it. Two measurements of
       the same board, taken minutes apart, can differ by 10 dB through this alone. It is also why
-      lesson 37 insists you state the transform length whenever you quote one — and why the figures in
+      lesson 40 insists you state the transform length whenever you quote one — and why the figures in
       <code>docs/measured-performance.md</code> always do.</p>
   </div>
 
@@ -3648,7 +3655,7 @@ best = <span class="n">None</span>
       a long chirp for energy, compress it to a short spike for timing. The chirp waveform measured in
       <code>docs/modulation-and-throughput.md</code> is already the transmit half. Correlating the capture
       against the transmitted chirp is a one-line change to <code>analyse.py</code> — and it is
-      project&nbsp;4 in lesson 44 for a reason.</p>
+      project&nbsp;4 in lesson 50 for a reason.</p>
   </div>
 
   <details class="check" open>
@@ -3776,7 +3783,7 @@ out    = np.r_[x[-16:], x]     <span class="c"># cyclic prefix: the last 16 copi
       spread thinly through the codeword, which the code then repairs. This is why the standards call it
       <strong>COFDM</strong> — coded OFDM — and why an uncoded OFDM link like the test waveform here is
       not what any real system ships. Coding typically buys 4&ndash;6 dB, which is why a link budget
-      (lesson 38) is allowed to count on it.</p>
+      (lesson 41) is allowed to count on it.</p>
   </div>
 
   <h3>Measured on this board, and the honest explanation</h3>
@@ -4013,7 +4020,7 @@ w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing tha
 </section>
 <section class="part" id="l35">
   <div class="part-head"><span class="part-n">35</span><h2>Channel coding: buying decibels with redundancy</h2></div>
-  <p class="lede">Lesson 33 said coding is worth 4 to 6 dB and lesson 38 spends them. This is where they
+  <p class="lede">Lesson 33 said coding is worth 4 to 6 dB and lesson 41 spends them. This is where they
     come from, why they are real, and what they cost — because a decibel bought with arithmetic is a
     decibel you did not have to buy with a bigger amplifier.</p>
 
@@ -4025,7 +4032,7 @@ w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing tha
   <p>What you get back is <span class="newterm">coding gain</span> — the reduction in signal-to-noise
     needed for the same error rate. It is measured in decibels and it is entirely real: a rate-1/2,
     constraint-length-7 convolutional code with soft decisions buys about <strong>5 dB</strong>. Against
-    lesson 38's budget that is the difference between a link that works and one that does not, and it
+    lesson 41's budget that is the difference between a link that works and one that does not, and it
     costs a few thousand LUTs rather than a bigger amplifier and a licence.</p>
 
   <div class="box why">
@@ -4052,7 +4059,7 @@ w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing tha
     <li>Your demodulator must output LLRs, <em>not</em> bits. A slicer in the middle of the chain throws
       the information away permanently.</li>
     <li>LLRs need the noise level to be scaled correctly, so a receiver that measures its own SNR
-      (lesson 37) decodes better than one that does not.</li>
+      (lesson 40) decodes better than one that does not.</li>
   </ul>
 
   <h3>The families, and which one to reach for</h3>
@@ -4061,7 +4068,7 @@ w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing tha
     <tbody>
       <tr><td><strong>CRC</strong></td><td>Detects errors; corrects nothing</td><td>—</td>
           <td>Every packet ever. It tells the receiver to <em>discard</em>, which is what makes a retry
-            protocol possible (lesson 36).</td></tr>
+            protocol possible (lesson 37).</td></tr>
       <tr><td><strong>Hamming, BCH</strong></td><td>Algebraic block codes over bits</td><td>2&ndash;3 dB</td>
           <td>Headers, and anywhere short and cheap beats strong.</td></tr>
       <tr><td><strong>Reed&ndash;Solomon</strong></td><td>Algebraic, over <em>bytes</em></td><td>3&ndash;5 dB</td>
@@ -4159,7 +4166,287 @@ w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing tha
   </details>
 </section>
 <section class="part" id="l36">
-  <div class="part-head"><span class="part-n">36</span><h2>Packets: framing, addressing, and everything above the symbols</h2></div>
+  <div class="part-head"><span class="part-n">36</span><h2>Iterative decoding: how turbo and LDPC actually work</h2></div>
+  <p class="lede">Lesson 35 said these codes get within about a decibel of Shannon and left it there. The
+    mechanism is a single idea — nodes exchanging opinions until they agree — and it is worth seeing,
+    because the three ways people break it are all consequences of one rule.</p>
+
+  <h3>The currency: log-likelihood ratios</h3>
+  <p>Everything in this lesson trades in one number per bit:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">the log-likelihood ratio</span><span class="t">one number, two jobs</span></div>
+<pre><code>L(x) = ln[ P(x = 0 | y) / P(x = 1 | y) ]
+
+  sign      the decision        positive means 0
+  magnitude the confidence      0 means "no idea"
+</code></pre>
+  </div>
+  <p>For BPSK in Gaussian noise it is almost embarrassingly simple — <strong>L = 2y/σ²</strong>, the
+    received sample divided by the noise power. For Gray-mapped QPSK, I and Q are two independent BPSK
+    channels and you do it twice, with no cross terms.</p>
+  <p>The reason LLRs and not probabilities: independent evidence <em>multiplies</em> as probability but
+    <em>adds</em> as a log-ratio. Combining two opinions becomes an adder.</p>
+
+  <div class="box jargon">
+    <p class="bt">The scaling check worth writing into your test bench</p>
+    <p>For a rate-<em>R</em> code the channel LLRs should have variance
+      <strong>σ²<sub>L</sub> = 8 · R · Eb/N0</strong> and mean <strong>μ<sub>L</sub> = σ²<sub>L</sub>/2</strong>.
+      That "mean is half the variance" relation is the consistency condition, and it falls straight out of
+      L = 2y/σ². Histogram your LLRs once and check it. If it fails, every number downstream is wrong.</p>
+  </div>
+
+  <h3>LDPC: opinions on a graph</h3>
+  <p>Draw the parity-check matrix as a bipartite graph — a <span class="newterm">Tanner graph</span>. One
+    <strong>variable node</strong> per coded bit; one <strong>check node</strong> per parity equation; an
+    edge wherever the matrix has a 1. Every edge carries a number in both directions, and the two node
+    types have opposite jobs:</p>
+  <div class="kv">
+    <dt>Variable node</dt><dd>Pools opinions. Adds the channel LLR to every check node's message. "Here is
+      everything I have heard about me."</dd>
+    <dt>Check node</dt><dd>Enforces "these bits exclusive-or to zero". Given how sure it is about the
+      other bits in its equation, it says what the remaining one must be.</dd>
+  </div>
+  <p>Run both, back and forth, and stop when the parity check passes — <strong>H·x̂ᵀ = 0</strong> — or when
+    you run out of patience.</p>
+
+  <div class="box why">
+    <p class="bt">The one rule the whole field rests on: extrinsic information</p>
+    <p>A message sent <em>out</em> along an edge is computed from everything <em>except</em> what came
+      <em>in</em> on that edge.</p>
+    <p>Break that and a node hears its own opinion back, treats it as fresh evidence, and becomes more
+      confident for no reason. The loop self-confirms. Confidence rises, the error stays, and the
+      syndrome never clears — a failure that looks like a bug in the arithmetic and is actually a bug in
+      the bookkeeping.</p>
+  </div>
+
+  <h3>Turbo: two decoders, one interleaver</h3>
+  <p>A turbo encoder is two small convolutional encoders seeing the same data, the second through an
+    interleaver. Each has a soft-in soft-out decoder, and they take turns — but what they hand over is
+    <strong>not</strong> their answer. It is the part of their answer the other decoder did not already
+    know:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">the handoff</span><span class="t">extrinsic information</span></div>
+<pre><code>L_in  = L_A + L_CH                 <span class="c">// what I was told, plus the channel</span>
+L_E   = L_out - L_in               <span class="c">// what I worked out that nobody told me</span>
+L(u)  = L_CH + L_E1 + deinterleave(L_E2)   <span class="c">// the final decision</span>
+</code></pre>
+  </div>
+  <p>L<sub>E</sub> is interleaved and becomes the other decoder's prior. The interleaver is what makes
+    this work: it guarantees the second decoder sees the errors in a completely different arrangement, so
+    the information really is new. Same rule as LDPC, different clothes.</p>
+
+  <h3>Polar: not iterative at all</h3>
+  <p>Polar codes decode in one sweep. Bits are decided in a fixed order, and each decision is fed forward
+    so that its effect is removed before the next — <span class="newterm">successive cancellation</span>.
+    The recursion needs exactly two operators, and if you have been paying attention they are familiar:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">successive cancellation</span><span class="t">the whole recursion</span></div>
+<pre><code>f(a, b) ~= sign(a) * sign(b) * min(|a|, |b|)    <span class="c">// a min-sum check node</span>
+g(a, b, s) = (-1)^s * a + b                     <span class="c">// a variable-node sum, sign-flipped</span>
+                                                <span class="c">// by the bits already decided</span>
+</code></pre>
+  </div>
+  <p>The weakness is obvious from the description: one bad early decision poisons everything after it.
+    The fix is <strong>successive cancellation list</strong> decoding — carry <em>L</em> candidate paths
+    and let a CRC at the end pick the survivor. That is why 5G's polar codes carry a CRC that is part of
+    the code rather than a check bolted on top.</p>
+
+  <h3>Sum-product, min-sum, and the one that matters in hardware</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Check-node rule</th><th>What it computes</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Sum-product</strong></td><td><code>2·atanh( ∏ tanh(L/2) )</code> — exact</td><td>a transcendental function per edge</td></tr>
+      <tr><td><strong>Min-sum</strong></td><td><code>∏sign · min|L|</code> — an upper bound</td><td>a comparator and a sign</td></tr>
+      <tr><td><strong>Normalised min-sum</strong></td><td>min-sum <code>× α</code></td><td>one multiply; α = 0.75 is a common default</td></tr>
+      <tr><td><strong>Offset min-sum</strong></td><td><code>max(|L| − β, 0)</code></td><td>one subtract</td></tr>
+    </tbody>
+  </table></div>
+  <p>Min-sum replaces the exact expression with a bound that is always at least as large, so it
+    systematically <em>overstates</em> how sure the check node is — which is exactly why scaling by
+    α&nbsp;&lt;&nbsp;1 or subtracting an offset repairs it. Tuned well the gap nearly closes: one
+    published 5G decoder in 28 nm reports an adjusted min-sum within <strong>0.1 dB of floating-point
+    sum-product</strong>.</p>
+  <p>You will see "min-sum costs 0.2 to 0.5 dB" repeated everywhere. That number is folklore as usually
+    cited — the mechanism is solid, the figure is worth measuring for your own code rather than quoting.</p>
+
+  <div class="box trap">
+    <p class="bt">Min-sum hides a bug that sum-product exposes</p>
+    <p>Scale every input LLR by any positive constant and min-sum gives the same decisions — <code>min</code>
+      and <code>+</code> are both positively homogeneous, so the scale factor passes straight through and
+      cancels. <strong>Min-sum does not care what your noise-variance estimate is.</strong></p>
+    <p>Sum-product does, because <code>tanh(L/2)</code> is nonlinear. So a wrong σ² sits there silently
+      while you develop against a min-sum decoder, and costs you several tenths of a decibel the day you
+      switch to sum-product — or the day someone hands your LLRs to a different core.</p>
+    <p>Over-scaling has a second failure: LLRs that saturate a 4-to-16-bit fixed-point datapath manufacture
+      an error floor that looks exactly like a bad code.</p>
+  </div>
+
+  <h3>How many iterations, and what stops you going further</h3>
+  <p>Real numbers, from real systems: MathWorks' 5G NR LDPC hardware decoder defaults to
+    <strong>8 iterations</strong> with a maximum of 63 — 63 because the field is six bits wide — and stops
+    early when the syndrome clears. Published high-throughput LDPC chips use as few as
+    <strong>3 to 5</strong>. DVB-S2X's performance tables <em>assume</em> <strong>50</strong>, as do
+    CCSDS's deep-space codes, which land about a decibel from Shannon.</p>
+  <p>More iterations stop helping at the <span class="newterm">error floor</span> — the point where the
+    curve flattens instead of continuing to fall. Three different causes, and conflating them is how
+    people waste weeks:</p>
+  <div class="kv">
+    <dt>LDPC — trapping sets</dt><dd>Small groups of variable nodes whose local graph structure traps the
+      decoder in a stable wrong answer. Richardson's 2003 result was specifically that this, and
+      <em>not</em> low-weight codewords, dominates LDPC floors.</dd>
+    <dt>Turbo — genuine minimum distance</dt><dd>Turbo codes really do have small minimum distance; past
+      some SNR you are simply confusing the transmitted codeword with a near neighbour. It grows only
+      <em>logarithmically</em> with interleaver length, so you cannot lower this floor by sending longer
+      blocks — the lever that works is interleaver design, and only within that bound. LTE's quadratic
+      permutation polynomial is exactly that lever.</dd>
+    <dt>Yours — implementation</dt><dd>A mistuned α or β, or coarse quantisation, creates an artificial
+      floor in a code that does not have one. This is the one you can fix, and the first one to rule
+      out.</dd>
+  </div>
+
+  <div class="box why">
+    <p class="bt">EXIT charts: predicting the cliff without simulating it</p>
+    <p>Plot, for one constituent decoder, the mutual information it <em>produces</em> against the mutual
+      information it is <em>given</em>. Do it for both decoders, with the second one's axes swapped.
+      Iterative decoding is then a staircase climbing between the two curves — and it converges
+      <strong>if and only if the curves do not touch</strong>.</p>
+    <p>The vocabulary maps onto the BER curve you already know: where the curves cross low is the
+      <em>pinch-off</em> region and the decoder sticks; the narrow gap the staircase squeezes through is
+      the <em>bottleneck</em>, which is the waterfall; the open region beyond is the error floor.</p>
+    <p>Its value is that both curves are cheap to compute, so you can design a code to a target SNR
+      instead of simulating a billion bits per candidate. ten Brink, who introduced the technique
+      (<em>IEEE Transactions on Communications</em>, 2001), used it to design concatenated codes within
+      0.3 dB of capacity.</p>
+  </div>
+
+  <h3>What the standards actually use</h3>
+  <div class="tw"><table>
+    <thead><tr><th>System</th><th>Code</th><th>Parameters worth knowing</th></tr></thead>
+    <tbody>
+      <tr><td><strong>5G NR data</strong></td><td>QC-LDPC, two base graphs</td>
+          <td>BG1 is 46&times;68 with K up to <strong>8448</strong>; BG2 is 42&times;52 with K up to 3840.
+            Lifting factor Z up to <strong>384</strong>, each 1 becoming a Z&times;Z circulant. BG2 is
+            chosen for short or low-rate blocks, BG1 otherwise.</td></tr>
+      <tr><td><strong>5G NR control</strong></td><td>Polar</td>
+          <td>PDCCH, PBCH and uplink control — <strong>never the data channels</strong>. N &le; 512
+            downlink, &le; 1024 uplink. List size 8 is the evaluation baseline but is an implementation
+            choice, not part of the standard.</td></tr>
+      <tr><td><strong>LTE data</strong></td><td>Turbo</td>
+          <td>Two 8-state recursive encoders, mother rate 1/3, generator [1, 15/13] octal, and a quadratic
+            permutation polynomial interleaver with 188 tabulated block sizes from 40 to 6144.</td></tr>
+      <tr><td><strong>LTE control</strong></td><td>Tail-biting convolutional</td>
+          <td><strong>Constraint length 7</strong>, generators 133/171/165 octal. Lesson 35's workhorse,
+            still carrying the control channel of a 4G network.</td></tr>
+      <tr><td><strong>DVB-S2</strong></td><td>LDPC + outer BCH</td>
+          <td>Frames of <strong>64 800</strong> or 16 200 bits — eleven code rates for the long frame, ten for
+            the short. Operates from −2.4 dB SNR, and is usually quoted as about <strong>1 dB</strong> from
+            the Shannon limit for its modulation; EN 302 307 has the per-mode figures exactly.</td></tr>
+      <tr><td><strong>802.11n/ac</strong></td><td>LDPC (optional)</td>
+          <td>Twelve codes: N &isin; {648, 1296, 1944}, lifting 27/54/81, rates 1/2 to 5/6 — always 24
+            subblock columns wide. <strong>The convolutional code is the mandatory one</strong>; LDPC is
+            optional, which tells you what implementers thought of the cost.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="box trap">
+    <p class="bt">The puncturing that is not in the picture</p>
+    <p>5G's base graphs have 68 and 52 columns but transmit only 66·Z and 50·Z bits. The first
+      <strong>two systematic columns are always punctured</strong> — 2·Z information bits that are encoded
+      and never sent, because the receiver can recover them and the rate is better without them.</p>
+    <p>Which means the decoder must be handed <strong>2·Z zero-valued LLRs</strong> at the front, standing
+      for "I have no information about these". Forget them and the decoder fails at every signal level,
+      which looks like a broken code and is an off-by-2Z.</p>
+  </div>
+
+  <h3>What this costs on this board</h3>
+  <p>Now the part that decides whether any of it is yours to build. The XC7Z020 has 53 200 LUTs, 220 DSP
+    slices and 140 block RAMs:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Decoder</th><th>Published cost</th><th>On an XC7Z020</th></tr></thead>
+    <tbody>
+      <tr><td>Viterbi, K=7, rate 1/2, soft<br><span class="num">AMD's Viterbi Decoder IP, published for a Kintex-7 part</span></td>
+          <td class="num">2208 LUT · 1720 FF · <strong>0 DSP</strong> · 2 BRAM</td>
+          <td><span class="ok"><strong>about 4 % of the part</strong></span></td></tr>
+      <tr><td>802.11n LDPC, N=1944, at <strong>420 Mb/s</strong><br><span class="num">published academic design, Kintex-7 XC7K410T</span></td>
+          <td class="num">~45 800 LUT</td>
+          <td><span class="no"><strong>~86 % of the part</strong></span> — nothing else fits beside it</td></tr>
+      <tr><td>5G NR LDPC, highly parallel<br><span class="num">published academic design, Virtex-7</span></td>
+          <td class="num">380 737 LUT</td>
+          <td><span class="no"><strong>7.2&times; the whole device</strong></span></td></tr>
+    </tbody>
+  </table></div>
+  <p>Read that table carefully, because the obvious conclusion is slightly wrong. <strong>An LDPC
+    decoder's area scales with its <em>throughput</em>, not with the block length</strong> — both LDPC rows
+    are high-speed designs processing many graph edges per clock. A serial or lightly-layered decoder for
+    the same N=1944 code running at a few megabits per second is a small fraction of those numbers and
+    fits perfectly well. What does not fit on this part is a <em>fast</em> LDPC decoder.</p>
+  <p>And the hardware shortcut does not apply here: AMD's SD-FEC block, which decodes LDPC at gigabits per
+    second, is a hardened block on <strong>selected Zynq UltraScale+ RFSoC devices</strong> — not every
+    RFSoC part carries one, and no 7-series part does. Their soft-logic LDPC core does not list Zynq-7000
+    as a supported family either.</p>
+  <p>So the honest architecture advice for this board is the one lesson 35 gave: <strong>a soft-decision
+    Viterbi decoder for a K=7 convolutional code is comfortable, useful, and worth about 5 dB.</strong>
+    Reach for LDPC when you need the last decibel and can accept a slow decoder, or when you have moved to
+    a bigger part. (802.11n keeps the convolutional code mandatory and LDPC optional — though that is as
+    much about interoperating with 802.11a/g as about decoder area.)</p>
+
+  <div class="calc" id="c-dec">
+    <p class="ct">Try it — will the decoder keep up with the link?</p>
+    <div class="row">
+      <label>Block length N (bits)
+        <input type="number" id="i-n" value="1944" step="8" min="16"></label>
+      <label>Code rate
+        <input type="number" id="i-r" value="0.5" step="0.05" min="0.05" max="0.95"></label>
+      <label>Iterations
+        <input type="number" id="i-it" value="8" step="1" min="1"></label>
+    </div>
+    <div class="row">
+      <label>Parallel node units
+        <input type="number" id="i-p" value="81" step="1" min="1"></label>
+      <label>Clock (MHz)
+        <input type="number" id="i-f" value="100" step="10" min="1"></label>
+      <label>Link needs (Mb/s)
+        <input type="number" id="i-rs" value="10" step="1" min="0.01"></label>
+    </div>
+    <div class="out" id="i-out"></div>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">Three ways to lose a week</p>
+    <dl>
+      <dt>The sign convention is inverted</dt><dd><em>Symptom:</em> the decoder converges beautifully, to
+        the exact bitwise complement of your message — or BER sits at 0.5 and a single <code>L = -L</code>
+        fixes everything. <em>Cause:</em> 3GPP, MATLAB and most vendor IP use positive&nbsp;⇒&nbsp;0; plenty
+        of textbooks and demodulators use the opposite, and nothing in the interface declares which.</dd>
+      <dt>The noise variance is wrong</dt><dd><em>Symptom:</em> works in simulation, loses a few tenths of
+        a decibel on hardware, and only when you use sum-product. <em>Cause:</em> see the trap above — the
+        min-sum decoder you developed against did not care.</dd>
+      <dt>You fed back the answer instead of the extrinsic part</dt><dd><em>Symptom:</em> BER improves for
+        one or two iterations, then freezes or gets <em>worse</em> as you allow more. <em>Cause:</em> you
+        passed L<sub>out</sub> where you needed L<sub>out</sub>&nbsp;−&nbsp;L<sub>in</sub>, so each decoder
+        receives its own previous belief as evidence and reinforces the same error forever.</dd>
+    </dl>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: your LDPC decoder's BER improves for two iterations and then stops. Where do you look?</summary>
+    <div class="ans">
+      <p><strong>At the extrinsic bookkeeping, first.</strong> "Improves then freezes" is the signature of
+        a node receiving its own message back: the first couple of iterations carry real new information,
+        and after that the graph is just agreeing with itself. Check that every outgoing message excludes
+        the incoming one on the same edge.</p>
+      <p>If the bookkeeping is right, look at <strong>quantisation</strong>. An LLR datapath that saturates
+        produces exactly this shape, because clipped messages stop carrying differences. Widen it and see
+        whether the floor moves — if it does, it was yours, not the code's.</p>
+      <p>Only after both of those should you reach for trapping sets. They are real, they are the
+        published cause of genuine LDPC floors, and they are almost never what is wrong with a decoder
+        that has just been written.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l37">
+  <p class="band">From a link to a network</p>
+  <div class="part-head"><span class="part-n">37</span><h2>Packets: framing, addressing, and everything above the symbols</h2></div>
   <p class="lede">Every lesson so far has ended at "and now you have symbols". Nothing so far has said who
     the symbols are for, where they start, whether they arrived intact, or what to do when they did not.
     That is this lesson, and on this board one number in it decides your whole architecture.</p>
@@ -4316,9 +4603,604 @@ w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing tha
     </div>
   </details>
 </section>
-<section class="part" id="l37">
+<section class="part" id="l38">
+  <div class="part-head"><span class="part-n">38</span><h2>Beyond one link: protocols, routing, and what a network adds</h2></div>
+  <p class="lede">Lesson 37 ended with a frame that arrived intact. A network is what happens when there
+    are more than two nodes, more than one hop, and something above you that expects an ordered byte
+    stream. Almost all of it you can inherit rather than write — but only if you understand what you are
+    handing it.</p>
+
+  <h3>The layer model, honestly</h3>
+  <p>The seven-layer OSI model is real (ITU-T X.200) and almost nobody implements it. What is actually
+    deployed is the four layers of <span class="newterm">RFC 1122</span>: application, transport,
+    internet, link. Session and presentation have no deployed equivalent.</p>
+  <p>And even those four leak. RFC 3439's section titled "Layering Considered Harmful" puts it plainly:
+    "multiplexing and segmentation both hide vital information that lower layers may need to optimize
+    their performance." Keep the layers as a way to divide the work, not as a law of nature — this lesson
+    is mostly about what happens when a layer's assumptions are wrong.</p>
+
+  <div class="box why">
+    <p class="bt">What you write, and what you get for free</p>
+    <dl>
+      <dt>You write</dt><dd>The physical layer (lessons 29&ndash;36), framing and media access
+        (lesson 37), and — if you want it — link-layer retransmission.</dd>
+      <dt>Linux gives you</dt><dd>IP, ICMP, UDP, TCP, routing tables, sockets. All of it, free, the moment
+        your driver presents a network interface. The usual route is a <code>TUN</code>
+        device — <code>TUN</code> carries IP packets, its sibling <code>TAP</code> carries Ethernet
+        frames, and a subnetwork under IP wants the former. Your program reads packets out of it,
+        transmits them, and writes received ones back in. Forty lines.</dd>
+    </dl>
+    <p>So the honest description of the job is: <strong>you are building a subnetwork underneath IP.</strong>
+      There is an IETF document for exactly that — <strong>RFC 3819</strong>, "Advice for Internet
+      Subnetwork Designers" — and it is the single most useful thing to read after this lesson.</p>
+  </div>
+
+  <h3>Addressing: who, and where</h3>
+  <p>A MAC address says <em>who</em>. It is flat, permanent and unaggregatable — 48 bits, of which the
+    top 24 are the manufacturer's OUI. A network address says <em>where</em>, and that is the whole point:
+    RFC 4632 explains that prefixes are assigned "to roughly follow the underlying Internet topology so
+    that aggregation can be used", which is what stops the global routing table from being one entry per
+    device.</p>
+  <p>For a small radio network of your own, the cheapest credible design is the one 802.15.4 chose: a
+    <strong>16-bit short address</strong> plus a <strong>16-bit network identifier</strong>. Two bytes
+    each, 65 534 usable nodes once you reserve 0xFFFF for broadcast and 0xFFFE for "not assigned yet". Do not invent a 64-bit address you will
+    never need; every byte of header is airtime, and airtime is the budget you are about to discover you
+    do not have.</p>
+
+  <h3>Frame length: the trap that looks like a broken radio</h3>
+  <p>A frame survives only if <em>every</em> bit in it survives. RFC 3819 gives the arithmetic directly:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">packet error rate from bit error rate</span><span class="t">RFC 3819 §8.5.3</span></div>
+<pre><code>p = 1 - (1 - BER)^(FRAME_SIZE * 8)
+
+and for BER * FRAME_SIZE * 8 &lt;&lt; 1,   p ~= BER * FRAME_SIZE * 8
+</code></pre>
+  </div>
+  <p>Which produces this — and the right-hand column is why a link that "works" can be useless:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Bit error rate</th><th>32-byte frame</th><th>127-byte</th><th>512-byte</th><th>1500-byte</th></tr></thead>
+    <tbody>
+      <tr><td>10<sup>&minus;6</sup></td><td class="num">0.03 %</td><td class="num">0.10 %</td><td class="num">0.41 %</td><td class="num">1.19 %</td></tr>
+      <tr><td>10<sup>&minus;5</sup></td><td class="num">0.26 %</td><td class="num">1.01 %</td><td class="num">4.01 %</td><td class="num"><strong>11.3 %</strong></td></tr>
+      <tr><td>10<sup>&minus;4</sup></td><td class="num">2.53 %</td><td class="num">9.66 %</td><td class="num">33.6 %</td><td class="num"><strong>69.9 %</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p>Same radio, same noise, same everything — and a 1500-byte frame loses eleven percent where a
+    127-byte frame loses one. <strong>Frame length is a link-budget decision</strong>, and it is the one
+    nobody puts in the link budget.</p>
+  <p>One caveat the same RFC insists on: this assumes bit errors are <em>statistically independent</em>,
+    and on a fading radio link they are not — errors arrive in bursts. So every figure in that table is
+    an <strong>upper bound</strong> on the loss, not a prediction of it. A bursty channel puts several
+    errors inside one frame and leaves its neighbours clean, which is better than the table says — and is
+    also exactly why interleaving (lesson 35) exists.</p>
+  <p>Pushing the other way: RFC 3819 points out that a 1500-byte frame on a 19.2 kb/s link is
+    <strong>625 ms</strong> of serialisation delay, which is hopeless for anything interactive. Short
+    frames cost header overhead; long frames cost loss and latency. That is the trade, and it has no
+    universal answer.</p>
+
+  <div class="box trap">
+    <p class="bt">Fragmentation multiplies the loss instead of hiding it</p>
+    <p>Split a datagram into <em>N</em> fragments and it survives only if <strong>all</strong> of them do.
+      At a modest 5 % per-fragment error rate, a 16-fragment datagram arrives <strong>44 %</strong> of the
+      time. RFC 8931 states the underlying problem for 6LoWPAN without softening it: there "is no
+      selective recovery, and the whole datagram fails when one fragment is not delivered".</p>
+    <p>Worse, a constrained node holds "only enough memory for 1&ndash;3 reassembly buffers" (RFC 8930), so
+      one lost fragment does not just kill its own datagram — it occupies a buffer until timeout and drops
+      other traffic that had nothing to do with it.</p>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">The black hole: small packets work, big ones vanish</p>
+    <p>Path MTU discovery (RFC 1191) sets the "don't fragment" bit and waits to be told off by ICMP. RFC
+      2923 describes what happens when that ICMP is filtered or rate-limited, and the symptom is worth
+      memorising because it looks exactly like a radio fault:</p>
+    <p><em>"pings and some interactive TCP connections to the destination host work. Bulk transfers fail
+      with the first large packet."</em></p>
+    <p>Engineers debug the antenna for days. The modern fix is RFC 8899 — probe from the packetization
+      layer instead of trusting ICMP to come back.</p>
+  </div>
+
+  <h3>Routing, when the nodes move</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Protocol</th><th>Status</th><th>Kind</th><th>Worth knowing</th></tr></thead>
+    <tbody>
+      <tr><td><strong>OLSR</strong> (RFC 3626)</td><td>Experimental</td><td>Proactive link-state</td>
+          <td>HELLO 2 s, TC 5 s. Multipoint relays cut flooding; "particularly suitable for large and
+            dense networks". OLSRv2 (RFC 7181) is Standards Track and adds metrics.</td></tr>
+      <tr><td><strong>AODV</strong> (RFC 3561)</td><td>Experimental</td><td>Reactive</td>
+          <td>Finds a route only when you need one; destination sequence numbers give loop-freedom.
+            AODVv2 never became an RFC.</td></tr>
+      <tr><td><strong>Babel</strong> (RFC 8966)</td><td><strong>Standards Track</strong></td><td>Distance-vector, loop-avoiding</td>
+          <td>Hello every 4 s, <strong>ETX metric on wireless</strong>, detects an outage within 1.5 to
+            3.5 Hello intervals.</td></tr>
+      <tr><td><strong>RPL</strong> (RFC 6550)</td><td>Standards Track</td><td>Proactive, tree-shaped</td>
+          <td>Built for many-to-one collection. In non-storing mode a packet "will travel all the way to a
+            DODAG root before traveling Down" — peer-to-peer is not its strength.</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>For a small mesh of these boards, start with Babel.</strong> RPL is Standards Track too, and
+    OLSRv2 as well — but RPL is built for collection toward a root, which a peer-to-peer mesh is not.
+    Babel keeps little state, it is already in Linux distributions, and it uses ETX — a
+    metric that counts <em>delivery attempts</em> rather than hop count, which is the difference between
+    routing over a good three-hop path and routing over one terrible one-hop path. Reach for RPL only if
+    your topology really is one collector, and for OLSR or AODV only to interoperate with something that
+    already speaks them.</p>
+
+  <div class="calc" id="c-mesh">
+    <p class="ct">Try it — what does an extra hop cost?</p>
+    <div class="row">
+      <label>Hops
+        <input type="number" id="v-h" value="4" step="1" min="1" max="20"></label>
+      <label>Airtime per hop (µs)
+        <input type="number" id="v-air" value="1072" step="10" min="1"></label>
+      <label>Processing per hop (µs)
+        <input type="number" id="v-proc" value="50" step="10" min="0"></label>
+      <label>Spatial reuse
+        <select id="v-reuse"><option value="1">yes — nodes far apart transmit together</option><option value="0">no — one collision domain</option></select></label>
+    </div>
+    <div class="out" id="v-out"></div>
+  </div>
+
+  <h3>TCP over a radio link, and why it disappoints</h3>
+  <p>TCP's congestion control has essentially one input: loss. RFC 5681 says the algorithms work "in
+    terms of using loss as the signal of congestion" — and a bit error on a radio link is
+    indistinguishable from a congested queue. (Explicit congestion notification, RFC 3168, adds a second
+    input, but only if every hop supports it.) So every corrupted frame makes TCP slow down, which is precisely the wrong response.</p>
+  <p>How much it costs is quantifiable. The Mathis formula — restated in RFC 3819 — gives steady-state
+    throughput under random loss:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">the Mathis equation</span><span class="t">C = 0.93, the constant RFC 3819 uses</span></div>
+<pre><code>BW = C * MSS / (RTT * sqrt(p))
+</code></pre>
+  </div>
+  <p>Note the square root: <strong>a hundredfold worse loss costs you only tenfold in throughput</strong>
+    — but it starts from a low number. And note <strong>RTT in the denominator</strong>, which is where
+    this board gets interesting.</p>
+
+  <div class="box trap">
+    <p class="bt">Put this board's own numbers in, and the result is sobering</p>
+    <p>Lesson 37 measured the host path: a 262 144-sample buffer at 5 MSPS is <strong>52.4 ms</strong> of
+      signal, one way. A round trip therefore starts at about <strong>105 ms</strong> before anything else
+      is added. With a 1460-byte MSS:</p>
+    <div class="tw"><table>
+      <thead><tr><th>Packet loss</th><th>TCP throughput, Mathis</th></tr></thead>
+      <tbody>
+        <tr><td>0.1 %</td><td class="num">3.28 Mbit/s</td></tr>
+        <tr><td>1 %</td><td class="num">1.04 Mbit/s</td></tr>
+        <tr><td>5 %</td><td class="num">463 kbit/s</td></tr>
+      </tbody>
+    </table></div>
+    <p>Read the bottom two rows as <em>optimistic</em>: RFC 3819 warns that this simple form
+      over-estimates at losses of 1 % and above, where a fuller model gives "significantly lower"
+      answers. They are bounds, not forecasts.</p>
+    <p>And there is a second ceiling that has nothing to do with loss. TCP's window field is 16 bits, so
+      without window scaling (RFC 7323) a connection can have at most 64 KiB in flight — at 105 ms RTT
+      that is <strong>5.0 Mbit/s, full stop</strong>. To sustain 10 Mbit/s you need 131 kB in flight,
+      which is twice what an unscaled connection can hold.</p>
+    <p>Neither number is a property of the radio. Both come from the buffer latency, and the way out is
+      the same one lesson 29 and lesson 37 already argued for: shorten the loop by moving work into the
+      fabric, or stop expecting TCP to be the transport.</p>
+  </div>
+
+  <div class="box why">
+    <p class="bt">Retransmit, or code? Both, and it is called HARQ</p>
+    <ul>
+      <li><strong>FEC wins when feedback is expensive or impossible.</strong> RFC 3453 gives the reason:
+        ARQ suffers "the feedback implosion problem… and the need for a back channel", so coding is the
+        answer for broadcast, satellite and anything one-way.</li>
+      <li><strong>ARQ wins when the loop is short.</strong> RFC 3366 notes that link-layer ARQ "has a
+        faster control loop than TCP's acknowledgement control loop" — it repairs the error before TCP
+        ever notices one happened.</li>
+      <li><strong>Hybrid ARQ does both.</strong> 3GPP TR 25.848 defines the useful distinction: type II
+        is incremental redundancy, where "instead of sending simple repeats of the entire coded packet,
+        additional redundant information is incrementally transmitted"; in type III "each retransmission
+        is self-decodable", which type II's are not.</li>
+    </ul>
+    <p>LTE's parameters are worth carrying as a reference point: a HARQ round trip of <strong>8
+      ms</strong>, up to <strong>8 processes</strong> running concurrently so the link never idles waiting
+      for an acknowledgement, and a redundancy-version sequence of <strong>0, 2, 3, 1</strong>. 5G NR
+      raises the process count to 16.</p>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">Two retransmission loops fighting each other</p>
+    <p>Add link-layer ARQ under TCP and you have two control loops reacting to the same event. RFC 3819
+      describes the failure exactly: link retransmission raises latency, and "this sudden increase in
+      latency may trigger an unnecessary retransmission by TCP of a packet that the link layer is still
+      retransmitting… the link layer may even have multiple copies of the same packet in the same link
+      queue at the same time."</p>
+    <p>RFC 3366 offers <strong>2 to 5 retransmission attempts</strong> as an example of <em>low</em>
+      persistency, and allows tens of attempts on a link whose total transmission time is "much less than
+      100 ms". The caution for this board is that its 52 ms of one-way host buffering is not link
+      transmission time — but it lands in the same budget, and it has already spent half of it before you
+      retry once. Persist long here and you are not helping TCP, you are confusing it.</p>
+  </div>
+
+  <h3>Three stacks worth stealing from</h3>
+  <div class="kv">
+    <dt>LoRaWAN — the duty cycle <em>is</em> the design</dt>
+      <dd>In the 868.0&ndash;868.6 MHz sub-band the European regulator allows a <strong>1 % duty
+        cycle</strong> — 36 seconds of transmission per hour, measured over a rolling hour. (Other
+        sub-bands of 863&ndash;870 MHz get 0.1 % or 10 %; it is not one number for the band.) A 23-byte
+        payload at SF12/125 kHz takes about <strong>1483 ms</strong> of airtime; the same payload at SF7
+        takes <strong>61.7 ms</strong>. That is <strong>24 uplinks per hour against 583</strong>, for one
+        parameter — and the regulatory rule is simply that you then wait 99 times the airtime before
+        speaking again. LoRaWAN's own traffic-shaping command is a separate mechanism with a coarser
+        grain: <code>Toff = TimeOnAir × (2^MaxDutyCycle − 1)</code> with an integer exponent, so the
+        network server can ask for 1/128 but not for exactly 1 %. Class A devices open two receive windows
+        after each uplink, at 1 s and 2 s; that is the entire downlink opportunity.</dd>
+    <dt>802.15.4 + 6LoWPAN — the octet budget</dt>
+      <dd>RFC 4944 §4 does this subtraction and it is worth doing once yourself: a 127-octet physical
+        packet, minus up to 25 of MAC overhead, is 102; minus 21 for AES-CCM-128 link security leaves
+        <strong>81</strong>; minus a 40-octet IPv6 header leaves 41; minus UDP's 8 leaves
+        <strong>33 octets for your application</strong>. Against IPv6's mandatory 1280-octet minimum MTU,
+        that gap is the entire reason the 6LoWPAN adaptation layer exists. Its header compression gets an
+        IPv6 header down to two octets — but only for link-local traffic; multi-hop is seven, because the
+        hop limit has to be decremented and so cannot be elided.</dd>
+    <dt>Wi-SUN FAN — sub-GHz mesh, like this board</dt>
+      <dd>2-FSK at 50 to 300 kbit/s in FAN 1.0, OFDM up to 2.4 Mbit/s in FAN 1.1, in the same
+        863&ndash;870 MHz and 902&ndash;928 MHz bands this board covers. <strong>RPL non-storing mode is
+        mandatory</strong>, with MPL for multicast, and it channel-hops on a synchronised broadcast
+        schedule plus per-node unicast schedules. If you want to see what a serious sub-GHz mesh looks
+        like specified end to end, this is it.</dd>
+  </div>
+  <p>Zigbee is the fourth one people cite, and one precision is worth keeping: its network layer does
+    on-demand route request and reply discovery which is <em>AODV-style</em>, but the specification never
+    uses the word AODV. Say what it does, not what it resembles.</p>
+
+  <div class="box trap">
+    <p class="bt">Your CRC is weaker than the datasheet implies</p>
+    <p>RFC 3819 again: "the error detection properties of a specific CRC code diminish with increasing
+      frame size", and a new subnetwork should be "at least as strong as the 32-bit CRC specified in
+      [ISO3309]". A 16-bit CRC over a 1500-byte frame is not doing the job you think it is.</p>
+    <p>And even a good CRC is not a guarantee — the same document notes that "undetected errors can and do
+      occur in packets received by end hosts", which is why end-to-end checksums exist on top of
+      link-layer ones. Two independent checks at two layers is not redundancy; it is the design.</p>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: your link has a 10<sup>−5</sup> bit error rate and you are sending 1500-byte frames over TCP. What do you change first?</summary>
+    <div class="ans">
+      <p><strong>Not the frame size — and this is the trap.</strong> Shrinking frames obviously cuts the
+        loss <em>rate</em>: at 10<sup>−5</sup>, 1500 bytes loses 11.3 % and 127 bytes loses 1 %. So the
+        instinct is to send small frames.</p>
+      <p>Put it through Mathis and the instinct is wrong. Your maximum segment size shrinks with the
+        frame, and throughput goes as MSS/&radic;p while p goes roughly as the frame length — so
+        throughput scales as <strong>&radic;L</strong>. Smaller frames give you <em>less</em>:</p>
+      <div class="tw"><table>
+        <thead><tr><th>Frame</th><th>Loss</th><th>MSS</th><th>TCP throughput</th></tr></thead>
+        <tbody>
+          <tr><td>1500 B</td><td class="num">11.3 %</td><td class="num">1460</td><td class="num">308 kbit/s</td></tr>
+          <tr><td>512 B</td><td class="num">4.0 %</td><td class="num">472</td><td class="num">167 kbit/s</td></tr>
+          <tr><td>127 B</td><td class="num">1.0 %</td><td class="num">87</td><td class="num">61 kbit/s</td></tr>
+        </tbody>
+      </table></div>
+      <p>So what <em>do</em> you change? <strong>Put error recovery below TCP.</strong> Link-layer ARQ or
+        forward error correction lets you keep the 1460-byte segment and hands TCP a link that looks
+        clean — which is precisely what RFC 3819 recommends, and why every cellular standard has HARQ
+        underneath the IP layer rather than asking TCP to cope.</p>
+      <p>Small frames still win two things worth having: <em>latency</em>, because serialisation is
+        shorter, and <em>delivery odds for a single message</em>, which is why LoRaWAN and 802.15.4 are
+        built around tens of bytes. They are simply not the answer to a TCP throughput problem.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l39">
+  <div class="part-head"><span class="part-n">39</span><h2>Security: the part a working link still does not have</h2></div>
+  <p class="lede">Everything built so far transmits in clear, accepts any frame that passes a CRC, and
+    cannot tell your transmitter from anyone else's. That is not an oversight in the course — it is the
+    normal state of a physical layer, and this lesson is about what has to be added on top and, just as
+    usefully, what does <em>not</em> count.</p>
+
+  <h3>Four properties, and what each one's absence looks like</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Property</th><th>What it means</th><th>Without it, on your link</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Confidentiality</strong></td><td>data is not disclosed to anyone not authorised to know it</td>
+          <td>anyone with an SDR in range reads your payload</td></tr>
+      <tr><td><strong>Integrity</strong></td><td>data has not been changed in an unauthorised or accidental way</td>
+          <td>bits are altered in flight and the receiver accepts the altered frame</td></tr>
+      <tr><td><strong>Authenticity</strong><br><span class="num">(data origin authentication)</span></td><td>the source of the data really is who it claims to be</td>
+          <td>any transmitter can inject frames your receiver treats as yours</td></tr>
+      <tr><td><strong>Freshness</strong></td><td>this is not a replay of an earlier exchange</td>
+          <td>a recorded valid frame, sent again later, is acted on again — <em>no key required</em></td></tr>
+    </tbody>
+  </table></div>
+  <p>Those are the four you can buy with cryptography. There is a fifth — <strong>availability</strong> —
+    that you largely cannot, and it is the one a radio is most exposed to. It gets its own section below.</p>
+
+  <div class="box trap">
+    <p class="bt">Encryption without authentication is worse than it sounds</p>
+    <p>Counter-mode ciphertext — which is what AES-CTR, and therefore most stream-cipher-like
+      constructions, produce — is <strong>malleable</strong>. NIST puts the mechanism plainly: flipping a
+      bit of the ciphertext flips the corresponding bit of the plaintext on decryption. An attacker who
+      knows what a field <em>should</em> say can change it to something else without ever learning the
+      key.</p>
+    <p><strong>And a CRC does not stop it.</strong> The result that killed WEP is worth stating exactly:
+      the checksum is a <em>linear</em> function of the message, so it distributes over exclusive-or —
+      and the authors noted this "is a general property of all CRC checksums". You can compute the
+      change to the CRC that matches your change to the data. NIST's own summary of the WEP failure puts it
+      in one sentence: CRCs "are only designed to protect against random bit errors, not intentional
+      forgeries" (SP 800-97 &sect;3.2.3).</p>
+    <p>Lesson 37 gave you a CRC and called it error detection. That is all it is. It is not integrity
+      protection and it is certainly not authentication.</p>
+  </div>
+
+  <h3>AEAD: one key, one call, both jobs</h3>
+  <p>The modern answer is not "encrypt, then also MAC". It is a single mode that does both, called
+    <span class="newterm">AEAD</span> — authenticated encryption with associated data. You hand it a key,
+    a nonce, the payload to encrypt, and any header fields that must be <em>authenticated but not
+    hidden</em>; it returns ciphertext plus an authentication tag.</p>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>AES-CCM</th><th>AES-GCM</th></tr></thead>
+    <tbody>
+      <tr><td>Specified in</td><td>NIST SP 800-38C</td><td>NIST SP 800-38D</td></tr>
+      <tr><td>Tag lengths</td><td>32 to 128 bits, in 16-bit steps</td><td>128, 120, 112, 104, 96 bits — 64 or 32 only under the restrictions in Appendix C</td></tr>
+      <tr><td>Character</td><td>CTR + CBC-MAC; two passes; small and simple</td><td>CTR + GHASH; parallelisable; fast in hardware</td></tr>
+      <tr><td>Where you meet it</td><td>802.11 CCMP, 802.15.4, Bluetooth</td><td>TLS, IPsec, 802.11 GCMP</td></tr>
+    </tbody>
+  </table></div>
+  <p>Real parameters worth copying: <strong>802.11's CCMP-128</strong> uses AES-128 with an
+    <strong>8-byte</strong> authentication tag and a <strong>48-bit packet number</strong> that is both the
+    replay counter and the varying part of the nonce — the nonce itself also folds in the transmitter
+    address. Header fields are authenticated as associated data: 22 or 28 bytes, and 24 or 30 for the QoS
+    data frames every 802.11n-and-later device actually sends.
+    <strong>802.15.4</strong> offers 4-, 8- or 16-byte tags. The 2003 edition made only AES-CCM with the
+    8-byte tag mandatory; from 2006 the named suites were replaced by CCM* with selectable security
+    levels, so check which edition your stack implements before assuming what it guarantees.</p>
+
+  <div class="box trap">
+    <p class="bt">The nonce rule is not a guideline</p>
+    <p>NIST's requirement for GCM: the probability of ever using the same key and IV on two different
+      inputs "shall be no greater than 2<sup>−32</sup>", and — their words — "in practice, this
+      requirement is almost as important as the secrecy of the key."</p>
+    <p>Repeat one and two things happen in order. The authentication key becomes recoverable from the
+      resulting ciphertexts, so <em>the authentication assurance is essentially lost</em>; and with
+      authentication gone, the counter-mode malleability from the previous box comes straight back. One
+      repeated nonce does not leak one message. It unravels the protection on the whole key.</p>
+    <p>CCM states the same rule less dramatically — any two data pairs protected under one key must have
+      distinct nonces — with the extra wrinkle that its nonce length and its maximum payload length trade
+      against each other, because together they must fill 15 octets.</p>
+  </div>
+
+  <h3>Replay protection is a separate thing you must add</h3>
+  <p>This surprises people, so it is worth being blunt: <strong>AEAD does not give you replay
+    protection.</strong> NIST says so directly — GCM "does not inherently prevent an adversary from
+    intercepting the output of an invocation of authenticated encryption and 'replaying' it". A replayed
+    frame is a genuine frame with a genuine tag. Nothing about it is forged.</p>
+  <p>The fix is a counter, carried in the frame and authenticated:</p>
+  <div class="kv">
+    <dt>IPsec ESP</dt><dd>A 32-bit sequence number (64-bit extended). A receive window of at least 32
+      packets must be supported, 64 is the recommended default, and the sender <strong>must not</strong>
+      send a packet that would make the counter wrap — you rekey instead.</dd>
+    <dt>802.11</dt><dd>The 48-bit packet number, monotonic for the life of the temporal key.</dd>
+    <dt>The dependency nobody expects</dt><dd>ESP forbids enabling anti-replay unless integrity is also
+      enabled — because otherwise the sequence number itself is forgeable. <strong>Replay protection is
+      built on authentication; it is not an alternative to it.</strong></dd>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">The counter must survive a power cut, and on this board that means flash</p>
+    <p>This is the single most common way an embedded radio ends up insecure while appearing to work. The
+      canonical description, from the 802.15.4 security analysis: "If all nonces are reset to a known
+      value, such as 0, nonces will be reused, compromising security… applications not designed with
+      power failures in mind can easily end up with a product that appears to work but actually fails to
+      secure communications."</p>
+    <p>LoRaWAN turned it into a normative requirement after being bitten. Version 1.0.4: "re-initialization
+      of an ABP end-device frame counters is forbidden. <strong>ABP end-devices SHALL store the frame
+      counters persistently</strong> (e.g., in non-volatile memory)."</p>
+    <p>Writing flash on every frame is slow and wears it out, so the standard trick is a
+      <strong>lease</strong>: write a counter value well ahead of where you are, use the block below it
+      from RAM, and on reboot skip past the whole leased block. You lose a few thousand counter values at
+      each power cycle and you never reuse one.</p>
+    <p>On this board the writable, persistent partition is <code>/mnt/jffs2</code> — the same one
+      <code>autorun.sh</code> lives on. That is where a lease would go, and it is worth remembering that
+      reflashing the kernel, device tree and bitstream leaves it untouched.</p>
+  </div>
+
+  <h3>Keys: the part that is actually hard</h3>
+  <div class="kv">
+    <dt>Pre-shared</dt><dd>One key, burned in. Simple, and a single compromise is total with no way to
+      revoke. Fine for a closed experiment, never for a product.</dd>
+    <dt>Derived from a root key</dt><dd>What LoRaWAN does, and the best-documented small-radio example. A
+      device holds root keys assigned at manufacture; a join exchange carries nonces from both ends; both
+      sides derive session keys from the root key and those nonces by fixed AES operations. Version 1.1
+      splits the root into a network key and an application key so the network operator cannot read your
+      payloads.</dd>
+    <dt>Certificate-based</dt><dd>What enterprise Wi-Fi does. Real revocation, real identity, and an
+      amount of infrastructure that is its own project.</dd>
+  </div>
+  <p>Two details from LoRaWAN that generalise. First, its <em>activation by personalisation</em> mode
+    burns session keys in directly and skips the join entirely — and the LoRa Alliance's own guidance is
+    that over-the-air activation "should be preferred… for end-devices in need of higher levels of
+    security". Second, the join nonce started as a random number and became a <strong>counter</strong>,
+    persistent across power cycles, for a reason worth reading twice: unless the network remembers
+    <em>every</em> nonce the device has ever used, random nonces let join requests be replayed — and
+    remembering all of them is not practical.</p>
+
+  <div class="box why">
+    <p class="bt">Forward secrecy, and where LoRaWAN does not have it</p>
+    <p>Forward secrecy means that compromising the long-term key does not expose session keys derived from
+      it earlier. LoRaWAN's session keys are a deterministic AES function of the root key and two nonces —
+      so an attacker who records years of traffic and later obtains the root key can decrypt
+      <em>all</em> of it, retroactively.</p>
+    <p>That is not a bug in LoRaWAN; it is a deliberate trade for devices with no room for a key exchange.
+      But it is the kind of property you want to notice you are giving up, rather than discover.</p>
+  </div>
+
+  <div class="calc" id="c-sec">
+    <p class="ct">Try it — what does the protection cost, and when does the counter wrap?</p>
+    <div class="row">
+      <label>Payload (bytes)
+        <input type="number" id="y-pay" value="32" step="1" min="1"></label>
+      <label>Tag length (bytes)
+        <input type="number" id="y-tag" value="8" step="1" min="4" max="16"></label>
+      <label>Frame counter (bits)
+        <input type="number" id="y-ctr" value="32" step="1" min="8" max="64"></label>
+      <label>Frames per second
+        <input type="number" id="y-rate" value="10" step="1" min="0.001"></label>
+    </div>
+    <div class="out" id="y-out"></div>
+  </div>
+
+  <h3>Jamming: the attack cryptography cannot answer</h3>
+  <p>Encryption protects the content. Nothing protects the <em>channel</em> from someone transmitting into
+    it. The standard taxonomy:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Kind</th><th>What it does</th><th>What it looks like to you</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Barrage</strong></td><td>noise-like energy across the whole occupied band, continuously</td><td>the noise floor rises, flat</td></tr>
+      <tr><td><strong>Partial-band</strong></td><td>the same total power concentrated into a fraction of the band</td><td>worse than barrage — it degrades error rate far more efficiently</td></tr>
+      <tr><td><strong>Tone</strong></td><td>a single carrier, correlated rather than noise-like</td><td>a spur that will not go away, and which your AGC obeys</td></tr>
+      <tr><td><strong>Reactive / follower</strong></td><td>listens, then transmits only when it hears you — and can follow a hopping signal</td><td>the link works until it matters</td></tr>
+    </tbody>
+  </table></div>
+  <p>The classical defences are all forms of spreading, and each has a price:</p>
+  <div class="kv">
+    <dt>Direct sequence</dt><dd>Processing gain equals the spreading factor — the same correlation gain
+      as lesson 32, pointed at an interferer instead of noise. The <em>jamming margin</em> is that gain
+      minus the signal-to-jamming ratio you still need, minus implementation losses. The cost is exactly
+      proportional occupied bandwidth, plus acquisition and tracking hardware.</dd>
+    <dt>Frequency hopping</dt><dd>Processing gain equals the number of hop channels — <em>against the
+      wrong jammer</em>. The classic warning: 100 channels looks like 20 dB of protection, and a single
+      well-placed spot jammer can still force an error rate around 10<sup>−2</sup>. A follower jammer
+      negates it outright.</dd>
+    <dt>Coding plus interleaving</dt><dd>Lesson 35's pairing, doing a second job: interleaving randomises
+      the burst a partial-band jammer creates so the code can repair it. The cost is the code rate and the
+      interleaver's latency and memory.</dd>
+  </div>
+
+  <div class="box why">
+    <p class="bt">Spoofing, and the most instructive example in the world</p>
+    <p>The GPS civil signal is an <strong>unauthenticated broadcast</strong>. The word "authentication"
+      appears zero times in the civil interface specification: the C/A code is a published sequence
+      whose navigation message is protected by a (32,26) Hamming parity code — error detection, not
+      cryptography. (The newer civil signals on L2C and L5 add a 24-bit CRC, which is still error
+      detection.) The military signal is
+      encrypted; the civil one, by design, is not. A US Department of Transportation assessment put it
+      plainly: the C/A code "is well known and is relatively easy to generate".</p>
+    <p>The academic conclusion is the one to carry: <em>nothing short of cryptographic authentication
+      guards against a sophisticated spoofing attack</em>. Which is exactly what Galileo's OSNMA now adds
+      — authentication of the navigation message itself, at the cost of receiver complexity, key
+      distribution and an inherent delay before a message can be trusted.</p>
+    <p>Your link has the same property as C/A until you give it authentication. Anything that receives it
+      will believe anything that sounds like it.</p>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">Encrypted does not mean invisible</p>
+    <p>Traffic analysis is "the inference of information from observation of traffic flows… <strong>even if
+      flows are encrypted</strong>" — presence, absence, volume, direction, timing, packet size. On a
+      radio link the metadata is richer than on a wire, because the traffic itself reveals that a
+      transmitter <em>exists</em> and roughly <em>where it is</em>.</p>
+    <p>The countermeasures are not cryptographic. They are low probability of intercept and detection:
+      spread the signal, reduce power to the minimum the link budget allows (lesson 41), use directivity,
+      and pad or shape traffic so the pattern carries less. Every one of them costs link margin,
+      throughput or energy.</p>
+  </div>
+
+  <h3>Physical-layer security: what it claims, and whether to use it</h3>
+  <p>There is a real academic field arguing that the channel itself can provide secrecy — Wyner's wiretap
+    model gives a <em>secrecy capacity</em> when the eavesdropper's channel is worse than the legitimate
+    one, and channel reciprocity lets two ends derive a shared key from fading they both observe and a
+    third party does not, because fading decorrelates over about half a wavelength.</p>
+  <p>It is genuinely interesting and it is <strong>not a substitute for cryptography</strong>. The honest
+    summary from inside the field and from measurement:</p>
+  <ul>
+    <li>Key generation needs the channel to <em>change</em>. In published indoor measurements with
+      nothing moving, received signal strength varies by only a couple of decibels, and generating a
+      256-bit key takes <em>minutes</em> — the entropy is simply not there in a static room.</li>
+    <li>Published active attacks on real hardware, assuming no technological advantage for the attacker,
+      have recovered a large fraction of the key bits — enough that the authors questioned whether the
+      schemes are worth having.</li>
+    <li>The field's own critique notes the adversary model is the central problem — a collaborative
+      adversary with a linear factor more observations can drive the secrecy rate to zero, and antenna
+      gain is cheap.</li>
+    <li>No standards body endorses it. 3GPP's 5G security specification mandates AES; NIST requires keys
+      to come from an approved random bit generator; there is no RFC.</li>
+  </ul>
+  <p>Treat it as a possible extra layer or a key-refresh aid, never as the thing standing between your
+    data and an attacker.</p>
+
+  <div class="box trap">
+    <p class="bt">Legality and security are different regimes — and on this board they can conflict</p>
+    <p>Spectrum rules say what you may transmit, where and at what power. They impose <strong>no duty
+      whatsoever</strong> to secure your link, so a perfectly compliant transmitter can be completely
+      insecure. Unlicensed operation is conditional rather than a right: no vested claim to a frequency,
+      interference must be accepted, and you must stop when told to.</p>
+    <p>And the two regimes can point in opposite directions. In the US amateur service, messages "encoded
+      for the purpose of obscuring their meaning" are prohibited "except as otherwise provided herein",
+      and the carve-outs are narrow — so a link that is perfectly legal to transmit on a ham allocation
+      may not be legal to <em>encrypt</em> there. Authentication does not
+      obscure meaning, and is the workable path in that case. Check your own jurisdiction before you
+      assume either half.</p>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">Three traps, all of them common</p>
+    <dl>
+      <dt>Inventing your own construction</dt><dd>Not just writing your own cipher — combining standard
+        primitives in your own order. NIST's warning is specifically about this: get the order wrong and
+        you introduce vulnerabilities; use well-vetted standardised constructions, and where encryption
+        and authentication are both needed, use a single AEAD mode rather than assembling one.</dd>
+      <dt>Reusing a nonce across reboots</dt><dd>Covered above, and the reason it deserves repeating is
+        that the product works perfectly while being unprotected. There is no symptom.</dd>
+      <dt>Reusing one key in two contexts</dt><dd>The same trap wearing different clothes: two
+        independent counters under one key collide, and the exclusive-or of two ciphertexts encrypted
+        under the same keystream breaks confidentiality outright. The rule that prevents it is short —
+        <strong>the nonce state should never be separated from the key</strong>.</dd>
+    </dl>
+  </div>
+
+  <div class="box why">
+    <p class="bt">Where the quotations in this lesson come from</p>
+    <p>This lesson leans harder on primary documents than most, so here they are by name. All are free.</p>
+    <div class="tw"><table>
+      <thead><tr><th>For</th><th>Read</th></tr></thead>
+      <tbody>
+        <tr><td>The four property definitions</td><td>RFC 4949, <em>Internet Security Glossary</em></td></tr>
+        <tr><td>Counter-mode malleability; the nonce rule; "GCM does not prevent replay"</td>
+            <td>NIST SP 800-38D, &sect;8 and Appendices A and D</td></tr>
+        <tr><td>CCM tag lengths and the nonce/payload tradeoff</td><td>NIST SP 800-38C</td></tr>
+        <tr><td>Why a CRC cannot protect integrity</td>
+            <td>Borisov, Goldberg and Wagner, <em>Intercepting Mobile Communications</em> (MOBICOM 2001) — "a general property of all CRC checksums"</td></tr>
+        <tr><td>WEP's failure, and CCMP's parameters</td><td>NIST SP 800-97</td></tr>
+        <tr><td>Sequence numbers, windows, and why replay protection needs integrity</td><td>RFC 4303 (IPsec ESP)</td></tr>
+        <tr><td>Counters that must survive a reboot; the flash-lease pattern</td>
+            <td>Sastry and Wagner, <em>Security Considerations for IEEE 802.15.4 Networks</em> (WiSe 2004)</td></tr>
+        <tr><td>Key hierarchy, OTAA vs ABP, persistent counters</td><td>LoRaWAN L2 1.0.4 and 1.1</td></tr>
+        <tr><td>Jamming taxonomy; spreading and jamming margin</td>
+            <td>Lichtman et al., <em>A Communications Jamming Taxonomy</em> (IEEE S&amp;P 2016); Pickholtz, Schilling and Milstein (IEEE Trans. Comm. 1982)</td></tr>
+        <tr><td>That the GPS civil signal is unauthenticated</td><td>IS-GPS-200 — the word does not appear in it</td></tr>
+        <tr><td>Traffic analysis "even if flows are encrypted"</td><td>RFC 6973 &sect;3</td></tr>
+        <tr><td>Don't build your own construction</td><td>NIST SP 800-175B &sect;4.3</td></tr>
+        <tr><td>Unlicensed operation; amateur encryption</td><td>47 CFR &sect;15.5 and &sect;97.113(a)(4)</td></tr>
+      </tbody>
+    </table></div>
+    <p>The physical-layer-security assessment draws on Wyner's 1975 wiretap paper for the theory, and on
+      published measurement and attack papers for the practice — those are the two figures in that section
+      deliberately left as "minutes" and "a large fraction" rather than precise numbers, because the
+      precise numbers are specific to one experiment and this course could not verify them first-hand.</p>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: you add AES-GCM to your link. Which of the four properties do you now have?</summary>
+    <div class="ans">
+      <p><strong>Three.</strong> Confidentiality, integrity and authenticity — provided the tag is actually
+        checked before the payload is used, and provided every nonce under that key is unique.</p>
+      <p><strong>Not freshness.</strong> A recorded frame replayed an hour later is a valid frame with a
+        valid tag, and GCM will happily authenticate it. You need an authenticated, monotonic counter with
+        a receive window, and that counter has to survive a power cut — which on this board means writing
+        a lease to <code>/mnt/jffs2</code>.</p>
+      <p>And you have none of the fifth. Availability is not a cryptographic property: someone transmitting
+        into your band stops your link whatever mode you chose, and the answers there are spreading,
+        coding and interleaving — bandwidth and rate, not keys.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l40">
   <p class="band">Measuring, and getting on the air</p>
-  <div class="part-head"><span class="part-n">37</span><h2>Measuring what you built</h2></div>
+  <div class="part-head"><span class="part-n">40</span><h2>Measuring what you built</h2></div>
   <p class="lede">Six numbers describe an RF system. Knowing which one answers your question — and how
     to get it honestly from this board — is what separates a measurement from a screenshot.</p>
 
@@ -4392,8 +5274,8 @@ w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing tha
     </div>
   </details>
 </section>
-<section class="part" id="l38">
-  <div class="part-head"><span class="part-n">38</span><h2>Link budgets: will it actually work over the air?</h2></div>
+<section class="part" id="l41">
+  <div class="part-head"><span class="part-n">41</span><h2>Link budgets: will it actually work over the air?</h2></div>
   <p class="lede">Everything so far has run down a cable. The moment an antenna is involved there is one
     calculation that decides whether the link exists at all — and because every term is in decibels, it is
     a single column of addition.</p>
@@ -4470,10 +5352,11 @@ w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing tha
       <tr><td>256-QAM</td><td class="num">8</td><td class="num">~32 dB</td><td class="num">2.5 %</td></tr>
     </tbody>
   </table></div>
-  <p>Every extra bit per symbol costs roughly <strong>6 dB</strong> — the same 6 dB per bit as lesson 9's
-    converter formula, and for the same reason: you are halving the distance between decision points.
-    Forward error correction (lesson 33) hands 4&ndash;6 dB of that back, which is why every real system
-    uses it.</p>
+  <p>Read down that table and each extra bit per symbol costs about <strong>3 dB</strong>, not 6.
+    The 6 dB figure belongs to lesson 9's converter formula, and it is 6 dB per bit <em>per
+    dimension</em> — a real-valued ADC has one dimension, while QAM spends each new bit across two, I and
+    Q. So the constellation gets denser half as fast as your instinct says. Forward error correction
+    (lesson 35) hands 4&ndash;6 dB back, which is why every real system uses it.</p>
 
   <div class="calc" id="c-budget">
     <p class="ct">Try it — a full link budget for this board</p>
@@ -4527,7 +5410,7 @@ w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing tha
       designed with exactly zero margin is down half the time by construction. Practical designs carry
       10&ndash;20 dB of fade margin on top of everything above, and mobile systems carry more.</p>
     <p>If you cannot afford it, the honest moves are: narrow the bandwidth (lesson 25 — 3 dB per halving),
-      drop to a simpler modulation (6 dB per bit), add coding (4&ndash;6 dB), lengthen the preamble
+      drop to a simpler modulation (3 dB per bit), add coding (4&ndash;6 dB), lengthen the preamble
       (lesson 32), or accept a shorter range. Adding transmit power is usually the one option you do not
       have.</p>
   </div>
@@ -4555,9 +5438,9 @@ w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing tha
     </div>
   </details>
 </section>
-<section class="part" id="l39">
-  <div class="part-head"><span class="part-n">39</span><h2>Antennas and the RF front end: what happens after the SMA</h2></div>
-  <p class="lede">Lesson 38 stopped at "transmit power" and "antenna gain" as if they were settings. They
+<section class="part" id="l42">
+  <div class="part-head"><span class="part-n">42</span><h2>Antennas and the RF front end: what happens after the SMA</h2></div>
+  <p class="lede">Lesson 41 stopped at "transmit power" and "antenna gain" as if they were settings. They
     are hardware, and on this board some of that hardware is missing on purpose. This is the part of the
     signal chain that no amount of Verilog can fix.</p>
 
@@ -4621,7 +5504,7 @@ w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing tha
       coupling drops by <strong>20 dB or more</strong> — a link budget's entire fade margin, gone, for a
       reason the budget never mentioned.</p>
     <p>If either end moves or tumbles, that is a strong argument for circular polarisation at one end
-      (3 dB of loss always, instead of 20 dB sometimes) or for diversity (lesson 42). Indoors, scattering
+      (3 dB of loss always, instead of 20 dB sometimes) or for diversity (lesson 46). Indoors, scattering
       mixes the polarisations back up and the effect is softer — which is exactly why the failure is worse
       outdoors, where everything else is better.</p>
   </div>
@@ -4659,7 +5542,7 @@ transmit   AD9361  -->  balun  -->  PGA-102+ (U12/U13, ~15.7 dB)  -->  TX1A/TX2A
       (second) and <strong>&minus;71 to &minus;85 dBc</strong> (third). Into a cable and a load, nobody
       cares. Into an antenna at +19 dBm, the second harmonic of a 900 MHz signal is a real transmission at
       1.8 GHz, in somebody else's band, at up to &minus;45 dBm.</p>
-    <p>A transmit low-pass filter is what removes it, and this board has none. So the rule from lesson 38
+    <p>A transmit low-pass filter is what removes it, and this board has none. So the rule from lesson 41
       is sharper than it first sounds: before anything radiates, know what you are allowed to transmit,
       where, at what power — <em>and at what harmonics</em>.</p>
   </div>
@@ -4701,7 +5584,7 @@ transmit   AD9361  -->  balun  -->  PGA-102+ (U12/U13, ~15.7 dB)  -->  TX1A/TX2A
       <ol class="body">
         <li><strong>Polarisation.</strong> Free, instant to test, and worth 20 dB. Line the whips up.</li>
         <li><strong>Path loss is not what you assumed.</strong> 30 m indoors at an exponent of 3.5 rather
-          than 2 is about 22 dB worse than the free-space figure lesson 38 gives you.</li>
+          than 2 is about 22 dB worse than the free-space figure lesson 41 gives you.</li>
         <li><strong>Blocking.</strong> No front-end filter, so anything strong nearby is desensitising the
           receiver. Look at a wide spectrum capture before assuming your own signal is weak.</li>
         <li><strong>The antennas themselves.</strong> Wrong length, no ground plane, or a poor match — and
@@ -4712,8 +5595,332 @@ transmit   AD9361  -->  balun  -->  PGA-102+ (U12/U13, ~15.7 dB)  -->  TX1A/TX2A
     </div>
   </details>
 </section>
-<section class="part" id="l40">
-  <div class="part-head"><span class="part-n">40</span><h2>IQ files, and the metadata that turns them into measurements</h2></div>
+<section class="part" id="l43">
+  <div class="part-head"><span class="part-n">43</span><h2>RF design: Smith charts, matching networks and layout</h2></div>
+  <p class="lede">Lesson 42 gave you the concepts — 50 ohms, VSWR, mismatch loss, noise figure. This is the
+    practice: the instrument you measure with, the chart you design on, the network you design, and the
+    copper you build it on. It is also where this board's one real hardware gap gets proved rather than
+    asserted.</p>
+
+  <h3>S-parameters, and why RF uses them</h3>
+  <p>At low frequency you describe a two-port with voltages and currents. At RF you cannot, and Hewlett
+    Packard's 1972 application note still gives the three reasons better than anyone since:</p>
+  <ul>
+    <li>"Equipment is not readily available to measure total voltage and total current at the ports."</li>
+    <li>"Short and open circuits are difficult to achieve over a broadband of frequencies."</li>
+    <li>"Active devices… very often will not be short or open circuit stable."</li>
+  </ul>
+  <p>So you measure <em>waves</em> instead. Call <code>a</code> the wave going into a port and
+    <code>b</code> the wave coming out; the S-matrix relates them:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">a two-port, completely described</span><span class="t">S-parameters</span></div>
+<pre><code>b1 = S11*a1 + S12*a2          S11 = b1/a1 with a2 = 0   input reflection
+b2 = S21*a1 + S22*a2          S21 = b2/a1 with a2 = 0   forward gain / loss
+                              S12 = reverse transmission (isolation)
+                              S22 = output reflection
+
+Gamma = (Za - Z0)/(Za + Z0)   VSWR = (1+|Gamma|)/(1-|Gamma|)
+Return loss (dB) = -20*log10(|Gamma|)
+</code></pre>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">Two things about S-parameters that bite</p>
+    <dl>
+      <dt>"a₂ = 0" is a requirement, not a footnote</dt><dd>It means port 2 is terminated in a
+        <em>perfect</em> Z₀. A badly matched or uncalibrated port 2 corrupts your <strong>S11</strong>, not
+        just your S21 — so a one-port reflection measurement on a two-port device is only as good as what
+        you hung on the far end.</dd>
+      <dt>The sign of return loss is not agreed</dt><dd>Return loss is conventionally a
+        <strong>positive</strong> number. Plenty of vendor documents label <code>20·log|Γ|</code> — which is
+        negative — "return loss". Same measurement, opposite sign, and the reader has to work out which
+        from context. State yours.</dd>
+    </dl>
+    <p>And an S-parameter sweep describes the <strong>linear, small-signal</strong> behaviour at one drive
+      level in one reference impedance. It says nothing about noise figure, compression, intermodulation
+      or power handling.</p>
+  </div>
+
+  <h3>The Smith chart, explained rather than memorised</h3>
+  <p>It looks mystical and it is not. The Smith chart is <strong>the complex reflection-coefficient plane
+    inside the unit circle, with an impedance grid drawn over it</strong>. That is all. Every point is a
+    Γ; the curved lines just tell you which impedance produced it.</p>
+  <div class="kv">
+    <dt>Centre</dt><dd>Γ = 0. Perfectly matched. This is where you are trying to get to.</dd>
+    <dt>Far left</dt><dd>Γ = −1. A short circuit.</dd>
+    <dt>Far right</dt><dd>Γ = +1. An open circuit.</dd>
+    <dt>Top half / bottom half</dt><dd>Inductive / capacitive.</dd>
+    <dt>Distance from centre</dt><dd>|Γ|, so a circle around the centre is a constant-VSWR circle.</dd>
+  </div>
+  <p>The grid lines are circles because the transformation <code>z = (1+Γ)/(1−Γ)</code> maps straight
+    lines of constant resistance and constant reactance into circles. Constant-<em>r</em> circles are
+    centred on the horizontal axis at <code>r/(1+r)</code> with radius <code>1/(1+r)</code>; the
+    constant-<em>x</em> arcs come off the right-hand point.</p>
+
+  <div class="box why">
+    <p class="bt">Why there are two grids, and what components do</p>
+    <p>An admittance grid is the impedance grid rotated 180° about the centre, because <code>y = 1/z</code>
+      means <code>Γ_y = −Γ_z</code>. You want both because of one fact:</p>
+    <ul>
+      <li>A <strong>series</strong> element adds reactance, so it moves you along a <strong>constant-resistance</strong> circle.</li>
+      <li>A <strong>shunt</strong> element adds susceptance, so it moves you along a <strong>constant-conductance</strong> circle.</li>
+    </ul>
+    <div class="tw"><table>
+      <thead><tr><th>Element</th><th>Moves along</th><th>Direction</th></tr></thead>
+      <tbody>
+        <tr><td>Series L</td><td>constant-r circle</td><td>clockwise</td></tr>
+        <tr><td>Series C</td><td>constant-r circle</td><td>anticlockwise</td></tr>
+        <tr><td>Shunt C</td><td>constant-g circle</td><td>clockwise</td></tr>
+        <tr><td>Shunt L</td><td>constant-g circle</td><td>anticlockwise</td></tr>
+      </tbody>
+    </table></div>
+    <p>Matching is now a maze game: you are at your load's impedance, you want the centre, and those four
+      moves are your only legal ones. A length of transmission line is a fifth move — it rotates you
+      clockwise around the centre, and <strong>half a wavelength is one complete turn</strong>.</p>
+  </div>
+
+  <h3>The L network, and the bandwidth you do not get to choose</h3>
+  <p>Two components, and the design is closed-form. Let <em>R</em><sub>small</sub> and
+    <em>R</em><sub>large</sub> be the smaller and larger of source and load:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">L-network design, complete</span><span class="t">two elements</span></div>
+<pre><code>Q      = sqrt( R_large / R_small - 1 )
+
+|X_series| = Q * R_small        <span class="c">// in series with the SMALLER resistance</span>
+|X_shunt|  = R_large / Q        <span class="c">// across the LARGER resistance</span>
+
+one of them is an inductor and the other a capacitor (opposite signs)
+fractional 3 dB bandwidth = 1 / Q
+</code></pre>
+  </div>
+  <p>Read that first line again, because it is the part people do not expect: <strong>Q is fixed by the
+    resistance ratio alone.</strong> Once you know what you are matching to what, the bandwidth is
+    decided. You have no free parameter. Matching 50 Ω to 10 Ω gives Q = 2 and about 50 % bandwidth
+    whether you like it or not.</p>
+
+  <div class="calc" id="c-match">
+    <p class="ct">Try it — design an L network</p>
+    <div class="row">
+      <label>Source resistance (Ω)
+        <input type="number" id="w-rs" value="50" step="1" min="0.1"></label>
+      <label>Load resistance (Ω)
+        <input type="number" id="w-rl" value="10" step="1" min="0.1"></label>
+      <label>Frequency (MHz)
+        <input type="number" id="w-f" value="900" step="10" min="0.1"></label>
+    </div>
+    <div class="out" id="w-out"></div>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">Adding a third component to widen the band makes it narrower</p>
+    <p>The obvious move when an L network is too narrow is to go to a pi or a T. Both work by cascading
+      two L sections through a <em>virtual</em> resistance — smaller than both endpoints for a pi, larger
+      than both for a T — and that third degree of freedom does let you set Q.</p>
+    <p>But only upward. The textbook states it flatly: <em>"it is not possible to have a lower Q with a
+      three-element matching network than the Q of a two-element matching network."</em> Pi and T
+      networks exist to give you <strong>harmonic rejection</strong>, <strong>realisable component
+      values</strong>, or a way to absorb the source and load's own reactance — not bandwidth.</p>
+    <p>And above it all sits the <strong>Bode–Fano limit</strong>: for a reactive load, the achievable
+      match and the bandwidth over which you get it trade against each other, roughly as
+      <code>Γ_min ≈ exp(−π / (Q·FBW))</code>, for <em>any</em> lossless network however complicated. If
+      the match is too narrow, the answer is a lower-Q load — a better antenna — not more components.</p>
+  </div>
+
+  <h3>Copper: when a trace becomes a transmission line</h3>
+  <p>A 50 Ω microstrip is set by the ratio of trace width to the height above the ground plane, plus the
+    dielectric constant. For FR-4 that ratio is about <strong>W/H = 1.9 to 2.0</strong>, which gives:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Ground plane below</th><th>50 Ω trace width</th><th>Comment</th></tr></thead>
+    <tbody>
+      <tr><td>1.6 mm (a whole 2-layer board)</td><td class="num">≈ 3.0 mm</td><td>wider than most 0402 pads — unusable in practice</td></tr>
+      <tr><td>0.254 mm</td><td class="num">≈ 0.45 mm</td><td>a normal 4-layer stack-up</td></tr>
+      <tr><td>0.20 mm prepreg</td><td class="num">≈ 0.35 mm</td><td>what RF boards actually do</td></tr>
+    </tbody>
+  </table></div>
+  <p>That table is the entire argument for putting ground on layer 2 rather than layer 4. As a real
+    reference point, TI's own Wi-Fi module layout guide specifies 255 µm from signal to ground and a
+    coplanar-waveguide-with-ground trace 0.457 mm wide with a 0.381 mm gap — and says explicitly that it
+    is CPWG and <em>not</em> microstrip, chosen for "the best isolation between input and output due to
+    reduced field fringing".</p>
+
+  <div class="box why">
+    <p class="bt">Why FR-4 runs out, with numbers</p>
+    <p>FR-4 is not one material, and it is not frequency-flat. One widely used laminate publishes:</p>
+    <div class="tw"><table>
+      <thead><tr><th></th><th>100 MHz</th><th>1 GHz</th><th>2 GHz</th><th>10 GHz</th></tr></thead>
+      <tbody>
+        <tr><td>Dielectric constant</td><td class="num">4.24</td><td class="num">4.17</td><td class="num">4.04</td><td class="num">3.92</td></tr>
+        <tr><td>Loss tangent</td><td class="num">0.0150</td><td class="num">0.0161</td><td class="num">0.0210</td><td class="num">0.0250</td></tr>
+      </tbody>
+    </table></div>
+    <p>Two problems. The loss tangent rises by 65 % from 100 MHz to 10 GHz — and worse, the dielectric
+      constant is a <strong>property of the build, not of "FR-4"</strong>: across the same vendor's own
+      constructions it spans <strong>3.73 to 4.39 at 1 GHz</strong> depending on glass style and resin
+      content. Your 50 Ω trace is ±8 % before anyone makes a mistake.</p>
+    <p>A microwave laminate fixes both: 3.48 ± 0.05 at 10 GHz with a loss tangent of 0.0037, roughly seven
+      times less dielectric loss. That is what you pay for, and below about 1 GHz you usually do not need
+      to.</p>
+  </div>
+  <p>Two layout rules worth carrying. <strong>Stitch ground vias along RF traces</strong> — without them
+    the two ground layers support a parallel-plate mode and energy travels where you did not route it;
+    the only vendor-citable spacing rule is a <em>maximum</em> of a quarter wavelength, which at 12 GHz in
+    FR-4 is 3 mm. And <strong>treat a trace as a transmission line based on rise time, not clock
+    rate</strong> — Howard Johnson simulates anything longer than about one sixth of the rising edge.
+    Published thresholds range from a half to a twentieth of the edge length, so treat it as a range and
+    err short.</p>
+
+  <h3>The VNA, and the mistake everyone makes with it</h3>
+  <p>A vector network analyser measures magnitude <em>and</em> phase, which is what makes the Smith chart
+    usable. Calibration is the whole game: "systematic errors are caused by imperfections in the test
+    equipment and test setup… if these errors do not vary over time, they can be characterized through
+    calibration and mathematically removed." A full two-port calibration solves for
+    <strong>twelve error terms</strong>; a one-port reflection calibration removes three — directivity,
+    source match and reflection tracking.</p>
+  <div class="kv">
+    <dt>SOLT</dt><dd>Short, Open, Load, Thru. Its accuracy is bounded by how well the <em>models</em> of
+      those standards match the metal — an open has fringing capacitance, a short has inductance, both
+      modelled as polynomials in frequency. Excellent in coax, where good kits exist.</dd>
+    <dt>TRL</dt><dd>Thru, Reflect, Line. The reference impedance becomes <strong>the impedance of the line
+      standard</strong> — a piece of your own board — and the reflect standard need not even be known.
+      This is what you use for a PCB fixture or on-wafer, where SOLT standards are not practical. The
+      constraint is phase: the thru and line must differ by 20° to 160°, which is why one pair covers only
+      about an <strong>8:1</strong> frequency range.</dd>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">The single most common RF measurement error</p>
+    <p>Keysight states it plainly: <em>"When the VNA is calibrated at the coaxial interface using any
+      standard calibration kit, the DUT measurements include the test fixture effects."</em> Your
+      connector, your launch and your feed line are all still in the measurement.</p>
+    <p>For <strong>return loss magnitude</strong> that is survivable — a loss is a loss. For
+      <strong>impedance</strong> it is fatal, because the fixture <em>rotates</em> Γ around the Smith
+      chart. You read an impedance that has been spun by the cable, design a shunt capacitor where the
+      antenna needed a series inductor, and the match gets worse.</p>
+    <p>Fixes, in order of rigour: de-embed a measured fixture model; do TRL with standards on your own
+      board; or, at minimum, set the port extension by calibrating against a deliberate short and open at
+      the feed point — adjust the electrical delay until the short lands at the far left of the chart and
+      the open at the far right, and average the two settings.</p>
+  </div>
+
+  <h3>What a good antenna measurement looks like</h3>
+  <p>The industry conventions, from a vendor note rather than folklore: <strong>VSWR 1.5 (return loss
+    14 dB) is a good match</strong>; <strong>VSWR 2.0 (return loss 9.5 dB) is the point at which the
+    matching network should be reviewed</strong>, and is also the conventional threshold for quoting an
+    antenna's bandwidth. At 2:1 the antenna radiates 88.9 % of the transmitter's power — which is to say
+    the last decibel is rarely where the problem is.</p>
+
+  <div class="box trap">
+    <p class="bt">A deep null is not efficiency</p>
+    <p>S11 tells you how much power <em>entered</em> the antenna. It does not tell you how much
+      <em>radiated</em>. Efficiency is the ratio of radiation resistance to total resistance — and those
+      two "are easily measured as a whole (they are the real part of the input impedance of the antenna)
+      but not easily separable".</p>
+    <p>Follow that through: a 50 Ω resistor soldered to the feed shows a magnificent S11 at every
+      frequency and radiates nothing. A lossy, badly made antenna will measure <em>better</em> on a VNA
+      than a good one, because its losses absorb the reflection. Return loss is a necessary condition and
+      not a sufficient one — which is why antenna work needs a chamber or at least a comparative range
+      test, not just a VNA.</p>
+  </div>
+
+  <h3>Filters, and the gap in this board</h3>
+  <p>Lesson 42 said this board has no external band filter. Here is the proof rather than the assertion,
+    and it matters more than it sounds.</p>
+  <p>The AD9361's receive filtering is <strong>baseband only</strong> — two programmable analogue
+    low-pass filters after the mixer, then the converter and the digital decimators. UG-570 describes no
+    RF preselector anywhere, and the transimpedance amplifier's single pole sits at 2.5 times the baseband
+    bandwidth. The overload detector that protects the front end sits <em>before</em> all of it. ADI even
+    gives you the diagnostic:</p>
+  <div class="box why">
+    <p class="bt">Analog Devices, UG-570</p>
+    <p><em>"If an LMT overload occurs but the ADC does not overload, it may indicate that an out-of-band
+      interfering signal is resulting in the overload condition."</em></p>
+    <p>That is the symptom of the missing filter, stated by the chip's own manual: something you are not
+      tuned to is saturating the analogue front end while the converter sees nothing wrong. No amount of
+      baseband filtering helps, because the damage is done before the baseband. ADI's own mitigation is to
+      split the gain table (lesson 48) — a software workaround for a hardware gap.</p>
+    <p>On transmit the situation is the mirror image: the secondary filter is set at five times the
+      baseband bandwidth to suppress out-of-band <em>noise</em>. It does nothing about RF harmonics,
+      which is why lesson 42's harmonic figures matter the moment an antenna is attached.</p>
+  </div>
+  <p>So if you put this board on an antenna, a front-end filter is the first accessory. The options, with
+    real datasheet numbers:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Technology</th><th>Insertion loss</th><th>Rejection</th><th>Trade</th></tr></thead>
+    <tbody>
+      <tr><td><strong>LTCC ceramic</strong>, 2.4 GHz</td><td class="num">2.2 dB max</td>
+          <td class="num">only 10 dB at 2.0 GHz</td><td>cheapest, smallest, barely a filter close in</td></tr>
+      <tr><td><strong>SAW</strong>, 2.4 GHz</td><td class="num">2.1 dB typ</td>
+          <td class="num">25 dB at 1.7–2.2 GHz</td><td>the usual answer below ~2 GHz</td></tr>
+      <tr><td><strong>BAW</strong>, 2.4 GHz</td><td class="num"><strong>1.1 dB typ</strong></td>
+          <td class="num"><strong>42 dB at 2.11–2.17 GHz</strong></td><td>best performance, highest cost, ~10 mask layers</td></tr>
+      <tr><td><strong>SAW</strong>, 902–928 MHz</td><td class="num">1.9 dB typ</td>
+          <td class="num">35 dB below 800 MHz — but only <strong>5 dB</strong> at 890–894 MHz</td><td>read the close-in skirt, not the headline</td></tr>
+    </tbody>
+  </table></div>
+  <p>That last row is the lesson inside the lesson. A filter's catalogue rejection figure is for the
+    frequencies far from the band. The thing actually desensitising you is usually the strong signal
+    <em>just outside</em>, and that is where every filter is weakest.</p>
+
+  <div class="box try">
+    <p class="bt">Two more traps, both from datasheets</p>
+    <dl>
+      <dt>The "50 Ω" part is not always 50 Ω</dt><dd>A common 2.45 GHz SAW filter is 50 Ω on the input and
+        <strong>100 Ω in parallel with 10 nH, balanced,</strong> on the output. Drop it in as a through
+        part and you have added its insertion loss plus an undesigned mismatch. Read the port impedance
+        before the insertion loss.</dd>
+      <dt>The "10 nH" inductor is not 10 nH</dt><dd>A good 0402 part measures 9.98 nH at 250 MHz and
+        <strong>10.4 nH at 1.7 GHz</strong>, with self-resonance at 4.70 GHz — so at 2.4 GHz you are
+        climbing toward resonance and the value on the label is not the value in your circuit. A cheaper
+        part may only specify Q at a 250 MHz test frequency, which tells you nothing about 2.4 GHz.</dd>
+    </dl>
+  </div>
+
+  <h3>Simulating it before you build it</h3>
+  <div class="kv">
+    <dt>Circuit simulation</dt><dd>Fine while the structure is electrically small and the only coupling
+      paths are the ones you typed in. The moment the <em>layout</em> is the answer, it is not enough.</dd>
+    <dt>2.5D, method of moments</dt><dd>For planar layered structures — microstrip and CPWG
+      discontinuities, spirals, patch antennas. This is the right tool for a matching network on a PCB.</dd>
+    <dt>3D, finite element or time domain</dt><dd>For genuinely three-dimensional geometry: connectors,
+      enclosures, wire antennas. Frequency-domain solvers suit resonant structures; time-domain solvers
+      give you broadband in one run.</dd>
+  </div>
+  <p>You do not need a commercial licence to start. <strong>openEMS</strong> is a GPL FDTD solver with
+    Python and Octave interfaces; <strong>scikit-rf</strong> is a BSD Python library that reads and writes
+    Touchstone files and has calibration and de-embedding built in — including the TRL and fixture-removal
+    maths this lesson keeps recommending; <strong>Qucs-S</strong> gives you a GUI over Ngspice with
+    microstrip models and S-parameter analysis.</p>
+
+  <div class="box trap">
+    <p class="bt">Legality has a number, and it is about the skirt too</p>
+    <p>For unlicensed operation in the US 902–928 MHz and 2400–2483.5 MHz bands, out-of-band emissions
+      must be <strong>at least 20 dB below</strong> the in-band peak measured in 100 kHz — 30 dB if the
+      in-band figure was RMS-averaged — plus separate absolute limits in the restricted bands.</p>
+    <p>Lesson 42 measured this board's second harmonic at −64 to −80 dBc, which passes that test
+      comfortably. The point is that "it passed" is a measurement with a filter in the signal path, or a
+      cable and a load at the end of it. Compliance is a property of the whole transmitter, including the
+      thing you attach to the SMA.</p>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: your antenna measures S11 = −25 dB at the design frequency. Are you happy?</summary>
+    <div class="ans">
+      <p><strong>Suspicious, not happy.</strong> −25 dB is a VSWR of about 1.12, which is better than any
+        real antenna needs and better than most achieve. The conventional target is 14 dB return loss for
+        a good match; 25 dB means almost nothing is coming back.</p>
+      <p>Two innocent explanations and one bad one. It may genuinely be an excellent match. It may be
+        that your reference plane is still at the SMA, so you are measuring a well-matched <em>cable</em>.
+        Or — the bad one — the antenna is <strong>lossy</strong>, and its losses are absorbing the energy
+        that should have reflected. Radiation resistance and loss resistance are not separable from the
+        input impedance, so a resistor and a perfect antenna look identical to a VNA.</p>
+      <p>The check that distinguishes them is not another VNA sweep. It is a second antenna and a measured
+        received power — a comparative range test against a reference antenna you trust. S11 tells you
+        power went in. Only a receiver tells you it came out.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l44">
+  <div class="part-head"><span class="part-n">44</span><h2>IQ files, and the metadata that turns them into measurements</h2></div>
   <p class="lede">A capture is a pile of numbers with no units, no frequency and no date. Six months later
     that is not a measurement, it is a file you are afraid to delete. This lesson is about the five
     minutes of work that prevents it.</p>
@@ -4875,9 +6082,9 @@ transmit   AD9361  -->  balun  -->  PGA-102+ (U12/U13, ~15.7 dB)  -->  TX1A/TX2A
     </div>
   </details>
 </section>
-<section class="part" id="l41">
+<section class="part" id="l45">
   <p class="band">Two receivers, and the chip that feeds them</p>
-  <div class="part-head"><span class="part-n">41</span><h2>Two coherent receivers: what this board can do that most cannot</h2></div>
+  <div class="part-head"><span class="part-n">45</span><h2>Two coherent receivers: what this board can do that most cannot</h2></div>
   <p class="lede">The shared local oscillator looked like a limitation in lesson 14. It is also this
     board's most interesting capability.</p>
 
@@ -4936,9 +6143,9 @@ angle_of_arrival = np.arcsin(phase_diff * lam / (<span class="n">2</span> * np.p
       might build on this board.</p>
   </div>
 </section>
-<section class="part" id="l42">
-  <div class="part-head"><span class="part-n">42</span><h2>MIMO and beamforming: what more than one antenna buys</h2></div>
-  <p class="lede">Lesson 41 showed that this board's two receivers share a local oscillator, and used the
+<section class="part" id="l46">
+  <div class="part-head"><span class="part-n">46</span><h2>MIMO and beamforming: what more than one antenna buys</h2></div>
+  <p class="lede">Lesson 45 showed that this board's two receivers share a local oscillator, and used the
     phase between them to find a direction. That is one of three quite different things people mean by
     "multiple antennas", and it is worth knowing which one you are asking for.</p>
 
@@ -4986,7 +6193,7 @@ angle_of_arrival = np.arcsin(phase_diff * lam / (<span class="n">2</span> * np.p
   </div>
   <p>That second sentence is the point. In a link-budget sense diversity buys 3 dB; in a
     <em>reliability</em> sense it can be worth 10 to 20 dB of fade margin, which is normally the most
-    expensive part of lesson 38's budget.</p>
+    expensive part of lesson 41's budget.</p>
 
   <h3>Beamforming, in the only maths you need</h3>
   <p>Two elements a distance <em>d</em> apart, a wave arriving at angle θ from broadside. The far element
@@ -5048,7 +6255,7 @@ transmit (steering a beam)    apply that same phase difference deliberately,
         direction finding wants four or eight, and that means several boards locked to one clock.</li>
       <li><strong>Nothing is calibrated.</strong> The chains differ by about 1.5 dB in receive and 0.1 to
         0.25 dB in transmit on the measured unit, and each has its own fixed phase offset through its own
-        balun and traces. Lesson 41 says it and it bears repeating: <em>coherent does not mean
+        balun and traces. Lesson 45 says it and it bears repeating: <em>coherent does not mean
         calibrated.</em></li>
       <li><strong>Transmit calibration drifts.</strong> The AD9361's transmit quadrature calibration on
         this board varies by up to 10 dB run to run, so a transmit beamformer needs re-calibrating far
@@ -5080,8 +6287,8 @@ transmit (steering a beam)    apply that same phase difference deliberately,
     </div>
   </details>
 </section>
-<section class="part" id="l43">
-  <div class="part-head"><span class="part-n">43</span><h2>The AD9361 itself: the chip in front of your fabric</h2></div>
+<section class="part" id="l47">
+  <div class="part-head"><span class="part-n">47</span><h2>The AD9361 itself: the chip in front of your fabric</h2></div>
   <p class="lede">Every sample your logic has ever seen came out of this chip, already filtered, already
     decimated, already gain-controlled by something you did not write. Eleven lessons have quietly
     depended on how it behaves. Time to open it.</p>
@@ -5097,7 +6304,7 @@ transmit (steering a beam)    apply that same phase difference deliberately,
 </code></pre>
   </div>
   <p>Two things in that diagram explain most of this course. The mixer uses <strong>one RX_LO for both
-    receivers</strong>, which is why lessons 41 and 42 work and why you cannot tune the two channels
+    receivers</strong>, which is why lessons 45 and 46 work and why you cannot tune the two channels
     separately. And the converter runs far faster than your sample rate, with a chain of halving filters
     behind it — which is why <code>sampling_frequency</code> will not accept arbitrary values.</p>
 
@@ -5112,7 +6319,7 @@ transmit (steering a beam)    apply that same phase difference deliberately,
         has a bump at DC, and it is not a signal.</dd>
       <dt>Artefact two: the image</dt><dd>If the I and Q paths differ at all in gain or phase, a tone at
         +2 MHz produces a ghost at &minus;2 MHz. How far down that ghost is, is the
-        <span class="newterm">image rejection</span> lesson 37 measures. On this board it is 44 to
+        <span class="newterm">image rejection</span> lesson 40 measures. On this board it is 44 to
         60 dBc after a fresh calibration, and it varies by up to 10 dB run to run.</dd>
     </dl>
   </div>
@@ -5246,9 +6453,583 @@ iio_attr -u ip:192.168.2.1 -c ad9361-phy temp0 input   <span class="c"># die tem
     </div>
   </details>
 </section>
-<section class="part" id="l44">
+<section class="part" id="l48">
+  <div class="part-head"><span class="part-n">48</span><h2>The AD9361, register by register</h2></div>
+  <p class="lede">Lesson 47 gave you the chip as a system. This is the layer underneath: the actual SPI
+    words, the actual addresses, and the handful of places where the driver does something to your radio
+    that no IIO attribute admits to.</p>
+
+  <div class="box why">
+    <p class="bt">Where these numbers come from, and why that matters</p>
+    <p>Everything below was read out of <strong>the driver source in this repository</strong> —
+      <code>firmware/src/linux/drivers/iio/adc/ad9361.c</code> and
+      <code>ad9361_regs.h</code>, Analog Devices' own GPL-2 code — not out of UG-570. That is a weaker
+      citation for the chip in general and a <em>stronger</em> one for this board, because it is the code
+      that is running on it right now.</p>
+    <p>Where the driver and the manual might disagree, the manual wins for the silicon and the driver wins
+      for your board. Anywhere this lesson says "the driver", read it literally.</p>
+  </div>
+
+  <h3>One SPI transaction</h3>
+  <p>The whole protocol is four macros:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">drivers/iio/adc/ad9361_regs.h</span><span class="t">C</span></div>
+<pre><code><span class="k">#define</span> AD_READ    (<span class="n">0</span> &lt;&lt; <span class="n">15</span>)
+<span class="k">#define</span> AD_WRITE   (<span class="n">1</span> &lt;&lt; <span class="n">15</span>)
+<span class="k">#define</span> AD_CNT(x)  ((((x) - <span class="n">1</span>) &amp; <span class="n">0x7</span>) &lt;&lt; <span class="n">12</span>)
+<span class="k">#define</span> AD_ADDR(x) ((x) &amp; <span class="n">0x3FF</span>)
+</code></pre>
+  </div>
+  <p>A 16-bit header, MSB first, then the data bytes. So a single-register access is
+    <strong>24 bits</strong> on the wire:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">the header word</span><span class="t">16 bits</span></div>
+<pre><code> 15   14 13 12   11 10   9 . . . . . . . . 0
+  W   count-1    unused        address
+
+  bit 15   1 = write, 0 = read
+  14:12    bytes to transfer, minus one (1 to 8)
+   9:0     10-bit address, 0x000 to 0x3FF
+</code></pre>
+  </div>
+  <div class="kv">
+    <dt>On this board</dt><dd>The bus is the Zynq PS's SPI0, routed out through EMIO (lesson 13), and the
+      device tree sets <code>spi-max-frequency = &lt;0x989680&gt;</code> — <strong>10 MHz</strong>. The
+      driver prints the rate it actually achieved at probe.</dd>
+    <dt>A burst counts <em>downwards</em></dt><dd>Ask for 8 bytes and the second byte comes from
+      <code>addr−1</code>, the third from <code>addr−2</code>. Both <code>ad9361_spi_readm</code> and
+      <code>ad9361_spi_writem</code> decrement. Assume ascending and you will read a neighbouring block
+      backwards and believe it.</dd>
+    <dt>Register 0x000 is mirrored</dt><dd>Soft reset, 3-wire mode and LSB-first each appear <em>twice</em>
+      in the byte — <code>SOFT_RESET (1&lt;&lt;7)</code> and <code>_SOFT_RESET (1&lt;&lt;0)</code>, and so on
+      — so that a write lands correctly whichever bit order the chip is currently in. It is the one
+      register that has to work before you know how it is configured.</dd>
+  </div>
+
+  <div class="calc" id="c-spi">
+    <p class="ct">Try it — build the SPI header word</p>
+    <div class="row">
+      <label>Register address (hex, 000–3FF)
+        <input type="text" id="u-addr" value="037"></label>
+      <label>Bytes to transfer
+        <input type="number" id="u-n" value="1" step="1" min="1" max="8"></label>
+      <label>Direction
+        <select id="u-rw"><option value="0">read</option><option value="1">write</option></select></label>
+    </div>
+    <div class="out" id="u-out"></div>
+  </div>
+
+  <h3>The map, in blocks</h3>
+  <p>525 register definitions across the full 10-bit space. The grouping below is the header file's own
+    ordering rather than a quotation from the manual, but it is enough to know roughly where you are:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Range</th><th>What lives there</th></tr></thead>
+    <tbody>
+      <tr><td><code>0x000–0x03F</code></td><td>SPI config, multichip sync, enable and filter control, clocks, BBPLL, temperature sensor, parallel port, <strong>ENSM</strong>, calibration control, AuxDAC/AuxADC, <strong>product ID</strong>, LVDS</td></tr>
+      <tr><td><code>0x040–0x05F</code></td><td>BBPLL fractional word, VCO programming</td></tr>
+      <tr><td><code>0x060–0x065</code></td><td><strong>TX FIR</strong> — coefficient address, data, config</td></tr>
+      <tr><td><code>0x070–0x0CF</code></td><td>TX attenuation, TX quadrature-cal offsets, baseband filter trim</td></tr>
+      <tr><td><code>0x0F0–0x0F6</code></td><td><strong>RX FIR</strong> and RX filter gain</td></tr>
+      <tr><td><code>0x0F8–0x12F</code></td><td>AGC, manual gain, overload thresholds</td></tr>
+      <tr><td><code>0x130–0x137</code></td><td><strong>the gain-table access port</strong></td></tr>
+      <tr><td><code>0x140–0x16F</code></td><td>RSSI, calibration config, RX quadrature gain and tracking</td></tr>
+      <tr><td><code>0x170–0x1AF</code></td><td>DC-offset configuration and tracking words</td></tr>
+      <tr><td><code>0x1B0–0x22F</code></td><td>RX analogue trim — LNA bias, TIA caps, filter tuning, ADC</td></tr>
+      <tr><td><code>0x230–0x29F</code></td><td>RX then TX RF PLL: integer and fractional words, charge pump, VCO, fast lock</td></tr>
+    </tbody>
+  </table></div>
+  <p>The first register the driver ever reads is <strong><code>0x037</code></strong>, the product ID.
+    Probe refuses the part unless <code>(value &amp; 0xF8) == 0x08</code>; the low three bits are the
+    silicon revision, so a Rev 2 part reads <code>0x0A</code>. If that read fails, nothing else in this
+    lesson matters — you have a wiring problem, not a radio problem.</p>
+
+  <h3>The enable state machine, concretely</h3>
+  <p>Lesson 47 mentioned the ENSM. Here are the actual numbers. Read <code>0x017</code>; bits 3:0 are the
+    state:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Code</th><th>State</th><th>Code</th><th>State</th></tr></thead>
+    <tbody>
+      <tr><td><code>0x0</code></td><td>Sleep / Wait</td><td><code>0x8</code></td><td>RX</td></tr>
+      <tr><td><code>0x5</code></td><td><strong>Alert</strong></td><td><code>0x9</code></td><td>RX flush</td></tr>
+      <tr><td><code>0x6</code></td><td>TX</td><td><code>0xA</code></td><td><strong>FDD</strong></td></tr>
+      <tr><td><code>0x7</code></td><td>TX flush</td><td><code>0xB</code></td><td>FDD flush</td></tr>
+    </tbody>
+  </table></div>
+  <p>Two ways to drive it. Either write <code>0x014</code> — <code>FORCE_TX_ON (1&lt;&lt;5)</code>,
+    <code>FORCE_RX_ON (1&lt;&lt;6)</code>, <code>FORCE_ALERT_STATE (1&lt;&lt;2)</code> — or set
+    <code>ENABLE_ENSM_PIN_CTRL (1&lt;&lt;4)</code> and drive the chip's <strong>ENABLE</strong> and
+    <strong>TXNRX</strong> pins from the fabric instead. Pin control is how you get deterministic,
+    sample-accurate switching; SPI control is how you get convenience.</p>
+
+  <div class="box why">
+    <p class="bt">Why everything goes through Alert</p>
+    <p>The driver enforces it. In <strong>TDD</strong>, <code>ad9361_ensm_set_state</code> returns
+      <code>-EINVAL</code> if you force TX or RX from anything other than Alert — so RX to TX is never one
+      step, it is always RX → Alert → TX. In <strong>FDD</strong> it refuses to force TX or RX at all;
+      only FDD and Alert are reachable.</p>
+    <p>And Alert is where the driver parks the chip for every disruptive operation.
+      <code>ad9361_ensm_force_state(phy, ENSM_STATE_ALERT)</code> wraps FIR loading, every bandwidth
+      change and every calibration run, then restores the previous state afterwards. Clocks and
+      synthesisers stay up in Alert, so returning costs no PLL relock — which is why it is the idle state
+      rather than Sleep.</p>
+  </div>
+
+  <h3>Gain tables, as bytes</h3>
+  <p>A gain table row is <strong>three bytes</strong>, written through a little access port rather than
+    being memory-mapped. ADI's own comments name them:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Byte</th><th>Written to</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td><code>0x131</code></td><td>external LNA control, internal LNA gain (2 bits), mixer/GM gain (5 bits)</td></tr>
+      <tr><td>1</td><td><code>0x132</code></td><td>TIA gain (1 bit), LPF gain (5 bits)</td></tr>
+      <tr><td>2</td><td><code>0x133</code></td><td>RF DC-cal flag, digital gain (5 bits)</td></tr>
+    </tbody>
+  </table></div>
+  <p>Set the row index in <code>0x130</code>, write the three bytes, pulse the write bit in
+    <code>0x137</code>. The driver holds <strong>77 rows</strong> in full-table mode and
+    <strong>41</strong> in split-table mode — pick between them with
+    <code>AGC_USE_FULL_GAIN_TABLE</code> in <code>0x0FB</code> — and it keeps
+    <strong>three tables per mode</strong>, for <strong>0–1300 MHz, 1300–4000 MHz and
+    4000–6000 MHz</strong>.</p>
+  <p>You can also supply a table as firmware. <code>firmware/ad9361_std_gaintable</code> in the kernel
+    tree is a plain text file the driver parses:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">firmware/ad9361_std_gaintable</span><span class="t">text</span></div>
+<pre><code>&lt;list&gt;
+&lt;gaintable AD9361 type=FULL dest=3 start=0 end=1300000000&gt;
+-1, 0x00, 0x00, 0x20
+ 0, 0x00, 0x01, 0x00
+</code></pre>
+  </div>
+  <p>The leading number is the absolute gain in dB; the three that follow are the row. That first column
+    is what makes the trap below possible.</p>
+
+  <div class="box trap">
+    <p class="bt">Retuning across 1300 or 4000 MHz silently changes what your gain setting means</p>
+    <p>When the RX local oscillator changes, the driver's clock notifier calls
+      <code>ad9361_load_gt</code>. If the new frequency is in a different band it rewrites all 77 rows —
+      and then <em>remaps your current index</em>: it converts the old index to dB using the old table's
+      absolute-gain column, then looks that dB value up in the new table. If there is no match it clamps
+      to the top of the table.</p>
+    <p>So a receive gain you set as an index, at 900 MHz, is a <strong>different physical gain</strong>
+      after you retune to 2.4 GHz — and nothing reports it. Any calibration you did is valid for the band
+      you did it in. This is the register-level explanation for lesson 47's "measure gain where you intend
+      to use it".</p>
+  </div>
+
+  <h3>The 128-tap FIR, and its rules</h3>
+  <p>Coefficients are signed 16-bit, written low byte then high byte through <code>0x061/0x062</code> on
+    transmit and <code>0x0F1/0x0F2</code> on receive. The constraints are all in
+    <code>ad9361_load_fir_filter_coef</code>, and they are not negotiable:</p>
+  <ul>
+    <li><strong>Tap count must be a multiple of 16, and at most 128.</strong> The driver rejects anything
+      else outright — <code>ntaps &gt; 128 || ntaps % 16</code>.</li>
+    <li><strong>The FIR does its own rate change.</strong> Decimation and interpolation of
+      <strong>1, 2 or 4</strong>, and the encoding is not what you would guess: 4 is written as
+      <strong>3</strong>, and <strong>0 means bypass</strong>, not ÷1.</li>
+    <li><strong>At interpolation 1, transmit is capped at 64 taps.</strong> The general rule is
+      <code>max_taps = (converter_rate / sample_rate) × 16</code> — run the FIR at full rate and there
+      simply are not enough clock cycles per sample to sweep 128 coefficients.</li>
+    <li><strong>Gain is quantised.</strong> Receive offers −12, −6, 0 or +6 dB; transmit offers only 0 or
+      −6 dB.</li>
+  </ul>
+  <p>That last rule is where lesson 47's <strong>2.083 MSPS</strong> threshold comes from, and the number
+    is exact: <code>libad9361</code> tests <code>rate &lt;= 25000000 / 12</code> — 2 083 333 Hz — and
+    steps the chip through an intermediate 3 MSPS before toggling the FIR, because enabling 128 taps
+    directly at the final low rate would violate the tap limit.</p>
+  <p>The filter file the <code>filter_fir_config</code> attribute accepts is equally plain:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">a .ftr file</span><span class="t">text</span></div>
+<pre><code><span class="c"># comment</span>
+TX 3 GAIN 0 INT 4          <span class="c"># channel mask, gain in dB, interpolation</span>
+RX 3 GAIN -6 DEC 4
+RTX 983040000 245760000 122880000 61440000 30720000 30720000
+RRX 983040000 245760000 122880000 61440000 30720000 30720000
+BWTX 18000000
+BWRX 18000000
+-2,-2                      <span class="c"># one TX coefficient, one RX coefficient</span>
+</code></pre>
+  </div>
+  <p>A coefficient line with a single value sets both chains identically. The <code>RTX</code>/
+    <code>RRX</code> clock chains are optional — but if you give one you must give both, or the driver
+    quietly marks the filter invalid and computes its own chain instead.</p>
+
+  <h3>What the driver does that you did not ask for</h3>
+  <p>Probe, in order: get the reference clock, register the <code>tx-active</code> LED trigger (lesson 47
+    and <code>docs/user-led.md</code>), parse the device tree, claim the reset GPIO, load the gain table,
+    <strong>reset the chip</strong>, check the product ID, register the clocks, run
+    <code>ad9361_setup</code>, then register the IIO device.</p>
+  <p><code>ad9361_setup</code> is the calibration sequence, and the order is load-bearing: bandgap and
+    bias → BBPLL → clock chain → <strong>synthesiser charge-pump calibration</strong> → set both RF PLLs
+    → gain control → <strong>RX baseband filter, TX baseband filter, RX TIA, TX second filter</strong> →
+    ADC setup → <strong>baseband DC offset, RF DC offset, TX quadrature</strong> → enable the tracking
+    loops → set the ENSM mode and the transmit attenuation.</p>
+  <p>Afterwards, on a retune:</p>
+  <div class="kv">
+    <dt>RX LO changes</dt><dd>The gain table is reloaded if the band changed. <em>No calibration runs</em>
+      — the driver's own comment says the tracking loops handle it.</dd>
+    <dt>TX LO changes</dt><dd>A transmit quadrature calibration is scheduled <strong>only if the frequency
+      moved more than 100 MHz</strong> from the last one. That constant is
+      <code>cal_threshold_freq = 100000000ULL</code>. Small retunes reuse the old calibration, which is
+      part of why lesson 40's image-rejection figures wander by up to 10 dB between runs.</dd>
+  </div>
+
+  <h3>debugfs, and what it is really for</h3>
+  <div class="code">
+    <div class="code-bar"><span class="f">every debugfs entry the driver creates</span><span class="t">/sys/kernel/debug/iio/iio:deviceN/</span></div>
+<pre><code>initialize   loopback   bist_prbs   bist_tone   gpo_set
+bist_timing_analysis   gaininfo_rx1   gaininfo_rx2
+multichip_sync   calibration_switch_control   digital_tune
+</code></pre>
+  </div>
+  <p>Beside those, <strong>every <code>adi,*</code> device-tree property also appears as a debugfs
+    file</strong>. That is more dangerous than it looks, and it is the source of the next trap.</p>
+
+  <div class="box trap">
+    <p class="bt">Three things that will cost you an afternoon</p>
+    <dl>
+      <dt>Writing an <code>adi,*</code> file changes nothing — until it changes everything</dt>
+        <dd>Those files edit the driver's in-memory copy of the device tree. Not one bit reaches the chip.
+          Then <code>echo 1 &gt; initialize</code> performs a <em>full</em> reset and re-setup: it
+          reprograms both RF PLLs, reruns every calibration, and <strong>re-applies the transmit
+          attenuation from the device tree</strong>. On this board that is an ungated jump from the
+          −89.75 dB floor to whatever the DT says. A "harmless" debugfs poke can bring a transmitter up
+          loud. Treat <code>initialize</code> as a transmit command.</dd>
+      <dt>The SPI soft reset does not work, and the driver says so</dt>
+        <dd>Verbatim from <code>ad9361_reset</code>: <em>"SPI Soft Reset was removed from the register map,
+          since it doesn't work reliably. Without a prober HW reset randomness may happen. Please specify
+          a RESET GPIO."</em> Without <code>reset-gpios</code> the function logs "this may cause
+          unpredicted behavior!" and returns <code>-ENODEV</code> — <strong>and probe ignores the return
+          value</strong>. You get a half-reset chip and a probe that reports success.</dd>
+      <dt>Multi-byte reads walk backwards</dt>
+        <dd>Covered above, and worth repeating because the symptom is plausible data. Read eight bytes
+          from <code>0x100</code> and the last one is <code>0x0F9</code>, not <code>0x107</code>.</dd>
+    </dl>
+  </div>
+
+  <div class="box try">
+    <p class="bt">Read one register yourself</p>
+    <p>The IIO debugfs interface exposes the raw register file. Reading the product ID is the safest
+      possible first transaction — it changes nothing and it proves the whole path works:</p>
+    <div class="code">
+      <div class="code-bar"><span class="f">the first register the driver ever reads</span><span class="t">run on the BOARD</span></div>
+<pre><code>cd /sys/kernel/debug/iio/iio:device1        <span class="c"># resolve by name, never assume the index</span>
+echo 0x37 &gt; direct_reg_access
+cat direct_reg_access                      <span class="c"># 0x8 or 0xA - product ID and revision</span>
+</code></pre>
+    </div>
+    <p>Then read <code>0x017</code> and watch the state change from <code>0x5</code> to <code>0xA</code>
+      as a stream starts. Write nothing until you have a reason and a reset GPIO.</p>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: you set RX gain to index 40 at 900 MHz, then retune to 2.4 GHz. Same gain?</summary>
+    <div class="ans">
+      <p>No. 900 MHz and 2.4 GHz are in different gain-table bands — 0–1300 and 1300–4000 — so the driver
+        reloads all 77 rows. It then converts index 40 to decibels using the <em>old</em> table and finds
+        the nearest match in the <em>new</em> one, so you keep roughly the same gain in dB but at a
+        different index, with a different LNA/mixer/TIA combination behind it and therefore a different
+        noise figure and a different compression point.</p>
+      <p>"Roughly the same" is the best case. If the dB value has no match the driver clamps to the top of
+        the table, and your gain moves for real.</p>
+      <p>The safe habit is the one lesson 40 teaches for everything else: <strong>read the value back
+        after the retune</strong>, and measure the noise figure in the band you are actually going to use.
+        An index is not a gain.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l49">
   <p class="band">Onward</p>
-  <div class="part-head"><span class="part-n">44</span><h2>Projects, in order of difficulty</h2></div>
+  <div class="part-head"><span class="part-n">49</span><h2>The theory underneath: detection, estimation, information</h2></div>
+  <p class="lede">This course has been asserting things. The matched filter is optimal. Correlation gain
+    is 10·log₁₀(N). MMSE beats zero-forcing. Capacity is B·log₂(1+S/N). Here is why each is true — and,
+    more usefully, exactly where each one stops being true.</p>
+
+  <h3>Detection is a hypothesis test</h3>
+  <p>"Is there a packet here?" is a question statistics answered in the 1930s. Two hypotheses —
+    <strong>H₀</strong>, only noise; <strong>H₁</strong>, signal plus noise — and a rule for choosing.
+    Two ways to be wrong, and they are not symmetric:</p>
+  <div class="kv">
+    <dt>False alarm</dt><dd>You declare a packet that is not there. Costs you a wasted decode.</dd>
+    <dt>Miss</dt><dd>A real packet goes unnoticed. Costs you the packet.</dd>
+  </div>
+  <p>The optimal rule is the <span class="newterm">likelihood ratio test</span>: form
+    <code>Λ(x) = p₁(x)/p₀(x)</code> and compare it to a threshold. The
+    <span class="newterm">Neyman–Pearson lemma</span> says this is not merely <em>a</em> good test but
+    <strong>the</strong> best one: among all tests with a false-alarm rate at most α, the likelihood ratio
+    test has the highest probability of detection. Nothing else can do better at that false-alarm rate.</p>
+  <p>Sweep the threshold and you trace the <span class="newterm">ROC curve</span> — detection probability
+    against false-alarm probability. For the standard problem of detecting a known signal in Gaussian
+    noise it collapses to one number:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">the entire ROC, in one parameter</span><span class="t">deflection</span></div>
+<pre><code>P_D = Q( Q^-1(P_FA) - d )      d = sqrt( N * A^2 / sigma^2 )
+</code></pre>
+  </div>
+  <p>Everything about your data enters through <strong>d</strong> — and <em>d</em> grows as √N. That is
+    lesson 32's correlation gain arriving from the statistics side rather than the arithmetic side.</p>
+
+  <h3>Why the matched filter is optimal, in one inequality</h3>
+  <p>Filter the received signal and sample at time T. Write the filter as a vector, the signal as a
+    vector, and the output signal-to-noise ratio is a ratio of an inner product to a norm. Then apply the
+    Cauchy–Schwarz inequality — <code>|⟨g,s⟩|² ≤ ⟨g,g⟩·⟨s,s⟩</code>, with equality <strong>if and only
+    if</strong> <code>g = c·s</code>:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">the bound, and when it is met</span><span class="t">AWGN</span></div>
+<pre><code>SNR(T)  &lt;=  2E / N0            E = the signal's energy
+
+equality iff  h(t) = c * conj( s(T - t) )  <span class="c">// time-reversed and conjugated: the matched filter</span>
+</code></pre>
+  </div>
+  <p>That is the whole proof, and it says something the arithmetic does not: <strong>the peak SNR depends
+    only on the signal's energy, not on its shape</strong>. A rectangle, a raised cosine and a random
+    waveform of the same energy all reach exactly 2E/N₀. Which is why lesson 30 was free to choose the
+    pulse shape on <em>bandwidth</em> grounds — the matched filter gives back the same SNR whatever you
+    picked.</p>
+
+  <div class="box trap">
+    <p class="bt">Two things the matched filter does not do</p>
+    <dl>
+      <dt>It is not optimal in coloured noise</dt><dd>The proof assumes <em>white</em> noise. Against a
+        narrowband interferer, or after any filter that shaped the noise, you must whiten first — and a
+        plain matched filter is then strictly worse than the best linear filter.</dd>
+      <dt>It does not minimise intersymbol interference</dt><dd>These are separate conditions. Matched
+        filtering is optimal <em>detection</em>; ISI-freedom is the Nyquist criterion on the
+        <em>end-to-end</em> pulse. Matched filtering keeps all the information even when there is ISI —
+        its sampled outputs are a sufficient statistic — but a symbol-by-symbol decision on them is then
+        no longer optimal, and recovering that needs equalisation (lesson 34) or sequence detection.
+        Lesson 30 satisfied both conditions at once with root-raised-cosine at each end; that was design,
+        not coincidence.</dd>
+    </dl>
+  </div>
+
+  <h3>The error probabilities, exactly</h3>
+  <div class="code">
+    <div class="code-bar"><span class="f">bit error rate in AWGN</span><span class="t">Q(x) = 0.5·erfc(x/√2)</span></div>
+<pre><code>BPSK        Pb = Q( sqrt(2*Eb/N0) )
+QPSK, Gray  Pb = Q( sqrt(2*Eb/N0) )        <span class="c">// the same curve, in Eb/N0</span>
+
+square M-QAM, Gray, standard approximation:
+            Pb ~= (4/k)*(1 - 1/sqrt(M)) * Q( sqrt( 3*k/(M-1) * Eb/N0 ) )     k = log2(M)
+</code></pre>
+  </div>
+  <p>Evaluate them at a bit error rate of 10<sup>−5</sup> and you get the exact version of the table
+    lesson 41 budgets against — that one is rounded to whole decibels, so it reads about half a decibel
+    high for the larger constellations:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Scheme</th><th>Bits/symbol</th><th>Eb/N0</th><th>SNR</th><th>Cost of the extra bits</th></tr></thead>
+    <tbody>
+      <tr><td>BPSK</td><td class="num">1</td><td class="num">9.59 dB</td><td class="num">9.59 dB</td><td>—</td></tr>
+      <tr><td>QPSK</td><td class="num">2</td><td class="num">9.59 dB</td><td class="num">12.60 dB</td><td class="num">+3.01 dB</td></tr>
+      <tr><td>16-QAM</td><td class="num">4</td><td class="num">13.43 dB</td><td class="num">19.46 dB</td><td class="num">+6.86 dB for 2</td></tr>
+      <tr><td>64-QAM</td><td class="num">6</td><td class="num">17.79 dB</td><td class="num">25.57 dB</td><td class="num">+6.11 dB for 2</td></tr>
+      <tr><td>256-QAM</td><td class="num">8</td><td class="num">22.50 dB</td><td class="num">31.53 dB</td><td class="num">+5.97 dB for 2</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="box why">
+    <p class="bt">Three different "6 dB per bit" rules, and how to keep them apart</p>
+    <ol class="body">
+      <li><strong>Converter resolution</strong> — SNR = 6.02·N + 1.76 dB. One more ADC bit buys 6 dB.
+        Lesson 9. <em>Correct.</em></li>
+      <li><strong>Capacity per real dimension</strong> — C = ½·log₂(1+SNR), so one more bit per dimension
+        needs four times the SNR: 6.02 dB. <em>Correct.</em></li>
+      <li><strong>QAM per symbol</strong> — a complex symbol is <em>two</em> dimensions, so one more bit
+        per symbol needs only twice the SNR: <strong>3.01 dB</strong>. Forney puts the capacity version
+        the same way — in the bandwidth-limited regime another 3 dB of SNR buys one more bit per two
+        dimensions.</li>
+    </ol>
+    <p>The table above is the third case, and it measures 3.0 to 3.4 dB per bit. Use rule 1 or 2 to
+      predict a QAM step and you will be out by a factor of two in decibels — which is how a design lands
+      6 dB short of its own budget.</p>
+    <p><em>An earlier version of lesson 41 made exactly this mistake.</em> It has been corrected, and it
+      is in this course because it is worth seeing that the error is easy and the table was right all
+      along.</p>
+  </div>
+
+  <h3>Estimation: how well can you possibly know a number?</h3>
+  <p>Timing offset, carrier frequency, channel taps — lessons 31 and 34 estimate all of them. The
+    <span class="newterm">Cramér–Rao lower bound</span> says how well any <em>unbiased</em> estimator
+    could do: the variance is at least the reciprocal of the Fisher information, which measures how
+    sharply the likelihood peaks. A sharp peak means the data pins the parameter down; a flat one means
+    it does not.</p>
+  <p>For the case this board actually cares about — estimating the frequency of a complex tone from N
+    samples at signal-to-noise ratio ρ — the closed form below is exact at every N rather than a large-N
+    approximation:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">frequency estimation CRLB</span><span class="t">f in cycles per sample</span></div>
+<pre><code>var(f_hat)  &gt;=  6 / ( (2*pi)^2 * rho * N * (N^2 - 1) )
+</code></pre>
+  </div>
+  <p>Look at the <strong>N³</strong>. Variance falls as the cube of the observation length, so the
+    standard deviation falls as N<sup>1.5</sup> — <strong>doubling the preamble buys 9 dB of frequency
+    accuracy, not 3</strong>. Averaging intuition gets this wrong, because a longer observation does not
+    merely average more noise; it gives phase more time to rotate, which is what carries the frequency
+    information.</p>
+  <p>At 61.44 MSPS and 10 dB of SNR, on this board:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Preamble</th><th>Best possible frequency accuracy</th></tr></thead>
+    <tbody>
+      <tr><td>64 samples</td><td class="num">14.8 kHz</td></tr>
+      <tr><td>256 samples</td><td class="num">1.85 kHz</td></tr>
+      <tr><td>1024 samples</td><td class="num">231 Hz</td></tr>
+      <tr><td>4096 samples</td><td class="num">28.9 Hz</td></tr>
+    </tbody>
+  </table></div>
+  <p>Which sets up lesson 32's frequency-offset trap — though the two numbers meet less neatly than they
+    first look. A 64-sample preamble cannot pin the frequency closer than about 15 kHz, but 15 kHz across
+    those same 64 samples is only <strong>5.6°</strong> of phase rotation, which costs nothing. It becomes
+    a problem at around <strong>1040 samples</strong>, where that residual offset has turned a quarter
+    turn.</p>
+  <p>So these are two constraints that <em>meet at a length</em>, not one constraint wearing two hats:
+    your estimate improves the longer you correlate, the offset you failed to estimate punishes you the
+    longer you correlate, and the preamble you want is where the two curves cross.</p>
+
+  <div class="box trap">
+    <p class="bt">The bound is a bound, not a promise — and it has a cliff</p>
+    <p>Two preconditions people forget. The CRLB applies to <strong>unbiased</strong> estimators only (a
+      biased one can beat it), and it may be unattainable at any finite N.</p>
+    <p>Worse, frequency estimation has a <strong>threshold effect</strong>: above some SNR the maximum
+      likelihood estimator tracks the bound closely, and below it the estimate lands in an entirely wrong
+      part of the spectrum and the variance explodes toward "uniformly distributed". The bound says
+      nothing whatever about that regime. Writing "our estimator will achieve the CRLB" into a
+      specification is a promise about the good case only.</p>
+  </div>
+
+  <h3>Why MMSE beats zero-forcing, in one term</h3>
+  <p>Lesson 34 asserted it. Here are the two equalisers side by side:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">the only difference</span><span class="t">linear equalisers, schematically</span></div>
+<pre><code>zero forcing   W  ~  1 / H
+MMSE           W  ~  1 / ( H + 1/SNR_mfb )
+                              ^^^^^^^^^^^
+</code></pre>
+  </div>
+  <p>One additive term, and it is the whole argument. Where the channel has a null, <code>H</code>
+    approaches zero and zero-forcing divides by it — amplifying noise without limit. The extra term keeps
+    the denominator away from zero, which is what "well conditioned" means here. (It is the reciprocal of
+    the <em>matched-filter-bound</em> SNR rather than of the link SNR; Cioffi's Stanford notes give the
+    exact form.) The orthogonality principle — the MMSE error is uncorrelated with the data — is the
+    formal statement behind it.</p>
+  <p>The consequence is that <strong>the unbiased MMSE equaliser performs at least as well as
+    zero-forcing</strong> at every SNR. Two conditions hide in that sentence and both bite in practice:
+    the MMSE output is <em>biased</em>, and the bias has to be removed before slicing or generating LLRs;
+    and MMSE needs an SNR estimate that zero-forcing does not — the same dependence on a noise-variance
+    estimate that lesson 36 flags for sum-product decoding, and it fails the same quiet way.</p>
+
+  <h3>Information theory, and the number everybody quotes wrong</h3>
+  <p>Entropy is uncertainty; mutual information is how much observing the output tells you about the
+    input; capacity is the mutual information of the best possible input distribution. Shannon's theorem,
+    in his own words, is an existence result:</p>
+  <div class="box why">
+    <p class="bt">Shannon 1948, Theorems 11 and 17</p>
+    <p><em>"Let a discrete channel have the capacity C and a discrete source the entropy per second H. If
+      H ≤ C there exists a coding system such that the output of the source can be transmitted over the
+      channel with an arbitrarily small frequency of errors."</em></p>
+    <p><em>"The capacity of a channel of band W perturbed by white thermal noise power N when the average
+      transmitter power is limited to P is given by C = W log((P+N)/N)."</em></p>
+    <p>Note what the first one is not: it is not a construction. Shannon proved a good code must exist by
+      averaging over random codes — which is why it took until turbo codes in 1993 to build one that came
+      close (lesson 36).</p>
+  </div>
+  <p>Rearrange the second in terms of energy per bit and spectral efficiency η = R<sub>b</sub>/B, and you
+    get the condition every link must satisfy:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">the real Shannon limit</span><span class="t">η = bits per second per hertz</span></div>
+<pre><code>Eb/N0  &gt;=  (2^eta - 1) / eta
+
+as eta -> 0:   -> ln 2 = 0.693  ->  10*log10(0.693) = -1.59 dB
+</code></pre>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">−1.59 dB is not your limit, and it is not close</p>
+    <p>That famous number is the limit as spectral efficiency goes to <strong>zero</strong> — infinite
+      bandwidth per bit. At the efficiency you actually run at, the limit is much higher:</p>
+    <div class="tw"><table>
+      <thead><tr><th>Spectral efficiency</th><th>Shannon limit</th><th>Uncoded needs</th><th>The gap</th></tr></thead>
+      <tbody>
+        <tr><td>η → 0</td><td class="num">−1.59 dB</td><td>—</td><td>—</td></tr>
+        <tr><td>η = 2 (QPSK)</td><td class="num">1.76 dB</td><td class="num">9.59 dB</td><td class="num"><strong>7.83 dB</strong></td></tr>
+        <tr><td>η = 4 (16-QAM)</td><td class="num">5.74 dB</td><td class="num">13.43 dB</td><td class="num"><strong>7.69 dB</strong></td></tr>
+        <tr><td>η = 6 (64-QAM)</td><td class="num">10.21 dB</td><td class="num">17.79 dB</td><td class="num"><strong>7.58 dB</strong></td></tr>
+      </tbody>
+    </table></div>
+    <p>Budget a 64-QAM link against −1.59 dB and you are comparing against a number <strong>11.8 dB</strong>
+      below the one that applies. Engineers do this, find themselves twenty decibels short, and conclude
+      their code is broken.</p>
+    <p>The right-hand column is the useful one: between 2 and 6 bits per hertz an uncoded link sits about
+      <strong>7.6 to 7.8 dB</strong> from its own limit, and the figure barely moves with the
+      constellation. Below that it widens — BPSK runs at 1 bit per hertz, where the limit is exactly
+      0 dB Eb/N0 and uncoded BPSK needs 9.59, so the gap there is <strong>9.6 dB</strong>.</p>
+    <p>Either way, that is the size of the prize coding competes for — and it is why lesson 35's 5 dB from
+      a convolutional code is not a modest improvement but most of what is available.</p>
+  </div>
+
+  <div class="calc" id="c-ber">
+    <p class="ct">Try it — error probability, exactly</p>
+    <div class="row">
+      <label>Constellation size M
+        <input type="number" id="q-m" value="4" step="1" min="2"></label>
+      <label>Eb/N0 (dB)
+        <input type="number" id="q-ebno" value="10" step="0.5"></label>
+      <label>Target bit error rate
+        <input type="number" id="q-target" value="0.00001" step="0.00001" min="0.0000000001" max="0.4"></label>
+    </div>
+    <div class="out" id="q-out"></div>
+  </div>
+
+  <h3>What none of this promises</h3>
+  <ul>
+    <li><strong>Capacity says nothing about latency or complexity.</strong> The coding theorem is an
+      existence proof over an ensemble of random codes. Approaching capacity needs long blocks, and long
+      blocks are delay, memory and decoder power — none of which the theorem bounds. Lesson 36's
+      utilisation table is what that costs in practice.</li>
+    <li><strong>Asymptotic means asymptotic.</strong> Maximum-likelihood efficiency, the coding theorem
+      and the capacity limit are all statements about N → ∞. At the short blocks a packet radio actually
+      uses, the finite-length penalty is real and large.</li>
+    <li><strong>AWGN is an assumption, and real channels violate it.</strong> Multipath, phase noise,
+      amplifier non-linearity, impulsive interference, other users — none are Gaussian, none are white.
+      The matched filter, every BER curve above and B·log₂(1+S/N) all inherit that assumption.</li>
+    <li><strong>Neyman–Pearson optimality is for <em>simple</em> hypotheses</strong>, with both
+      distributions fully known. Unknown amplitude, phase and timing — which is every real receiver —
+      puts you in composite testing, where generally no uniformly best test exists at all.</li>
+  </ul>
+
+  <div class="box trap">
+    <p class="bt">Three misuses, all of them seen in real design reviews</p>
+    <dl>
+      <dt>Quoting −1.59 dB for a link running at 4 or 6 bits per hertz</dt>
+        <dd>The applicable limit for 64-QAM is 10.2 dB. Comparing against −1.59 understates your own
+          performance by nearly 12 dB and makes a perfectly good design look hopeless.</dd>
+      <dt>Mixing up the three 6 dB rules</dt>
+        <dd>Using the converter formula or the per-dimension capacity rule to predict a QAM step. The
+          measured cost of 16-QAM to 64-QAM is 6.11 dB <em>for two bits</em>, not twelve.</dd>
+      <dt>Reading Eb/N0 off a spectrum analyser as if it were SNR</dt>
+        <dd>They differ by 10·log₁₀(k) — 6 dB for 16-QAM, 7.8 dB for 64-QAM. A link that "has 14 dB of
+          SNR" and a link that "has 14 dB of Eb/N0" are not the same link, and lesson 40's discipline of
+          stating the bandwidth with every ratio exists to stop exactly this.</dd>
+    </dl>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: you double your preamble from 512 to 1024 samples. What improves, and by how much?</summary>
+    <div class="ans">
+      <p>Two different things, by two different amounts.</p>
+      <p><strong>Detection</strong> improves by <strong>3 dB</strong>. Correlation gain is 10·log₁₀(N), so
+        doubling N doubles the energy and adds 3 dB — lesson 32's rule.</p>
+      <p><strong>Frequency estimation</strong> improves by <strong>9 dB</strong>. The CRLB variance goes as
+        1/N³, so the standard deviation goes as 1/N<sup>1.5</sup>, and doubling N divides the variance by
+        eight.</p>
+      <p>The same change, two answers, because they are two different estimation problems. And there is a
+        catch lesson 32 already warned about: past a point, a longer coherent correlation stops helping
+        detection at all, because the residual frequency offset rotates the phase across the window. The
+        two effects meet, and where they meet is the preamble length you actually want.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l50">
+  <div class="part-head"><span class="part-n">50</span><h2>Projects, in order of difficulty</h2></div>
   <p class="lede">Each one uses the board for something software cannot do as well.</p>
 
   <ol class="body">
@@ -5269,8 +7050,8 @@ iio_attr -u ip:192.168.2.1 -c ad9361-phy temp0 input   <span class="c"># die tem
       genuinely valuable.</li>
   </ol>
 </section>
-<section class="part" id="l45">
-  <div class="part-head"><span class="part-n">45</span><h2>The rules worth taping to the wall</h2></div>
+<section class="part" id="l51">
+  <div class="part-head"><span class="part-n">51</span><h2>The rules worth taping to the wall</h2></div>
   <p class="lede">Every one of these was learned the expensive way on this exact board.</p>
 
   <ul>
@@ -5300,106 +7081,117 @@ iio_attr -u ip:192.168.2.1 -c ad9361-phy temp0 input   <span class="c"># die tem
 </section>
 <section class="part" id="lref">
   <p class="band">Appendix</p>
-  <div class="part-head"><span class="part-n">A</span><h2>Where to go for more, and what this course still leaves out</h2></div>
-  <p class="lede">This course teaches the fabric, the signal processing that feeds it, and enough of the
-    layers either side to build something that works. It does not replace a communications textbook.
-    Here is which book to open for which lesson, what those books taught this one, and — plainly — the
-    ground none of it covers.</p>
+  <div class="part-head"><span class="part-n">A</span><h2>Where the numbers came from, and what is still not here</h2></div>
+  <p class="lede">Fifty-two lessons, and every measured figure in them came off one board or out of a
+    primary source. This appendix says which, points at the books worth owning, and — still — names the
+    ground this course does not cover.</p>
 
-  <h3>The two books worth having open</h3>
+  <h3>The two books to have open</h3>
   <div class="kv">
     <dt>SDR4E</dt><dd><strong>Software-Defined Radio for Engineers</strong> — Collins, Getz, Pu and
       Wyglinski, Artech House 2018. Free from Analog Devices. A communications-theory textbook that uses
-      the Pluto — the same AD9361, the same Zynq — as its instrument. Mathematical, MATLAB-based, and the
-      authoritative source for most of what this course states without deriving.</dd>
+      the Pluto — the same AD9361, the same Zynq — as its instrument.</dd>
     <dt>PySDR</dt><dd><strong>PySDR: A Guide to SDR and DSP using Python</strong> — Marc Lichtman,
-      <a href="https://pysdr.org">pysdr.org</a>. Free online. Lighter, practical, Python throughout, and
-      far more approachable as a first read. If you finished lesson 24 wanting to <em>play</em> rather
-      than prove, start here.</dd>
+      <a href="https://pysdr.org">pysdr.org</a>. Free online, Python throughout, and the friendliest first
+      read in the field.</dd>
   </div>
-  <p>Neither has an FPGA chapter. That gap is the reason this course exists — and, equally, why the
-    signal-processing lessons here stop where a textbook would start doing algebra.</p>
+  <p>Neither has an FPGA chapter. That gap is why this course exists.</p>
 
   <h3>Lesson by lesson</h3>
-  <p>Every row is something this course teaches. The two right-hand columns say where to go once the
-    lesson has taken you as far as it intends to.</p>
   <div class="tw"><table>
-    <thead><tr><th>Topic</th><th>Taught in</th><th>SDR4E</th><th>PySDR</th></tr></thead>
+    <thead><tr><th>Topic</th><th>Taught in</th><th>Go deeper</th></tr></thead>
     <tbody>
-      <tr><td>What an SDR is at all</td><td><a href="#l0">lesson 0</a></td><td>Ch 1</td><td>Ch 1</td></tr>
-      <tr><td>Fixed point and quantisation</td><td><a href="#l9">lesson 9</a></td><td><strong>&sect;2.5.2&ndash;2.5.3</strong></td><td>&mdash;</td></tr>
-      <tr><td>What an IQ sample is</td><td><a href="#l11">lesson 11</a></td><td>&sect;2.3</td><td><strong>Ch 3</strong></td></tr>
-      <tr><td>Sampling, Nyquist, aliasing</td><td><a href="#l12">lesson 12</a></td><td><strong>&sect;2.2</strong></td><td>Ch 2, 3</td></tr>
-      <tr><td>Packaging logic as IP, and splicing the datapath</td><td><a href="#l19">lesson 19</a></td><td>&mdash;</td><td>&mdash;</td></tr>
-      <tr><td>The frequency domain, FFTs, windows</td><td><a href="#l24">lesson 24</a></td><td>&sect;2.1</td><td><strong>Ch 7</strong></td></tr>
-      <tr><td>Noise, dB, and where the floor comes from</td><td><a href="#l25">lesson 25</a></td><td>&sect;3.5&ndash;3.7</td><td><strong>Ch 10</strong></td></tr>
-      <tr><td>Filters and convolution</td><td><a href="#l26">lesson 26</a></td><td>&sect;2.6</td><td><strong>Ch 11</strong></td></tr>
-      <tr><td>Decimation and rate conversion</td><td><a href="#l27">lesson 27</a></td><td>&sect;2.2.5</td><td>Ch 11</td></tr>
-      <tr><td>Mixers, NCOs, CORDIC</td><td><a href="#l28">lesson 28</a></td><td>&sect;2.3</td><td>Ch 16</td></tr>
-      <tr><td>Modulation schemes</td><td><a href="#l29">lesson 29</a></td><td><strong>Ch 4</strong></td><td>Ch 4</td></tr>
-      <tr><td>Pulse shaping, and why RRC</td><td><a href="#l30">lesson 30</a></td><td>&sect;2.7.3&ndash;2.7.5</td><td><strong>Ch 16</strong></td></tr>
-      <tr><td>Timing and carrier recovery</td><td><a href="#l31">lesson 31</a></td><td><strong>Ch 6, 7</strong></td><td>Ch 17</td></tr>
-      <tr><td>Correlation, matched filters, detection</td><td><a href="#l32">lesson 32</a></td><td>&sect;2.6.2</td><td><strong>Ch 24</strong></td></tr>
-      <tr><td>OFDM and the cyclic prefix</td><td><a href="#l33">lesson 33</a></td><td><strong>Ch 10</strong></td><td>Ch 13</td></tr>
-      <tr><td>Equalisation: ZF, MMSE, LMS, DFE</td><td><a href="#l34">lesson 34</a></td><td><strong>Ch 9</strong></td><td>&mdash;</td></tr>
-      <tr><td>Channel coding and interleaving</td><td><a href="#l35">lesson 35</a></td><td><strong>Ch 8</strong></td><td>Ch 13</td></tr>
-      <tr><td>Framing, media access, retries</td><td><a href="#l36">lesson 36</a></td><td>&mdash;</td><td>&mdash;</td></tr>
-      <tr><td>EVM, SNR, SINAD, ENOB, SFDR</td><td><a href="#l37">lesson 37</a></td><td><strong>&sect;2.4.1, &sect;7.2.4</strong></td><td>Ch 10</td></tr>
-      <tr><td>Link budgets</td><td><a href="#l38">lesson 38</a></td><td>&mdash;</td><td><strong>Ch 12</strong></td></tr>
-      <tr><td>Antennas, matching, the RF front end</td><td><a href="#l39">lesson 39</a></td><td>Ch 3</td><td>Ch 12</td></tr>
-      <tr><td>Storing IQ with metadata (SigMF)</td><td><a href="#l40">lesson 40</a></td><td>&mdash;</td><td><strong>Ch 14</strong></td></tr>
-      <tr><td>Coherent receivers, diversity, beamforming, MIMO</td><td><a href="#l41">lessons 41</a>&ndash;<a href="#l42">42</a></td><td>&mdash;</td><td><strong>Ch 19, 20, 21</strong></td></tr>
-      <tr><td>The AD9361 as a system</td><td><a href="#l43">lesson 43</a></td><td>Ch 2</td><td>&mdash;</td></tr>
+      <tr><td>What an SDR is at all</td><td><a href="#l0">0</a></td><td>SDR4E Ch 1 · PySDR Ch 1</td></tr>
+      <tr><td>Fixed point and quantisation</td><td><a href="#l9">9</a></td><td>SDR4E &sect;2.5.2&ndash;2.5.3</td></tr>
+      <tr><td>IQ samples, sampling, aliasing</td><td><a href="#l11">11</a>, <a href="#l12">12</a></td><td>SDR4E &sect;2.2&ndash;2.3 · PySDR Ch 2, 3</td></tr>
+      <tr><td>Packaging logic as IP, splicing the datapath</td><td><a href="#l19">19</a></td><td>AMD UG994 (IP Integrator), UG1118 (packaging custom IP)</td></tr>
+      <tr><td>Frequency domain, FFTs, windows</td><td><a href="#l24">24</a></td><td>PySDR Ch 7</td></tr>
+      <tr><td>Noise, decibels, the floor</td><td><a href="#l25">25</a></td><td>PySDR Ch 10 · SDR4E &sect;3.5&ndash;3.7</td></tr>
+      <tr><td>Filters, decimation, mixers</td><td><a href="#l26">26</a>&ndash;<a href="#l28">28</a></td><td>PySDR Ch 11 · SDR4E &sect;2.6</td></tr>
+      <tr><td>Modulation, pulse shaping, synchronisation</td><td><a href="#l29">29</a>&ndash;<a href="#l31">31</a></td><td>SDR4E Ch 4, 6, 7 · PySDR Ch 16, 17</td></tr>
+      <tr><td>Correlation, matched filters, detection</td><td><a href="#l32">32</a></td><td>PySDR Ch 24 · Kay, <em>Detection Theory</em></td></tr>
+      <tr><td>OFDM and equalisation</td><td><a href="#l33">33</a>, <a href="#l34">34</a></td><td>SDR4E Ch 9, 10 · Cioffi, Stanford EE379 Ch 3</td></tr>
+      <tr><td>Channel coding and iterative decoding</td><td><a href="#l35">35</a>, <a href="#l36">36</a></td><td>3GPP TS 38.212 &sect;5.3 · ten Brink on EXIT charts</td></tr>
+      <tr><td>Framing, protocols, routing</td><td><a href="#l37">37</a>, <a href="#l38">38</a></td><td><strong>RFC 3819 (BCP 89)</strong> — read this one</td></tr>
+      <tr><td>Security</td><td><a href="#l39">39</a></td><td>NIST SP 800-38C/38D, SP 800-175B</td></tr>
+      <tr><td>Measuring, link budgets, antennas, RF design</td><td><a href="#l40">40</a>&ndash;<a href="#l43">43</a></td><td>Steer, <em>Microwave and RF Design</em> (free) · Keysight AN 154</td></tr>
+      <tr><td>IQ metadata</td><td><a href="#l44">44</a></td><td>PySDR Ch 14 · the SigMF specification</td></tr>
+      <tr><td>Coherent receivers, MIMO, beamforming</td><td><a href="#l45">45</a>, <a href="#l46">46</a></td><td>PySDR Ch 19&ndash;21</td></tr>
+      <tr><td>The AD9361, system and registers</td><td><a href="#l47">47</a>, <a href="#l48">48</a></td><td>ADI UG-570 · <code>drivers/iio/adc/ad9361.c</code></td></tr>
+      <tr><td>Detection, estimation, information theory</td><td><a href="#l49">49</a></td><td>Kay Vol I · Cover &amp; Thomas · Shannon 1948</td></tr>
     </tbody>
   </table></div>
 
-  <h3>What this course still does not teach</h3>
-  <p>Shorter than it used to be, and each of these is a real boundary rather than an oversight.</p>
-  <div class="kv">
-    <dt>How modern codes actually decode</dt><dd>Lesson 35 says what turbo and LDPC codes buy and
-      roughly how they work. The iterative message-passing that gets them within 1 dB of Shannon is a
-      field of its own. SDR4E Ch 8 is the next step; nothing in this repository implements one.</dd>
-    <dt>Everything above the MAC</dt><dd>Lesson 36 ends at framing, addressing and retries. Routing,
-      congestion control, and the protocols people actually deploy are a different book entirely.</dd>
-    <dt>Security</dt><dd>Not touched anywhere. Encryption, authentication, replay protection, and
-      resistance to jamming and spoofing are all real requirements of a real radio link, and a
-      physical layer that works says nothing about any of them.</dd>
-    <dt>RF design, as opposed to RF understanding</dt><dd>Lesson 39 explains impedance, matching,
-      antennas and noise figure well enough to use them. <em>Designing</em> a matching network, laying
-      out a board, or simulating an antenna needs a Smith chart, a network analyser and an
-      electromagnetic solver.</dd>
-    <dt>The AD9361 register by register</dt><dd>Lesson 43 gives the mental model — the rate chain, the
-      gain tables, the calibrations, the shared LOs. The registers themselves, and ADI's own filter
-      design tool, are UG-570 and the driver source.</dd>
-    <dt>The underlying theory</dt><dd>Detection and estimation theory, information theory, and the
-      proofs behind "this estimator is optimal". This course tells you which estimator to use and why it
-      behaves as it does; it does not derive it.</dd>
+  <div class="box why">
+    <p class="bt">Where the numbers in the later lessons came from</p>
+    <p>Lessons 36, 38, 39, 43, 48 and 49 were written against primary sources rather than recollection,
+      and it is worth knowing which, because it tells you where to go when you need more than the lesson
+      gives:</p>
+    <ul>
+      <li><strong>RFC 3819</strong> supplies the packet-error formula, the TCP worked example, the
+        link-ARQ interaction trap and the CRC warning in lesson 38 — one document, all of it citable.</li>
+      <li><strong>3GPP TS 38.212 and TS 36.212</strong> supply every 5G and LTE code parameter in
+        lesson 36; the FPGA utilisation figures are AMD's own published numbers.</li>
+      <li><strong>NIST SP 800-38C and 800-38D</strong> supply lesson 39's AEAD rules, including the
+        sentence that authenticated encryption does <em>not</em> give you replay protection.</li>
+      <li><strong>The driver source in this repository</strong> — <code>ad9361.c</code> and
+        <code>ad9361_regs.h</code> — supplies every register address, bit name and sequencing claim in
+        lesson 48. Not UG-570: the code that is actually running on your board.</li>
+      <li><strong>Shannon 1948, Forney's MIT notes and Kay</strong> supply lesson 49 — and checking them
+        found a real error in an earlier version of lesson 41, which said 6 dB per bit where QAM costs
+        3 dB. It is corrected, and the story is in lesson 49.</li>
+    </ul>
+    <p>Where a figure could not be verified it is either absent or flagged in the text. The
+      "min-sum costs 0.2 to 0.5 dB" number, for instance, is folklore as usually cited, and lesson 36
+      says so rather than repeating it.</p>
   </div>
 
-  <h3>Two things the books taught this course</h3>
+  <h3>What this course still does not teach</h3>
+  <p>Shorter than it used to be, and every entry is a real boundary rather than an omission.</p>
+  <div class="kv">
+    <dt>Making it a product</dt><dd>EMC pre-compliance and certification, environmental testing,
+      manufacturing test fixtures, yield. Lesson 43 tells you the FCC limit; nothing here tells you how a
+      test house measures you against it, or what a production line does with a board that fails.</dd>
+    <dt>The analogue inside the chip</dt><dd>Lesson 47 treats the LNA, mixer, TIA and sigma-delta
+      converter as blocks with behaviour. Designing any of them is integrated-circuit work and a
+      different career.</dd>
+    <dt>Verification at scale</dt><dd>This course simulates with Icarus and a golden model, which is right
+      for a few hundred lines of Verilog. Constrained-random verification, UVM, coverage closure and
+      formal property checking are what a team uses on a real chip, and they are a discipline of their
+      own.</dd>
+    <dt>Implementing cryptography safely</dt><dd>Lesson 39 tells you which algorithms to use. It does not
+      cover constant-time implementation, side-channel and fault resistance, secure key storage, or
+      entropy sources — all of which decide whether a correct algorithm is actually secure in silicon.</dd>
+    <dt>Operating a deployed network</dt><dd>Provisioning, monitoring, over-the-air firmware update,
+      key rotation, fleet diagnostics. Lesson 38 gets packets between two nodes; running a thousand of
+      them for five years is the other nine tenths of the work.</dd>
+    <dt>High-speed digital beyond the radio</dt><dd>DDR fly-by topologies, multi-gigabit SerDes, equalised
+      backplanes. The board has DDR3L and a gigabit PHY; this course never asks you to design one.</dd>
+  </div>
+
+  <h3>Two things the sources taught this course</h3>
   <ul>
-    <li><strong>"Process gain" is the standard term</strong> for what lesson 27 calls the decimation
-      bonus, and SDR4E &sect;2.5.2 derives it from the ideal-converter formula 6.02N + 1.76 — which is why
-      decibels convert to bits at all, and why lessons 24, 25, 27 and 32 keep turning out to be the same
-      fact seen from different directions.</li>
-    <li><strong>Choose an awkward test frequency.</strong> SDR4E demonstrates spur-free dynamic range
-      dropping by 11.4 dB purely because the test tone was harmonically related to the sample clock. The
-      full-rate sweep in this repository used a tone at exactly <code>fs/8</code> — the worst case — so
-      those SFDR figures are pessimistic. That correction came straight out of &sect;2.5.2.</li>
+    <li><strong>"Process gain" is the standard name</strong> for what lesson 27 calls the decimation
+      bonus, and it comes from the same 6.02N + 1.76 formula as converter resolution — which is why
+      lessons 24, 25, 27 and 32 keep turning out to be one fact seen from four directions.</li>
+    <li><strong>Choose an awkward test frequency.</strong> SDR4E shows spur-free dynamic range dropping
+      11.4 dB purely because the test tone was harmonically related to the sample clock. The full-rate
+      sweep in this repository used a tone at exactly <code>fs/8</code> — the worst case — so those SFDR
+      figures are pessimistic rather than flattering.</li>
   </ul>
 
   <h3>Also worth knowing</h3>
   <ul>
-    <li><strong>ADI's Pluto wiki</strong> — <code>wiki.analog.com/university/tools/pluto</code>. The
-      hardware's own documentation, including the parts of the AD9361 this course skips.</li>
-    <li><strong>AD9361 UG-570</strong> — the reference manual behind lesson 43. Long, and the only place
-      some of these answers exist.</li>
-    <li><strong>The SigMF specification</strong> — <code>github.com/sigmf/SigMF</code>. Short, readable,
-      and the whole of lesson 40 in normative form.</li>
+    <li><strong>ADI's Pluto wiki</strong> — <code>wiki.analog.com/university/tools/pluto</code>.</li>
+    <li><strong>AD9361 UG-570</strong> — the reference manual behind lessons 47 and 48.</li>
+    <li><strong>Steer, <em>Microwave and RF Design</em></strong> — free on LibreTexts, and the source for
+      lesson 43's matching-network mathematics.</li>
+    <li><strong>scikit-rf</strong> — BSD-licensed Python for touchstone files, calibration and
+      de-embedding, which is lesson 43's VNA advice made executable.</li>
     <li><strong>This repository's own <code>docs/</code></strong> — <code>block-design.md</code> is the
-      block-by-block reference this course summarises; <code>hardware.md</code> is the parts list behind
-      lesson 39; and <code>measured-performance.md</code>, <code>modulation-and-throughput.md</code> and
-      <code>both-receive-channels.md</code> hold every number quoted in these pages, with the measurement
+      reference this course summarises; <code>hardware.md</code> is the parts list behind lessons 42 and
+      43; and <code>measured-performance.md</code>, <code>modulation-and-throughput.md</code> and
+      <code>both-receive-channels.md</code> hold every measured number quoted in these pages, with the
       conditions attached.</li>
   </ul>
 </section>

@@ -1,7 +1,7 @@
 # Fabric School
 
 A ground-up course in software-defined radio, and in the FPGA inside this one.
-Forty-six lessons and an appendix, written against **this** board — its block
+Fifty-two lessons and an appendix, written against **this** board — its block
 design, its clocks, its measured numbers.
 
 It assumes you have never written a line of Verilog, never opened Vivado, and
@@ -10,8 +10,8 @@ is either. Every term is defined the first time it appears.
 
 | File | What it is |
 |---|---|
-| [`index.html`](index.html) | The course. One self-contained file, no build step, day/night theme, sixteen live calculators. |
-| [`Fabric-School.pdf`](Fabric-School.pdf) | The same content as a 124-page book, for reading away from a screen. |
+| [`index.html`](index.html) | The course. One self-contained file, no build step, day/night theme, twenty-two live calculators. |
+| [`Fabric-School.pdf`](Fabric-School.pdf) | The same content as a 164-page book, for reading away from a screen. |
 | `fabric-school-print.html` | Generated. The print layout the PDF is rendered from. |
 | `print.css` · `make_print_html.py` | The print stylesheet and the script that applies it. |
 
@@ -43,11 +43,12 @@ yourself" answer already open.
 | **17–23** | Changing the fabric: a worked example, Tcl, packaging your logic as an IP and splicing it into the TX/RX paths, constraints, driving Vivado, clock crossings, registers |
 | **24–25** | Signals before the fabric: the frequency domain, noise and decibels |
 | **26–28** | DSP in the fabric: filters, decimation, mixers and CORDIC |
-| **29–36** | Building a link: modulation, pulse shaping, synchronisation, correlation, OFDM, equalisation, channel coding, packets and protocols |
-| **37–40** | Measuring and getting on the air: the six figures of merit, link budgets, antennas and the RF front end, IQ metadata |
-| **41–43** | Two coherent receivers, MIMO and beamforming, and the AD9361 itself |
-| **44–45** | Projects, and the rules worth taping to the wall |
-| **A** | Where to go for more, and what this course still leaves out |
+| **29–36** | Building a link: modulation, pulse shaping, synchronisation, correlation, OFDM, equalisation, channel coding, iterative decoding |
+| **37–39** | From a link to a network: packets and framing, protocols and routing, security |
+| **40–44** | Measuring and getting on the air: the six figures of merit, link budgets, antennas and the front end, RF design and matching, IQ metadata |
+| **45–48** | Two coherent receivers, MIMO and beamforming, the AD9361 as a system, and the AD9361 register by register |
+| **49–51** | The theory underneath, projects, and the rules worth taping to the wall |
+| **A** | Where the numbers came from, and what is still not here |
 
 Every measured number in it comes from this repository's `docs/` — mostly
 [`measured-performance.md`](../measured-performance.md),

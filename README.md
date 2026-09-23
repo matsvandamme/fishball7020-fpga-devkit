@@ -29,16 +29,17 @@ works](docs/how-it-works.md)** starts from the beginning and assumes nothing.
 
 > ### 📚 [Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/) — learn all of this from nothing
 >
-> A 46-lesson course written against **this** board: its block design, its
+> A 52-lesson course written against **this** board: its block design, its
 > clocks, its measured numbers. From what a radio *is* and what a decibel means,
 > through Verilog and Vivado, to packaging your own logic as an IP and splicing
-> it into the AD9361 datapath — then filters, modulation, OFDM, link budgets and
-> two coherent receivers.
+> it into the AD9361 datapath — then filters, modulation, OFDM, coding, routing,
+> security, antennas, two coherent receivers, and the theory underneath all of
+> it.
 >
 > It assumes no Verilog, no Vivado, no FPGA experience and no signal processing.
-> Sixteen live calculators, day/night, one self-contained page.
+> Twenty-two live calculators, day/night, one self-contained page.
 > **[Read it online](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)**
-> · **[124-page PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)**
+> · **[164-page PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)**
 > · [source](docs/course/)
 
 ## Is this your board?
@@ -163,7 +164,7 @@ pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 
 | I want to… | Start here |
 |---|---|
-| learn this from nothing — SDR, Verilog and Vivado | **[Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)** — a 46-lesson course written against this board ([PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)) |
+| learn this from nothing — SDR, Verilog and Vivado | **[Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)** — a 52-lesson course written against this board ([PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)) |
 | understand what the build produces and why | [How it works](docs/how-it-works.md) |
 | install the tools and build | [Building your own firmware](docs/building.md) |
 | add my own HDL to the radio's datapath | [Add your own HDL](docs/building.md#add-your-own-hdl) · [the block design](docs/block-design.md) |
