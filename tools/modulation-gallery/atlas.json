@@ -1,0 +1,45 @@
+{
+ "rows": [
+  {
+   "name": "carrier feedthrough (TX LO)",
+   "rel_hz": 0.0,
+   "board_dbc": -46.92068548278441,
+   "hackrf_dbc": -47.25039820300181
+  },
+  {
+   "name": "I/Q image",
+   "rel_hz": -600000.0,
+   "board_dbc": -57.91656522038991,
+   "hackrf_dbc": -57.62454548276436
+  },
+  {
+   "name": "2nd harmonic of the tone",
+   "rel_hz": -1200000.0,
+   "board_dbc": -64.53940325156718,
+   "hackrf_dbc": -65.71203719866993
+  },
+  {
+   "name": "3rd harmonic of the tone",
+   "rel_hz": -1800000.0,
+   "board_dbc": -40.7503308177144,
+   "hackrf_dbc": -43.48480473658826
+  },
+  {
+   "name": "tone - 1.000 MHz",
+   "rel_hz": -400000.0,
+   "board_dbc": -68.450403360687,
+   "hackrf_dbc": -41.965240569097645
+  },
+  {
+   "name": "tone + 1.000 MHz",
+   "rel_hz": 1600000.0,
+   "board_dbc": -66.45693829049004,
+   "hackrf_dbc": -41.970428602552595
+  }
+ ],
+ "board_floor_dbc": -68.58440074674456,
+ "hackrf_floor_dbc": -69.97088517455619,
+ "tone_hz": 600000.0,
+ "rate_hz": 12288000.0,
+ "comb_board_dbc": -68.0
+}

@@ -6,7 +6,6 @@ theme.apply()
 
 S = json.load(open("results/summary.json"))
 by = {r["kind"]: r for r in S}
-spur = json.load(open("results/spurs.json"))
 fig, axes = plt.subplots(1, 4, figsize=(17.5, 5.6))
 
 # --- (a) PAPR, as a CCDF ------------------------------------------------------
@@ -71,36 +70,53 @@ ax.text(0.04, 0.10, f"{by['cw']['link_phase_rms_deg']:.2f} deg RMS integrated\n"
                     f"amplitude only {by['cw']['link_amp_rms_pct']:.2f} %",
         transform=ax.transAxes, color=theme.INK2, fontsize=8.4, family="DejaVu Sans Mono")
 
-# --- (d) spur attribution -----------------------------------------------------
+# --- (d) attribution: the same tone heard by two receivers --------------------
 ax = axes[3]
-at = [r["atten"] for r in spur]
-car = [r["carrier"] for r in spur]
-sp = [max(r["spur_lo"], r["spur_hi"]) for r in spur]
-rxs = [r["rx_spur"] for r in spur]
-ax.plot(at, car, "o-", color=theme.BLUE, lw=1.6, ms=5, label="carrier")
-ax.plot(at, sp, "o-", color=theme.AMBER, lw=1.6, ms=5, label="spur at carrier +- 1 MHz")
-ax.plot(at, rxs, "o-", color=theme.PINK, lw=1.6, ms=5, label="spur at 865.0 MHz")
-ax.set_xlabel("transmit attenuation  (dB)"); ax.set_ylabel("level  (dBFS)")
-ax.set_title("Whose spur is it?\nTurn the transmitter down and see", color=theme.INK, pad=6)
-ax.set_ylim(-78, 6)
-ax.legend(labelcolor=theme.INK2, fontsize=8, loc="upper left")
-ax.annotate("tracks the carrier 1:1\n-> the board's own spur, -40 dBc",
-            xy=(-20, sp[3]), xytext=(-35.5, -30), color=theme.AMBER, fontsize=8.2,
-            linespacing=1.5, arrowprops=dict(arrowstyle="->", color=theme.AMBER, lw=1.1))
-ax.annotate("never moves\n-> the receiver, not the board",
-            xy=(-22, rxs[2]), xytext=(-35.5, -74), color=theme.PINK, fontsize=8.2,
-            linespacing=1.5, arrowprops=dict(arrowstyle="->", color=theme.PINK, lw=1.1))
+at = json.load(open("results/atlas.json"))
+rows = at["rows"]
+short = {"carrier feedthrough (TX LO)": "carrier feedthrough",
+         "I/Q image": "I/Q image", "2nd harmonic of the tone": "2nd harmonic",
+         "3rd harmonic of the tone": "3rd harmonic",
+         "tone - 1.000 MHz": "tone $-$ 1 MHz", "tone + 1.000 MHz": "tone + 1 MHz"}
+BASE = -80.0                      # bars grow UP from here, so louder is longer
+names = [short[r["name"]] for r in rows]
+bd = [r["board_dbc"] for r in rows]
+hk = [r["hackrf_dbc"] for r in rows]
+yy = np.arange(len(rows))
+ax.barh(yy + 0.19, [v - BASE for v in hk], left=BASE, height=0.34, color=theme.PINK,
+        label="heard through the HackRF")
+ax.barh(yy - 0.19, [v - BASE for v in bd], left=BASE, height=0.34, color=theme.GREEN,
+        label="heard through the board's own receiver")
+fl = at["board_floor_dbc"]
+ax.axvline(fl, color=theme.INK3, lw=1.3, ls=(0, (5, 3)), zorder=6)
+ax.text(fl - 1.0, -0.62, "the board's own\nnoise floor", color=theme.INK3,
+        fontsize=7.8, ha="right", va="center", linespacing=1.4)
+ax.set_yticks(yy); ax.set_yticklabels(names)
+ax.invert_yaxis(); ax.set_xlim(BASE, -26)
+ax.set_xticks([-80, -70, -60, -50, -40, -30])
+ax.set_xlabel("level relative to the carrier  (dBc)")
+ax.set_title("Which radio made it?\nAsk a second receiver", color=theme.INK, pad=6)
+ax.legend(labelcolor=theme.INK2, fontsize=8, loc="upper center",
+          bbox_to_anchor=(0.5, -0.135), ncol=1)
+# The top four pairs match; the bottom two do not. Say which is which once,
+# beside the rows, rather than with arrows that land on other bars.
+ax.text(-26.8, 1.5, "both receivers agree\n-> the board's own", color=theme.INK2,
+        fontsize=8.2, ha="right", va="center", linespacing=1.5)
+ax.text(-26.8, 4.5, "26 dB weaker on the board\n-> not in what it transmits",
+        color=theme.PINK, fontsize=8.2, ha="right", va="center", linespacing=1.5)
+ax.axhspan(3.5, 5.5, color=theme.PINK, alpha=0.055, zorder=0)
 
 fig.text(0.008, 0.975, "What the measurements add up to", color=theme.INK,
          fontsize=17, fontweight="bold", va="top")
 fig.text(0.008, 0.933,
          "Every number here is measured on this board through a HackRF One, not taken from a datasheet.\n"
-         "The two panels on the right are why the EVM figures stop improving: the transmitter's own spurs sit "
-         "40 dB down and track the carrier, while what dominates every\nconstellation is phase noise between "
-         "two oscillators that have never met - which is a property of the measurement, not of the board.",
+         "What dominates every constellation is phase noise between two oscillators that have never met - a "
+         "property of the measurement, not of the board.  On the right, the same tone heard by a second\n"
+         "receiver: features both agree on are the transmitter's, and the 1 MHz pair, 25 dB weaker there, is not "
+         "in what the board transmits at all.",
          color=theme.INK2, fontsize=9.3, va="top", linespacing=1.6)
 theme.stamp(fig, "Fishball7020 FPGA devkit  ·  Zynq-7020 + AD9361, TX2A at 866.5 MHz",
             "receiver: HackRF One, 16 MSPS, tuned 4.8 MHz above the transmitter")
-fig.tight_layout(rect=[0, 0.02, 1, 0.855])
+fig.tight_layout(rect=[0, 0.075, 1, 0.855])
 fig.savefig("fig/05-summary.png")
 print("wrote fig/05-summary.png")

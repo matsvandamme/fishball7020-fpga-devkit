@@ -81,27 +81,84 @@ property of the measurement, not of the radio. On the OFDM constellation you can
 see it directly: the clouds are stretched tangentially, around the origin,
 which is what a phase error does and what an amplitude error does not.
 
-![Four summary panels: PAPR shown as a complementary cumulative distribution for six signals; EVM per modulation before and after equalisation against the link's own 7.4 percent floor; the link's phase noise in dBc per hertz; and a spur attribution plot showing which spurs track the carrier.](img/modulation/05-summary.png)
+![Four summary panels: PAPR as a complementary cumulative distribution for six signals; EVM per modulation before and after equalisation against the link's own 8.7 percent floor; the link's phase noise in dBc per hertz; and each CW spur heard by two receivers, where four features agree and the two at one megahertz are absent from the board's own receiver.](img/modulation/05-summary.png)
 
 ## Whose spur is it?
 
-The CW spectrum has companions either side of the carrier, and a plot on its own
-cannot say whether the transmitter or the receiver made them. Turning the
-transmitter down settles it: a spur made in the transmitter tracks the carrier,
-so its ratio in dBc stays fixed, while anything the receiver contributes does
-not follow.
+The CW spectrum has a comb of companions around the carrier, and a plot on its
+own cannot say which radio made them. The obvious test — turn the transmitter
+down and see whether the ratio in dBc holds — is **not sufficient**, and this
+page got it wrong at first. It does separate an *additive* receiver artefact,
+which grows faster than the signal, from anything multiplicative. But a spur
+that a **receiver's** local oscillator stamps onto a carrier scales with that
+carrier exactly as a transmitter's own sideband does, so a constant dBc ratio is
+equally consistent with either radio.
 
-| TX attenuation | Carrier | Spur at ±1 MHz | Ratio |
+What does separate them is a **second receiver**. The board has its own, and
+internal TX→RX leakage is strong enough to use it without any antenna. A feature
+present in the transmitted signal appears on both receivers at the same level
+relative to the carrier; one manufactured inside a receiver appears on that one
+alone.
+
+Measured at the gallery's operating point, with both receivers set for the same
+70 dB of dynamic range and neither clipping:
+
+| Feature, relative to the transmit LO | Board's own receiver | Through the HackRF | |
 |---|---|---|---|
-| −36 dB | −25.0 dBFS | −66.8 dBFS | −41.8 dBc |
-| −30 dB | −18.9 dBFS | −60.8 dBFS | −41.9 dBc |
-| −24 dB | −12.9 dBFS | −54.9 dBFS | −41.9 dBc |
-| −20 dB | −8.9 dBFS | −50.9 dBFS | −42.0 dBc |
-| −16 dB | −5.3 dBFS | −47.2 dBFS | −42.0 dBc |
+| carrier feedthrough (on the LO) | −46.9 dBc | −47.3 dBc | **the board's** |
+| I/Q image of the tone (−600 kHz) | −57.9 dBc | −57.6 dBc | **the board's** |
+| 2nd harmonic of the tone (−1200 kHz) | −64.5 dBc | −65.7 dBc | the board's, near the floor |
+| 3rd harmonic of the tone (−1800 kHz) | −40.8 dBc | −43.5 dBc | **the board's** |
+| tone − 1.000 MHz | −68.5 dBc | −42.0 dBc | **not the board's** |
+| tone + 1.000 MHz | −66.5 dBc | −42.0 dBc | **not the board's** |
 
-The ratio holds to 0.2 dB across 20 dB of transmit power, so the ±1 MHz pair is
-**the board's own, −42 dBc**, sitting at exactly a quarter of the 4 MSPS
-transmit rate.
+The board's own noise floor in that measurement is −68.6 dBc, so the last two
+rows are *at* its floor: absent. The first four agree between two independent
+receivers to within 3 dB, which is also what validates the method.
+
+So the board's own contributions to a CW spectrum are carrier feedthrough at
+about −47 dBc, an I/Q image at −58 dBc, and a third-order product at −41 dBc.
+The ±1 MHz pair is not among them.
+
+## The comb that is not the board's
+
+Around the carrier sits a comb of lines spaced **exactly 8.000 kHz**, each
+flanked by satellites ±1.95 kHz away, plus the pair at exactly ±1.000 MHz. What
+they are, in order of what the measurements rule out:
+
+- **They are pure phase modulation.** Decomposing the sidebands into amplitude
+  and phase puts every one of them 40–50 dB further down in AM than in PM — at
+  40 kHz, −91 dBc of AM against −48 dBc of PM. Something is modulating an
+  oscillator's phase, not the amplitude of anything.
+- **Not a sampling artefact.** The comb stays at 8.000 kHz with the transmit
+  rate at 4, 5 or 8 MSPS and the receive rate at 12, 16 or 20 MSPS.
+- **Not a fractional-N synthesiser spur.** Those move when the synthesiser is
+  retuned; these do not, for either radio, at any tuning tried.
+- **Not at a quarter of the transmit rate.** An earlier version of this page
+  said the ±1 MHz pair sat at fs/4 of the 4 MSPS transmit rate. That was a
+  coincidence of 4/4 = 1. Changing the transmit rate leaves the pair at exactly
+  1.000 MHz (−43.2 dBc at 4, 5 and 8 MSPS) while fs/4 of the new rates holds
+  nothing (−72 to −75 dBc).
+- **Not in what the board transmits**, by the two-receiver table above: 26 dB
+  weaker through the board's own receiver, which is to say at its noise floor.
+
+**What this page cannot tell you is which oscillator.** The board's transmit and
+receive synthesisers are derived from one 40 MHz reference, so a perturbation
+*of that reference* would appear on both and largely cancel in the board's own
+loopback — by 20·log₁₀(866.5/2.0) ≈ 53 dB at the 2 MHz separation used, which is
+enough to hide it. "Absent from the board's receiver" therefore means *either*
+the HackRF's oscillator *or* the board's shared reference, and this measurement
+cannot choose between them.
+
+Separating the two needs a third path. Repeating at 2.45 GHz, where the HackRF
+bypasses a conversion stage, was the attempt; the antenna is badly matched there,
+the phase-noise floor came out 33 dB worse and two runs disagreed, so it settles
+nothing. **A receive antenna on the board would settle it in one measurement** —
+the board could then hear the HackRF transmit, two genuinely independent
+oscillators with nothing shared. The board under test has none.
+
+`whoselo.py`, `combclock.py`, `fs4.py`, `twoears.py` and `atlas2.py` in
+[`tools/modulation-gallery/`](../tools/modulation-gallery/) reproduce each step.
 
 ## The peak that was not a signal
 

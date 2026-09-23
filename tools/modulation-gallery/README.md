@@ -49,6 +49,8 @@ capture means anything, and they run in seconds.
 | `hackrf_cap.py` | capture N samples from the HackRF, headless |
 | `campaign.py` · `spurs.py` | the two measurement runs |
 | `spurhunt.py` · `band.py` · `ip2.py` · `pickLO.py` | receiver-only diagnostics: is a peak a signal, a receiver spur, or a distortion product, and which tuning avoids it |
+| `atlas2.py` · `twoears.py` | the same transmission heard by the board's own receiver and by the HackRF, which is what attributes a spur to one radio or the other |
+| `whoselo.py` · `combclock.py` · `fs4.py` | does a spur follow either local oscillator, either sample rate, or neither |
 | `theme.py` · `palette.py` | the plot style, and the check that its colours are separable |
 | `fig1.py` … `fig5.py` | the five figures |
 
@@ -76,6 +78,16 @@ lands at `2 × carrier − LO`, tuning the receiver *above* the transmitter rath
 than below moves it 9.8 MHz away and the digital filter removes it: 21.5 dB
 above the noise floor becomes 3.8 dB. `spurhunt.py`, `band.py` and `ip2.py`
 reproduce the diagnosis without transmitting.
+
+**"It tracks the carrier" does not mean it is the transmitter's.** A spur that a
+*receiver's* local oscillator stamps onto a carrier scales with that carrier
+exactly as a transmitter's own sideband does, so a constant ratio in dBc over a
+power sweep proves only that the mechanism is multiplicative. This repository
+said "the board's own, −40 dBc, at a quarter of the transmit rate" about the
+±1 MHz pair on that basis. Both halves were wrong: it sits at a fixed 1.000 MHz
+regardless of transmit rate, and a second receiver puts it 26 dB weaker through
+the board than through the HackRF — it is not in what the board transmits.
+Attributing a multiplicative spur needs a second receiver, not a power sweep.
 
 **Check the analysis before trusting it.** `rx.py`'s self-test runs the whole
 demodulator on a synthetic channel at a known signal-to-noise ratio and requires
