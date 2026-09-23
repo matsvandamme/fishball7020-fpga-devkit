@@ -87,9 +87,30 @@ use different pins and will not work with this firmware unchanged.
   the DAC throws away. ([Sample-locked GPIO outputs](#sample-locked-gpio-outputs))
 - **A self-test** that tells you whether the radio is damaged, with measurements.
   ([Is the board healthy?](#is-the-board-healthy))
+- **Ten modulations measured on a second radio**, from a CW tone to 64-QAM,
+  OFDM and a LoRa-style chirp — spectra, constellations and eye diagrams, every
+  one received on a **HackRF One** rather than simulated.
+  ([The modulation gallery](docs/modulation-gallery.md))
 - **An agent skill** in [`.claude/skills/`](.claude/skills/fishball7020-firmware/SKILL.md)
   that Claude Code loads on its own, carrying the rules that were expensive to
   work out. Ignore it if you do not use an agent.
+
+<br>
+
+> ### 📡 [What it puts on the air](docs/modulation-gallery.md) — measured, not simulated
+>
+> Ten modulations transmitted by one Fishball7020 and received on a **HackRF
+> One**: CW, OOK, 2-FSK, BPSK, QPSK, GMSK, 16-QAM, 64-QAM, OFDM and a LoRa-style
+> chirp. Spectra with ~85 dB of clean dynamic range, constellations recovered
+> over the air, eye diagrams, and a spur traced back to whichever radio made it.
+>
+> [![Ten modulations transmitted by a Fishball7020 and received on a HackRF One: ten spectrum panels showing CW, OOK, 2-FSK, BPSK, QPSK, GMSK, 16-QAM, 64-QAM, OFDM and a LoRa-style chirp, each about 85 dB above the muted noise floor.](docs/img/modulation/01-signal-set.png)](docs/modulation-gallery.md)
+>
+> The receiver is deliberately a *separate* radio — a board that receives its own
+> transmission shares one clock with itself and hides every oscillator problem
+> there is. All 128 chirp symbols decoded; the 64-QAM grid resolves fully; and
+> the EVM floor turns out to belong to the link rather than the board.
+> **[See how it was measured, and checked](docs/modulation-gallery.md)**
 
 ## Quick start
 
@@ -219,6 +240,7 @@ address](docs/networking.md).
 | build without caring what Linux I run | **[Building in a container](docs/building-in-a-container.md)** — the recommended route; installs Vivado too, byte-identical output |
 | drive the radio from an AI assistant | the sibling **[Fishball7020-mcp](https://github.com/matsvandamme/Fishball7020-mcp)** — 21 MCP tools: tune, sweep, capture, transmit |
 | put the board on my router, or give it a fixed IP | [Changing the board's IP address](docs/networking.md) — the four routes, and the SD-card file that looks like it works |
+| see what this board actually transmits | **[The modulation gallery](docs/modulation-gallery.md)** — ten modulations measured on a HackRF One, with the code to repeat it |
 | fix a build that fails | [Troubleshooting](docs/troubleshooting.md) |
 
 ## What is on the board

@@ -1,5 +1,10 @@
 # What this board actually measures
 
+> **Modulation quality is measured separately.** Ten modulations transmitted by
+> this board and received on a **HackRF One** — spectra, constellations, EVM,
+> PAPR and spur attribution — are in [the modulation
+> gallery](modulation-gallery.md), along with the code to repeat them.
+
 Every number on this page came off one board, measured with
 `tools/selftest/sdr_selftest.py` on 2026-09-18 running the v1.3 firmware. There
 were 28 runs in nine cable setups:
