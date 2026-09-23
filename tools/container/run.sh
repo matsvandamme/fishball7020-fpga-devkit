@@ -35,9 +35,18 @@ if ! "$RT" image exists "$IMAGE" 2>/dev/null && ! "$RT" image inspect "$IMAGE" >
     echo "ERROR: image '$IMAGE' not built yet - run: ./devkit container build-image" >&2
     exit 1
 fi
+# -t only when there really is a terminal. Asking for one when stdin is a pipe
+# (a script, CI, an agent) makes podman block with no output at all, which
+# looks exactly like the build hanging.
+TTY=()
+[ -t 0 ] && TTY=(-i -t)
+
 if [ "${1:-}" = "install" ]; then
     shift
     BIN="${1:-}"
+    # Drop the installer path too, so "$@" below is only the extra arguments
+    # meant for xsetup - otherwise the installer path is passed to it twice.
+    [ $# -gt 0 ] && shift
     if [ -z "$BIN" ] || [ ! -f "$BIN" ]; then
         echo "usage: ./devkit container install /path/to/Xilinx_Unified_2022.2_*.bin" >&2
         echo "Download it from AMD first - it is behind an account login, so" >&2
@@ -58,12 +67,35 @@ if [ "${1:-}" = "install" ]; then
     fi
     mkdir -p "$CHOME"
     BIN_DIR="$(cd "$(dirname "$BIN")" && pwd)"
-    exec "$RT" run ${TTY_INSTALL:--i -t} --rm \
+    # Extract explicitly, then run xsetup from where it landed. Two ways this
+    # goes wrong, both reported as a bare "Extraction failed":
+    #   - running the .bin in place, because it unpacks relative to the working
+    #     directory and the directory holding the installer is read-only here;
+    #   - unpacking onto the container's own overlay (/tmp), which rootless
+    #     podman mounts with userxattr and which the installer's tar does not
+    #     survive - despite having the whole disk free.
+    # A bind mount is neither, so the work directory is one of those.
+    exec "$RT" run "${TTY[@]}" --rm \
         -v "$XILINX_DIR:$XILINX_DIR" \
         -v "$BIN_DIR:$BIN_DIR:ro" \
         -v "$CHOME:/home/builder" -e HOME=/home/builder \
         ${DISPLAY:+-e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix} \
-        -w "$BIN_DIR" "$IMAGE" bash "$BIN_DIR/$(basename "$BIN")"
+        -w /home/builder "$IMAGE" bash -c '
+            echo "Extracting the installer (about 720 MB, once)..."
+            rm -rf /home/builder/installer
+            mkdir -p /home/builder/installer
+            # Its exit code is not worth believing. The self-extractor trips
+            # its own signal trap on the way out and reports "Extraction
+            # failed." with status 143 having extracted everything correctly,
+            # so check for the thing we came for instead.
+            bash "$1" --noexec --target /home/builder/installer >/dev/null 2>&1 || true
+            if [ ! -x /home/builder/installer/xsetup ]; then
+                echo "ERROR: extraction really did fail - no xsetup produced." >&2
+                exit 1
+            fi
+            cd /home/builder/installer
+            exec ./xsetup "${@:2}"
+        ' _ "$BIN_DIR/$(basename "$BIN")" "$@"
 fi
 
 if [ ! -d "$XILINX_DIR" ]; then
@@ -106,12 +138,6 @@ if [ -n "${DISPLAY:-}" ] && [ -S /tmp/.X11-unix/X"${DISPLAY#*:}" ] 2>/dev/null; 
 elif [ -n "${DISPLAY:-}" ]; then
     ARGS+=(-e "DISPLAY=$DISPLAY" -v /tmp/.X11-unix:/tmp/.X11-unix)
 fi
-
-# -t only when there really is a terminal. Asking for one when stdin is a pipe
-# (a script, CI, an agent) makes podman block with no output at all, which
-# looks exactly like the build hanging.
-TTY=()
-[ -t 0 ] && TTY=(-i -t)
 
 if [ "${1:-}" = "shell" ]; then
     shift

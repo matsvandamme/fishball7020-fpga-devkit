@@ -50,6 +50,28 @@ downloads the content itself. Budget an hour and the disk.
 Once that finishes, everything else mounts `/tools/Xilinx` read-only and the
 host never needs to run a Xilinx binary again.
 
+### If you see "Extraction failed."
+
+You probably haven't, because `./devkit container install` works around it —
+but it is worth knowing, because the message is a lie. The installer is a
+self-extracting archive that trips its own signal trap on the way out:
+
+```
+Uncompressing Xilinx Installer.........Extraction failed.
+Signal caught, cleaning up
+```
+
+It exits 143 having extracted all 720 MB perfectly correctly. A script with
+`set -e` stops there and never launches the installer. So the install step
+checks that an executable `xsetup` was produced rather than trusting the exit
+status.
+
+Two other ways the extraction genuinely does fail, both reported with the same
+useless message: unpacking relative to a read-only directory (the one holding
+the installer is mounted read-only), and unpacking onto the container's own
+overlay filesystem, which rootless podman mounts with `userxattr`. The work
+directory is a bind mount for both reasons.
+
 > **Verified this far:** the installer extracts inside the image, its bundled
 > OpenJDK 11.0.11 starts, and `xsetup` runs and accepts its batch arguments.
 > A full install was not run end-to-end here, because Vivado was already
