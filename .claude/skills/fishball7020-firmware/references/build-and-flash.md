@@ -84,9 +84,17 @@ returns the board to its shipped state.
 
 ## Building in a container
 
-`./devkit container build --hdl-only` runs the build inside a pinned Ubuntu
-22.04 image with `/tools/Xilinx` bind-mounted read-only. Verified to produce a
-**byte-for-byte identical `BOOT.bin`** to a host build.
+**This is now the recommended build route.** `./devkit container build
+--hdl-only` runs the build inside a pinned Ubuntu 22.04 image with
+`$XILINX_DIR` (default `/tools/Xilinx`) bind-mounted read-only. Verified end
+to end: Vivado installed by `./devkit container install` into a directory the
+host had never used produced a **byte-for-byte identical `BOOT.bin`**.
+`./devkit doctor` now points at it when the host OS is too new.
+
+All five SD-card files are reproducible. `uramdisk.image.gz` was not until
+`mkimage` was pinned with `SOURCE_DATE_EPOCH`: it re-wraps the rootfs every
+build, including `--hdl-only`, and stamped the current time into u-boot's
+header. The payload never changed - only the header.
 
 Two failures cost an afternoon and neither error names its cause:
 

@@ -321,6 +321,13 @@ echo "=== [7/7] Packaging SD-card files ==="
     cp "$SRC_DIR/u-boot-xlnx/u-boot" u-boot.elf
     cp "$SRC_DIR/linux/arch/arm/boot/uImage" uImage
     cp "$SRC_DIR/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dtb" devicetree.dtb
+    # mkimage stamps the current time into u-boot's 64-byte header, so this
+    # file came out different on every build even when --hdl-only left the
+    # root filesystem completely untouched - the payload was always identical,
+    # only the header moved. Pin the stamp to the rootfs's own mtime so the
+    # image is as old as its contents and two builds of the same source agree.
+    # An externally set SOURCE_DATE_EPOCH wins, as reproducible-builds expects.
+    SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(stat -c %Y "$SRC_DIR/buildroot/output/images/rootfs.cpio.gz")}" \
     mkimage -A arm -T ramdisk -C gzip -d "$SRC_DIR/buildroot/output/images/rootfs.cpio.gz" uramdisk.image.gz
 
     cp "$BUILD_ALL_DIR/boot.bif" .

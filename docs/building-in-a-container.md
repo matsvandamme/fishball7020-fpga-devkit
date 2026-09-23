@@ -1,9 +1,13 @@
 # Building in a container
 
+**This is the recommended way to build this firmware.**
+
 Vivado 2022.2 is pinned to this project. A toolchain bump changes the
 bitstream, and the provenance claims in this repo rest on the current one — so
-when the host OS eventually moves somewhere Vivado 2022.2 has never heard of,
-the toolchain has to stop depending on the host.
+the host OS should not be load-bearing, and here it is not. Vivado 2022.2
+supports Ubuntu 18.04, 20.04 and 22.04 and nothing newer; the container makes
+that irrelevant, and can install Vivado for you as well, since the installer
+will not run on a newer host either.
 
 ```bash
 # run from: the repo root
@@ -14,10 +18,14 @@ the toolchain has to stop depending on the host.
 
 Verified on this repo: the container's `BOOT.bin` came out **byte-for-byte
 identical** to the host's (`md5 3fb710d8…`), with routing utilisation matching
-to five decimals — 6.54675 % vertical, 9.82488 % horizontal on both. Four of
-the five SD-card files match exactly; `uramdisk.image.gz` varies between runs
-on the host too, which is a separate reproducibility question and does not
-affect the FPGA result.
+to five decimals — 6.54675 % vertical, 9.82488 % horizontal on both.
+
+**All five SD-card files are reproducible.** `uramdisk.image.gz` was not, until
+this work found out why: `mkimage` re-wraps the root filesystem on every build,
+including `--hdl-only` which does not rebuild it, and stamped the current time
+into u-boot's 64-byte header. The payload was always byte-identical; only the
+header moved. `build_all.sh` now pins `SOURCE_DATE_EPOCH` to the rootfs's own
+mtime, so the image is as old as its contents.
 
 ## Installing Vivado in the first place
 

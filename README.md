@@ -103,17 +103,29 @@ and [recovering the factory firmware](docs/flashing.md#if-things-go-wrong-recove
 ### Want to change the firmware?
 
 You need **Vivado/Vitis 2022.2**, which is free for this chip but a large
-download. Installing it is by far the slowest step:
-[install instructions](docs/building.md#install-vivadovitis-20222).
+download. Installing it is by far the slowest step.
 
-Vivado 2022.2 supports **Ubuntu 18.04, 20.04 and 22.04** and nothing newer. On
-any other distribution, build in a container instead — `./devkit container`
-runs the same build inside a pinned image and produces a byte-for-byte
-identical `BOOT.bin`, so the version of Linux on your machine stops mattering.
-It can install Vivado for you too, since the installer will not run on a newer
-host either. See
-[Building in a container](docs/building-in-a-container.md). `./devkit doctor`
-tells you which of the two you need.
+**Build in a container — this is the recommended route.** Vivado 2022.2
+supports Ubuntu 18.04, 20.04 and 22.04 and nothing newer, so on anything else
+neither Vivado nor its installer will run. `./devkit container` sidesteps that
+entirely: it runs the build inside a pinned image, and it can install Vivado
+for you as well. Verified to produce a **byte-for-byte identical `BOOT.bin`**
+to a host build — with Vivado installed by the container, into a directory the
+host had never used. Your distribution stops mattering.
+
+```bash
+# run from: the repo root
+./devkit container build-image      # once, ~3 minutes
+./devkit container install ~/Downloads/Xilinx_Unified_2022.2_*.bin
+./devkit container build --hdl-only
+```
+
+Full details: [Building in a container](docs/building-in-a-container.md).
+
+If you are already on Ubuntu 18.04, 20.04 or 22.04 you can build directly on
+the host instead — [install instructions](docs/building.md#install-vivadovitis-20222).
+Either way `./devkit doctor` tells you where you stand, and everything that
+talks to the radio (`flash`, `selftest`, `gpio-check`) always runs on the host.
 
 Then:
 
@@ -177,7 +189,7 @@ pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 |---|---|
 | learn this from nothing — SDR, Verilog and Vivado | **[Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)** — a 52-lesson course written against this board ([PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)) |
 | understand what the build produces and why | [How it works](docs/how-it-works.md) |
-| install the tools and build | [Building your own firmware](docs/building.md) |
+| install the tools and build on the host | [Building your own firmware](docs/building.md) — needs Ubuntu 18.04/20.04/22.04 |
 | add my own HDL to the radio's datapath | [Add your own HDL](docs/building.md#add-your-own-hdl) · [the block design](docs/block-design.md) |
 | see a complete worked example | [An FM channelizer in the FPGA](docs/wbfm-channelizer.md) |
 | use both receivers with the FPGA decimator on | [Two receivers that both survive decimation](docs/both-receive-channels.md) |
@@ -187,7 +199,7 @@ pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 | get my build onto the board | [Flashing the board](docs/flashing.md) |
 | iterate on the FPGA in seconds over JTAG | [Option D — JTAG](docs/flashing.md#option-d--jtag-temporary-but-the-fastest-hdl-loop) |
 | blink the USER LED | [Controlling the USER LED](docs/user-led.md) |
-| build on an OS Vivado 2022.2 does not support | [Building in a container](docs/building-in-a-container.md) — pinned toolchain, byte-identical output |
+| build without caring what Linux I run | **[Building in a container](docs/building-in-a-container.md)** — the recommended route; installs Vivado too, byte-identical output |
 | fix a build that fails | [Troubleshooting](docs/troubleshooting.md) |
 
 ## What is on the board

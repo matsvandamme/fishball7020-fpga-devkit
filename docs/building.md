@@ -4,10 +4,12 @@ Everything between a fresh Ubuntu machine and five SD-card files that contain
 your change. For the short version, see the [Quick start](../README.md#quick-start);
 for what the build actually produces and why, [How it works](how-it-works.md).
 
-This page describes building on the host, which needs Ubuntu 18.04, 20.04 or
-22.04 — the releases Vivado 2022.2 supports. **On anything newer, build in a
-container instead:** [Building in a container](building-in-a-container.md).
-Same commands, same output, none of it dependent on your distribution.
+**The recommended route is [Building in a
+container](building-in-a-container.md)** — it works on any Linux, installs
+Vivado for you, and is verified to produce a byte-for-byte identical
+`BOOT.bin`. This page describes building directly on the host instead, which
+needs Ubuntu 18.04, 20.04 or 22.04, the releases Vivado 2022.2 supports. On
+anything newer neither Vivado nor its installer will run, so use the container.
 
 **Contents**
 
