@@ -43,4 +43,21 @@ vivado -mode batch -source write_layout.tcl -log layout.log -journal layout.jou
 
 cd "$REPO"
 rm -rf "$WORK"
+
+# -orientation landscape rotates the drawing 90 degrees for printing, which in an
+# SVG just means every label reads sideways. Undo it: drop the rotate transform
+# and swap the viewBox.
+python3 - "$OUT/bd-top.svg" "$OUT/bd-rx-decimator.svg" <<'PY'
+import re, sys
+for f in sys.argv[1:]:
+    s = open(f, encoding="utf-8").read()
+    if 'transform="rotate(-90)' not in s:
+        continue
+    s = re.sub(r'\n\s*transform="rotate\(-90\) translate\(-\d+\)"', "", s, count=1)
+    w, h = re.search(r'viewBox="0 0 (\d+) (\d+)"', s).groups()
+    s = re.sub(r'viewBox="0 0 \d+ \d+"', 'viewBox="0 0 %s %s"' % (h, w), s, count=1)
+    open(f, "w", encoding="utf-8").write(s)
+    print("un-rotated", f)
+PY
+
 echo "wrote $OUT/bd-top.svg and $OUT/bd-rx-decimator.svg"

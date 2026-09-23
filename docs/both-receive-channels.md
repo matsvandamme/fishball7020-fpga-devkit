@@ -122,6 +122,19 @@ group delay, so they stay sample-aligned. `cpack/fifo_wr_en` still takes
 `valid_out_0` — correct, because all four paths now produce output on the same
 schedule.
 
+Which turns the filter hierarchy into this — Vivado's own drawing of it, after
+the patch:
+
+<p align="center"><img src="img/bd-rx-decimator.svg" alt="The rx_fir_decimator hierarchy in Vivado after the patch. Four FIR Compiler instances, fir_decimation_0 through fir_decimation_3, each fed from one of the four data_in ports and each followed by an ad_bus_mux — out_mux_0 through out_mux_3 — that selects between the filtered path and the unfiltered one. A single cdc_sync_active block takes the active input across clock domains and drives the select_path input of all four muxes together. Stock, only instances 0 and 1 exist and channel 1's samples never enter this hierarchy at all." width="900"></p>
+
+Four `fir_compiler` instances instead of two, four bypass muxes instead of two,
+and one `cdc_sync_active` still driving every `select_path` — which is what
+makes the two channels switch together rather than one at a time.
+
+The whole block design, as Vivado draws it, is
+[`img/bd-top.svg`](img/bd-top.svg); both were exported with
+[`img/make_bd_layout.sh`](img/make_bd_layout.sh).
+
 ## What it costs
 
 | | Stock | With the patch |
