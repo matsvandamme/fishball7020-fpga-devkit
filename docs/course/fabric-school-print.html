@@ -106,7 +106,7 @@ details.check .ans p{margin:0 0 2mm}
   <p class="kick">Fishball7020 &middot; PlutoSky &middot; 7020-SDR</p>
   <h1>Fabric School</h1>
   <p class="sub">A ground-up course in software-defined radio, and in the FPGA inside this one.
-     39 lessons, from what a radio <em>is</em> to your own signal processing running in
+     46 lessons, from what a radio <em>is</em> to your own signal processing running in
      the AD9361 datapath &mdash; by way of spectra, noise, filters, modulation and link budgets.</p>
   <p class="sub" style="font-size:10.5pt;color:#5C6A77">Assumes no Verilog, no Vivado, no FPGA
      experience, and no signal processing. Every term is defined the first time it appears.</p>
@@ -140,33 +140,41 @@ details.check .ans p{margin:0 0 2mm}
 <li class="bd">Changing the fabric</li>
 <li><span class="tn">17</span><span>The worked example, line by line</span></li>
 <li><span class="tn">18</span><span>Wiring it in with Tcl</span></li>
-<li><span class="tn">19</span><span>Pins and constraints</span></li>
-<li><span class="tn">20</span><span>Driving Vivado, and reading what it tells you</span></li>
-<li><span class="tn">21</span><span>Crossing clock domains</span></li>
-<li><span class="tn">22</span><span>Registers, and talking to Linux</span></li>
+<li><span class="tn">19</span><span>Packaging your Verilog as an IP, and splicing it into the datapath</span></li>
+<li><span class="tn">20</span><span>Pins and constraints</span></li>
+<li><span class="tn">21</span><span>Driving Vivado, and reading what it tells you</span></li>
+<li><span class="tn">22</span><span>Crossing clock domains</span></li>
+<li><span class="tn">23</span><span>Registers, and talking to Linux</span></li>
 <li class="bd">Signals, before the fabric</li>
-<li><span class="tn">23</span><span>The frequency domain, and what a spectrum really is</span></li>
-<li><span class="tn">24</span><span>Noise, decibels, and where the floor comes from</span></li>
+<li><span class="tn">24</span><span>The frequency domain, and what a spectrum really is</span></li>
+<li><span class="tn">25</span><span>Noise, decibels, and where the floor comes from</span></li>
 <li class="bd">DSP in the fabric</li>
-<li><span class="tn">25</span><span>Filters, from first principles</span></li>
-<li><span class="tn">26</span><span>Decimation, and why taps are nearly free</span></li>
-<li><span class="tn">27</span><span>Mixers, oscillators and CORDIC</span></li>
+<li><span class="tn">26</span><span>Filters, from first principles</span></li>
+<li><span class="tn">27</span><span>Decimation, and why taps are nearly free</span></li>
+<li><span class="tn">28</span><span>Mixers, oscillators and CORDIC</span></li>
 <li class="bd">Building a radio link</li>
-<li><span class="tn">28</span><span>What modulation actually is, and where to put it</span></li>
-<li><span class="tn">29</span><span>Pulse shaping, and why root-raised-cosine</span></li>
-<li><span class="tn">30</span><span>Synchronisation: finding the signal inside the samples</span></li>
-<li><span class="tn">31</span><span>Correlation, matched filters, and finding the packet at all</span></li>
-<li><span class="tn">32</span><span>OFDM, equalisation, and why this board finds it hard</span></li>
-<li class="bd">Measuring, and two receivers</li>
-<li><span class="tn">33</span><span>Measuring what you built</span></li>
-<li><span class="tn">34</span><span>Link budgets: will it actually work over the air?</span></li>
-<li><span class="tn">35</span><span>IQ files, and the metadata that turns them into measurements</span></li>
-<li><span class="tn">36</span><span>Two coherent receivers: what this board can do that most cannot</span></li>
+<li><span class="tn">29</span><span>What modulation actually is, and where to put it</span></li>
+<li><span class="tn">30</span><span>Pulse shaping, and why root-raised-cosine</span></li>
+<li><span class="tn">31</span><span>Synchronisation: finding the signal inside the samples</span></li>
+<li><span class="tn">32</span><span>Correlation, matched filters, and finding the packet at all</span></li>
+<li><span class="tn">33</span><span>OFDM, and why this board finds it hard</span></li>
+<li><span class="tn">34</span><span>Equalisation: undoing a channel that is not flat</span></li>
+<li><span class="tn">35</span><span>Channel coding: buying decibels with redundancy</span></li>
+<li><span class="tn">36</span><span>Packets: framing, addressing, and everything above the symbols</span></li>
+<li class="bd">Measuring, and getting on the air</li>
+<li><span class="tn">37</span><span>Measuring what you built</span></li>
+<li><span class="tn">38</span><span>Link budgets: will it actually work over the air?</span></li>
+<li><span class="tn">39</span><span>Antennas and the RF front end: what happens after the SMA</span></li>
+<li><span class="tn">40</span><span>IQ files, and the metadata that turns them into measurements</span></li>
+<li class="bd">Two receivers, and the chip that feeds them</li>
+<li><span class="tn">41</span><span>Two coherent receivers: what this board can do that most cannot</span></li>
+<li><span class="tn">42</span><span>MIMO and beamforming: what more than one antenna buys</span></li>
+<li><span class="tn">43</span><span>The AD9361 itself: the chip in front of your fabric</span></li>
 <li class="bd">Onward</li>
-<li><span class="tn">37</span><span>Projects, in order of difficulty</span></li>
-<li><span class="tn">38</span><span>The rules worth taping to the wall</span></li>
+<li><span class="tn">44</span><span>Projects, in order of difficulty</span></li>
+<li><span class="tn">45</span><span>The rules worth taping to the wall</span></li>
 <li class="bd">Appendix</li>
-<li><span class="tn">A</span><span>Where to go for more, and what this course leaves out</span></li>
+<li><span class="tn">A</span><span>Where to go for more, and what this course still leaves out</span></li>
 </ol></div>
 <section class="part" id="l0">
   <p class="band">Before any code</p>
@@ -439,7 +447,7 @@ details.check .ans p{margin:0 0 2mm}
     <p>The whole of timing analysis is one question: <strong>does every signal have enough time to
       settle between one clock edge and the next?</strong> If the longest path through your logic takes
       longer than a clock period, the flip-flop at the end captures a half-finished value. Vivado
-      measures this and reports it as slack (lesson 20). It is why adding a pipeline register fixes
+      measures this and reports it as slack (lesson 21). It is why adding a pipeline register fixes
       timing: you cut a long path into two shorter ones and give each a full clock period.</p>
   </div>
 
@@ -640,7 +648,7 @@ details.check .ans p{margin:0 0 2mm}
     <p class="bt">This is where the decimation gain comes from</p>
     <p>That 74 dB is spread across the whole sampled bandwidth. Filter down to a fraction of it and you
       keep the signal but discard most of the noise — Analog Devices call the correction term
-      <span class="newterm">process gain</span>. It is the same 10·log₁₀(D) from lesson 25, and
+      <span class="newterm">process gain</span>. It is the same 10·log₁₀(D) from lesson 26, and
       dividing it by 6.02 is what turns decibels into "extra bits".</p>
     <p>Decimating by 307 gives 24.9 dB, which is 4.1 bits, which takes a 12-bit converter to about
       16 bits <em>in that channel</em>. The formula above is why the bits are the natural unit.</p>
@@ -833,7 +841,7 @@ gtkwave tb.vcd        <span class="c"># when the numbers alone do not explain it
         already removed the carrier frequency; what remains is the signal's shape around it.</dd>
       <dt>Mixing</dt><dd>Multiplying by an oscillator to shift a signal up or down in frequency. Moving
         from the antenna's gigahertz down to baseband is mixing, and so is any frequency shift you do
-        yourself in the fabric (lesson 27).</dd>
+        yourself in the fabric (lesson 28).</dd>
     </dl>
   </div>
 </section>
@@ -978,7 +986,7 @@ iio_attr -u ip:192.168.2.1 -i -c ad9361-phy voltage0 rf_bandwidth        4000000
     wall. The walls are elsewhere: transmit and receive streaming simultaneously starve above about
     5 MSPS, and a modest CPU cannot do much useful work on 245 MB/s in real time even once it has it.</p>
   <p>Which raises the obvious question — if you only care about a 200 kHz signal, why sample 56 MHz at
-    all? That question has a good answer, and it is <a href="#l26">lesson 26</a>.</p>
+    all? That question has a good answer, and it is <a href="#l27">lesson 27</a>.</p>
 </section>
 <section class="part" id="l13">
   <div class="part-head"><span class="part-n">13</span><h2>The block design: the map, and what it quietly assumes</h2></div>
@@ -1043,7 +1051,7 @@ iio_attr -u ip:192.168.2.1 -i -c ad9361-phy voltage0 rf_bandwidth        4000000
     <li><strong>You cannot accidentally change it.</strong> Clicking in the diagram edits a project
       that will be regenerated and discarded.</li>
     <li><strong>The project is a cache, and a treacherous one.</strong> The build reuses an existing
-      project rather than re-running the script — which is exactly the trap in lesson 19.</li>
+      project rather than re-running the script — which is exactly the trap in lesson 20.</li>
   </ul>
 
   <h3>How software reaches into the fabric at all</h3>
@@ -1256,7 +1264,7 @@ iio_attr -u ip:192.168.2.1 -i -c ad9361-phy voltage0 rf_bandwidth        4000000
     particular clock signal</em>. Logic inside a single domain is easy to reason about: every register
     captures at the same instant, so signals move in lockstep.</p>
   <p>Trouble starts when a signal crosses <em>between</em> domains, because two unrelated clocks have
-    no fixed relationship — their edges drift past each other. This board has three domains, and lesson 19 is entirely about crossing safely between them. For now you only need to know they exist and
+    no fixed relationship — their edges drift past each other. This board has three domains, and lesson 20 is entirely about crossing safely between them. For now you only need to know they exist and
     which one your logic lives in.</p>
 
   <div class="tw"><table>
@@ -1623,7 +1631,7 @@ iio_readdev -u ip:192.168.2.1 -b 65536 -s 1048576 cf-ad9361-lpc voltage0 voltage
   <p>That block is a hierarchy containing:</p>
   <ul>
     <li><strong>Two filters</strong> — one for I, one for Q, since they must be filtered identically.</li>
-    <li><strong>A clock-domain crossing</strong> for the on/off signal (lesson 20's problem, already
+    <li><strong>A clock-domain crossing</strong> for the on/off signal (lesson 21's problem, already
       solved for you here).</li>
     <li><strong>Bypass multiplexers</strong> — the switch that decides whether samples go through the
       filters or straight past them.</li>
@@ -1740,7 +1748,7 @@ iio_readdev -u ip:192.168.2.1 -b 65536 -s 1048576 cf-ad9361-lpc voltage0 voltage
 
   <div class="box why">
     <p class="bt">And this is where the free dynamic range actually comes from</p>
-    <p>Lesson 25 claims decimating by D buys you 10&middot;log₁₀(D) decibels of signal-to-noise. Now you
+    <p>Lesson 26 claims decimating by D buys you 10&middot;log₁₀(D) decibels of signal-to-noise. Now you
       can see <em>why</em>, and why it is not magic.</p>
     <p>The converter's noise is spread across the whole captured bandwidth. The filter discards the
       noise living in the seven slices you are not keeping, and the discard step then removes those
@@ -1810,7 +1818,7 @@ iio_readdev -u ip:192.168.2.1 -b 65536 -s 1048576 cf-ad9361-lpc voltage0 voltage
       <tr><td><code>{61.44}</code></td>
           <td>The <strong>sample rate</strong> in MHz. Together with the clock rate it tells the tool
               how many clock ticks are available per sample — which is what makes taps cheap
-              (lesson 25).</td>
+              (lesson 26).</td>
           <td>—</td></tr>
       <tr><td><code>&lt;coe&gt;</code></td>
           <td>The <strong>coefficient file</strong>: a plain text list of the filter's tap values,
@@ -1867,7 +1875,7 @@ iio_attr -u ip:192.168.2.1 -i -c cf-ad9361-lpc voltage0 sampling_frequency 38400
         samples are taking the pass-through path and your new coefficients sit in a block nothing is
         routed through.</p>
       <p>Set <code>sampling_frequency</code> to one eighth of the converter rate and measure again.
-        (And check you deleted the Vivado project before rebuilding — lesson 19.)</p>
+        (And check you deleted the Vivado project before rebuilding — lesson 20.)</p>
     </div>
   </details>
 
@@ -1955,7 +1963,7 @@ ad_connect cpack/fifo_wr_data_3  rx_fir_decimator/data_out_3
 
   <div class="box try">
     <p class="bt">If you do want two different centre frequencies</p>
-    <p>Put a digital mixer on each channel in the fabric, ahead of the decimator (lesson 26). Each
+    <p>Put a digital mixer on each channel in the fabric, ahead of the decimator (lesson 27). Each
       channel's oscillator shifts a different part of the captured band down to zero, and each
       channel's decimating filter then protects its own stream in its own frame. No aliasing, two
       independent tuned channels, one shared radio front end.</p>
@@ -2172,7 +2180,7 @@ iio_adi_xflow_check -u ip:192.168.2.1 cf-ad9361-lpc
 );
 
   <span class="c">// (1) 'flag' is written in the AXI clock domain and read here in</span>
-  <span class="c">//     l_clk. Two flip-flops make that safe. See lesson 21.</span>
+  <span class="c">//     l_clk. Two flip-flops make that safe. See lesson 22.</span>
   <span class="k">reg</span> flag_meta, flag_sync;
   <span class="k">always</span> @(<span class="k">posedge</span> clk) <span class="k">begin</span>
     flag_meta &lt;= flag;
@@ -2255,7 +2263,7 @@ ad_connect bitmap_valid_or/Res         tx_bitmap/valid_in
         valid-or-underflow OR above is built.</td></tr>
       <tr><td><code>xlconstant</code></td><td>Tie a signal permanently high or low.</td></tr>
       <tr><td><code>create_bd_port</code></td><td>Bring a signal out to a physical pin — then constrain
-        it, lesson 19.</td></tr>
+        it, lesson 20.</td></tr>
     </tbody>
   </table></div>
 
@@ -2268,7 +2276,276 @@ ad_connect bitmap_valid_or/Res         tx_bitmap/valid_in
   </div>
 </section>
 <section class="part" id="l19">
-  <div class="part-head"><span class="part-n">19</span><h2>Pins and constraints</h2></div>
+  <div class="part-head"><span class="part-n">19</span><h2>Packaging your Verilog as an IP, and splicing it into the datapath</h2></div>
+  <p class="lede">Lesson 18 dropped a module into the block design in three lines. That is the right answer
+    for a small change and the wrong one for anything you intend to keep. This lesson turns the same
+    Verilog into a real Vivado IP — one that appears in the catalog, carries parameters and interfaces,
+    and can be cut into the receive or transmit path the way ADI's own blocks are.</p>
+
+  <h3>Module or IP? Decide once, up front</h3>
+  <div class="tw"><table>
+    <thead><tr><th></th><th><code>create_bd_cell -type module</code></th><th>A packaged IP</th></tr></thead>
+    <tbody>
+      <tr><td>Effort</td><td>three lines of Tcl</td><td>a directory, a Tcl script and a build step</td></tr>
+      <tr><td>Reusable in another project</td><td>no — the path is hard-coded</td><td>yes — it is in the catalog</td></tr>
+      <tr><td>Parameters</td><td>Verilog parameters, no GUI, no validation</td><td>named, typed, with a GUI and enablement rules</td></tr>
+      <tr><td>Interfaces</td><td>loose wires, connected one at a time</td><td>buses — one <code>ad_connect</code> moves the whole bundle</td></tr>
+      <tr><td>Versioning</td><td>none</td><td>1.0, 1.1, … and the design records which it used</td></tr>
+      <tr><td>Out-of-context synthesis</td><td>no — resynthesised with the whole design</td><td>yes, and cached, so rebuilds are faster</td></tr>
+    </tbody>
+  </table></div>
+  <p>The honest rule: <strong>prototype as a module, package when it works.</strong> Packaging a design
+    you are still changing is a tax you pay on every edit, because every change means re-running the
+    packaging step before the project sees it.</p>
+
+  <h3>Step 1 — write the RTL with the packager in mind</h3>
+  <p>Vivado infers interfaces from <em>signal names</em>. Name your ports the way it expects and a
+    36-signal AXI4-Stream collapses into one bus you connect with a single line; name them creatively and
+    you get 36 loose pins forever. Here is a receive-path block — a scaler, one multiply per sample —
+    written for this board's conventions:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">library/util_rxscale/util_rxscale.v</span><span class="t">Verilog</span></div>
+<pre><code><span class="k">module</span> util_rxscale #(
+  <span class="k">parameter</span> DATA_WIDTH = <span class="n">16</span>
+) (
+  <span class="k">input</span>  <span class="k">wire</span>                    clk,        <span class="c">// l_clk - the recovered clock</span>
+  <span class="k">input</span>  <span class="k">wire</span>                    resetn,
+
+  <span class="c">// ---- the ADI datapath convention, in ----</span>
+  <span class="k">input</span>  <span class="k">wire</span>                    valid_in,   <span class="c">// one pulse per sample</span>
+  <span class="k">input</span>  <span class="k">wire</span>                    enable_in,  <span class="c">// channel is switched on (a level, not a strobe)</span>
+  <span class="k">input</span>  <span class="k">wire</span> [DATA_WIDTH-<span class="n">1</span>:<span class="n">0</span>] data_in,
+
+  <span class="c">// ---- and out ----</span>
+  <span class="k">output</span> <span class="k">reg</span>                     valid_out,
+  <span class="k">output</span> <span class="k">wire</span>                    enable_out,
+  <span class="k">output</span> <span class="k">reg</span>  [DATA_WIDTH-<span class="n">1</span>:<span class="n">0</span>] data_out,
+
+  <span class="k">input</span>  <span class="k">wire</span> [<span class="n">7</span>:<span class="n">0</span>]              shift       <span class="c">// runtime control, see step 6</span>
+);
+  <span class="k">assign</span> enable_out = enable_in;      <span class="c">// pass the level straight through</span>
+
+  <span class="k">wire</span> <span class="k">signed</span> [DATA_WIDTH-<span class="n">1</span>:<span class="n">0</span>] s = data_in;
+
+  <span class="k">always</span> @(<span class="k">posedge</span> clk) <span class="k">begin</span>
+    <span class="k">if</span> (!resetn) <span class="k">begin</span>
+      valid_out &lt;= <span class="n">1'b0</span>;
+      data_out  &lt;= {DATA_WIDTH{<span class="n">1'b0</span>}};
+    <span class="k">end</span> <span class="k">else</span> <span class="k">begin</span>
+      valid_out &lt;= valid_in;           <span class="c">// SAME latency as the data - one cycle</span>
+      data_out  &lt;= s &gt;&gt;&gt; shift;        <span class="c">// arithmetic shift: keeps the sign</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">endmodule</span>
+</code></pre>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">The contract you are signing when you cut into this datapath</p>
+    <ol class="body">
+      <li><strong>Delay <code>valid</code> by exactly as much as <code>data</code>.</strong> They are a
+        pair. One extra register on the data and every sample downstream is labelled with its
+        neighbour's strobe.</li>
+      <li><strong><code>enable</code> is a level, not a strobe.</strong> It says "this channel is
+        switched on", set by software long before any samples flow. Do not register it into your
+        pipeline and do not treat it as a qualifier per sample.</li>
+      <li><strong>Do not change the rate unless you mean to.</strong> One <code>valid_in</code> should
+        produce one <code>valid_out</code>. Producing fewer is a decimator, and that has consequences
+        two paragraphs down.</li>
+      <li><strong>Everything is on <code>l_clk</code>.</strong> Not <code>sys_cpu_clk</code>. If you need
+        a value from the processor side, it crosses domains, and lesson 22 is about how.</li>
+    </ol>
+  </div>
+
+  <h3>Step 2 — package it</h3>
+  <p>The GUI route is <em>Tools &rarr; Create and Package New IP &rarr; Package a specified directory</em>,
+    and it works. It is also a sequence of mouse clicks that nobody can review and you cannot repeat, so
+    use it to explore and then write the script. This repository's library is entirely scripted, and your
+    IP should match:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">library/util_rxscale/util_rxscale_ip.tcl</span><span class="t">Tcl</span></div>
+<pre><code>source ../../scripts/adi_env.tcl
+source $ad_hdl_dir/library/scripts/adi_ip_xilinx.tcl
+
+adi_ip_create util_rxscale                          <span class="c"># make the packaging project</span>
+adi_ip_files  util_rxscale [list "util_rxscale.v"]  <span class="c"># the sources it contains</span>
+adi_ip_properties_lite util_rxscale                 <span class="c"># name, vendor, taxonomy, clocks</span>
+
+ipx::save_core [ipx::current_core]
+</code></pre>
+  </div>
+  <div class="kv">
+    <dt><code>adi_ip_properties_lite</code></dt><dd>Fills in the vendor, library, version and taxonomy and
+      infers clock and reset. Use it for a datapath block like this one.</dd>
+    <dt><code>adi_ip_properties</code></dt><dd>The same, <em>plus</em> it infers an AXI4-Lite slave from
+      ports named <code>s_axi_awvalid</code>, <code>s_axi_wdata</code> and the rest. Use it when your IP
+      has its own registers — step 6.</dd>
+    <dt><code>adi_add_bus</code></dt><dd>Declares a custom interface by mapping your port names onto an
+      abstraction. It is how <code>util_cpack2</code> turns five loose signals into the single
+      <code>packed_fifo_wr</code> bus you see in the block design. Worth copying when your block has more
+      than a handful of ports.</dd>
+  </div>
+  <p>Build it the way every other IP here is built:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">packaging the IP</span><span class="t">run from: firmware/src/hdl/library/util_rxscale/</span></div>
+<pre><code>cp ../util_pack/util_cpack2/Makefile .   <span class="c"># then edit LIBRARY_NAME and the DEPS</span>
+make                                     <span class="c"># runs vivado -mode batch on the _ip.tcl</span>
+ls component.xml                         <span class="c"># this file IS the IP</span>
+</code></pre>
+  </div>
+
+  <div class="box why">
+    <p class="bt">Why dropping it in <code>library/</code> is enough</p>
+    <p><code>adi_project_create</code> sets the project's <code>ip_repo_paths</code> to
+      <code>$ad_hdl_dir/library</code> and then calls <code>update_ip_catalog</code>. So any directory
+      under <code>library/</code> containing a <code>component.xml</code> is in the catalog of
+      <em>every</em> project in the tree, with no per-project registration at all. Put your IP anywhere
+      else and you have to add the path yourself — which is a line somebody will forget.</p>
+  </div>
+
+  <h3>Step 3 — instantiate it</h3>
+  <p>Once it is in the catalog it instantiates like any ADI block, from
+    <code>projects/pluto/system_bd.tcl</code>:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">system_bd.tcl</span><span class="t">Tcl</span></div>
+<pre><code>ad_ip_instance util_rxscale rx_scale_i [list DATA_WIDTH <span class="n">16</span>]
+ad_ip_instance util_rxscale rx_scale_q [list DATA_WIDTH <span class="n">16</span>]
+</code></pre>
+  </div>
+  <p>Note what changed from lesson 18: no <code>add_files</code>, because the IP carries its own sources,
+    and parameters are passed by name rather than hoped for.</p>
+
+  <h3>Step 4 — cut it into the receive path</h3>
+  <p>Insertion is always the same two moves: <strong>delete the existing connection, then make two new
+    ones.</strong> On receive, the cut is between <code>axi_ad9361</code> and whatever currently consumes
+    its samples — <code>rx_fir_decimator</code> in this design, <code>cpack</code> in a design without the
+    filter.</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">system_bd.tcl — channel 0, I and Q</span><span class="t">Tcl</span></div>
+<pre><code><span class="c"># 1. break what ADI wired</span>
+ad_disconnect axi_ad9361/adc_data_i0  rx_fir_decimator/data_in_0
+ad_disconnect axi_ad9361/adc_valid_i0 rx_fir_decimator/valid_in_0
+
+<span class="c"># 2. clock and reset your block from the same domain as the data</span>
+ad_connect axi_ad9361/l_clk  rx_scale_i/clk
+ad_connect sys_rstgen/peripheral_aresetn rx_scale_i/resetn
+
+<span class="c"># 3. route through it</span>
+ad_connect axi_ad9361/adc_data_i0   rx_scale_i/data_in
+ad_connect axi_ad9361/adc_valid_i0  rx_scale_i/valid_in
+ad_connect axi_ad9361/adc_enable_i0 rx_scale_i/enable_in
+
+ad_connect rx_scale_i/data_out   rx_fir_decimator/data_in_0
+ad_connect rx_scale_i/valid_out  rx_fir_decimator/valid_in_0
+ad_connect rx_scale_i/enable_out rx_fir_decimator/enable_in_0
+</code></pre>
+  </div>
+  <p>Repeat for <code>_q0</code>, and — this is the part people skip — for <code>_i1</code> and
+    <code>_q1</code> as well.</p>
+
+  <div class="box trap">
+    <p class="bt">Do all four channels, or you will rediscover this board's known defect</p>
+    <p><code>cpack/fifo_wr_en</code> is driven by <strong>one</strong> channel's valid, and it captures
+      every enabled channel on that single strobe. So if your block adds a cycle of latency to channel 0
+      and you leave channel 1 untouched, the two channels are permanently one sample apart in the
+      buffer — and nothing anywhere reports an error.</p>
+    <p>This is not hypothetical: it is exactly the asymmetry documented in
+      <a href="../both-receive-channels.md"><code>both-receive-channels.md</code></a> and measured in
+      lesson 15. Whatever you insert, insert it in all four paths, with identical latency.</p>
+  </div>
+
+  <h3>Step 5 — and the transmit path, which is fussier</h3>
+  <p>Transmit runs the other way: <code>tx_upack</code> produces samples, <code>axi_ad9361</code> consumes
+    them. The cut is symmetrical:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">system_bd.tcl — transmit, channel 0 I</span><span class="t">Tcl</span></div>
+<pre><code>ad_disconnect tx_upack/fifo_rd_data_0 axi_ad9361/dac_data_i0
+
+ad_connect tx_upack/fifo_rd_data_0  tx_scale_i/data_in
+ad_connect tx_upack/fifo_rd_valid   tx_scale_i/valid_in
+ad_connect axi_ad9361/dac_enable_i0 tx_scale_i/enable_in
+ad_connect tx_scale_i/data_out      axi_ad9361/dac_data_i0
+</code></pre>
+  </div>
+  <div class="box trap">
+    <p class="bt">Two transmit-side facts that have each cost a build here</p>
+    <dl>
+      <dt>The read enable is an OR, and it bites</dt><dd><code>tx_upack/fifo_rd_en</code> is the OR of the
+        interpolator's valid <em>and</em> channel 1's DAC valid. On a 2R2T board like this one, channel 1
+        therefore drags the packer along at full rate regardless of what channel 0's path is doing.
+        A same-rate block is fine. A <em>rate-changing</em> block on transmit is not — engage the fabric
+        ÷8 interpolator and, measured, TX1 emits nothing at all.</dd>
+      <dt>The DAC keeps the top 12 bits</dt><dd>You hand it 16 and it discards the low nibble. So a scaler
+        that shifts right is throwing away bits the converter was never going to use anyway — and those
+        four discarded bits are the ones
+        <a href="../tx-gpio-bitmap.md"><code>tx-gpio-bitmap.md</code></a> routes to the header pins.</dd>
+    </dl>
+  </div>
+
+  <h3>Step 6 — giving it a knob software can turn</h3>
+  <p>The <code>shift</code> input has to come from somewhere. Two routes, in increasing order of effort:</p>
+  <div class="kv">
+    <dt>Borrow a GPIO bit</dt><dd>What ADI did for the decimator. <code>axi_ad9361</code> exposes
+      <code>up_adc_gpio_out</code>, a register of spare bits written from userspace; a
+      <code>xlslice</code> picks out the ones you want. It is a few lines, needs no new address, and is
+      how the filter's <code>active</code> bit is controlled today. Cheap, and limited to a handful of
+      bits.</dd>
+    <dt>Add your own AXI4-Lite slave</dt><dd>Name the ports <code>s_axi_*</code>, call
+      <code>adi_ip_properties</code> instead of the <code>_lite</code> variant so the bus is inferred,
+      then give it an address:
+      <code>ad_cpu_interconnect 0x7C44_0000 rx_scale_i</code>. You now have real registers at a real
+      address, reachable with <code>devmem</code> or from a driver, at the cost of writing the register
+      file. Lesson 23 is about that side.</dd>
+  </div>
+  <p>Whichever you pick, the value crosses from <code>sys_cpu_clk</code> to <code>l_clk</code>, so it
+    needs the treatment in lesson 22 — and a constraint, or Vivado will quietly drop the path.</p>
+
+  <h3>Step 7 — build it, and the one step everybody forgets</h3>
+  <div class="code">
+    <div class="code-bar"><span class="f">the whole loop</span><span class="t">run from: the repo root</span></div>
+<pre><code><span class="c"># 1. package (only when the IP's own sources changed)</span>
+cd firmware/src/hdl/library/util_rxscale &amp;&amp; make &amp;&amp; cd -
+
+<span class="c"># 2. DELETE THE PROJECT. build_hdl.tcl reuses an existing pluto.xpr and</span>
+<span class="c">#    will silently ignore your block-design change if you skip this.</span>
+rm -rf firmware/src/hdl/projects/pluto/pluto.{xpr,cache,gen,hw,ip_user_files,runs,sim,srcs,sdk}
+
+<span class="c"># 3. build, check, flash</span>
+./devkit build --hdl-only
+./devkit verify
+./devkit flash --boot-only
+</code></pre>
+  </div>
+  <p>Step 2 is the single most expensive mistake in this whole course. The build succeeds, the bitstream
+    is valid, the board boots — and it is running your <em>previous</em> design. Delete the project.</p>
+
+  <div class="box try">
+    <p class="bt">Prove the insertion before you trust it</p>
+    <p>Give your block a deliberately obvious effect first — a shift of 3, which is a clean
+      &minus;18 dB — and check that a capture really drops by 18 dB on <em>both</em> channels and
+      <em>both</em> I and Q. Then set the shift to 0 and check the capture is bit-identical to a capture
+      taken before your block existed.</p>
+    <p>Those two tests together catch a mis-wired channel, a swapped I/Q, an off-by-one on valid, and a
+      block that is not actually in the path at all — which is more failure modes than any amount of
+      staring at the block diagram will.</p>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: your block adds one cycle of latency. What else in the design has to know?</summary>
+    <div class="ans">
+      <p>On receive: <strong>nothing downstream cares about absolute latency</strong>, because
+        <code>cpack</code> captures on a strobe and the DMA just stores what it is given. But everything
+        cares about latency <em>differences</em> — so the answer is that the other three channels have to
+        have the same one cycle, or the four streams in the buffer no longer line up.</p>
+      <p>And if you are doing anything that compares the two receivers — the direction-finding of
+        lesson 42, or simply trusting that sample <em>n</em> on channel 0 and channel 1 happened at the
+        same instant — then a one-cycle difference is a phase error that scales with frequency, and it
+        will look like a real measurement.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l20">
+  <div class="part-head"><span class="part-n">20</span><h2>Pins and constraints</h2></div>
   <p class="lede">A signal that reaches the edge of the fabric still has to be told which physical ball
     to leave by, and at what voltage.</p>
 
@@ -2310,8 +2587,8 @@ ad_connect bitmap_valid_or/Res         tx_bitmap/valid_in
       else needs the schematic <em>and</em> care.</p>
   </div>
 </section>
-<section class="part" id="l20">
-  <div class="part-head"><span class="part-n">20</span><h2>Driving Vivado, and reading what it tells you</h2></div>
+<section class="part" id="l21">
+  <div class="part-head"><span class="part-n">21</span><h2>Driving Vivado, and reading what it tells you</h2></div>
   <p class="lede">You will barely click anything. But you must be able to read the report.</p>
 
   <div class="box trap">
@@ -2385,8 +2662,8 @@ rm -rf hdl/projects/pluto/pluto.{xpr,cache,gen,hw,ip_user_files,runs,sim,srcs,sd
       at all</strong>.</p>
   </div>
 </section>
-<section class="part" id="l21">
-  <div class="part-head"><span class="part-n">21</span><h2>Crossing clock domains</h2></div>
+<section class="part" id="l22">
+  <div class="part-head"><span class="part-n">22</span><h2>Crossing clock domains</h2></div>
   <p class="lede">The richest source of bugs that pass simulation, pass timing, and then fail on
     hardware occasionally.</p>
 
@@ -2438,8 +2715,8 @@ rm -rf hdl/projects/pluto/pluto.{xpr,cache,gen,hw,ip_user_files,runs,sim,srcs,sd
       a silent failure: make it loud, permanently.</p>
   </div>
 </section>
-<section class="part" id="l22">
-  <div class="part-head"><span class="part-n">22</span><h2>Registers, and talking to Linux</h2></div>
+<section class="part" id="l23">
+  <div class="part-head"><span class="part-n">23</span><h2>Registers, and talking to Linux</h2></div>
   <p class="lede">Logic you cannot control from software is a demo. Here is where the two halves meet.</p>
 
   <p>ADI's cores expose a block of AXI registers — memory addresses that, when written from Linux,
@@ -2503,9 +2780,9 @@ iio_attr -u ip:192.168.2.1 -d cf-ad9361-dds-core-lpc tx_sample_gpio_en 1
 </code></pre>
   </div>
 </section>
-<section class="part" id="l23">
+<section class="part" id="l24">
   <p class="band">Signals, before the fabric</p>
-  <div class="part-head"><span class="part-n">23</span><h2>The frequency domain, and what a spectrum really is</h2></div>
+  <div class="part-head"><span class="part-n">24</span><h2>The frequency domain, and what a spectrum really is</h2></div>
   <p class="lede">You have been reading spectra since lesson 12 without ever being told what one is.
     Here is the whole idea, and the three settings that decide whether the picture can be trusted.</p>
 
@@ -2596,7 +2873,7 @@ iio_attr -u ip:192.168.2.1 -d cf-ad9361-dds-core-lpc tx_sample_gpio_en 1
       nothing about the signal changed.</p>
     <p>A quoted noise floor is therefore meaningless without the FFT length beside it. Two measurements of
       the same board, taken minutes apart, can differ by 10 dB through this alone. It is also why
-      lesson 33 insists you state the transform length whenever you quote one — and why the figures in
+      lesson 37 insists you state the transform length whenever you quote one — and why the figures in
       <code>docs/measured-performance.md</code> always do.</p>
   </div>
 
@@ -2604,8 +2881,8 @@ iio_attr -u ip:192.168.2.1 -d cf-ad9361-dds-core-lpc tx_sample_gpio_en 1
     <p class="bt">The same idea, wearing three hats</p>
     <p>Lengthening an FFT, decimating by 8, and narrowing the receive filter all improve signal-to-noise
       by exactly the same mechanism: <em>noise is spread out and signal is not, so narrowing your view
-      always favours the signal.</em> You will meet this again in lesson 24 as noise bandwidth and in
-      lesson 26 as process gain. It is one fact with three names.</p>
+      always favours the signal.</em> You will meet this again in lesson 25 as noise bandwidth and in
+      lesson 27 as process gain. It is one fact with three names.</p>
   </div>
 
   <details class="check" open>
@@ -2620,8 +2897,8 @@ iio_attr -u ip:192.168.2.1 -d cf-ad9361-dds-core-lpc tx_sample_gpio_en 1
     </div>
   </details>
 </section>
-<section class="part" id="l24">
-  <div class="part-head"><span class="part-n">24</span><h2>Noise, decibels, and where the floor comes from</h2></div>
+<section class="part" id="l25">
+  <div class="part-head"><span class="part-n">25</span><h2>Noise, decibels, and where the floor comes from</h2></div>
   <p class="lede">Every measurement in this course is quoted in dB against a noise floor. Both halves of
     that sentence deserve explaining properly, because almost every wrong RF number traces back to one
     of them.</p>
@@ -2690,8 +2967,8 @@ amplitude ratio  dB = 20 &times; log10(A1 / A2)
     <p>The noise floor depends on <strong>bandwidth</strong>. Halve the bandwidth you are listening to and
       you halve the noise power — 3 dB better signal-to-noise, for free, having changed nothing whatever
       about the signal.</p>
-    <p>That is the same fact as decimation's process gain (lesson 26) and as the FFT-length effect in
-      lesson 23. All three are one principle wearing different clothes: <em>noise is spread out, signal
+    <p>That is the same fact as decimation's process gain (lesson 27) and as the FFT-length effect in
+      lesson 24. All three are one principle wearing different clothes: <em>noise is spread out, signal
       is not, so narrowing your view favours the signal.</em> It is also why "listen to less spectrum" is
       almost always the first thing to try when a weak signal will not come out of the mud.</p>
   </div>
@@ -2741,9 +3018,9 @@ amplitude ratio  dB = 20 &times; log10(A1 / A2)
     </div>
   </details>
 </section>
-<section class="part" id="l25">
+<section class="part" id="l26">
   <p class="band">DSP in the fabric</p>
-  <div class="part-head"><span class="part-n">25</span><h2>Filters, from first principles</h2></div>
+  <div class="part-head"><span class="part-n">26</span><h2>Filters, from first principles</h2></div>
   <p class="lede">Almost everything you will build in the fabric is a filter or contains one. The idea
     is simpler than the notation suggests.</p>
 
@@ -2786,8 +3063,8 @@ amplitude ratio  dB = 20 &times; log10(A1 / A2)
       coefficients.</p>
   </div>
 </section>
-<section class="part" id="l26">
-  <div class="part-head"><span class="part-n">26</span><h2>Decimation, and why taps are nearly free</h2></div>
+<section class="part" id="l27">
+  <div class="part-head"><span class="part-n">27</span><h2>Decimation, and why taps are nearly free</h2></div>
   <p class="lede">The single most useful trick in fabric DSP, and the reason the channelizer in this
     repo is affordable.</p>
 
@@ -2844,7 +3121,7 @@ amplitude ratio  dB = 20 &times; log10(A1 / A2)
 
   <h4>3. You can retune without touching the radio</h4>
   <p>Changing the AD9361's local oscillator takes time, disturbs its calibration, and breaks phase
-    continuity. Changing the frequency of a digital mixer in the fabric (lesson 27) is a single
+    continuity. Changing the frequency of a digital mixer in the fabric (lesson 28) is a single
     register write, effective on the next sample, with the phase relationship preserved. Capture wide
     once, then move around inside that capture instantly and as often as you like.</p>
   <p>For anything phase-sensitive — direction finding, coherent multi-channel work, interferometry —
@@ -2922,8 +3199,8 @@ amplitude ratio  dB = 20 &times; log10(A1 / A2)
       dBFS</em>. A normalised plot once made that silence look like a spray of components.</p>
   </div>
 </section>
-<section class="part" id="l27">
-  <div class="part-head"><span class="part-n">27</span><h2>Mixers, oscillators and CORDIC</h2></div>
+<section class="part" id="l28">
+  <div class="part-head"><span class="part-n">28</span><h2>Mixers, oscillators and CORDIC</h2></div>
   <p class="lede">How to move a signal in frequency without touching the radio's tuning.</p>
 
   <p>Multiplying a signal by a complex exponential shifts it in frequency. That is all a
@@ -2961,9 +3238,9 @@ amplitude ratio  dB = 20 &times; log10(A1 / A2)
       chip, sample by sample, instead of being shipped there.</p>
   </div>
 </section>
-<section class="part" id="l28">
+<section class="part" id="l29">
   <p class="band">Building a radio link</p>
-  <div class="part-head"><span class="part-n">28</span><h2>What modulation actually is, and where to put it</h2></div>
+  <div class="part-head"><span class="part-n">29</span><h2>What modulation actually is, and where to put it</h2></div>
   <p class="lede">The lesson that decides your whole architecture: stream the information, not the
     samples.</p>
 
@@ -3032,16 +3309,16 @@ amplitude ratio  dB = 20 &times; log10(A1 / A2)
       bandwidth bottleneck by a factor of sixty.</p>
   </div>
 </section>
-<section class="part" id="l29">
-  <div class="part-head"><span class="part-n">29</span><h2>Pulse shaping, and why root-raised-cosine</h2></div>
+<section class="part" id="l30">
+  <div class="part-head"><span class="part-n">30</span><h2>Pulse shaping, and why root-raised-cosine</h2></div>
   <p class="lede">A symbol is a number. A radio has to turn it into a shape. Which shape you pick decides
     how much spectrum you occupy and whether your symbols smear into each other — and the standard answer
     is strange enough to be worth deriving rather than copying.</p>
 
   <h3>The obvious idea, and why it fails</h3>
-  <p>Say you want to send the QPSK symbols from lesson 28 at 1 Msym/s. The obvious thing is to hold each
+  <p>Say you want to send the QPSK symbols from lesson 29 at 1 Msym/s. The obvious thing is to hold each
     symbol steady for a microsecond and then jump to the next: a train of rectangles.</p>
-  <p>It fails for a reason you can see in lesson 23's terms. A rectangle in time is a
+  <p>It fails for a reason you can see in lesson 24's terms. A rectangle in time is a
     <strong>sinc</strong> in frequency — skirts that fall off as 1/f and never truly end. Your 1 Msym/s
     signal, which ought to need about 1 MHz, is still radiating measurably 20 MHz away, into somebody
     else's band. Sharp edges in time are wide in frequency; there is no way around it.</p>
@@ -3090,14 +3367,14 @@ amplitude ratio  dB = 20 &times; log10(A1 / A2)
   <div class="box why">
     <p class="bt">Splitting it is not a compromise — it is strictly better</p>
     <p>The receiver's copy of the RRC is also the <span class="newterm">matched filter</span> for the
-      transmitted pulse: the filter shaped exactly like the signal you are looking for. Lesson 31 shows
+      transmitted pulse: the filter shaped exactly like the signal you are looking for. Lesson 32 shows
       why that shape, and no other, maximises signal-to-noise at the decision instant.</p>
     <p>So the split gives you two things at once — zero ISI end to end, <em>and</em> the best possible SNR
       at the receiver. That is why every digital standard you have heard of does it this way.</p>
   </div>
 
   <h3>How you actually build one</h3>
-  <p>Mechanically, pulse shaping is <strong>upsampling followed by an FIR filter</strong> — lesson 26's
+  <p>Mechanically, pulse shaping is <strong>upsampling followed by an FIR filter</strong> — lesson 27's
     decimator run backwards:</p>
   <ol class="body">
     <li>Take one complex symbol per symbol period.</li>
@@ -3119,7 +3396,7 @@ x  = np.convolve(up, h)           <span class="c"># the shaped waveform</span>
 </code></pre>
   </div>
   <p>Three lines. In the fabric it is the same three ideas — a strobe that fires once per symbol, a
-    multiply-accumulate chain, and the polyphase decomposition of lesson 26 so the multipliers are not
+    multiply-accumulate chain, and the polyphase decomposition of lesson 27 so the multipliers are not
     wasted on the zeros you just inserted.</p>
 
   <div class="calc" id="c-pulse">
@@ -3162,14 +3439,14 @@ x  = np.convolve(up, h)           <span class="c"># the shaped waveform</span>
       <p>(1 + β) &times; 2 &le; 2.5, so β &le; <strong>0.25</strong>.</p>
       <p>That is tight but ordinary — 0.22 is a real standard's choice. The price is paid in timing
         sensitivity: the tails are longer, so the receiver's sampling instant has to be more accurate, and
-        lesson 30's timing recovery has to work harder. Note also that the constellation choice does not
+        lesson 31's timing recovery has to work harder. Note also that the constellation choice does not
         enter the calculation at all. Bandwidth is set by the <em>symbol</em> rate; 16-QAM simply carries
         four bits in each of those symbols instead of two.</p>
     </div>
   </details>
 </section>
-<section class="part" id="l30">
-  <div class="part-head"><span class="part-n">30</span><h2>Synchronisation: finding the signal inside the samples</h2></div>
+<section class="part" id="l31">
+  <div class="part-head"><span class="part-n">31</span><h2>Synchronisation: finding the signal inside the samples</h2></div>
   <p class="lede">A receiver does not get symbols. It gets a stream of numbers with the symbols hidden
     at unknown times, unknown phase and unknown orientation. Recovering them is a whole discipline —
     here is enough of it to avoid the classic traps.</p>
@@ -3257,9 +3534,9 @@ best = <span class="n">None</span>
     </div>
   </details>
 </section>
-<section class="part" id="l31">
-  <div class="part-head"><span class="part-n">31</span><h2>Correlation, matched filters, and finding the packet at all</h2></div>
-  <p class="lede">Lesson 30 recovered timing and phase <em>once you knew a signal was there</em>. This is the
+<section class="part" id="l32">
+  <div class="part-head"><span class="part-n">32</span><h2>Correlation, matched filters, and finding the packet at all</h2></div>
+  <p class="lede">Lesson 31 recovered timing and phase <em>once you knew a signal was there</em>. This is the
     step before it: deciding that something is there, and where it starts, in a stream of numbers that
     mostly is not. It is also the single operation this board's fabric is best at.</p>
 
@@ -3268,7 +3545,7 @@ best = <span class="n">None</span>
     point by point and add up the result. Where the template lines up with a real copy of itself, every
     product is positive and the sum shoots up. Everywhere else the products are a random mix and the sum
     stays small.</p>
-  <p>That is all <span class="newterm">correlation</span> is — and lesson 23's intuition for the Fourier
+  <p>That is all <span class="newterm">correlation</span> is — and lesson 24's intuition for the Fourier
     transform was the same operation with a sine wave as the template. Detection, demodulation and
     spectrum analysis are three uses of one idea.</p>
 
@@ -3276,10 +3553,10 @@ best = <span class="n">None</span>
     <p class="bt">Why the answer is a filter, not a search</p>
     <p>Correlating against a template is <em>identical</em> to running an FIR filter whose taps are that
       template, time-reversed and complex-conjugated. So you do not write a search loop. You write the
-      filter from lesson 25, load different coefficients, and read its output.</p>
+      filter from lesson 26, load different coefficients, and read its output.</p>
     <p>That filter has a name — the <span class="newterm">matched filter</span> — and a property no other
       filter has: among every possible filter, it produces the highest signal-to-noise ratio at the moment
-      the template lines up. This is why lesson 29's receiver-side RRC is not an arbitrary choice.</p>
+      the template lines up. This is why lesson 30's receiver-side RRC is not an arbitrary choice.</p>
   </div>
 
   <h3>Where the gain comes from, and how much</h3>
@@ -3291,8 +3568,8 @@ best = <span class="n">None</span>
     That is how a signal sitting below the noise floor is found at all: you do not see it, you accumulate
     it.</p>
   <p>It is the <em>same</em> trade as every other one in this half of the book — longer look, narrower
-    effective bandwidth, less noise. Lesson 23 called it FFT length, lesson 24 called it noise bandwidth,
-    lesson 26 called it process gain. Here it is called correlation gain.</p>
+    effective bandwidth, less noise. Lesson 24 called it FFT length, lesson 25 called it noise bandwidth,
+    lesson 27 called it process gain. Here it is called correlation gain.</p>
 
   <div class="calc" id="c-corr">
     <p class="ct">Try it — how long must the preamble be?</p>
@@ -3321,7 +3598,7 @@ best = <span class="n">None</span>
       <tr><td><strong>Barker</strong></td><td>Short &plusmn;1 codes, lengths up to 13</td><td>Off-peak never exceeds 1/N. Used by 802.11b at length 11.</td></tr>
       <tr><td><strong>m-sequence / PN</strong></td><td>Output of a shift register with feedback</td><td>Any length you like, near-ideal thumbtack, and free in fabric — it <em>is</em> a shift register.</td></tr>
       <tr><td><strong>Zadoff&ndash;Chu</strong></td><td>A complex sequence of constant amplitude</td><td>Perfect autocorrelation and a flat spectrum. LTE's synchronisation signal.</td></tr>
-      <tr><td><strong>A repeated half</strong></td><td>The same block sent twice</td><td>Lets the receiver correlate the signal <em>against itself</em> — no template needed. See lesson 32.</td></tr>
+      <tr><td><strong>A repeated half</strong></td><td>The same block sent twice</td><td>Lets the receiver correlate the signal <em>against itself</em> — no template needed. See lesson 33.</td></tr>
     </tbody>
   </table></div>
 
@@ -3349,7 +3626,7 @@ best = <span class="n">None</span>
   </div>
 
   <h3>Why this belongs in the fabric</h3>
-  <p>Lesson 28 argued for pushing work into the fabric when the input rate is huge and the output rate is
+  <p>Lesson 29 argued for pushing work into the fabric when the input rate is huge and the output rate is
     tiny. Detection is the textbook case: 61.44 million samples per second go in, and a handful of
     "packet starts here" events come out. Better still, the coefficients never change, so the multipliers
     can be specialised:</p>
@@ -3371,7 +3648,7 @@ best = <span class="n">None</span>
       a long chirp for energy, compress it to a short spike for timing. The chirp waveform measured in
       <code>docs/modulation-and-throughput.md</code> is already the transmit half. Correlating the capture
       against the transmitted chirp is a one-line change to <code>analyse.py</code> — and it is
-      project&nbsp;4 in lesson 37 for a reason.</p>
+      project&nbsp;4 in lesson 44 for a reason.</p>
   </div>
 
   <details class="check" open>
@@ -3386,8 +3663,8 @@ best = <span class="n">None</span>
     </div>
   </details>
 </section>
-<section class="part" id="l32">
-  <div class="part-head"><span class="part-n">32</span><h2>OFDM, equalisation, and why this board finds it hard</h2></div>
+<section class="part" id="l33">
+  <div class="part-head"><span class="part-n">33</span><h2>OFDM, and why this board finds it hard</h2></div>
   <p class="lede">Wi-Fi, LTE, 5G, DVB-T and DAB all use it, so it is worth understanding properly rather
     than as a black box. It is also the one waveform this board measurably struggles with — and the
     reason why is the most useful thing in this lesson.</p>
@@ -3418,7 +3695,7 @@ best = <span class="n">None</span>
     into the 64 bins of a frequency-domain array and take an <strong>inverse FFT</strong>. What comes out
     is the time-domain waveform with all 64 carriers already on it, correctly spaced and correctly summed.
     The receiver takes a forward FFT and reads the symbols straight out of the bins.</p>
-  <p>Lesson 23's transform, run backwards, is the transmitter. This is why OFDM became practical exactly
+  <p>Lesson 24's transform, run backwards, is the transmitter. This is why OFDM became practical exactly
     when the FFT became cheap, and why it is a good fit for an FPGA.</p>
 
   <div class="code">
@@ -3440,7 +3717,7 @@ out    = np.r_[x[-16:], x]     <span class="c"># cyclic prefix: the last 16 copi
     period every other subcarrier integrates to exactly zero. That is
     <span class="newterm">orthogonality</span>, and it forces the spacing:
     <strong>Δf = 1 / T<sub>symbol</sub></strong>.</p>
-  <p>It is lesson 23's leakage argument in reverse. Leakage happens when a signal does <em>not</em> fit a
+  <p>It is lesson 24's leakage argument in reverse. Leakage happens when a signal does <em>not</em> fit a
     whole number of cycles into the FFT window. OFDM arranges for every signal to fit exactly, and gets
     zero leakage as a result. Break the arrangement — a timing error, a frequency offset, a sampling-clock
     mismatch — and the subcarriers leak into each other. That failure has its own name,
@@ -3486,7 +3763,8 @@ out    = np.r_[x[-16:], x]     <span class="c"># cyclic prefix: the last 16 copi
     across the pilots for the rest, then recover every data subcarrier with
     <strong>X&#770; = Y / H</strong>.</p>
   <p>One complex division per subcarrier per symbol. That is the whole equaliser — the thing that costs an
-    adaptive filter and a training sequence in a single-carrier receiver.</p>
+    adaptive filter and a training sequence in a single-carrier receiver. Lesson 34 is about what that
+    single-carrier receiver has to do instead, and it is a great deal more work.</p>
 
   <div class="box why">
     <p class="bt">Why OFDM always arrives with error-correcting code attached</p>
@@ -3498,7 +3776,7 @@ out    = np.r_[x[-16:], x]     <span class="c"># cyclic prefix: the last 16 copi
       spread thinly through the codeword, which the code then repairs. This is why the standards call it
       <strong>COFDM</strong> — coded OFDM — and why an uncoded OFDM link like the test waveform here is
       not what any real system ships. Coding typically buys 4&ndash;6 dB, which is why a link budget
-      (lesson 34) is allowed to count on it.</p>
+      (lesson 38) is allowed to count on it.</p>
   </div>
 
   <h3>Measured on this board, and the honest explanation</h3>
@@ -3555,7 +3833,7 @@ out    = np.r_[x[-16:], x]     <span class="c"># cyclic prefix: the last 16 copi
     symbol whose two halves are identical, and have the receiver correlate the incoming stream
     <em>against a delayed copy of itself</em>. The correlation peaks when the two halves line up, giving
     both the symbol boundary and — from the phase of the correlation — the frequency offset. It needs no
-    template at all, which makes it exactly lesson 31's machinery pointed at the signal's own structure.</p>
+    template at all, which makes it exactly lesson 32's machinery pointed at the signal's own structure.</p>
 
   <details class="check" open>
     <summary>Check yourself: indoors the delay spread is 200 ns. At 61.44 MSPS, is a 16-sample cyclic prefix enough?</summary>
@@ -3569,9 +3847,478 @@ out    = np.r_[x[-16:], x]     <span class="c"># cyclic prefix: the last 16 copi
     </div>
   </details>
 </section>
-<section class="part" id="l33">
-  <p class="band">Measuring, and two receivers</p>
-  <div class="part-head"><span class="part-n">33</span><h2>Measuring what you built</h2></div>
+<section class="part" id="l34">
+  <div class="part-head"><span class="part-n">34</span><h2>Equalisation: undoing a channel that is not flat</h2></div>
+  <p class="lede">OFDM sidestepped the problem by making every subcarrier narrow enough that the channel
+    is one number. A single-carrier receiver cannot do that, and has to undo the channel directly. This
+    is the filter that does it — and, unusually, it designs itself.</p>
+
+  <h3>What a channel does to your signal</h3>
+  <p>Multipath (lesson 33) means the receiver gets several delayed copies added together. Written as
+    samples, that is a <strong>convolution</strong> — the same operation as the FIR filter of lesson 26,
+    except that nobody chose the coefficients:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">what arrives</span><span class="t">the channel, as a filter</span></div>
+<pre><code>y[n] = x[n]*h[0] + x[n-1]*h[1] + x[n-2]*h[2] + ... + noise
+       |                |
+       what you sent    the echo, half as strong, one sample late
+</code></pre>
+  </div>
+  <p>The channel <em>is</em> an unwanted FIR filter sitting in your signal path. So the fix is another FIR
+    filter that undoes it. The whole subject is that sentence plus the three complications that follow
+    from it.</p>
+
+  <div class="box jargon">
+    <p class="bt">Three words before we go on</p>
+    <dl>
+      <dt>Tap</dt><dd>One coefficient of a filter. A "7-tap equaliser" remembers seven samples.</dd>
+      <dt>Pre-cursor / post-cursor</dt><dd>Energy from a symbol that lands <em>before</em> its own
+        sampling instant, and after it. A symbol-spaced equaliser needs taps on both sides.</dd>
+      <dt>Convergence</dt><dd>An adaptive filter starts wrong and improves. Convergence is how long that
+        takes, measured in symbols.</dd>
+    </dl>
+  </div>
+
+  <h3>Complication one: you cannot simply invert it</h3>
+  <p>The obvious equaliser is 1/H — divide by the channel and everything cancels. It is called the
+    <span class="newterm">zero-forcing</span> equaliser, and it works beautifully on paper.</p>
+  <p>The trouble is the notches. Where two echoes cancel, H is nearly zero, and 1/H is enormous. Your
+    equaliser faithfully removes the ISI there and multiplies the noise by a hundred while doing it.
+    Zero-forcing has zero residual ISI and can have appalling signal-to-noise.</p>
+  <p>The standard answer is <span class="newterm">MMSE</span> — minimum mean-square error — which
+    minimises <em>total</em> error instead, and so deliberately leaves a little ISI in the deep notches
+    rather than amplifying the noise there. Every practical equaliser is an MMSE equaliser.</p>
+
+  <h3>Complication two: you do not know the channel, and it changes</h3>
+  <p>So the filter has to find its own coefficients while running. The workhorse is
+    <span class="newterm">LMS</span> — least mean squares — and it is three lines:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">LMS, per received sample</span><span class="t">the whole algorithm</span></div>
+<pre><code>y = dot(w, x)          <span class="c"># filter: w is the taps, x the last N samples</span>
+e = d - y              <span class="c"># error: d is what the symbol should have been</span>
+w = w + mu * e * conj(x)   <span class="c"># nudge every tap toward reducing that error</span>
+</code></pre>
+  </div>
+  <p>Each tap is pushed in whichever direction would have reduced this sample's error, by an amount
+    proportional to the error. Run it for a few hundred symbols and the taps settle into the MMSE
+    solution on their own. Nobody solved anything; the filter descended a hill.</p>
+  <div class="kv">
+    <dt>µ, the step size</dt><dd>Too large and the taps overshoot and diverge into nonsense. Too small and
+      the equaliser is still converging when the packet has ended. <strong>Normalised LMS</strong> divides
+      µ by the input power, which makes a single choice work across a 40 dB range of signal levels and is
+      almost always what you want.</dd>
+    <dt>RLS</dt><dd>Recursive least squares: converges in tens of symbols rather than hundreds, at roughly
+      N² arithmetic per sample instead of N. Worth it when the packet is short; rarely worth it in an
+      FPGA.</dd>
+  </div>
+
+  <h3>Complication three: where does <em>d</em> come from?</h3>
+  <p>The error needs to know what the symbol should have been. Three answers, used in this order:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Mode</th><th>Where <em>d</em> comes from</th><th>When</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Training</strong></td><td>A known sequence sent at the start of the packet</td>
+          <td>First. Reliable, but costs airtime.</td></tr>
+      <tr><td><strong>Decision-directed</strong></td><td>The nearest constellation point to what came out</td>
+          <td>After training, for the rest of the packet. Free, but only works once the eye is already
+            open — feed it garbage and it confidently converges to garbage.</td></tr>
+      <tr><td><strong>Blind (CMA)</strong></td><td>Nothing. The constant-modulus algorithm just pushes
+          every output toward a fixed magnitude</td>
+          <td>When there is no training sequence and the modulation has constant amplitude (PSK).
+            Slow, and blind to phase.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="box why">
+    <p class="bt">The decision-feedback equaliser, and why it is tempting</p>
+    <p>A <span class="newterm">DFE</span> splits the job in two: a normal feed-forward filter cleans up
+      the pre-cursor ISI, and a second filter subtracts the post-cursor ISI using the symbols already
+      <em>decided</em> — which are clean, noiseless constellation points.</p>
+    <p>Because the feedback path carries decisions rather than noisy samples, it cancels ISI without
+      amplifying noise at all. That is a real advantage in a deep-notch channel. The price is
+      <strong>error propagation</strong>: one wrong decision is fed back and helps produce the next wrong
+      decision. DFEs are excellent at high SNR and can fall apart at low SNR, which is exactly the
+      opposite of what you want under stress.</p>
+  </div>
+
+  <div class="calc" id="c-eq">
+    <p class="ct">Try it — how big does the equaliser have to be, and where does it fit?</p>
+    <div class="row">
+      <label>Symbol rate (Msym/s)
+        <input type="number" id="e-rs" value="2" step="0.1" min="0.001"></label>
+      <label>Delay spread (ns)
+        <input type="number" id="e-ds" value="500" step="50" min="1"></label>
+      <label>Samples per symbol at the equaliser
+        <input type="number" id="e-sps" value="1" step="1" min="1" max="4"></label>
+      <label>Step size µ
+        <input type="number" id="e-mu" value="0.01" step="0.001" min="0.0001"></label>
+    </div>
+    <div class="out" id="e-out"></div>
+  </div>
+
+  <h3>Where it goes on this board</h3>
+  <p>This is the architecture point, and it is the same one lesson 29 made. An adaptive equaliser costs
+    <strong>two</strong> complex multiply-accumulate chains per tap — one to filter the samples, one to
+    update the taps — so a modest 11-tap complex equaliser is <strong>88 real multiplies per input
+    sample</strong>. Where you put it decides what that costs:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Running at</th><th>Multiplies per second</th><th>DSP slices, time-shared on the 100 MHz clock</th></tr></thead>
+    <tbody>
+      <tr><td>61.44 MSPS, in front of the decimator</td><td class="num">5.4 G</td>
+          <td class="num"><strong>~55 of the 148 free</strong></td></tr>
+      <tr><td>2 Msym/s, behind it</td><td class="num">176 M</td>
+          <td class="num"><strong>~2</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p>Both fit. But one of them spends a third of the device's arithmetic on a filter that did not need to
+    run that fast, and leaves nothing for the rest of your design. Equalisation belongs
+    <strong>after</strong> the decimation and the timing recovery, at one or two samples per
+    <em>symbol</em> — at which point it is two DSP slices, or a comfortable software job on the ARM
+    cores. Put the wideband work in the fabric and the clever, low-rate, iterative work behind it.</p>
+
+  <div class="box trap">
+    <p class="bt">Two ways an equaliser quietly destroys a working link</p>
+    <dl>
+      <dt>It adapts on noise</dt><dd>Between packets there is no signal, only noise, and LMS will happily
+        converge to whatever minimises the error on noise — which is nonsense. Gate adaptation on the
+        detector from lesson 32: no correlation peak, no updating.</dd>
+      <dt>It fights the carrier recovery</dt><dd>A slowly rotating phase (lesson 31) looks to the
+        equaliser exactly like a channel that is slowly changing, so both loops chase the same error and
+        can oscillate against each other. The usual fix is to make the carrier loop much faster than the
+        equaliser, so the equaliser sees a phase that has already stopped moving.</dd>
+    </dl>
+  </div>
+
+  <div class="box try">
+    <p class="bt">Make yourself a channel, because the cable has not got one</p>
+    <p>A 20 dB pad and half a metre of coax is very nearly a perfect channel — there is nothing to
+      equalise, which makes it useless for testing an equaliser. So synthesise one: convolve the QPSK
+      test waveform with <code>[1, 0.5]</code> before transmitting it and the EVM in
+      <code>analyse.py</code> will jump dramatically. Then run a 5-tap LMS over the received symbols and
+      watch it come back down. You will have built a channel, broken your link with it, and repaired the
+      link in software — which is the entire subject in one afternoon.</p>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: why does an OFDM receiver need only one tap per subcarrier when a single-carrier receiver needs eleven?</summary>
+    <div class="ans">
+      <p>Because the number of taps you need is set by <strong>delay spread measured in symbol
+        periods</strong>. Split 20 Msym/s into 64 subcarriers and each symbol lasts 64 times longer, so
+        the same 500 ns of echo is now a small fraction of one symbol rather than ten of them. There is
+        nothing left to span.</p>
+      <p>You paid for it, though — with the cyclic prefix, with tight frequency-offset tolerance, and
+        with 11 dB of PAPR. OFDM did not abolish the work; it moved it somewhere cheaper.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l35">
+  <div class="part-head"><span class="part-n">35</span><h2>Channel coding: buying decibels with redundancy</h2></div>
+  <p class="lede">Lesson 33 said coding is worth 4 to 6 dB and lesson 38 spends them. This is where they
+    come from, why they are real, and what they cost — because a decibel bought with arithmetic is a
+    decibel you did not have to buy with a bigger amplifier.</p>
+
+  <h3>The idea, and the exchange rate</h3>
+  <p>Send more bits than the message needs, arranged so that the extra ones let the receiver work out
+    which of the received bits are wrong and repair them. The ratio is the
+    <span class="newterm">code rate</span> <strong>R = k/n</strong>: rate 1/2 means every 1 message bit
+    goes out as 2 transmitted bits.</p>
+  <p>What you get back is <span class="newterm">coding gain</span> — the reduction in signal-to-noise
+    needed for the same error rate. It is measured in decibels and it is entirely real: a rate-1/2,
+    constraint-length-7 convolutional code with soft decisions buys about <strong>5 dB</strong>. Against
+    lesson 38's budget that is the difference between a link that works and one that does not, and it
+    costs a few thousand LUTs rather than a bigger amplifier and a licence.</p>
+
+  <div class="box why">
+    <p class="bt">Why there is a limit, and roughly where it is</p>
+    <p>Shannon's capacity formula says a channel of bandwidth B and signal-to-noise ratio S/N can carry at
+      most <strong>C = B &middot; log₂(1 + S/N)</strong> bits per second, error-free, with a good enough
+      code. Two things follow.</p>
+    <p>First, error-free is achievable at all — which was a shock in 1948 and is why anybody looked for
+      these codes. Second, there is a floor: below about <strong>&minus;1.6 dB</strong> of energy per bit
+      against noise density, no code of any kind works. Modern turbo and LDPC codes operate within
+      roughly 1 dB of that floor, so this is a nearly finished subject, and "invent a better code" is not
+      the answer to your link problem.</p>
+  </div>
+
+  <h3>Soft decisions, and the free 2 dB most people throw away</h3>
+  <p>Your demodulator produces a point on the constellation. Rounding it to the nearest symbol and handing
+    the decoder a bit is a <span class="newterm">hard decision</span>. Handing it the distance as well —
+    "this is probably a 1, but only just" — is a <span class="newterm">soft decision</span>, usually
+    expressed as a <span class="newterm">log-likelihood ratio</span> (LLR).</p>
+  <p>Soft decisions are worth about <strong>2 dB</strong> over hard ones, for free, because the decoder can
+    weigh a confident bit against an uncertain one instead of treating them alike. Two design
+    consequences, both easy to get wrong:</p>
+  <ul>
+    <li>Your demodulator must output LLRs, <em>not</em> bits. A slicer in the middle of the chain throws
+      the information away permanently.</li>
+    <li>LLRs need the noise level to be scaled correctly, so a receiver that measures its own SNR
+      (lesson 37) decodes better than one that does not.</li>
+  </ul>
+
+  <h3>The families, and which one to reach for</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Code</th><th>What it is</th><th>Typical gain</th><th>Where you meet it</th></tr></thead>
+    <tbody>
+      <tr><td><strong>CRC</strong></td><td>Detects errors; corrects nothing</td><td>—</td>
+          <td>Every packet ever. It tells the receiver to <em>discard</em>, which is what makes a retry
+            protocol possible (lesson 36).</td></tr>
+      <tr><td><strong>Hamming, BCH</strong></td><td>Algebraic block codes over bits</td><td>2&ndash;3 dB</td>
+          <td>Headers, and anywhere short and cheap beats strong.</td></tr>
+      <tr><td><strong>Reed&ndash;Solomon</strong></td><td>Algebraic, over <em>bytes</em></td><td>3&ndash;5 dB</td>
+          <td>Bursts. RS(255,223) repairs any 16 corrupted bytes wherever they fall. CDs, QR codes,
+            DVB.</td></tr>
+      <tr><td><strong>Convolutional + Viterbi</strong></td><td>A shift register and an optimal search back
+          through its states</td><td>~5 dB soft</td>
+          <td>The workhorse. K=7, rate 1/2 is 802.11a, GPS and a hundred others.</td></tr>
+      <tr><td><strong>Turbo, LDPC</strong></td><td>Iterative: two decoders passing probabilities back and
+          forth until they agree</td><td>within ~1 dB of Shannon</td>
+          <td>LTE, 5G, Wi-Fi, DVB-S2. Heavy, and worth it when every decibel counts.</td></tr>
+      <tr><td><strong>Polar</strong></td><td>Provably capacity-achieving, good at short lengths</td>
+          <td>near Shannon</td><td>5G control channels.</td></tr>
+    </tbody>
+  </table></div>
+  <p>For a first link on this board the honest answer is <strong>convolutional, rate 1/2, K=7, soft
+    Viterbi</strong>. It is the best gain-per-unit-effort in the table, it is what the textbooks work
+    through, and Xilinx ships the decoder as IP.</p>
+
+  <div class="calc" id="c-code">
+    <p class="ct">Try it — what does the code cost, and what does it buy?</p>
+    <div class="row">
+      <label>Symbol rate (Msym/s)
+        <input type="number" id="k-rs" value="2" step="0.1" min="0.001"></label>
+      <label>Bits per symbol
+        <input type="number" id="k-b" value="2" step="1" min="1" max="8"></label>
+      <label>Code rate (k/n)
+        <input type="number" id="k-r" value="0.5" step="0.05" min="0.1" max="1"></label>
+      <label>Coding gain (dB)
+        <input type="number" id="k-g" value="5" step="0.5" min="0"></label>
+    </div>
+    <div class="out" id="k-out"></div>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">Interleaving, or the code does nothing</p>
+    <p>Every code in that table is designed against <em>scattered</em> errors. Real channels produce
+      <em>bursts</em> — a fade, an interferer, a wiped-out group of OFDM subcarriers in a notch
+      (lesson 33). A burst of 40 consecutive bad bits defeats a code that could have repaired 40
+      scattered ones easily.</p>
+    <p>An <span class="newterm">interleaver</span> fixes this by writing the coded bits into a block in
+      one order and reading them out in another, so that bits which were adjacent in the codeword are far
+      apart on the air. The burst is spread thinly across many codewords, each of which sees a handful of
+      errors it can repair. Coding and interleaving are not two options; below about 1&ndash;2 dB of fade
+      they are one mechanism, and the code without the interleaver is close to useless.</p>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">The waterfall, and why a code can be worth nothing at all</p>
+    <p>Error rate against SNR for a coded link is not a gentle slope. It is flat and terrible, then falls
+      off a cliff over about 1 dB, then is essentially perfect. That cliff is the
+      <span class="newterm">waterfall</span>.</p>
+    <p>Above it the code is worth its full 5 dB. Below it the code is worth <em>nothing</em> — in fact
+      slightly less than nothing, because you spent half your throughput on it. So "add coding" does not
+      rescue a link that is 10 dB short. It rescues one that is 3 dB short, decisively.</p>
+  </div>
+
+  <h3>In the fabric</h3>
+  <p>The encoder is trivial — a shift register and two XOR trees, a handful of LUTs, no DSP slices at all.
+    The decoder is where the work is.</p>
+  <div class="kv">
+    <dt>Viterbi, K=7</dt><dd>64 states, and for each one an <em>add-compare-select</em> per bit plus a
+      traceback memory. A few thousand LUTs and a BRAM or two, easily fast enough at symbol rate on this
+      part. This is one of the classic reasons FPGAs exist.</dd>
+    <dt>Reed&ndash;Solomon</dt><dd>Finite-field arithmetic: awkward in software, natural in LUTs. Also
+      available as IP.</dd>
+    <dt>LDPC</dt><dd>Hundreds of parallel messages iterating five to fifty times. It fits on this part
+      only in small, slow configurations; it is what the big Zynqs and the ASICs are for.</dd>
+  </div>
+  <p>And as always (lesson 29), put it at symbol rate behind the decimation, not at 61.44 MSPS in front
+    of it.</p>
+
+  <div class="box why">
+    <p class="bt">What this means for the OFDM measurement in lesson 33</p>
+    <p>The OFDM test waveform in this repository is <strong>uncoded</strong>, and it measures 13 % to 51 %
+      EVM over the cable. No real OFDM system transmits that way — 802.11a, LTE and DVB-T all pair OFDM
+      with convolutional or LDPC coding <em>and</em> an interleaver, precisely because narrow subcarriers
+      in a notch fail completely rather than gracefully.</p>
+    <p>So read that measurement as what it is: a clean characterisation of the <em>physical layer</em>,
+      with the layer that normally rescues it deliberately absent.</p>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: your link is 3 dB short. Rate-1/2 coding gives 5 dB of gain — do you take it?</summary>
+    <div class="ans">
+      <p>Usually yes, but check what you are paying with. Rate 1/2 doubles the transmitted bits, so you
+        either <strong>halve the data rate</strong> at the same bandwidth, or <strong>double the
+        bandwidth</strong> at the same data rate — and doubling the bandwidth costs you 3 dB of noise
+        floor (lesson 25), eating more than half the gain you just bought.</p>
+      <p>So: keep the bandwidth and accept half the throughput, and you are 2 dB ahead. Keep the
+        throughput and widen the signal, and you are only about 2 dB ahead as well but now occupy twice
+        the spectrum. A weaker code — rate 3/4, about 3.5 dB — is often the better trade, which is exactly
+        why every standard ships several rates and switches between them.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l36">
+  <div class="part-head"><span class="part-n">36</span><h2>Packets: framing, addressing, and everything above the symbols</h2></div>
+  <p class="lede">Every lesson so far has ended at "and now you have symbols". Nothing so far has said who
+    the symbols are for, where they start, whether they arrived intact, or what to do when they did not.
+    That is this lesson, and on this board one number in it decides your whole architecture.</p>
+
+  <h3>The layers, named once</h3>
+  <div class="kv">
+    <dt>Physical layer (PHY)</dt><dd>Symbols on and off the air. Lessons 29 to 35 are all PHY.</dd>
+    <dt>Media access (MAC)</dt><dd>Whose turn it is to transmit, framing, addressing, acknowledgements,
+      retries. This lesson.</dd>
+    <dt>Everything above</dt><dd>Routing, ordering, congestion, applications. A different book, and
+      usually somebody else's code.</dd>
+  </div>
+  <p>The boundary that matters here is the one between MAC and PHY, because it is also the boundary
+    between "can live on the host" and "cannot".</p>
+
+  <h3>What a frame is made of</h3>
+  <div class="code">
+    <div class="code-bar"><span class="f">a serviceable frame, in order of appearance</span><span class="t">on the air</span></div>
+<pre><code>[ preamble ][ sync word ][ header ][ payload ................ ][ CRC ]
+     |            |           |            |                      |
+  AGC settles  "packet     length,     the actual bytes,      did any of
+  timing and    starts     type,       scrambled and           this arrive
+  carrier       HERE"      address     coded                   intact?
+  recovery
+</code></pre>
+  </div>
+  <div class="kv">
+    <dt>Preamble</dt><dd>A known pattern long enough for the receiver's gain control, timing recovery and
+      carrier recovery (lesson 31) to converge before anything important arrives.</dd>
+    <dt>Sync word</dt><dd>The correlation template from lesson 32. The preamble gets the loops locked; the
+      sync word says exactly which sample the frame begins on.</dd>
+    <dt>Header</dt><dd>How long the payload is, what it contains, who it is for.</dd>
+    <dt>CRC</dt><dd>A checksum. It corrects nothing — it tells the receiver whether to believe the frame,
+      which is what makes every retry scheme possible.</dd>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">The header needs its own protection, and its own CRC</p>
+    <p>Corrupt one bit of the length field and the receiver reads the wrong number of symbols: it either
+      truncates a good frame or runs off the end into noise, and then mis-frames everything that follows.
+      A single bit error becomes a lost <em>sequence</em> of frames.</p>
+    <p>So every real standard codes the header more strongly than the payload and gives it a separate
+      short CRC, checked before anything is done with the values in it. 802.11's SIGNAL field is exactly
+      this. It is the cheapest robustness you will ever add.</p>
+  </div>
+
+  <h3>Scrambling: the step that looks pointless and is not</h3>
+  <p>Payloads contain long runs of zeros. Sent literally, a run of identical symbols means a waveform with
+    no transitions — and lesson 31's timing recovery feeds on transitions, so it drifts and loses lock in
+    the middle of your own data. A constant symbol also puts a spike in the spectrum where you wanted a
+    flat one, and a DC offset where this receiver already has LO leakage (lesson 11).</p>
+  <p>The fix is a <span class="newterm">scrambler</span>: XOR the data with a pseudo-random sequence from
+    a shift register (the same object as lesson 32's m-sequence) before transmitting, and XOR with the
+    same sequence at the far end. Nothing is hidden — the sequence is public — but the transmitted stream
+    now looks random whatever the payload was. Timing recovery gets its transitions, and the spectrum
+    stays flat.</p>
+
+  <h3>Whose turn is it? Media access on a shared medium</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Scheme</th><th>The rule</th><th>What it needs</th></tr></thead>
+    <tbody>
+      <tr><td><strong>ALOHA</strong></td><td>Transmit whenever. Retry after a random delay if unacknowledged.</td>
+          <td>Almost nothing. Collapses above ~18 % utilisation.</td></tr>
+      <tr><td><strong>CSMA</strong></td><td>Listen first; transmit only if the channel is idle.</td>
+          <td>A receiver that can report "busy" in <em>microseconds</em>.</td></tr>
+      <tr><td><strong>TDMA</strong></td><td>Everyone gets a numbered slot.</td>
+          <td>Shared time. Much easier than CSMA for one designer with two radios.</td></tr>
+      <tr><td><strong>FDMA</strong></td><td>Everyone gets their own frequency.</td>
+          <td>Spectrum. Trivial here — this board's transmit and receive local oscillators are
+            <em>independent</em>, so it can transmit on one frequency and listen on another at the same
+            time.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="box trap">
+    <p class="bt">The number that decides your architecture: turnaround time</p>
+    <p>CSMA and acknowledgements both need the radio to go from "heard the end of that frame" to
+      "transmitting a reply" quickly. 802.11 allows <strong>16 µs</strong>.</p>
+    <p>Now measure this board's host path. A capture buffer of 262 144 samples at 5 MSPS is
+      <strong>52 milliseconds</strong> of signal — and nothing in it can be examined until the buffer
+      completes, with the network stack and the scheduler still to come. That is more than three orders
+      of magnitude too slow, and no amount of tuning closes a gap that size.</p>
+    <p>So: <strong>a latency-sensitive MAC cannot live on the host.</strong> Carrier sense,
+      acknowledgement timing and slot boundaries belong in the fabric, where the answer is available the
+      cycle after the samples arrive. The host gets the payloads. This is lesson 29's argument arriving
+      from a completely different direction, and it is the single most important thing in this
+      lesson.</p>
+  </div>
+
+  <h3>Retries, and what makes them possible</h3>
+  <div class="kv">
+    <dt>Stop-and-wait</dt><dd>Send a frame, wait for an acknowledgement, send the next. Simple, and its
+      throughput is capped by the round trip: one frame per turnaround, however fast the link.</dd>
+    <dt>Sliding window</dt><dd>Keep several frames in flight and acknowledge by sequence number. Needed
+      the moment the round trip is long compared with a frame — which, on this board's host path, it
+      always is.</dd>
+    <dt>Sequence numbers</dt><dd>Not optional. A lost acknowledgement causes a re-send of a frame that
+      <em>did</em> arrive, so without numbering the receiver silently duplicates data.</dd>
+  </div>
+
+  <div class="calc" id="c-pkt">
+    <p class="ct">Try it — airtime, overhead and real throughput</p>
+    <div class="row">
+      <label>Payload (bytes)
+        <input type="number" id="g-pay" value="256" step="16" min="1"></label>
+      <label>Preamble + header (symbols)
+        <input type="number" id="g-oh" value="96" step="8" min="0"></label>
+      <label>Symbol rate (Msym/s)
+        <input type="number" id="g-rs" value="2" step="0.1" min="0.001"></label>
+    </div>
+    <div class="row">
+      <label>Bits per symbol
+        <input type="number" id="g-b" value="2" step="1" min="1" max="8"></label>
+      <label>Code rate
+        <input type="number" id="g-r" value="0.5" step="0.05" min="0.1" max="1"></label>
+      <label>Turnaround per frame (µs)
+        <input type="number" id="g-ta" value="50" step="10" min="0"></label>
+    </div>
+    <div class="out" id="g-out"></div>
+  </div>
+
+  <div class="box why">
+    <p class="bt">What this board gives you, and what it does not</p>
+    <p>The transmit DMA is cyclic (lesson 16), which means the hardware will replay a buffer forever with
+      no help from the host. That is perfect for a <strong>beacon</strong> — a frame repeating on a fixed
+      schedule — and it is why every full-rate measurement in
+      <code>modulation-and-throughput.md</code> could be taken at 61.44 MSPS when streaming gave up at 5.</p>
+    <p>It is useless for a <em>conversation</em>, because a cyclic buffer by definition carries no new
+      information. The moment you want to send different bytes each time, you are back to feeding the DMA
+      from software, back under the 31 MB/s plateau, and back to tens of milliseconds of latency. Knowing
+      which of those two worlds your design lives in is the first decision, not the last.</p>
+  </div>
+
+  <div class="box try">
+    <p class="bt">The smallest useful thing to build</p>
+    <p>A one-way beacon: preamble, sync word, a 1-byte length, 32 bytes of payload, a CRC-16. Generate it
+      in Python, shape it (lesson 30), load it once with <code>iio_writedev -c</code> and let the hardware
+      repeat it. Then write the receiver: correlate for the sync word (lesson 32), slice, check the CRC,
+      print the payload.</p>
+    <p>No media access, no retries, no turnaround — and it is a complete radio link, end to end, that you
+      understand every layer of. Everything else in this lesson is what you add when there are two of
+      them.</p>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: why can a beacon run at 61.44 MSPS on this board while a two-way link struggles at 5?</summary>
+    <div class="ans">
+      <p>Because a beacon's bytes never change, so the transmit DMA's cyclic mode replays one buffer with
+        the host out of the loop entirely — no samples cross the network at all once it is loaded.</p>
+      <p>A two-way link needs new payload bytes for every frame, and it needs to <em>react</em> to what it
+        hears. So every sample crosses the 31 MB/s bottleneck in both directions, and every decision waits
+        for a buffer to complete. The rate limit and the latency limit are the same constraint seen twice,
+        and the way out of both is to move the reacting part into the fabric.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l37">
+  <p class="band">Measuring, and getting on the air</p>
+  <div class="part-head"><span class="part-n">37</span><h2>Measuring what you built</h2></div>
   <p class="lede">Six numbers describe an RF system. Knowing which one answers your question — and how
     to get it honestly from this board — is what separates a measurement from a screenshot.</p>
 
@@ -3645,8 +4392,8 @@ out    = np.r_[x[-16:], x]     <span class="c"># cyclic prefix: the last 16 copi
     </div>
   </details>
 </section>
-<section class="part" id="l34">
-  <div class="part-head"><span class="part-n">34</span><h2>Link budgets: will it actually work over the air?</h2></div>
+<section class="part" id="l38">
+  <div class="part-head"><span class="part-n">38</span><h2>Link budgets: will it actually work over the air?</h2></div>
   <p class="lede">Everything so far has run down a cable. The moment an antenna is involved there is one
     calculation that decides whether the link exists at all — and because every term is in decibels, it is
     a single column of addition.</p>
@@ -3725,7 +4472,7 @@ out    = np.r_[x[-16:], x]     <span class="c"># cyclic prefix: the last 16 copi
   </table></div>
   <p>Every extra bit per symbol costs roughly <strong>6 dB</strong> — the same 6 dB per bit as lesson 9's
     converter formula, and for the same reason: you are halving the distance between decision points.
-    Forward error correction (lesson 32) hands 4&ndash;6 dB of that back, which is why every real system
+    Forward error correction (lesson 33) hands 4&ndash;6 dB of that back, which is why every real system
     uses it.</p>
 
   <div class="calc" id="c-budget">
@@ -3779,9 +4526,9 @@ out    = np.r_[x[-16:], x]     <span class="c"># cyclic prefix: the last 16 copi
     <p>Multipath means the received level is not steady — it fades as things move, sometimes deeply. A link
       designed with exactly zero margin is down half the time by construction. Practical designs carry
       10&ndash;20 dB of fade margin on top of everything above, and mobile systems carry more.</p>
-    <p>If you cannot afford it, the honest moves are: narrow the bandwidth (lesson 24 — 3 dB per halving),
+    <p>If you cannot afford it, the honest moves are: narrow the bandwidth (lesson 25 — 3 dB per halving),
       drop to a simpler modulation (6 dB per bit), add coding (4&ndash;6 dB), lengthen the preamble
-      (lesson 31), or accept a shorter range. Adding transmit power is usually the one option you do not
+      (lesson 32), or accept a shorter range. Adding transmit power is usually the one option you do not
       have.</p>
   </div>
 
@@ -3808,8 +4555,165 @@ out    = np.r_[x[-16:], x]     <span class="c"># cyclic prefix: the last 16 copi
     </div>
   </details>
 </section>
-<section class="part" id="l35">
-  <div class="part-head"><span class="part-n">35</span><h2>IQ files, and the metadata that turns them into measurements</h2></div>
+<section class="part" id="l39">
+  <div class="part-head"><span class="part-n">39</span><h2>Antennas and the RF front end: what happens after the SMA</h2></div>
+  <p class="lede">Lesson 38 stopped at "transmit power" and "antenna gain" as if they were settings. They
+    are hardware, and on this board some of that hardware is missing on purpose. This is the part of the
+    signal chain that no amount of Verilog can fix.</p>
+
+  <h3>Fifty ohms, and why anything has an impedance at all</h3>
+  <p>At low frequency a wire is a wire. Once the wavelength is comparable to the cable, a signal
+    travelling down it meets the far end and asks what impedance it sees. If that does not match the
+    cable's own <span class="newterm">characteristic impedance</span>, part of the wave
+    <strong>reflects</strong> and comes back.</p>
+  <p>Everything in radio is standardised on <strong>50 Ω</strong> so that this does not happen: the
+    amplifier, the connector, the cable, the antenna all present 50 Ω and the wave goes out and never
+    comes back. Fifty is a compromise — around 77 Ω gives the lowest loss in coax and around 30 Ω the
+    highest power handling — and the industry split the difference sixty years ago.</p>
+
+  <div class="box jargon">
+    <p class="bt">Three names for one measurement</p>
+    <dl>
+      <dt>VSWR</dt><dd>Voltage standing wave ratio. 1:1 is perfect, 2:1 is ordinary, 3:1 is poor. It is
+        the ratio of the peaks and troughs of the standing wave a reflection creates.</dd>
+      <dt>Return loss</dt><dd>The same thing in decibels: how far below the forward wave the reflected one
+        is. Bigger is better. 2:1 VSWR is 9.5 dB return loss.</dd>
+      <dt>S11</dt><dd>The same thing again, as a complex number, from a vector network analyser. Its
+        magnitude is the return loss; its phase tells you <em>which way</em> the mismatch is, which is
+        what lets you design the fix.</dd>
+    </dl>
+    <p>At 2:1 VSWR about <strong>11 %</strong> of your power comes back — only 0.5 dB of loss, which is
+      why 2:1 is widely accepted. At 3:1 it is 25 %, and at 6:1 half your transmit power is heading back
+      into the amplifier.</p>
+  </div>
+
+  <div class="calc" id="c-ant">
+    <p class="ct">Try it — antenna dimensions and mismatch loss</p>
+    <div class="row">
+      <label>Frequency (MHz)
+        <input type="number" id="t-f" value="900" step="10" min="1"></label>
+      <label>VSWR
+        <input type="number" id="t-v" value="2" step="0.1" min="1"></label>
+      <label>Cross-polarisation (degrees)
+        <input type="number" id="t-p" value="0" step="5" min="0" max="90"></label>
+    </div>
+    <div class="out" id="t-out"></div>
+  </div>
+
+  <h3>The antenna, in the three facts that matter</h3>
+  <div class="kv">
+    <dt>It is a resonant length</dt><dd>A quarter-wave monopole is about <strong>a quarter of the
+      wavelength</strong>, shortened a few percent because the wire is not infinitely thin. At 900 MHz
+      the wavelength is 333 mm, so the whip is about <strong>78 mm</strong>. Get the length wrong and the
+      impedance stops being 50 Ω, the VSWR climbs, and power reflects.</dd>
+    <dt>A monopole needs a ground plane</dt><dd>It is half a dipole; the other half is the mirror image in
+      the ground plane. A whip screwed into a small board with no ground plane is a different, worse
+      antenna than the datasheet's, and this surprises people every time.</dd>
+    <dt>Small is bad, and unavoidably so</dt><dd>Make an antenna much smaller than a quarter wave and you
+      can still match it — but only over a narrow band, and with increasing loss. Bandwidth, size and
+      efficiency trade against one another by physical law, not by engineering effort. This is why the
+      antenna in a small device is nearly always the weakest part of the link.</dd>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">Polarisation: 20 dB that is nowhere in the link budget</p>
+    <p>Two whips both vertical are aligned. Turn one horizontal and, in a clean line-of-sight path, the
+      coupling drops by <strong>20 dB or more</strong> — a link budget's entire fade margin, gone, for a
+      reason the budget never mentioned.</p>
+    <p>If either end moves or tumbles, that is a strong argument for circular polarisation at one end
+      (3 dB of loss always, instead of 20 dB sometimes) or for diversity (lesson 42). Indoors, scattering
+      mixes the polarisations back up and the effect is softer — which is exactly why the failure is worse
+      outdoors, where everything else is better.</p>
+  </div>
+
+  <h3>The front end, and what this board has</h3>
+  <p>From the schematic's parts list in <a href="../hardware.md"><code>docs/hardware.md</code></a>, each
+    RF port's path is short:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">this board, per channel</span><span class="t">the RF side</span></div>
+<pre><code>receive    RX1A/RX2A  -->  balun (T1-T4)  -->  AD9361 differential RF input
+
+transmit   AD9361  -->  balun  -->  PGA-102+ (U12/U13, ~15.7 dB)  -->  TX1A/TX2A
+</code></pre>
+  </div>
+  <p>Baluns, a power amplifier per transmit channel, and the AD9361. <strong>No external band filter in
+    either direction.</strong> The chip's own front end is deliberately wideband — it has to cover
+    70 MHz to 6 GHz — so what protects a narrowband receiver elsewhere simply is not here. Two
+    consequences follow, and both are practical rather than theoretical.</p>
+
+  <div class="box trap">
+    <p class="bt">Receiving: a strong signal you are not listening to still ruins your day</p>
+    <p>An FM broadcast transmitter or a nearby LTE base station arrives at the SMA at full strength
+      whatever you tuned to, because nothing filtered it out. The receiver's front end sets its gain for
+      the loudest thing present, so a strong out-of-band signal pushes the gain down and your wanted
+      signal down with it. The effect is called <span class="newterm">desensitisation</span>, or blocking,
+      and it looks exactly like a weak signal — the noise floor appears to rise for no reason.</p>
+    <p>The fix is a band-pass filter at the antenna, before anything else. It is the first accessory worth
+      owning, and an SDR that "works on the bench and not in the field" is very often this.</p>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">Transmitting: your harmonics leave the building too</p>
+    <p>A power amplifier is not perfectly linear, so it emits copies of your signal at twice and three
+      times the frequency. Measured on this board those sit at <strong>&minus;64 to &minus;80 dBc</strong>
+      (second) and <strong>&minus;71 to &minus;85 dBc</strong> (third). Into a cable and a load, nobody
+      cares. Into an antenna at +19 dBm, the second harmonic of a 900 MHz signal is a real transmission at
+      1.8 GHz, in somebody else's band, at up to &minus;45 dBm.</p>
+    <p>A transmit low-pass filter is what removes it, and this board has none. So the rule from lesson 38
+      is sharper than it first sounds: before anything radiates, know what you are allowed to transmit,
+      where, at what power — <em>and at what harmonics</em>.</p>
+  </div>
+
+  <h3>Where the noise figure is decided</h3>
+  <p>Cascade several stages and the noise figure of the whole chain is dominated by the first one. Friis's
+    formula says why:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">noise figure of a cascade</span><span class="t">linear, not dB</span></div>
+<pre><code>F_total = F1 + (F2 - 1)/G1 + (F3 - 1)/(G1*G2) + ...
+                     |
+              divided by the first stage's gain
+</code></pre>
+  </div>
+  <p>Every later stage's noise is divided by everything in front of it, so a low-noise amplifier with
+    15 dB of gain at the very front makes the rest of the chain nearly irrelevant. It also explains the
+    rule that looks like folklore: <strong>put the LNA at the antenna, not at the radio.</strong> Ten
+    metres of coax at 1 dB of loss in front of the LNA costs you a whole decibel of noise figure; the same
+    coax <em>behind</em> it costs almost nothing.</p>
+
+  <div class="box why">
+    <p class="bt">Cables, connectors, and the reason every measurement here says "exactly 20 dB"</p>
+    <ul>
+      <li><strong>Use a real attenuator.</strong> This board's receive input is rated to about
+        <strong>+2.5 dBm</strong> and its transmitter reaches about <strong>+19 dBm</strong>. A loopback
+        without a pad destroys the receiver, once, permanently.</li>
+      <li><strong>Exactly 20 dB, not more.</strong> With a bigger pad the board's own internal
+        transmit-to-receive leakage — measured as an equivalent 58 to 77 dB of isolation below 1 GHz, and
+        only 33 to 51 dB at 3 to 6 GHz — starts to compete with the signal through the cable, and you
+        measure the board's crosstalk instead of your link.</li>
+      <li><strong>SMA connectors are a torque spec, not a hand-tight fitting.</strong> A loose connector
+        is an intermittent mismatch, and it looks like a flaky radio.</li>
+    </ul>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: your 900 MHz link works on the bench through a cable and fails on antennas at 30 m. Name four suspects, in order.</summary>
+    <div class="ans">
+      <ol class="body">
+        <li><strong>Polarisation.</strong> Free, instant to test, and worth 20 dB. Line the whips up.</li>
+        <li><strong>Path loss is not what you assumed.</strong> 30 m indoors at an exponent of 3.5 rather
+          than 2 is about 22 dB worse than the free-space figure lesson 38 gives you.</li>
+        <li><strong>Blocking.</strong> No front-end filter, so anything strong nearby is desensitising the
+          receiver. Look at a wide spectrum capture before assuming your own signal is weak.</li>
+        <li><strong>The antennas themselves.</strong> Wrong length, no ground plane, or a poor match — and
+          the mismatch costs you at <em>both</em> ends.</li>
+      </ol>
+      <p>Notice that none of the four is a bug in your FPGA, your modulation or your code. When a link
+        fails after the connector, it is nearly always after the connector.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l40">
+  <div class="part-head"><span class="part-n">40</span><h2>IQ files, and the metadata that turns them into measurements</h2></div>
   <p class="lede">A capture is a pile of numbers with no units, no frequency and no date. Six months later
     that is not a measurement, it is a file you are afraid to delete. This lesson is about the five
     minutes of work that prevents it.</p>
@@ -3971,8 +4875,9 @@ out    = np.r_[x[-16:], x]     <span class="c"># cyclic prefix: the last 16 copi
     </div>
   </details>
 </section>
-<section class="part" id="l36">
-  <div class="part-head"><span class="part-n">36</span><h2>Two coherent receivers: what this board can do that most cannot</h2></div>
+<section class="part" id="l41">
+  <p class="band">Two receivers, and the chip that feeds them</p>
+  <div class="part-head"><span class="part-n">41</span><h2>Two coherent receivers: what this board can do that most cannot</h2></div>
   <p class="lede">The shared local oscillator looked like a limitation in lesson 14. It is also this
     board's most interesting capability.</p>
 
@@ -4031,9 +4936,319 @@ angle_of_arrival = np.arcsin(phase_diff * lam / (<span class="n">2</span> * np.p
       might build on this board.</p>
   </div>
 </section>
-<section class="part" id="l37">
+<section class="part" id="l42">
+  <div class="part-head"><span class="part-n">42</span><h2>MIMO and beamforming: what more than one antenna buys</h2></div>
+  <p class="lede">Lesson 41 showed that this board's two receivers share a local oscillator, and used the
+    phase between them to find a direction. That is one of three quite different things people mean by
+    "multiple antennas", and it is worth knowing which one you are asking for.</p>
+
+  <h3>Three things, one name</h3>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>What it does</th><th>What it needs</th><th>What it gives</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Diversity</strong></td><td>Two antennas see independent fades; use whichever is
+          better, or combine them</td><td>Antennas far enough apart to fade independently</td>
+          <td>Up to 3 dB of gain, and — far more valuable — most of the fade margin back</td></tr>
+      <tr><td><strong>Beamforming</strong></td><td>Combine with deliberate phase shifts so the array
+          listens or shouts in one direction</td><td>Known geometry and calibrated phase</td>
+          <td>3 dB per doubling of elements, plus rejection of interference from other directions</td></tr>
+      <tr><td><strong>Spatial multiplexing</strong></td><td>Send <em>different</em> data from each antenna
+          at the same time on the same frequency</td><td>A rich scattering channel, and N&times;N
+          antennas</td><td>N times the throughput, with no extra bandwidth or power</td></tr>
+    </tbody>
+  </table></div>
+  <p>Only the third one is "MIMO" in the strict sense. All three are available on this board in some form,
+    and they want opposite things from your antenna spacing — which is the first practical thing to
+    understand.</p>
+
+  <div class="box why">
+    <p class="bt">Why the spacing is the design decision</p>
+    <p><strong>Diversity wants the antennas far apart</strong> — several wavelengths — so their fades are
+      uncorrelated. Two antennas 5 mm apart fade together and give you nothing.</p>
+    <p><strong>Beamforming wants them close and exact</strong> — half a wavelength — so that the phase
+      difference maps unambiguously to an angle. At 900 MHz that is <strong>167 mm</strong>.</p>
+    <p>Go wider than half a wavelength and several angles produce the same phase difference: the array
+      develops <span class="newterm">grating lobes</span> and can no longer tell them apart. Go much
+      narrower and the phase difference shrinks into the noise. You cannot have one spacing that is good at
+      both jobs, so decide which you are building.</p>
+  </div>
+
+  <h3>Diversity, and the thing that actually rescues links</h3>
+  <p>A fade is deep and local: move half a wavelength and it is gone. So two receivers, separated, rarely
+    fade at the same instant.</p>
+  <div class="kv">
+    <dt>Selection combining</dt><dd>Take whichever branch is stronger. Crude, nearly free, and already
+      most of the benefit.</dd>
+    <dt>Maximal ratio combining (MRC)</dt><dd>Co-phase the two branches and add them, weighted by their
+      own signal-to-noise. Optimal. With two equal branches it is worth <strong>3 dB</strong> of plain
+      gain — but against <em>fading</em> it is worth far more, because the probability that both branches
+      are deeply faded at once is the square of the probability that one is.</dd>
+  </div>
+  <p>That second sentence is the point. In a link-budget sense diversity buys 3 dB; in a
+    <em>reliability</em> sense it can be worth 10 to 20 dB of fade margin, which is normally the most
+    expensive part of lesson 38's budget.</p>
+
+  <h3>Beamforming, in the only maths you need</h3>
+  <p>Two elements a distance <em>d</em> apart, a wave arriving at angle θ from broadside. The far element
+    is <em>d</em>·sin θ further away, so its signal is late by that much — which, in phase, is:</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">the whole of array processing, twice</span><span class="t">two elements</span></div>
+<pre><code>receive (direction finding)   phase difference = 2*pi * d * sin(theta) / lambda
+
+transmit (steering a beam)    apply that same phase difference deliberately,
+                              and the two waves add in phase toward theta
+                              and cancel elsewhere
+</code></pre>
+  </div>
+  <p>At <em>d</em> = λ/2 that simplifies to <strong>φ = π·sin θ</strong>: broadside gives 0°, endfire gives
+    180°, and everything in between maps one-to-one. Measure φ, take the arcsine, and you have the
+    direction. Impose φ, and you have a beam.</p>
+  <p>Two elements give a broad beam and one unavoidable ambiguity. Signals at +30° and &minus;30°
+    produce opposite phase differences and are easily told apart — but a signal 30° in <em>front</em> of
+    the array and one 30° <em>behind</em> it produce the same phase difference, because sin θ is the same
+    for both. A linear array of two isotropic elements simply cannot distinguish them. A third element, a
+    directional element, or moving the array resolves it. Scanning φ across all angles and plotting the output is called
+    a <span class="newterm">beamscan</span>; the sharper estimators (MUSIC, ESPRIT) do better by
+    exploiting the fact that noise and signal live in different subspaces, and PySDR chapters 19 to 21
+    work through them properly.</p>
+
+  <div class="calc" id="c-array">
+    <p class="ct">Try it — spacing, angle and ambiguity</p>
+    <div class="row">
+      <label>Frequency (MHz)
+        <input type="number" id="m-f" value="900" step="10" min="1"></label>
+      <label>Element spacing (mm)
+        <input type="number" id="m-d" value="167" step="5" min="1"></label>
+      <label>Arrival angle from broadside (deg)
+        <input type="number" id="m-a" value="30" step="5" min="-90" max="90"></label>
+      <label>Elements
+        <input type="number" id="m-n" value="2" step="1" min="2" max="16"></label>
+    </div>
+    <div class="out" id="m-out"></div>
+  </div>
+
+  <h3>Spatial multiplexing, and why it is not free here</h3>
+  <p>If the channel between two transmit and two receive antennas is a 2&times;2 matrix <strong>H</strong>
+    that happens to be invertible, the receiver can solve for two independent streams sent
+    simultaneously on the same frequency. Throughput doubles with no extra bandwidth and no extra power.
+    That is 802.11n and everything after it.</p>
+  <p>The catch is that <strong>H</strong> must be well-conditioned, which means the two paths have to be
+    genuinely different — lots of scattering, or antennas far apart with different views. In free space
+    with two whips side by side the two rows of <strong>H</strong> are nearly identical, the matrix is
+    close to singular, and inverting it amplifies noise enormously. <em>Multipath, which every other
+    lesson has treated as the enemy, is the resource that makes spatial multiplexing work at all.</em></p>
+
+  <div class="box why">
+    <p class="bt">What this board genuinely has, and what it does not</p>
+    <ul>
+      <li><strong>Two receivers on one RX_LO and two transmitters on one TX_LO.</strong> The chains are
+        therefore coherent: their phase relationship is stable, and they share phase noise, so it cancels
+        in the <em>difference</em>. That is the expensive property, and at this price it is unusual.</li>
+      <li><strong>Two is not many.</strong> Two elements give a broad beam and a coarse angle. Serious
+        direction finding wants four or eight, and that means several boards locked to one clock.</li>
+      <li><strong>Nothing is calibrated.</strong> The chains differ by about 1.5 dB in receive and 0.1 to
+        0.25 dB in transmit on the measured unit, and each has its own fixed phase offset through its own
+        balun and traces. Lesson 41 says it and it bears repeating: <em>coherent does not mean
+        calibrated.</em></li>
+      <li><strong>Transmit calibration drifts.</strong> The AD9361's transmit quadrature calibration on
+        this board varies by up to 10 dB run to run, so a transmit beamformer needs re-calibrating far
+        more often than a receive one.</li>
+    </ul>
+  </div>
+
+  <div class="box try">
+    <p class="bt">Calibrate the two receivers before you believe any angle</p>
+    <p>Feed <em>the same</em> signal to both receive ports through a splitter and two cables of the same
+      length. Whatever phase difference you measure is the board's, not the world's — it is the sum of
+      the two baluns, the two traces and the two chains. Record it, subtract it from every subsequent
+      measurement, and re-measure it after every retune, because it changes with frequency.</p>
+    <p>Do this before your first direction-finding experiment rather than after it. The uncalibrated
+      offset is easily tens of degrees, which at λ/2 spacing is tens of degrees of angle error — enough
+      to make a working algorithm look broken.</p>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: you want diversity <em>and</em> direction finding from one pair of antennas. Can you?</summary>
+    <div class="ans">
+      <p>Not well, because they want opposite spacings. Diversity needs the antennas far enough apart to
+        fade independently — several wavelengths — and direction finding needs them at half a wavelength
+        or closer to keep the angle unambiguous.</p>
+      <p>At a wide spacing you still get a phase difference; it just maps to several possible angles at
+        once, so you would need another constraint — a third antenna, a rough prior, or movement — to
+        resolve which. The usual answer with only two chains is to pick the job, and if you truly need
+        both, to add elements rather than compromise the spacing.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l43">
+  <div class="part-head"><span class="part-n">43</span><h2>The AD9361 itself: the chip in front of your fabric</h2></div>
+  <p class="lede">Every sample your logic has ever seen came out of this chip, already filtered, already
+    decimated, already gain-controlled by something you did not write. Eleven lessons have quietly
+    depended on how it behaves. Time to open it.</p>
+
+  <h3>The receive path, stage by stage</h3>
+  <div class="code">
+    <div class="code-bar"><span class="f">inside the AD9361, receive</span><span class="t">antenna to your fabric</span></div>
+<pre><code>RF in -> LNA -> mixer -> baseband filters -> ADC -> HB3 -> HB2 -> HB1 -> FIR -> LVDS/CMOS
+                  |            |             |       \________________/      |
+              RX_LO, shared  analogue     very fast   fixed halving stages  programmable,
+              by BOTH        anti-alias   sigma-delta  bringing the rate     up to 128 taps
+              receivers                                down in powers of 2
+</code></pre>
+  </div>
+  <p>Two things in that diagram explain most of this course. The mixer uses <strong>one RX_LO for both
+    receivers</strong>, which is why lessons 41 and 42 work and why you cannot tune the two channels
+    separately. And the converter runs far faster than your sample rate, with a chain of halving filters
+    behind it — which is why <code>sampling_frequency</code> will not accept arbitrary values.</p>
+
+  <div class="box jargon">
+    <p class="bt">Zero-IF, and the two artefacts it gives you for free</p>
+    <dl>
+      <dt>What it is</dt><dd>The mixer brings your signal straight down to <strong>zero</strong> — the
+        wanted band ends up centred on DC, as I and Q. No intermediate frequency, no image-reject filter,
+        very few parts. It is why an SDR this small is possible at all.</dd>
+      <dt>Artefact one: the DC spike</dt><dd>The LO leaks into its own mixer and produces a constant
+        offset, which lands exactly at 0 Hz — in the middle of your signal. Every spectrum in this course
+        has a bump at DC, and it is not a signal.</dd>
+      <dt>Artefact two: the image</dt><dd>If the I and Q paths differ at all in gain or phase, a tone at
+        +2 MHz produces a ghost at &minus;2 MHz. How far down that ghost is, is the
+        <span class="newterm">image rejection</span> lesson 37 measures. On this board it is 44 to
+        60 dBc after a fresh calibration, and it varies by up to 10 dB run to run.</dd>
+    </dl>
+  </div>
+
+  <h3>The rate chain, and why the driver says no</h3>
+  <p>Ask for 5 MSPS and the driver does not set anything to 5 MSPS. It picks a converter rate, a path
+    through HB3/HB2/HB1, and a set of FIR coefficients whose product lands on 5 MSPS. Ask for a rate it
+    cannot reach that way and it gives you the nearest one it can.</p>
+  <div class="kv">
+    <dt>Below 2.083 MSPS</dt><dd>The half-band chain runs out, so the driver enables the chip's own
+      programmable <strong>128-tap FIR</strong> to get the rest of the way. <code>pyadi-iio</code> and the
+      MCP both rely on this and neither touches it — which is the right default, because a hand-written
+      coefficient set that does not match the rate produces a receiver that is quietly wrong rather than
+      obviously broken.</dd>
+    <dt>Above that</dt><dd>The FIR is bypassed and the half-bands do the work alone.</dd>
+    <dt>With the fabric decimator engaged</dt><dd><code>sampling_frequency_available</code> reports
+      exactly two values — <strong>{converter rate, converter rate / 8}</strong> — because that is the
+      whole of what lesson 27's filter offers. The chip's own chain and the fabric's are two separate
+      decimators in series, and only the fabric one is yours.</dd>
+  </div>
+
+  <div class="calc" id="c-rate">
+    <p class="ct">Try it — what does asking for this rate actually do?</p>
+    <div class="row">
+      <label>Requested sample rate (MSPS)
+        <input type="number" id="z-fs" value="5" step="0.1" min="0.1" max="61.44"></label>
+      <label>Channels enabled
+        <input type="number" id="z-ch" value="2" step="1" min="1" max="2"></label>
+      <label>Fabric ÷8 decimator
+        <select id="z-dec"><option value="0">bypassed</option><option value="1">engaged</option></select></label>
+    </div>
+    <div class="out" id="z-out"></div>
+  </div>
+
+  <h3>Gain is not in decibels, whatever the units say</h3>
+  <p>The receive gain attribute reads in dB and behaves like a number of dB — its slope is within
+    <strong>1.7 % of 1.000 dB/dB</strong> across 56 measured slopes on this board, which is excellent.
+    But underneath, gain is a <strong>table index</strong>: each step switches a specific combination of
+    LNA, mixer and baseband amplifier settings, chosen by ADI per frequency band.</p>
+  <p>Two consequences. There are <strong>discontinuities</strong> — places where one step changes noise
+    figure or linearity much more than it changes gain, because the chip switched which amplifier is
+    doing the work. And the table <em>differs by band</em>, so a calibration taken at 900 MHz does not
+    transfer to 2.4 GHz. <code>ad9361-gain-tables.md</code> in this repository has the measured detail; the
+    short version is to measure gain where you intend to use it.</p>
+
+  <h3>The calibrations, and the loops that never stop</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Calibration</th><th>What it removes</th><th>When it runs</th></tr></thead>
+    <tbody>
+      <tr><td>Baseband DC</td><td>Offset in the analogue baseband</td><td>On initialisation</td></tr>
+      <tr><td>RF DC</td><td>The LO-leakage spike at 0 Hz</td><td>On initialisation and on retune</td></tr>
+      <tr><td>RX quadrature</td><td>I/Q imbalance on receive — the image</td><td>On retune, then tracked</td></tr>
+      <tr><td>TX quadrature</td><td>I/Q imbalance on transmit</td><td>On request; <strong>this is the one
+        that varies</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p>The DC and quadrature <span class="newterm">tracking</span> loops then keep running while you
+    receive, continuously nudging the corrections. It is tempting to switch them off for a clean
+    measurement; lesson 33 records what happened when that was tried on the OFDM link —
+    <strong>it got worse</strong>. Leave them on unless you have measured that they are hurting.</p>
+
+  <div class="box why">
+    <p class="bt">BIST: measuring the radio without any radio</p>
+    <p>The chip can inject a tone into its own receive path, and can loop its transmit digital data
+      straight back to receive, with no RF involved at all:</p>
+    <div class="code">
+      <div class="code-bar"><span class="f">a known tone, entirely inside the chip</span><span class="t">run on your HOST</span></div>
+<pre><code>iio_attr -u ip:192.168.2.1 -D ad9361-phy bist_tone "2 7680000 0 0"   <span class="c"># on</span>
+<span class="c"># ... capture ...</span>
+iio_attr -u ip:192.168.2.1 -D ad9361-phy bist_tone "0 0 0 0"         <span class="c"># off</span>
+</code></pre>
+    </div>
+    <p>This is how the sample-drop measurement in <code>modulation-and-throughput.md</code> proved the
+      drops were in the capture and transport path rather than in the radio: the same drops appeared with
+      no RF in the experiment at all. Whenever you cannot tell whether a fault is the radio or everything
+      after it, BIST is the knife that separates them.</p>
+  </div>
+
+  <h3>How it is configured, and by whom</h3>
+  <p>Not by your fabric. The AD9361's control bus is <strong>the processor's own SPI0, routed out through
+    EMIO</strong> (lesson 23's mechanism) — not the <code>axi_spi</code> block that also appears in the
+    block design, which is there for other purposes. The Linux driver owns every register, and the IIO
+    attributes you write are the driver's interpretation of what you asked for.</p>
+  <p>That is why lesson 13's map matters: your logic sits in the <em>datapath</em>, downstream of a chip
+    whose configuration is somebody else's. Nothing you put in the fabric can change the gain, the
+    bandwidth or the LO. You have to ask.</p>
+
+  <div class="box trap">
+    <p class="bt">The one operational rule that has cost the most time here</p>
+    <p>The board mutes its transmitters when no DMA stream is running, and restores a <em>cached</em>
+      attenuation when a stream starts. So an attenuation you write <strong>before</strong> opening a
+      buffer guarantees nothing about what happens during it.</p>
+    <p>Always: open the buffer, <em>then</em> set the attenuation, <em>then</em> read it back and assert
+      it. Every measurement in this repository does exactly that, and asserts both channels return to the
+      &minus;89.75 dB floor afterwards. The one exception is a single one-shot buffer, which has already
+      finished playing by the time you could write anything.</p>
+    <p>There is a second edge here worth knowing: on this board the transmit side comes up
+      <strong>energised at power-on</strong>, before any software has run. See
+      <code>docs/transmitter-safety.md</code> — and do not attach an antenna to a board you are about to
+      power up.</p>
+  </div>
+
+  <div class="box try">
+    <p class="bt">Read the chip's own opinion of itself</p>
+    <div class="code">
+      <div class="code-bar"><span class="f">what the chip will tell you</span><span class="t">run on your HOST</span></div>
+<pre><code>iio_attr -u ip:192.168.2.1 -d ad9361-phy            <span class="c"># every device attribute</span>
+iio_attr -u ip:192.168.2.1 -c ad9361-phy voltage0   <span class="c"># the receive channel's</span>
+iio_attr -u ip:192.168.2.1 -c ad9361-phy temp0 input   <span class="c"># die temperature, millidegrees</span>
+</code></pre>
+    </div>
+    <p>Then run <code>sdr_selftest.py --ssh</code>, which reads the supply rails, the die temperatures, the
+      digital interface eye (157 to 181 of 256 delay positions pass on a healthy board) and the internal
+      loopback — all without transmitting anything. It is the fastest way to find out whether a strange
+      measurement is your code or your hardware.</p>
+  </div>
+
+  <details class="check" open>
+    <summary>Check yourself: you want RX1 at 900 MHz and RX2 at 2.4 GHz, simultaneously. What happens?</summary>
+    <div class="ans">
+      <p>You cannot. There is one <code>RX_LO</code> and both receivers hang off it, so both are always
+        tuned to the same frequency. The same is true of <code>rf_bandwidth</code>; only
+        <strong>gain</strong> is genuinely per-channel.</p>
+      <p>What you can do is tune to a centre frequency with both signals inside one receive bandwidth —
+        up to 56 MHz — and separate them in the fabric with two digital down-converters (lesson 28). What
+        you cannot do is cover 900 MHz and 2.4 GHz at once with one board. That takes two boards, and then
+        a shared clock if you want them coherent.</p>
+      <p>And a corollary worth carrying: because both receivers share the LO, the fix in
+        <code>both-receive-channels.md</code> is correct by construction — one anti-alias filter design
+        serves both channels, because both channels are always looking at the same band.</p>
+    </div>
+  </details>
+</section>
+<section class="part" id="l44">
   <p class="band">Onward</p>
-  <div class="part-head"><span class="part-n">37</span><h2>Projects, in order of difficulty</h2></div>
+  <div class="part-head"><span class="part-n">44</span><h2>Projects, in order of difficulty</h2></div>
   <p class="lede">Each one uses the board for something software cannot do as well.</p>
 
   <ol class="body">
@@ -4043,19 +5258,19 @@ angle_of_arrival = np.arcsin(phase_diff * lam / (<span class="n">2</span> * np.p
       expose the total in a register. The processor reads one number instead of a megabyte of samples.
       Your first real use of a DSP slice.</li>
     <li><strong>A digital downconverter.</strong> NCO plus mixer plus decimating filter: tune to a
-      signal <em>within</em> the captured band and deliver only that, at a low rate. Lessons 25–27
+      signal <em>within</em> the captured band and deliver only that, at a low rate. Lessons 26–28
       combined, and genuinely useful.</li>
     <li><strong>A matched filter / correlator.</strong> Detect a known preamble in hardware and raise a
       flag. The gateway to radar, ranging and packet detection — and the first design where latency,
       not throughput, is the point.</li>
-    <li><strong>A modulator.</strong> The exercise from lesson 28.</li>
+    <li><strong>A modulator.</strong> The exercise from lesson 29.</li>
     <li><strong>Hardware timestamping.</strong> Count <code>l_clk</code> edges and tag each buffer.
       This is the missing piece that makes cellular-class stacks work on AD936x boards. Hard, and
       genuinely valuable.</li>
   </ol>
 </section>
-<section class="part" id="l38">
-  <div class="part-head"><span class="part-n">38</span><h2>The rules worth taping to the wall</h2></div>
+<section class="part" id="l45">
+  <div class="part-head"><span class="part-n">45</span><h2>The rules worth taping to the wall</h2></div>
   <p class="lede">Every one of these was learned the expensive way on this exact board.</p>
 
   <ul>
@@ -4085,10 +5300,11 @@ angle_of_arrival = np.arcsin(phase_diff * lam / (<span class="n">2</span> * np.p
 </section>
 <section class="part" id="lref">
   <p class="band">Appendix</p>
-  <div class="part-head"><span class="part-n">A</span><h2>Where to go for more, and what this course leaves out</h2></div>
-  <p class="lede">This course teaches the fabric <em>and</em> enough signal processing to use it. It does
-    not pretend to replace a communications textbook. Here is which book to open for which lesson, what
-    those books taught this one, and — honestly — the ground none of it covers.</p>
+  <div class="part-head"><span class="part-n">A</span><h2>Where to go for more, and what this course still leaves out</h2></div>
+  <p class="lede">This course teaches the fabric, the signal processing that feeds it, and enough of the
+    layers either side to build something that works. It does not replace a communications textbook.
+    Here is which book to open for which lesson, what those books taught this one, and — plainly — the
+    ground none of it covers.</p>
 
   <h3>The two books worth having open</h3>
   <div class="kv">
@@ -4098,14 +5314,14 @@ angle_of_arrival = np.arcsin(phase_diff * lam / (<span class="n">2</span> * np.p
       authoritative source for most of what this course states without deriving.</dd>
     <dt>PySDR</dt><dd><strong>PySDR: A Guide to SDR and DSP using Python</strong> — Marc Lichtman,
       <a href="https://pysdr.org">pysdr.org</a>. Free online. Lighter, practical, Python throughout, and
-      far more approachable as a first read. If you finished lesson 23 wanting to <em>play</em> rather
+      far more approachable as a first read. If you finished lesson 24 wanting to <em>play</em> rather
       than prove, start here.</dd>
   </div>
   <p>Neither has an FPGA chapter. That gap is the reason this course exists — and, equally, why the
     signal-processing lessons here stop where a textbook would start doing algebra.</p>
 
   <h3>Lesson by lesson</h3>
-  <p>Every row is something this course teaches. The two right-hand columns say where to go when the
+  <p>Every row is something this course teaches. The two right-hand columns say where to go once the
     lesson has taken you as far as it intends to.</p>
   <div class="tw"><table>
     <thead><tr><th>Topic</th><th>Taught in</th><th>SDR4E</th><th>PySDR</th></tr></thead>
@@ -4114,53 +5330,58 @@ angle_of_arrival = np.arcsin(phase_diff * lam / (<span class="n">2</span> * np.p
       <tr><td>Fixed point and quantisation</td><td><a href="#l9">lesson 9</a></td><td><strong>&sect;2.5.2&ndash;2.5.3</strong></td><td>&mdash;</td></tr>
       <tr><td>What an IQ sample is</td><td><a href="#l11">lesson 11</a></td><td>&sect;2.3</td><td><strong>Ch 3</strong></td></tr>
       <tr><td>Sampling, Nyquist, aliasing</td><td><a href="#l12">lesson 12</a></td><td><strong>&sect;2.2</strong></td><td>Ch 2, 3</td></tr>
-      <tr><td>The frequency domain, FFTs, windows</td><td><a href="#l23">lesson 23</a></td><td>&sect;2.1</td><td><strong>Ch 7</strong></td></tr>
-      <tr><td>Noise, dB, and where the floor comes from</td><td><a href="#l24">lesson 24</a></td><td>&sect;3.5&ndash;3.7</td><td><strong>Ch 10</strong></td></tr>
-      <tr><td>Filters and convolution</td><td><a href="#l25">lesson 25</a></td><td>&sect;2.6</td><td><strong>Ch 11</strong></td></tr>
-      <tr><td>Decimation and rate conversion</td><td><a href="#l26">lesson 26</a></td><td>&sect;2.2.5</td><td>Ch 11</td></tr>
-      <tr><td>Mixers, NCOs, CORDIC</td><td><a href="#l27">lesson 27</a></td><td>&sect;2.3</td><td>Ch 16</td></tr>
-      <tr><td>Modulation schemes</td><td><a href="#l28">lesson 28</a></td><td><strong>Ch 4</strong></td><td>Ch 4</td></tr>
-      <tr><td>Pulse shaping, and why RRC</td><td><a href="#l29">lesson 29</a></td><td>&sect;2.7.3&ndash;2.7.5</td><td><strong>Ch 16</strong></td></tr>
-      <tr><td>Timing recovery, Gardner, M&amp;M</td><td><a href="#l30">lesson 30</a></td><td><strong>Ch 6</strong></td><td>Ch 17</td></tr>
-      <tr><td>Carrier recovery and phase ambiguity</td><td><a href="#l30">lesson 30</a></td><td><strong>Ch 7</strong></td><td>Ch 17</td></tr>
-      <tr><td>Correlation, matched filters, detection</td><td><a href="#l31">lesson 31</a></td><td>&sect;2.6.2</td><td><strong>Ch 24</strong></td></tr>
-      <tr><td>OFDM, cyclic prefix, equalisation</td><td><a href="#l32">lesson 32</a></td><td><strong>Ch 10</strong></td><td>Ch 13</td></tr>
-      <tr><td>EVM as a measurement</td><td><a href="#l33">lesson 33</a></td><td>&sect;7.2.4</td><td>&mdash;</td></tr>
-      <tr><td>SNR, SINAD, ENOB, SFDR</td><td><a href="#l33">lesson 33</a></td><td><strong>&sect;2.4.1</strong></td><td>Ch 10</td></tr>
-      <tr><td>Link budgets &mdash; will it work over the air?</td><td><a href="#l34">lesson 34</a></td><td>&mdash;</td><td><strong>Ch 12</strong></td></tr>
-      <tr><td>Storing IQ with metadata (SigMF)</td><td><a href="#l35">lesson 35</a></td><td>&mdash;</td><td><strong>Ch 14</strong></td></tr>
-      <tr><td>Beamforming and direction finding</td><td><a href="#l36">lesson 36</a></td><td>&mdash;</td><td><strong>Ch 19, 20, 21</strong></td></tr>
-      <tr><td>Channel coding in depth</td><td>sketched in <a href="#l32">lesson 32</a></td><td><strong>Ch 8</strong></td><td>Ch 13</td></tr>
-      <tr><td>Adaptive equalisation for single carrier</td><td>not covered</td><td><strong>Ch 9</strong></td><td>&mdash;</td></tr>
+      <tr><td>Packaging logic as IP, and splicing the datapath</td><td><a href="#l19">lesson 19</a></td><td>&mdash;</td><td>&mdash;</td></tr>
+      <tr><td>The frequency domain, FFTs, windows</td><td><a href="#l24">lesson 24</a></td><td>&sect;2.1</td><td><strong>Ch 7</strong></td></tr>
+      <tr><td>Noise, dB, and where the floor comes from</td><td><a href="#l25">lesson 25</a></td><td>&sect;3.5&ndash;3.7</td><td><strong>Ch 10</strong></td></tr>
+      <tr><td>Filters and convolution</td><td><a href="#l26">lesson 26</a></td><td>&sect;2.6</td><td><strong>Ch 11</strong></td></tr>
+      <tr><td>Decimation and rate conversion</td><td><a href="#l27">lesson 27</a></td><td>&sect;2.2.5</td><td>Ch 11</td></tr>
+      <tr><td>Mixers, NCOs, CORDIC</td><td><a href="#l28">lesson 28</a></td><td>&sect;2.3</td><td>Ch 16</td></tr>
+      <tr><td>Modulation schemes</td><td><a href="#l29">lesson 29</a></td><td><strong>Ch 4</strong></td><td>Ch 4</td></tr>
+      <tr><td>Pulse shaping, and why RRC</td><td><a href="#l30">lesson 30</a></td><td>&sect;2.7.3&ndash;2.7.5</td><td><strong>Ch 16</strong></td></tr>
+      <tr><td>Timing and carrier recovery</td><td><a href="#l31">lesson 31</a></td><td><strong>Ch 6, 7</strong></td><td>Ch 17</td></tr>
+      <tr><td>Correlation, matched filters, detection</td><td><a href="#l32">lesson 32</a></td><td>&sect;2.6.2</td><td><strong>Ch 24</strong></td></tr>
+      <tr><td>OFDM and the cyclic prefix</td><td><a href="#l33">lesson 33</a></td><td><strong>Ch 10</strong></td><td>Ch 13</td></tr>
+      <tr><td>Equalisation: ZF, MMSE, LMS, DFE</td><td><a href="#l34">lesson 34</a></td><td><strong>Ch 9</strong></td><td>&mdash;</td></tr>
+      <tr><td>Channel coding and interleaving</td><td><a href="#l35">lesson 35</a></td><td><strong>Ch 8</strong></td><td>Ch 13</td></tr>
+      <tr><td>Framing, media access, retries</td><td><a href="#l36">lesson 36</a></td><td>&mdash;</td><td>&mdash;</td></tr>
+      <tr><td>EVM, SNR, SINAD, ENOB, SFDR</td><td><a href="#l37">lesson 37</a></td><td><strong>&sect;2.4.1, &sect;7.2.4</strong></td><td>Ch 10</td></tr>
+      <tr><td>Link budgets</td><td><a href="#l38">lesson 38</a></td><td>&mdash;</td><td><strong>Ch 12</strong></td></tr>
+      <tr><td>Antennas, matching, the RF front end</td><td><a href="#l39">lesson 39</a></td><td>Ch 3</td><td>Ch 12</td></tr>
+      <tr><td>Storing IQ with metadata (SigMF)</td><td><a href="#l40">lesson 40</a></td><td>&mdash;</td><td><strong>Ch 14</strong></td></tr>
+      <tr><td>Coherent receivers, diversity, beamforming, MIMO</td><td><a href="#l41">lessons 41</a>&ndash;<a href="#l42">42</a></td><td>&mdash;</td><td><strong>Ch 19, 20, 21</strong></td></tr>
+      <tr><td>The AD9361 as a system</td><td><a href="#l43">lesson 43</a></td><td>Ch 2</td><td>&mdash;</td></tr>
     </tbody>
   </table></div>
 
-  <h3>What this course does not teach, and where that hurts</h3>
+  <h3>What this course still does not teach</h3>
+  <p>Shorter than it used to be, and each of these is a real boundary rather than an oversight.</p>
   <div class="kv">
-    <dt>Error-correcting codes</dt><dd>Lesson 32 says coding buys 4&ndash;6 dB and lesson 34 spends it.
-      How a convolutional, turbo or LDPC code actually achieves that is a field of its own, and SDR4E
-      Ch 8 is the right next step. Nothing in this repository implements one.</dd>
-    <dt>Adaptive equalisation</dt><dd>OFDM sidesteps it (lesson 32); a single-carrier receiver at high
-      rate cannot. LMS and RLS equalisers are SDR4E Ch 9.</dd>
-    <dt>MIMO and beamforming maths</dt><dd>Lesson 36 shows what two coherent receivers give you and stops
-      at direction finding. PySDR Ch 19&ndash;21 goes considerably further, and this board's two chains
-      on one LO are genuinely enough hardware to follow along.</dd>
-    <dt>Protocols above the physical layer</dt><dd>Framing, addressing, retries, the entire MAC. Every
-      lesson here ends at "you have symbols". Turning symbols into a working link is a different book.</dd>
-    <dt>RF and antenna design</dt><dd>Matching networks, filters, PCB layout, what actually happens at
-      the SMA connector. The board hands you a port; what you attach to it is outside this course and
-      often dominates the result.</dd>
-    <dt>The AD9361 itself</dt><dd>Its gain tables, calibrations, and internal filter chain are a document
-      in their own right. Start with <code>ad9361-gain-tables.md</code> in this repository, then ADI's
-      UG-570.</dd>
+    <dt>How modern codes actually decode</dt><dd>Lesson 35 says what turbo and LDPC codes buy and
+      roughly how they work. The iterative message-passing that gets them within 1 dB of Shannon is a
+      field of its own. SDR4E Ch 8 is the next step; nothing in this repository implements one.</dd>
+    <dt>Everything above the MAC</dt><dd>Lesson 36 ends at framing, addressing and retries. Routing,
+      congestion control, and the protocols people actually deploy are a different book entirely.</dd>
+    <dt>Security</dt><dd>Not touched anywhere. Encryption, authentication, replay protection, and
+      resistance to jamming and spoofing are all real requirements of a real radio link, and a
+      physical layer that works says nothing about any of them.</dd>
+    <dt>RF design, as opposed to RF understanding</dt><dd>Lesson 39 explains impedance, matching,
+      antennas and noise figure well enough to use them. <em>Designing</em> a matching network, laying
+      out a board, or simulating an antenna needs a Smith chart, a network analyser and an
+      electromagnetic solver.</dd>
+    <dt>The AD9361 register by register</dt><dd>Lesson 43 gives the mental model — the rate chain, the
+      gain tables, the calibrations, the shared LOs. The registers themselves, and ADI's own filter
+      design tool, are UG-570 and the driver source.</dd>
+    <dt>The underlying theory</dt><dd>Detection and estimation theory, information theory, and the
+      proofs behind "this estimator is optimal". This course tells you which estimator to use and why it
+      behaves as it does; it does not derive it.</dd>
   </div>
 
   <h3>Two things the books taught this course</h3>
   <ul>
-    <li><strong>"Process gain" is the standard term</strong> for what lesson 26 calls the decimation
+    <li><strong>"Process gain" is the standard term</strong> for what lesson 27 calls the decimation
       bonus, and SDR4E &sect;2.5.2 derives it from the ideal-converter formula 6.02N + 1.76 — which is why
-      decibels convert to bits at all, and why lessons 23, 24, 26 and 31 keep turning out to be the same
-      fact.</li>
+      decibels convert to bits at all, and why lessons 24, 25, 27 and 32 keep turning out to be the same
+      fact seen from different directions.</li>
     <li><strong>Choose an awkward test frequency.</strong> SDR4E demonstrates spur-free dynamic range
       dropping by 11.4 dB purely because the test tone was harmonically related to the sample clock. The
       full-rate sweep in this repository used a tone at exactly <code>fs/8</code> — the worst case — so
@@ -4171,12 +5392,15 @@ angle_of_arrival = np.arcsin(phase_diff * lam / (<span class="n">2</span> * np.p
   <ul>
     <li><strong>ADI's Pluto wiki</strong> — <code>wiki.analog.com/university/tools/pluto</code>. The
       hardware's own documentation, including the parts of the AD9361 this course skips.</li>
+    <li><strong>AD9361 UG-570</strong> — the reference manual behind lesson 43. Long, and the only place
+      some of these answers exist.</li>
     <li><strong>The SigMF specification</strong> — <code>github.com/sigmf/SigMF</code>. Short, readable,
-      and the whole of lesson 35 in normative form.</li>
+      and the whole of lesson 40 in normative form.</li>
     <li><strong>This repository's own <code>docs/</code></strong> — <code>block-design.md</code> is the
-      block-by-block reference this course summarises; <code>measured-performance.md</code>,
-      <code>modulation-and-throughput.md</code> and <code>both-receive-channels.md</code> hold every
-      number quoted in these pages, with the measurement conditions attached.</li>
+      block-by-block reference this course summarises; <code>hardware.md</code> is the parts list behind
+      lesson 39; and <code>measured-performance.md</code>, <code>modulation-and-throughput.md</code> and
+      <code>both-receive-channels.md</code> hold every number quoted in these pages, with the measurement
+      conditions attached.</li>
   </ul>
 </section>
 <footer><div class="foot-in">

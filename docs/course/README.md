@@ -1,7 +1,7 @@
 # Fabric School
 
 A ground-up course in software-defined radio, and in the FPGA inside this one.
-Thirty-nine lessons and an appendix, written against **this** board — its block
+Forty-six lessons and an appendix, written against **this** board — its block
 design, its clocks, its measured numbers.
 
 It assumes you have never written a line of Verilog, never opened Vivado, and
@@ -10,8 +10,8 @@ is either. Every term is defined the first time it appears.
 
 | File | What it is |
 |---|---|
-| [`index.html`](index.html) | The course. One self-contained file, no build step, day/night theme, ten live calculators. |
-| [`Fabric-School.pdf`](Fabric-School.pdf) | The same content as a 98-page book, for reading away from a screen. |
+| [`index.html`](index.html) | The course. One self-contained file, no build step, day/night theme, sixteen live calculators. |
+| [`Fabric-School.pdf`](Fabric-School.pdf) | The same content as a 124-page book, for reading away from a screen. |
 | `fabric-school-print.html` | Generated. The print layout the PDF is rendered from. |
 | `print.css` · `make_print_html.py` | The print stylesheet and the script that applies it. |
 
@@ -40,13 +40,14 @@ yourself" answer already open.
 | **0–3** | What a radio is, what an FPGA is, what is on this board, what each tool does |
 | **4–10** | Verilog from nothing: modules, clocks, the two assignments, widths, fixed point, testbenches |
 | **11–16** | The radio's datapath: IQ samples, sampling and aliasing, the block design, clock domains, the packers, DMA into memory |
-| **17–22** | Changing the fabric: a worked example, Tcl, constraints, driving Vivado, clock crossings, registers |
-| **23–24** | Signals before the fabric: the frequency domain, noise and decibels |
-| **25–27** | DSP in the fabric: filters, decimation, mixers and CORDIC |
-| **28–32** | Building a link: modulation, pulse shaping, synchronisation, correlation, OFDM |
-| **33–36** | Measuring: the six figures of merit, link budgets, IQ metadata, two coherent receivers |
-| **37–38** | Projects, and the rules worth taping to the wall |
-| **A** | Where to go for more, and what this course leaves out |
+| **17–23** | Changing the fabric: a worked example, Tcl, packaging your logic as an IP and splicing it into the TX/RX paths, constraints, driving Vivado, clock crossings, registers |
+| **24–25** | Signals before the fabric: the frequency domain, noise and decibels |
+| **26–28** | DSP in the fabric: filters, decimation, mixers and CORDIC |
+| **29–36** | Building a link: modulation, pulse shaping, synchronisation, correlation, OFDM, equalisation, channel coding, packets and protocols |
+| **37–40** | Measuring and getting on the air: the six figures of merit, link budgets, antennas and the RF front end, IQ metadata |
+| **41–43** | Two coherent receivers, MIMO and beamforming, and the AD9361 itself |
+| **44–45** | Projects, and the rules worth taping to the wall |
+| **A** | Where to go for more, and what this course still leaves out |
 
 Every measured number in it comes from this repository's `docs/` — mostly
 [`measured-performance.md`](../measured-performance.md),
