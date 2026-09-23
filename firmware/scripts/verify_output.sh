@@ -18,6 +18,10 @@ set -uo pipefail
 
 CHECK_BOARD=0
 stale=0
+# Whether the card was actually read. --board asks for the comparison; it is
+# skipped when the board is off or sshpass is missing, and a skip must not
+# read as agreement.
+compared=0
 ARGS=()
 for a in "$@"; do
     case "$a" in
@@ -121,6 +125,7 @@ if [ $CHECK_BOARD -eq 1 ]; then
             note "could not mount /dev/mmcblk0p1 on the board (still mounted from an interrupted flash? try: ssh root@$BOARD umount /tmp/sd)"
             stale=$((stale+1))
         else
+        compared=1
         for f in BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz; do
             [ -r "$OUT/$f" ] || continue
             want=$(md5sum "$OUT/$f" | cut -d' ' -f1)
@@ -153,8 +158,14 @@ elif [ $stale -ne 0 ]; then
     echo "OK - output/ is ready to flash."
     echo "$stale file(s) on the board differ from this build: it is running older"
     echo "firmware. Update it with  ./devkit flash --all"
-elif [ $CHECK_BOARD -eq 1 ]; then
+elif [ $CHECK_BOARD -eq 1 ] && [ $compared -eq 1 ]; then
     echo "OK - output/ is ready to flash, and the board is running it."
+elif [ $CHECK_BOARD -eq 1 ]; then
+    # --board was asked for but the card was never read. Claiming the board
+    # matches here would be inventing the one fact the flag exists to check.
+    echo "OK - output/ is ready to flash."
+    echo "The board was NOT checked (see above), so whether it is running this"
+    echo "build is unknown."
 else
     # Say nothing about the board: without --board it was never looked at, and
     # stale=0 here only means "not checked".
