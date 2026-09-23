@@ -115,9 +115,12 @@ host had never used. Your distribution stops mattering.
 
 ```bash
 # run from: the repo root
-./devkit container build-image      # once, ~3 minutes
-./devkit container install ~/Downloads/Xilinx_Unified_2022.2_*.bin
-./devkit container build --hdl-only
+./devkit container build-image      # once, ~3 min
+./devkit container install ~/Downloads/Xilinx_Unified_2022.2_*.bin   # once, ~1 h
+./devkit container doctor           # can this build? asks before the hour, not during
+./devkit container setup            # clone upstream source + apply patches   (~5 min)
+./devkit container build            # everything                           (45-90 min)
+./devkit verify                     # is the build sane?
 ```
 
 Full details: [Building in a container](docs/building-in-a-container.md).

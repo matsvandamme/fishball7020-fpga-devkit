@@ -11,9 +11,13 @@ will not run on a newer host either.
 
 ```bash
 # run from: the repo root
-./devkit container build-image      # once, ~3 minutes
-./devkit container doctor           # same checks, inside
-./devkit container build --hdl-only # same build, inside
+./devkit container build-image      # once, ~3 min
+./devkit container doctor           # the same checks, inside
+./devkit container setup            # clone upstream source + apply patches   (~5 min)
+./devkit container build            # everything                           (45-90 min)
+
+# after that first full build, the fast loop for an HDL change:
+./devkit container build --hdl-only #                                       (~20 min)
 ```
 
 Verified on this repo: the container's `BOOT.bin` came out **byte-for-byte
