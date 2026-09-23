@@ -146,6 +146,8 @@ generated against a reconstructed pre-change file, never a plain `git diff`.
 `0008` names those GPIO lines in the device tree. `0009` gives the bit-map
 flag's clock-crossing constraint the `-from` it lacked. Without it, Vivado
 dropped the line silently: `set_max_delay -datapath_only` needs both ends.
+`0012` makes the USER LED follow the transmitter, so the board shows when it is
+keyed.
 To fix an applied patch, add a new one on top. Editing it would break every
 existing tree: `setup.sh` cannot re-apply a patch over its earlier version.
 

@@ -84,3 +84,64 @@ end.
 
 The legal gain range also moves with frequency: `[-1, 73]` below 1.3 GHz,
 `[-3, 71]` to 4 GHz, `[-10, 62]` above. Writing outside it returns `-22 EINVAL`.
+
+## Stopping a transmission is two steps, in this order
+
+A one-shot buffer finishes by itself. A **cyclic** one does not: the DMA keeps
+feeding the DAC from the same buffer with no further help from the writer, so
+the order matters.
+
+**Mute first, then kill the writer.** Killing the writer first leaves a window
+where the DMA is still running and nothing is holding the attenuation.
+
+Measured this session: a trap that muted both channels ran correctly on SIGTERM
+and the attenuation read back `-89.750000 dB` - and `iio_writedev` was **still
+running**. Muted but still streaming. Clear it explicitly:
+
+```bash
+# run on your HOST
+pkill -x iio_writedev
+```
+
+**Then read the hardware back, not the log.** A script printing "muting" proves
+only that the line executed. Four things are worth checking, and the last one
+catches what the others miss:
+
+```bash
+# run on your HOST
+U=ip:192.168.2.1
+for c in 0 1; do iio_attr -u $U -c -o ad9361-phy voltage$c hardwaregain; done
+iio_attr -u $U -c -o ad9361-phy altvoltage1 powerdown
+pgrep -x iio_writedev
+for t in 0 1 2 3 4 5 6 7; do
+  iio_attr -u $U -c -o cf-ad9361-dds-core-lpc altvoltage$t scale
+done
+```
+
+The DDS sweep is the one people skip. A leftover tone generator transmits
+**independently of the DMA path**, so a muted attenuator and a dead writer say
+nothing about it. All eight should read `0.000000`.
+
+**Never `pkill -f` a script by its filename** while stopping it from a shell
+whose own command line contains that filename - `pkill` matches itself and kills
+the shell mid-sequence, typically between the mute and the verification. Kill by
+PID, or use a bracket pattern.
+
+## What protects the transmitter when nothing is streaming
+
+Two mechanisms, both verifiable on a running board rather than inferred:
+
+```bash
+# run on the board
+grep -c tx_quiesce /etc/init.d/S21misc      # boot-time quiesce present
+```
+
+`tx_quiesce` in `S21misc` sets the attenuation at boot, because the AD9361 comes
+up in ENSM `fdd` with the TX chain biased and only 10 dB of attenuation - so the
+port emits LO leakage from power-on with nothing in the DAC DMA. It sets
+**attenuation only, deliberately not the TX LO**: powering the synthesiser down
+at boot would leave a later stream transmitting into a dead LO, silently.
+
+From then on `patches/0004` hands muting to the kernel, which unmutes when a TX
+DMA buffer starts and re-mutes when it stops. That is what mutes the radio when
+a writer is killed.
