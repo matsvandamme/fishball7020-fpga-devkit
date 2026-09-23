@@ -7,7 +7,7 @@
 # Fishball7020 FPGA Devkit
 
 <p align="center">
-  <a href="https://matsvandamme.github.io/fishball7020-fpga-devkit/course/"><img src="https://img.shields.io/badge/course-Fabric%20School%20%C2%B7%2046%20lessons-8A3FFC" alt="Fabric School: a 46-lesson SDR and FPGA course for this board"></a>
+  <a href="https://matsvandamme.github.io/fishball7020-fpga-devkit/course/"><img src="https://img.shields.io/badge/course-Fabric%20School%20%C2%B7%2052%20lessons-8A3FFC" alt="Fabric School: a 52-lesson SDR and FPGA course for this board"></a>
   <img src="https://img.shields.io/badge/board-Zynq%20XC7Z020%20%2B%20AD9361-blue" alt="Board: Zynq XC7Z020 + AD9361">
   <img src="https://img.shields.io/badge/toolchain-Vivado%2FVitis%202022.2-orange" alt="Toolchain: Vivado/Vitis 2022.2">
   <img src="https://img.shields.io/badge/host%20OS-Ubuntu%2022.04%20LTS-e95420" alt="Host OS: Ubuntu 22.04 LTS">
@@ -318,6 +318,13 @@ that speed things up. Contributions are welcome; see
   [factory binaries](https://github.com/OpenSourceSDRLab/PlutoSky_7020_AD936X_SDR)
 
 None of it includes editable HDL sources, which is the gap this repo fills.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/vmat-logo-dark.png">
+    <img src="docs/img/vmat-logo.png" alt="VMAT" width="180">
+  </picture>
+</p>
 
 ## License
 
