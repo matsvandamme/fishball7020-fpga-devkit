@@ -21,7 +21,40 @@ ok()   { say "ok" "$1"; }
 bad()  { say "FAIL" "$1"; fail=$((fail+1)); }
 soft() { say "warn" "$1"; warn=$((warn+1)); }
 
+# Are we already inside the build container? Telling someone to use the
+# container while they are in it is worse than saying nothing.
+IN_CONTAINER=0
+if [ -f /run/.containerenv ] || [ -f /.dockerenv ]; then IN_CONTAINER=1; fi
+
+# Vivado 2022.2 supports Ubuntu 18.04, 20.04 and 22.04 (UG973) and nothing
+# newer. On anything else the answer is not "install some packages", it is
+# "build in the container" - so say that once, here, rather than letting
+# someone discover it when the installer will not run either.
+OS_RELEASE="${OS_RELEASE:-/etc/os-release}"   # overridable so this is testable
+host_supported_by_vivado() {
+    [ -r "$OS_RELEASE" ] || return 0            # unknown: do not scare anyone
+    . "$OS_RELEASE"
+    [ "${ID:-}" = "ubuntu" ] || return 0        # RHEL/SUSE have their own list
+    case "${VERSION_ID:-}" in
+        18.04|20.04|22.04) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 echo "== toolchain =="
+if [ "$IN_CONTAINER" -eq 0 ] && ! host_supported_by_vivado; then
+    . "$OS_RELEASE" 2>/dev/null
+    soft "Ubuntu ${VERSION_ID:-?} is newer than Vivado 2022.2 supports (18.04/20.04/22.04)"
+    say "" "Build in the container instead - it needs nothing from this OS:"
+    say "" "  ./devkit container build-image"
+    say "" "  ./devkit container build --hdl-only"
+    if command -v podman >/dev/null 2>&1 || command -v docker >/dev/null 2>&1; then
+        ok "container runtime present ($(command -v podman >/dev/null 2>&1 && echo podman || echo docker))"
+    else
+        say "" "  (install podman first: sudo apt install podman uidmap)"
+    fi
+    say "" "See docs/building-in-a-container.md"
+fi
 # Where Vivado/Vitis 2022.2 live. Override XILINX_DIR if you installed
 # somewhere other than the default - the container build does exactly
 # that to test against a throwaway installation.
@@ -29,6 +62,8 @@ XILINX_DIR="${XILINX_DIR:-/tools/Xilinx}"
 VIVADO_DIR="$XILINX_DIR/Vivado/2022.2"
 VITIS_DIR="$XILINX_DIR/Vitis/2022.2"
 if [ -x "$VIVADO_DIR/bin/vivado" ]; then ok "Vivado 2022.2 at $VIVADO_DIR"
+elif [ "$IN_CONTAINER" -eq 0 ] && ! host_supported_by_vivado; then
+    bad "Vivado 2022.2 not found at $VIVADO_DIR - and this OS cannot install it; use ./devkit container"
 else bad "Vivado 2022.2 not found at $VIVADO_DIR (see README step 1)"; fi
 if [ -x "$VITIS_DIR/bin/xsct" ]; then ok "Vitis 2022.2 (xsct) - needed for the FSBL"
 else bad "Vitis 2022.2 not found at $VITIS_DIR - the FSBL stage will fail"; fi

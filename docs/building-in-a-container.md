@@ -14,7 +14,10 @@ the toolchain has to stop depending on the host.
 
 Verified on this repo: the container's `BOOT.bin` came out **byte-for-byte
 identical** to the host's (`md5 3fb710d8…`), with routing utilisation matching
-to five decimals — 6.54675 % vertical, 9.82488 % horizontal on both.
+to five decimals — 6.54675 % vertical, 9.82488 % horizontal on both. Four of
+the five SD-card files match exactly; `uramdisk.image.gz` varies between runs
+on the host too, which is a separate reproducibility question and does not
+affect the FPGA result.
 
 ## Installing Vivado in the first place
 
@@ -72,10 +75,11 @@ the installer is mounted read-only), and unpacking onto the container's own
 overlay filesystem, which rootless podman mounts with `userxattr`. The work
 directory is a bind mount for both reasons.
 
-> **Verified this far:** the installer extracts inside the image, its bundled
-> OpenJDK 11.0.11 starts, and `xsetup` runs and accepts its batch arguments.
-> A full install was not run end-to-end here, because Vivado was already
-> installed on this machine and the download is ~30 GB behind a login.
+> **Verified end to end.** Vivado 2022.2 was installed from the installer,
+> inside the container, into a throwaway directory the host had never used,
+> and a build run against it with the host's own `/tools/Xilinx` not mounted at
+> all. `BOOT.bin` came out `3fb710d8f990cec8f14d5ca61ca2ddb7` — identical to
+> the host build — with DSP48s 94/220, Slice LUTs 12521 and WNS 0.215 ns.
 
 ## What is and is not in the image
 
@@ -160,3 +164,17 @@ is not the problem. It now engages the shim only where the distro has no
 
 Flashing. `./devkit flash` talks to the board over the network and belongs on
 the host — the container has no reason to reach your radio.
+
+## Other operating systems
+
+Untested, and honest about it.
+
+| | |
+|---|---|
+| **Any Linux** | Yes. The container supplies the userspace, your kernel runs it natively. This is the tested case. |
+| **Windows** | Very likely, through WSL2 — a real Linux kernel on x86-64. But the simpler route is to skip containers and run the devkit directly in WSL2 Ubuntu, with WSLg for the block-design GUI. Keep the checkout inside the WSL2 filesystem, never on `/mnt/c/`: build performance across that boundary is dire, and case sensitivity and POSIX permissions do not survive it, which Vivado's project files care about. Reaching the board over WSL2's default NAT may need mirrored networking. |
+| **macOS, Intel** | Plausible. The Linux VM is x86-64, so the container runs natively in it. You would need XQuartz for the GUI and room for 44 GB inside the VM. |
+| **macOS, Apple Silicon** | Realistically no. The VM is ARM64 and Vivado is x86-64 only. Rosetta can translate x86-64 Linux binaries, but Vivado is a large threaded application with its own JVM and tcmalloc — exactly the kind of software that breaks under translation, as the udev crash above already shows for something much milder. |
+
+Flashing is unaffected either way: `./devkit flash` talks to the board over the
+network from the host, and never needs the container.

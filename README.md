@@ -102,9 +102,20 @@ and [recovering the factory firmware](docs/flashing.md#if-things-go-wrong-recove
 
 ### Want to change the firmware?
 
-You need **Ubuntu 22.04** and **Vivado/Vitis 2022.2**, which is free for this
-chip but a large download. Installing it is by far the slowest step:
-[install instructions](docs/building.md#install-vivadovitis-20222). Then:
+You need **Vivado/Vitis 2022.2**, which is free for this chip but a large
+download. Installing it is by far the slowest step:
+[install instructions](docs/building.md#install-vivadovitis-20222).
+
+Vivado 2022.2 supports **Ubuntu 18.04, 20.04 and 22.04** and nothing newer. On
+any other distribution, build in a container instead — `./devkit container`
+runs the same build inside a pinned image and produces a byte-for-byte
+identical `BOOT.bin`, so the version of Linux on your machine stops mattering.
+It can install Vivado for you too, since the installer will not run on a newer
+host either. See
+[Building in a container](docs/building-in-a-container.md). `./devkit doctor`
+tells you which of the two you need.
+
+Then:
 
 ```bash
 # run from: wherever you want the devkit to live (e.g. ~)

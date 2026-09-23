@@ -4,12 +4,17 @@ Everything between a fresh Ubuntu machine and five SD-card files that contain
 your change. For the short version, see the [Quick start](../README.md#quick-start);
 for what the build actually produces and why, [How it works](how-it-works.md).
 
+This page describes building on the host, which needs Ubuntu 18.04, 20.04 or
+22.04 — the releases Vivado 2022.2 supports. **On anything newer, build in a
+container instead:** [Building in a container](building-in-a-container.md).
+Same commands, same output, none of it dependent on your distribution.
+
 **Contents**
 
 - [Requirements](#requirements) · [Install Vivado/Vitis 2022.2](#install-vivadovitis-20222) · [Get the firmware source](#get-the-firmware-source)
 - [Open the block diagram](#open-the-block-diagram) · [Add your own HDL](#add-your-own-hdl) · [Change the kernel](#change-the-kernel)
 - [Simulate before you build](#simulating-your-hdl-first) · [Build the firmware](#build-the-firmware)
-- [Repository layout](#repository-layout)
+- [Repository layout](#repository-layout) · [Building in a container](building-in-a-container.md)
 
 Then flash it: [Flashing the board](flashing.md).
 
