@@ -1,9 +1,7 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/img/vmat-logo-dark.png">
-    <img src="docs/img/vmat-logo.png" alt="VMAT" width="110">
-  </picture>
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/vmat-logo-dark.png">
+  <img src="docs/img/vmat-logo.png" alt="VMAT" width="110">
+</picture>
 
 > **This is not the official Analog Devices / OpenSourceSDRLab repository.**
 > The Fishball7020 is an ADALM-PLUTO-derivative board that ships with no
