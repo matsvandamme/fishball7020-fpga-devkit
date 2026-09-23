@@ -210,6 +210,7 @@ pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 | iterate on the FPGA in seconds over JTAG | [Option D — JTAG](docs/flashing.md#option-d--jtag-temporary-but-the-fastest-hdl-loop) |
 | blink the USER LED | [Controlling the USER LED](docs/user-led.md) |
 | build without caring what Linux I run | **[Building in a container](docs/building-in-a-container.md)** — the recommended route; installs Vivado too, byte-identical output |
+| drive the radio from an AI assistant | the sibling **[Fishball7020-mcp](https://github.com/matsvandamme/Fishball7020-mcp)** — 21 MCP tools: tune, sweep, capture, transmit |
 | fix a build that fails | [Troubleshooting](docs/troubleshooting.md) |
 
 ## What is on the board
