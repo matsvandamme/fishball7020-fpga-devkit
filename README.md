@@ -7,6 +7,7 @@
 # Fishball7020 FPGA Devkit
 
 <p align="center">
+  <a href="https://matsvandamme.github.io/fishball7020-fpga-devkit/course/"><img src="https://img.shields.io/badge/course-Fabric%20School%20%C2%B7%2046%20lessons-8A3FFC" alt="Fabric School: a 46-lesson SDR and FPGA course for this board"></a>
   <img src="https://img.shields.io/badge/board-Zynq%20XC7Z020%20%2B%20AD9361-blue" alt="Board: Zynq XC7Z020 + AD9361">
   <img src="https://img.shields.io/badge/toolchain-Vivado%2FVitis%202022.2-orange" alt="Toolchain: Vivado/Vitis 2022.2">
   <img src="https://img.shields.io/badge/host%20OS-Ubuntu%2022.04%20LTS-e95420" alt="Host OS: Ubuntu 22.04 LTS">
@@ -25,6 +26,20 @@ opening the case.
 
 If bitstream, FSBL and block design are new terms, **[How it
 works](docs/how-it-works.md)** starts from the beginning and assumes nothing.
+
+> ### 📚 [Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/) — learn all of this from nothing
+>
+> A 46-lesson course written against **this** board: its block design, its
+> clocks, its measured numbers. From what a radio *is* and what a decibel means,
+> through Verilog and Vivado, to packaging your own logic as an IP and splicing
+> it into the AD9361 datapath — then filters, modulation, OFDM, link budgets and
+> two coherent receivers.
+>
+> It assumes no Verilog, no Vivado, no FPGA experience and no signal processing.
+> Sixteen live calculators, day/night, one self-contained page.
+> **[Read it online](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)**
+> · **[124-page PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)**
+> · [source](docs/course/)
 
 ## Is this your board?
 
