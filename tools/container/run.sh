@@ -2,6 +2,8 @@
 # Run a devkit command inside the pinned Vivado 2022.2 environment.
 #
 #   ./devkit container build-image        build (or rebuild) the image
+#   ./devkit container install <bin>      install Vivado 2022.2 itself, inside
+#                                         the container, onto the host
 #   ./devkit container doctor             run ./devkit doctor inside it
 #   ./devkit container build --hdl-only   run a build inside it
 #   ./devkit container shell              an interactive shell inside it
@@ -33,8 +35,40 @@ if ! "$RT" image exists "$IMAGE" 2>/dev/null && ! "$RT" image inspect "$IMAGE" >
     echo "ERROR: image '$IMAGE' not built yet - run: ./devkit container build-image" >&2
     exit 1
 fi
+if [ "${1:-}" = "install" ]; then
+    shift
+    BIN="${1:-}"
+    if [ -z "$BIN" ] || [ ! -f "$BIN" ]; then
+        echo "usage: ./devkit container install /path/to/Xilinx_Unified_2022.2_*.bin" >&2
+        echo "Download it from AMD first - it is behind an account login, so" >&2
+        echo "this cannot fetch it for you." >&2
+        exit 2
+    fi
+    # The bootstrap problem this solves: the container exists because the host
+    # is too new to run Vivado 2022.2, and the Xilinx installer is the same
+    # Java/GTK application with the same requirements. So it runs in here too,
+    # writing OUT to the host through a read-write mount - the one time
+    # $XILINX_DIR is not mounted read-only.
+    if [ ! -d "$XILINX_DIR" ] || [ ! -w "$XILINX_DIR" ]; then
+        echo "ERROR: $XILINX_DIR must exist and be writable by you." >&2
+        echo "Rootless podman maps the container's root to your own user, so a" >&2
+        echo "root-owned directory cannot be written even from 'root' inside." >&2
+        echo "  sudo mkdir -p $XILINX_DIR && sudo chown \"$USER\" $XILINX_DIR" >&2
+        exit 1
+    fi
+    mkdir -p "$CHOME"
+    BIN_DIR="$(cd "$(dirname "$BIN")" && pwd)"
+    exec "$RT" run ${TTY_INSTALL:--i -t} --rm \
+        -v "$XILINX_DIR:$XILINX_DIR" \
+        -v "$BIN_DIR:$BIN_DIR:ro" \
+        -v "$CHOME:/home/builder" -e HOME=/home/builder \
+        ${DISPLAY:+-e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix} \
+        -w "$BIN_DIR" "$IMAGE" bash "$BIN_DIR/$(basename "$BIN")"
+fi
+
 if [ ! -d "$XILINX_DIR" ]; then
-    echo "ERROR: $XILINX_DIR not found on the host (set XILINX_DIR)" >&2
+    echo "ERROR: $XILINX_DIR not found on the host (set XILINX_DIR)." >&2
+    echo "If Vivado is not installed yet: ./devkit container install <installer.bin>" >&2
     exit 1
 fi
 

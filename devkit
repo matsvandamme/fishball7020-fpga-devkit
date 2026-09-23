@@ -13,7 +13,9 @@
 #     ./devkit gpio-check  verify the sample-locked GPIO outputs on hardware
 #     ./devkit status      where am I? what is built, what is the board running
 #     ./devkit container   run any of the above inside the pinned Vivado 2022.2
-#                          environment, so the host OS is free to move
+#                          environment, so the host OS is free to move. Also
+#                          "container install <bin>" to install Vivado itself,
+#                          for a host too new to run its installer.
 #
 # Every subcommand passes extra arguments straight through, so
 # "./devkit build --hdl-only" and "./devkit selftest --loopback --pad 50" work.

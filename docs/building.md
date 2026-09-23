@@ -54,6 +54,12 @@ sudo apt install -y git build-essential bison flex libssl-dev \
 
 ## Install Vivado/Vitis 2022.2
 
+> If your distribution is newer than 22.04, the installer will most likely not
+> run either - it is the same Java/GTK application as Vivado. Install it from
+> inside the container instead:
+> [Installing Vivado in the first place](building-in-a-container.md#installing-vivado-in-the-first-place).
+
+
 The Zynq-7020 is covered by Xilinx's **free WebPACK license** — no purchase, no
 license file.
 

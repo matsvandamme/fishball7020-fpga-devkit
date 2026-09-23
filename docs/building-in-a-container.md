@@ -16,6 +16,45 @@ Verified on this repo: the container's `BOOT.bin` came out **byte-for-byte
 identical** to the host's (`md5 3fb710d8…`), with routing utilisation matching
 to five decimals — 6.54675 % vertical, 9.82488 % horizontal on both.
 
+## Installing Vivado in the first place
+
+There is a chicken-and-egg problem here, and it is the whole reason this
+matters. The container exists because your host is too new to run Vivado
+2022.2 — but the Xilinx installer is the *same* Java/GTK application with the
+same requirements. On a host that cannot run Vivado, it generally cannot run
+the installer either.
+
+So the installer runs in the container too, writing out to the host:
+
+```bash
+# run from: the repo root
+# AMD put the installer behind an account login, so download it yourself first:
+#   https://www.xilinx.com/support/download.html  ->  Vivado 2022.2  ->  Linux Self Extracting Web Installer
+
+# Rootless podman maps the container's root to YOUR user, so the target must be
+# yours - a root-owned /tools/Xilinx cannot be written even from "root" inside.
+sudo mkdir -p /tools/Xilinx && sudo chown "$USER" /tools/Xilinx
+
+./devkit container install ~/Downloads/Xilinx_Unified_2022.2_1014_8888_Lin64.bin
+```
+
+That mounts `/tools/Xilinx` **read-write** — the one time it is not read-only —
+passes your display through, and runs the installer's own GUI. Answer it the
+same way [building.md](building.md#install-vivadovitis-20222) describes: choose
+**Vitis**, select only **Zynq-7000** under device families (~130 GB down to
+~30 GB), and keep the path `/tools/Xilinx`.
+
+It is the web installer, so it needs your AMD account during the run and
+downloads the content itself. Budget an hour and the disk.
+
+Once that finishes, everything else mounts `/tools/Xilinx` read-only and the
+host never needs to run a Xilinx binary again.
+
+> **Verified this far:** the installer extracts inside the image, its bundled
+> OpenJDK 11.0.11 starts, and `xsetup` runs and accepts its batch arguments.
+> A full install was not run end-to-end here, because Vivado was already
+> installed on this machine and the download is ~30 GB behind a login.
+
 ## What is and is not in the image
 
 Vivado is **not** in the image. `/tools/Xilinx` is bind-mounted read-only, so
