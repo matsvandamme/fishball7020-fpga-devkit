@@ -1345,10 +1345,100 @@ iio_attr -u ip:192.168.2.1 -i -c ad9361-phy voltage0 rf_bandwidth        4000000
 </code></pre>
   </div>
 
-  <p>A sensible default is a filter <strong>slightly narrower</strong> than the sample rate — the
-    measurements in this repo use 0.8 × the rate. Set it much <em>wider</em> and you are deliberately
+  <p>A sensible default is a filter <strong>slightly narrower</strong> than the sample rate. Common
+    practice is <strong>0.75 × the rate</strong> — that is gr-osmosdr's default for a HackRF — and
+    the section below derives where that number comes from. Set it much <em>wider</em> and you are deliberately
     letting in signals that can only arrive as aliases. Set it much <em>narrower</em> and you are
     throwing away spectrum you paid to sample.</p>
+
+  <div class="box why">
+    <p class="bt">It wraps, it does not mirror — and that catches people out</p>
+    <p>Most textbooks teach Nyquist with <em>real</em> sampling first, where an alias <strong>reflects</strong>
+      about the band edge: push a tone up past the limit and it comes back down. Complex I/Q sampling does
+      not behave that way. The band is a <strong>circle</strong>: a tone pushed off the top reappears at the
+      <em>bottom</em>, still travelling in the same direction.</p>
+    <p>At 1 MSPS, with the window running &minus;0.5 to +0.5 MHz:</p>
+    <div class="tw"><table>
+      <thead><tr><th>Tone at</th><th>Complex sampling (wrap)</th><th>Real sampling (mirror)</th></tr></thead>
+      <tbody>
+        <tr><td class="num">+0.90 MHz</td><td class="num"><strong>&minus;0.100</strong></td><td class="num">+0.100</td></tr>
+        <tr><td class="num">+1.50 MHz</td><td class="num"><strong>&minus;0.500</strong></td><td class="num">+0.500</td></tr>
+        <tr><td class="num">&minus;1.20 MHz</td><td class="num"><strong>&minus;0.200</strong></td><td class="num">+0.200</td></tr>
+      </tbody>
+    </table></div>
+    <p>That is why the rule above is <em>add or subtract whole multiples of the sample rate</em> — a
+      modulo, not a reflection. The two give different answers, and on this board the wrap is the
+      right one.</p>
+  </div>
+
+  <h3>Decimation moves Nyquist, and things that were safe stop being safe</h3>
+  <p>Everything above assumed one sample rate. The moment you <strong>decimate</strong> — keep one sample
+    in every <em>D</em> and throw the rest away, which is what lesson 27 does for free dynamic range —
+    there are suddenly <em>two</em> Nyquist limits, and the one that governs you is the smaller.</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">the only rule that matters after decimating</span></div>
+<pre><code>original rate   fs          window  +/- fs/2
+decimate by D   fs / D      window  +/- fs / (2D)     &lt;-- this one
+
+a signal safely inside the first window can be well outside the second
+</code></pre>
+  </div>
+  <p>This is the trap, because nothing warns you. The signal was legitimately inside the band when you
+    sampled it. You then decimate to save CPU, and it folds — at which point it is a peak in your
+    spectrum that was never on the air.</p>
+
+  <div class="box trap">
+    <p class="bt">Setting the cutoff to Nyquist is not enough, and here is the measurement</p>
+    <p>The obvious rule is &ldquo;filter at the new Nyquist.&rdquo; It is wrong, because a real filter has a
+      <strong>transition band</strong>. Take 16 MSPS decimated by 8 &mdash; a 2 MSPS output, Nyquist
+      1 MHz &mdash; and a 193-tap Hamming low-pass with its cutoff placed exactly at 1 MHz:</p>
+    <div class="tw"><table>
+      <thead><tr><th>A tone here</th><th>is attenuated by</th><th>folds to</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1.00 MHz</td><td class="num">&minus;6.0 dB</td><td class="num">&minus;1.00</td></tr>
+        <tr><td class="num">1.05 MHz</td><td class="num">&minus;13.8 dB</td><td class="num">&minus;0.95</td></tr>
+        <tr><td class="num">1.10 MHz</td><td class="num">&minus;27.9 dB</td><td class="num">&minus;0.90</td></tr>
+        <tr><td class="num">1.20 MHz</td><td class="num">&minus;60.0 dB</td><td class="num">&minus;0.80</td></tr>
+      </tbody>
+    </table></div>
+    <p>A signal at 1.05 MHz arrives in your band only <strong>13.8 dB</strong> down. That is not
+      rejection, it is a dent.</p>
+    <p><strong>The rule that is actually correct.</strong> Decide the widest frequency you intend to
+      <em>keep</em> &mdash; call it the passband edge <code>fp</code>. Anything at or above
+      <code>fs/D &minus; fp</code> folds into that passband, so that is where the <em>stopband</em> must
+      begin:</p>
+    <div class="code">
+      <div class="code-bar"><span class="f">anti-alias filter, after decimating by D</span></div>
+<pre><code>passband edge   fp                    what you keep
+stopband edge   (fs / D) - fp         where rejection must already be reached
+stopband depth  &gt;= your dynamic range  so folded energy lands under the noise
+
+Nyquist, fs/(2D), sits in the MIDDLE of that transition - not at its start.
+</code></pre>
+    </div>
+    <p>Keep 0.8 MHz out of a 2 MSPS output and the stopband must start at 2 &minus; 0.8 = 1.2 MHz. The
+      ratio of passband to rate is then 0.8/2 = <strong>0.4</strong>, i.e. a filter
+      <strong>0.8 &times; the Nyquist width</strong> — which is where the familiar
+      &ldquo;0.75 to 0.8 &times; the rate&rdquo; rules of thumb come from. They are this calculation,
+      rounded.</p>
+  </div>
+
+  <div class="calc" id="c-decimalias">
+    <p class="ct">Try it — will it alias after decimation, and is your filter wide enough to matter?</p>
+    <div class="row">
+      <label>Sample rate (MSPS)
+        <input type="number" id="d-fs" value="16" step="0.1" min="0.1"></label>
+      <label>Decimation D
+        <input type="number" id="d-d" value="8" step="1" min="1"></label>
+    </div>
+    <div class="row">
+      <label>Signal offset from centre (MHz)
+        <input type="number" id="d-f" value="1.5" step="0.05"></label>
+      <label>Passband you want to keep (MHz)
+        <input type="number" id="d-fp" value="0.8" step="0.05" min="0.01"></label>
+    </div>
+    <div class="out" id="d-out"></div>
+  </div>
 
   <div class="box try">
     <p class="bt">How to catch an alias in the field</p>
@@ -7689,6 +7779,40 @@ as eta -> 0:   -> ln 2 = 0.693  ->  10*log10(0.693) = -1.59 dB
     if(b>=1e3) return (b/1e3).toFixed(1)+' kB';
     return b.toFixed(0)+' B';
   }
+
+  // after decimating: does it alias, and is the anti-alias filter adequate?
+  if(document.getElementById('d-out')) bind(['d-fs','d-d','d-f','d-fp'], function(){
+    var fs=num('d-fs'), D=num('d-d'), f=num('d-f'), fp=num('d-fp');
+    var o=document.getElementById('d-out');
+    if(!isFinite(fs)||!isFinite(D)||!isFinite(f)||!isFinite(fp)||fs<=0||D<1||fp<=0){
+      o.innerHTML=row('','fill in all four, with a rate above zero and D at least 1'); return; }
+    var nr=fs/D, nyq=nr/2;
+    var land=((f+nyq)%nr+nr)%nr-nyq;
+    var outside=Math.abs(f)>nyq+1e-12;
+    var stop=nr-fp;                               // where rejection must be reached
+    var html=row('After decimating by '+D, nr.toFixed(3)+' MSPS, window &plusmn;'+nyq.toFixed(3)+' MHz');
+    html+=row('Your signal at '+f.toFixed(3)+' MHz',
+      outside?'<span class="no">outside the window</span>':'<span class="ok">inside the window</span>');
+    if(outside){
+      html+=row('It folds to','<b>'+land.toFixed(3)+' MHz</b>');
+      html+=row('Lands in your passband?',
+        Math.abs(land)<=fp?'<span class="no">YES — straight into the signal you care about</span>'
+                          :'<span class="ok">no — it lands in the guard region</span>');
+    }
+    html+=row('Passband you keep','&plusmn;'+fp.toFixed(3)+' MHz');
+    if(fp>=nyq){
+      html+=row('Filter design','<span class="no">impossible — passband is at or beyond Nyquist, '
+        +'there is no room for a transition band</span>');
+    } else {
+      html+=row('Stopband must start at','<b>'+stop.toFixed(3)+' MHz</b>  ('+nr.toFixed(3)
+        +' &minus; '+fp.toFixed(3)+')');
+      html+=row('Transition band you get', (stop-fp).toFixed(3)+' MHz wide, with Nyquist '
+        +nyq.toFixed(3)+' in the middle of it');
+      html+=row('Passband as a fraction of rate', (fp/nr).toFixed(3)
+        +'  — the usual 0.75–0.8 rules of thumb are this number, doubled and rounded');
+    }
+    o.innerHTML=html;
+  });
 
   // where does a signal land after sampling?
   if(document.getElementById('a-out')) bind(['a-f','a-fs'], function(){
