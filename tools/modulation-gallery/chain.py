@@ -6,8 +6,10 @@ Rates, and why:
   HackRF 16 MSPS, analog filter 12 MHz  span +-8 MHz, analog stopband begins at
                                         +-6 MHz, so the fold point at +-8 MHz is
                                         already 2 MHz into the analog stopband.
-  offset tuning, -2.5 MHz               the receiver's own DC spike lands 3.5 MHz
-                                        from the signal, not on top of it.
+  offset tuning, +4.8 MHz               the receiver's own DC spike lands 4.8 MHz
+                                        from the signal, not on top of it. The
+                                        sign matters as much as the size: see
+                                        below.
   digital LPF, pass 2.0 / stop 2.6 MHz  120 dB stopband, designed here rather
                                         than inherited.
   decimate by 2 -> 8 MSPS               output Nyquist is +-4 MHz while the
@@ -18,13 +20,32 @@ The anti-alias rule this follows is stopband_edge <= fs_out - f_pass: with
 fs_out 8 MHz and f_pass 2 MHz that allows a stopband edge up to 6 MHz, and 2.6
 MHz is far tighter than required. The widest signal in the set occupies 1.625
 MHz, so it is entirely inside the passband.
+
+Why the receiver tunes ABOVE the transmitter, not below
+-------------------------------------------------------
+A direct-conversion receiver makes second-order products: a strong input at
+baseband offset d appears again at 2d. There is a strong carrier at 864.0 MHz in
+this room, and with the receiver 3.5 MHz BELOW a 866.5 MHz transmission it sat at
++1.0 MHz baseband, putting its product at +2.0 MHz baseband - which is 865.0 MHz,
+exactly 1.5 MHz below the signal, in the skirt where it is most visible. It was
+the sharp peak in every spectrum of the first run.
+
+The product always lands at 2*carrier - LO, so it is the RECEIVER's tuning that
+decides where it falls, not the transmitter's. Tuning above instead of below
+moves it to 858.0 MHz, 8.5 MHz away, where the digital filter removes it: measured,
+-1.5 MHz drops from 21.5 dB above the noise floor to 2.3 dB, which is nothing.
+
+That it is a product and not a signal was established by retuning: it appears at
+exactly twice the carrier's baseband offset at every tuning tried, so it moves at
+twice the rate and in the same direction, which no real signal does. See
+spurhunt.py, band.py and ip2.py.
 """
 import numpy as np
 from scipy.signal import firwin, kaiserord, lfilter, freqz
 
 HACK_FS   = 16_000_000
 HACK_BW   = 12_000_000
-OFFSET    = 3_500_000
+OFFSET    = -4_800_000        # receiver ABOVE the board - see below
 WORK_FS   = 8_000_000
 DECIM     = HACK_FS // WORK_FS
 F_PASS    = 2_000_000
@@ -62,7 +83,9 @@ def describe():
     # What actually matters: attenuation at the frequency that would fold to DC
     fold = WORK_FS - 0            # energy at +-8 MHz folds onto 0 after decimation
     at_fold = hdb[np.argmin(np.abs(w - fold))]
-    at_dcspike = hdb[np.argmin(np.abs(w - OFFSET))]
+    # freqz returns positive frequencies; the filter is symmetric, so a
+    # negative offset must be looked up at its magnitude or it reads as DC.
+    at_dcspike = hdb[np.argmin(np.abs(w - abs(OFFSET)))]
     return dict(ntaps=len(TAPS), pass_ripple_db=passripple, stopband_db=stop,
                 at_fold_db=at_fold, at_dcspike_db=at_dcspike)
 

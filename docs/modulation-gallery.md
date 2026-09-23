@@ -18,7 +18,7 @@ nothing.
 | | |
 |---|---|
 | Transmitter | Fishball7020, Zynq XC7Z020 + AD9361, **TX2A**, 866.5 MHz, 4 MSPS, −16 dB attenuation |
-| Receiver | **HackRF One**, 16 MSPS, 12 MHz analog filter, LNA 24 dB / VGA 24 dB |
+| Receiver | **HackRF One**, 16 MSPS, 12 MHz analog filter, LNA 24 dB / VGA 24 dB, tuned **4.8 MHz above** the transmitter |
 | Band | 866.5 MHz, inside the European 863–870 MHz ISM band |
 | Link | over the air, a short hop across a desk |
 
@@ -33,15 +33,15 @@ pattern shows the modulation and the blur shows the damage.
 
 | Signal | Tier | Occupied BW | PAPR | EVM | |
 |---|---|---|---|---|---|
-| CW tone | simple | 0.004 MHz | 0.28 dB | — | the reference |
-| OOK | simple | 0.306 MHz | 4.96 dB | — | 250 kbaud |
-| 2-FSK | simple | 0.857 MHz | 0.33 dB | — | 250 kbaud, ±250 kHz |
-| BPSK | moderate | 1.165 MHz | 4.03 dB | 7.26 % | 6.01 % equalised |
-| QPSK | moderate | 1.164 MHz | 3.69 dB | 9.48 % | 6.06 % equalised |
-| GMSK | moderate | 0.994 MHz | 0.29 dB | — | BT = 0.3 |
-| 16-QAM | complex | 1.165 MHz | 5.56 dB | 9.59 % | 6.11 % equalised |
-| 64-QAM | complex | 1.165 MHz | 6.02 dB | 10.47 % | 6.17 % equalised |
-| OFDM, 52 × QPSK | complex | 1.650 MHz | 9.35 dB | 10.97 % | 128-point FFT, ¼ cyclic prefix |
+| CW tone | simple | 0.003 MHz | 0.22 dB | — | the reference |
+| OOK | simple | 0.304 MHz | 4.95 dB | — | 250 kbaud |
+| 2-FSK | simple | 0.854 MHz | 0.32 dB | — | 250 kbaud, ±250 kHz |
+| BPSK | moderate | 1.164 MHz | 4.02 dB | 6.45 % | 5.90 % equalised |
+| QPSK | moderate | 1.163 MHz | 3.69 dB | 6.34 % | 5.91 % equalised |
+| GMSK | moderate | 0.994 MHz | 0.30 dB | — | BT = 0.3 |
+| 16-QAM | complex | 1.165 MHz | 5.58 dB | 6.10 % | 5.98 % equalised |
+| 64-QAM | complex | 1.164 MHz | 6.06 dB | 9.35 % | 6.05 % equalised |
+| OFDM, 52 × QPSK | complex | 1.648 MHz | 9.47 dB | 10.61 % | 128-point FFT, ¼ cyclic prefix |
 | LoRa-style CSS | complex | 0.990 MHz | 4.84 dB | — | **128 of 128 symbols decoded** |
 
 All the linear modulations run at 1 Msym/s with root-raised-cosine shaping,
@@ -56,7 +56,7 @@ useful thing to look at here, more than the EVM number beside it.
 
 ## The number that does not improve
 
-Every linear modulation lands at **6.0–6.2 % EVM after equalisation**, and it is
+Every linear modulation lands at **5.9–6.1 % EVM after equalisation**, and it is
 the same figure for BPSK as for 64-QAM. That flatness is the whole story. A
 transmitter running out of linearity punishes dense constellations far harder
 than sparse ones; an impairment that is identical across four modulation orders
@@ -64,13 +64,15 @@ is additive, and comes from the link rather than from the board.
 
 Three measurements pin it down, and all three are in the figure below:
 
-- **An unmodulated carrier through the same path already measures 7.4 %
-  equivalent EVM**, of which 4.22° is RMS phase error and only 0.98 % is
+- **An unmodulated carrier through the same path already measures 8.7 %
+  equivalent EVM**, of which 4.97° is RMS phase error and only 0.78 % is
   amplitude. A CW tone has no modulation to get wrong, so whatever that is, the
-  transmitter's modulator did not cause it.
+  transmitter's modulator did not cause it. (An earlier run of the same
+  measurement gave 7.4 % and 4.22°. That it wanders between runs is itself
+  evidence: a fixed impairment would not.)
 - **In-band signal-to-noise is 42–45 dB**, which on its own would allow
   0.6–0.8 % EVM. Noise is not the limit either.
-- **Image rejection is 52.6–55.6 dB**, measured by fitting the received symbols
+- **Image rejection is 55.0–64.9 dB**, measured by fitting the received symbols
   to `a·s + b·conj(s)` — a widely linear fit, which catches I/Q imbalance
   precisely because no ordinary equaliser can. The board's I/Q balance is fine.
 
@@ -89,17 +91,80 @@ transmitter down settles it: a spur made in the transmitter tracks the carrier,
 so its ratio in dBc stays fixed, while anything the receiver contributes does
 not follow.
 
-| TX attenuation | Carrier | Spur at ±1 MHz | Ratio | Spur at 865.0 MHz |
-|---|---|---|---|---|
-| −30 dB | −22.9 dBFS | −63.2 dBFS | −40.3 dBc | −66.0 dBFS |
-| −24 dB | −17.0 dBFS | −56.5 dBFS | −39.5 dBc | −66.8 dBFS |
-| −20 dB | −13.0 dBFS | −53.2 dBFS | −40.2 dBc | −66.0 dBFS |
-| −16 dB | −9.2 dBFS | −49.4 dBFS | −40.2 dBc | −66.3 dBFS |
+| TX attenuation | Carrier | Spur at ±1 MHz | Ratio |
+|---|---|---|---|
+| −36 dB | −25.0 dBFS | −66.8 dBFS | −41.8 dBc |
+| −30 dB | −18.9 dBFS | −60.8 dBFS | −41.9 dBc |
+| −24 dB | −12.9 dBFS | −54.9 dBFS | −41.9 dBc |
+| −20 dB | −8.9 dBFS | −50.9 dBFS | −42.0 dBc |
+| −16 dB | −5.3 dBFS | −47.2 dBFS | −42.0 dBc |
 
-So the ±1 MHz pair is **the board's own, about −40 dBc**, sitting at exactly a
-quarter of the 4 MSPS transmit rate. The one at 865.0 MHz never moves, and it is
-present at the same level with the transmitter muted — that one belongs to the
-receiver.
+The ratio holds to 0.2 dB across 20 dB of transmit power, so the ±1 MHz pair is
+**the board's own, −42 dBc**, sitting at exactly a quarter of the 4 MSPS
+transmit rate.
+
+## The peak that was not a signal
+
+The first version of these measurements had a sharp peak **1.5 MHz below centre
+in every single spectrum**, modulated or not. It was present with the
+transmitter muted and unmoved by 20 dB of transmit power, so it was not the
+board — but "it's the receiver" is not an explanation, and it turned out to be
+worth chasing.
+
+It is at 865.0 MHz, which is inside the European UHF RFID band, so the obvious
+reading is an external transmitter. That reading is wrong, and one experiment
+shows it. **Retune the receiver and a real signal stays at the same absolute
+frequency.** This one did not:
+
+| Receiver tuned to | 865.0 MHz would appear at | measured, above the noise floor |
+|---|---|---|
+| 858.0 MHz | +7.000 MHz | 1.3 dB |
+| 861.0 MHz | +4.000 MHz | 4.9 dB |
+| **863.0 MHz** | **+2.000 MHz** | **26.7 dB** |
+| 867.0 MHz | −2.000 MHz | 3.2 dB |
+| 870.0 MHz | −5.000 MHz | 2.5 dB |
+
+Present at one tuning and absent at the other four. Nothing is at 865.0 MHz.
+
+What *is* there is a strong carrier at **864.0 MHz** — that one shows up at every
+tuning, at exactly 864.0 MHz each time (+7.000 from an 857 MHz tuning, +4.000
+from 860, +1.000 from 863, −2.000 from 866, −5.000 from 869). And 865.0 MHz is
+precisely twice its offset from a receiver tuned to 863.0.
+
+That is the signature of **second-order distortion in the receiver's mixer**: a
+strong input at baseband offset *d* reappears at *2d*. The prediction is that the
+product moves at twice the rate the carrier does, in the same direction, and it
+does, at every tuning tried:
+
+| Receiver tuned to | 864.0 MHz sits at | product predicted at | measured there | a control bin 400 kHz away |
+|---|---|---|---|---|
+| 862.5 MHz | +1.500 MHz | +3.000 MHz | 18.1 dB | 11.3 dB |
+| 863.0 MHz | +1.000 MHz | +2.000 MHz | 29.0 dB | 2.2 dB |
+| 863.5 MHz | +0.500 MHz | +1.000 MHz | 15.1 dB | 3.1 dB |
+| 864.5 MHz | −0.500 MHz | −1.000 MHz | 15.3 dB | 2.2 dB |
+| 865.0 MHz | −1.000 MHz | −2.000 MHz | 14.6 dB | 2.5 dB |
+
+No real signal behaves like that.
+
+**The fix follows from the arithmetic.** The product lands at `2 × carrier − LO`,
+so it is the *receiver's* tuning that decides where it falls, not the
+transmitter's. Offset tuning was already in use to move the receiver's DC spike
+out of the way; it was simply pointed the wrong way. Tuning **4.8 MHz above**
+the transmitter instead of 3.5 MHz below moves the product from 865.0 MHz to
+856.7 MHz — 9.8 MHz from the signal, deep in the digital filter's stopband.
+
+Measured at −1.5 MHz, before and after: **21.5 dB above the noise floor → 3.8 dB**,
+which is nothing. Every spectrum on this page is from the retuned run.
+
+Two things improved as a side effect, both because the interferer was no longer
+sitting in the measurement. The board's own ±1 MHz spur now reads −41.8 to
+−42.0 dBc across the whole 20 dB sweep instead of drifting to −30.5 dBc at the
+lowest power, where the old contamination dominated. And the equalised EVM
+figures tightened from 6.01–6.17 % to 5.90–6.05 %.
+
+`spurhunt.py`, `band.py`, `ip2.py` and `pickLO.py` in
+[`tools/modulation-gallery/`](../tools/modulation-gallery/) reproduce all of
+this, and none of them transmits — it is entirely a receiver question.
 
 ## The chirp
 
@@ -128,12 +193,15 @@ modulation order showing itself.
 
 Three things had to be right before any of these plots meant anything.
 
-**No DC spike.** A direct-conversion receiver puts a large artefact at its own
-local-oscillator frequency, and on most SDR screenshots it sits in the middle of
-the signal. Here the HackRF is deliberately tuned **3.5 MHz below** the
-transmitter, so that artefact lands in the stopband of the digital filter that
-follows and is rejected by about 135 dB rather than cosmetically blanked. Every
-spectrum on this page is genuinely free of it.
+**No DC spike, and no distortion products either.** A direct-conversion
+receiver puts a large artefact at its own local-oscillator frequency, and on most
+SDR screenshots it sits in the middle of the signal. Here the HackRF is
+deliberately tuned **4.8 MHz above** the transmitter, so that artefact lands in
+the stopband of the digital filter that follows and is rejected by 144 dB rather
+than cosmetically blanked. The same choice of tuning — above rather than below —
+also throws the mixer's second-order products clear of the band, which is a
+separate problem with the same knob and is worked through in [the section
+above](#the-peak-that-was-not-a-signal).
 
 **No aliasing.** 16 MSPS with a 12 MHz analog filter puts the fold point 2 MHz
 inside the analog stopband; the digital filter that follows passes 2 MHz, stops

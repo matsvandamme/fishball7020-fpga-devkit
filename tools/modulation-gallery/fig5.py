@@ -100,7 +100,7 @@ fig.text(0.008, 0.933,
          "two oscillators that have never met - which is a property of the measurement, not of the board.",
          color=theme.INK2, fontsize=9.3, va="top", linespacing=1.6)
 theme.stamp(fig, "Fishball7020 FPGA devkit  ·  Zynq-7020 + AD9361, TX2A at 866.5 MHz",
-            "receiver: HackRF One, 16 MSPS, offset-tuned")
+            "receiver: HackRF One, 16 MSPS, tuned 4.8 MHz above the transmitter")
 fig.tight_layout(rect=[0, 0.02, 1, 0.855])
 fig.savefig("fig/05-summary.png")
 print("wrote fig/05-summary.png")

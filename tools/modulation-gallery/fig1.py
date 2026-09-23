@@ -39,10 +39,11 @@ fig.text(0.008, 0.975, "Ten modulations from one Fishball7020, measured on a Hac
          color=theme.INK, fontsize=17, fontweight="bold", va="top")
 fig.text(0.008, 0.935,
          "Zynq-7020 + AD9361 transmitting at 866.5 MHz, 4 MSPS, TX2A at -16 dB attenuation.  "
-         "Receiver offset-tuned 3.5 MHz low so its own DC spike falls in the filter's "
-         "stopband: every trace below is genuinely DC-free.\n"
+         "Receiver offset-tuned 4.8 MHz HIGH, which puts both its own DC spike and its "
+         "second-order products outside the band: every trace is genuinely DC-free and spur-free.\n"
          "Dashed line is the transmitter muted - the same absolute scale, so what looks "
-         "like signal is signal.  Chebyshev-windowed, 32 768-point, 62 averages.",
+         "like signal is signal.  Chebyshev-windowed, 32 768-point, 62 averages.  "
+         "The spurs that remain in the CW and OOK panels are the board's own.",
          color=theme.INK2, fontsize=9.3, va="top", linespacing=1.6)
 hand = [plt.Line2D([], [], color=theme.TIER[t], lw=3,
         label={"simple": "simple", "moderate": "moderate", "complex": "complex"}[t])
