@@ -155,9 +155,10 @@ to blame the analysis. That was checked: run against the *clean transmit file*
 the demodulator reads **0.00%**, so the chain is sound.
 
 The cause is **peak-to-average ratio**. OFDM is the sum of 52 independent
-subcarriers, so it peaks about 11 dB above its own average against roughly 4 dB
-for QPSK. Transmit power is limited by the peak, so at the same peak OFDM puts
-about **9 dB less average power** on the link. Same noise floor, less signal.
+subcarriers, so it peaks 11.06 dB above its own average against 4.14 dB for
+QPSK. Transmit power is limited by the peak, so at the same peak OFDM puts
+about **7 dB less average power** on the link — and the received levels in the
+table above agree, 7.24 dB apart. Same noise floor, less signal.
 
 That it is noise and not clipping was measured directly, by backing the transmit
 level off in 6 dB steps:
