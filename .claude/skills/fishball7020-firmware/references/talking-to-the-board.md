@@ -26,6 +26,40 @@ All confirmed against a live board running IIOD 0.25.
 - **Receive is 12-bit sign-extended into int16** (full scale ±2047). **Transmit
   is the full 16 bits.** Scaling transmit samples to ±2047 emits 24 dB low.
 
+## A capture that completes is not a capture that is intact
+
+`iio_readdev` returns the byte count you asked for whether or not the DMA
+overflowed underneath it, so a capture that lost samples is the same size as one
+that did not. Measured, receive only, over Ethernet: one channel at 10 MSPS
+(40 MB/s) is clean; **two channels at 10 MSPS (80 MB/s) drops**, and two at
+3 MSPS (24 MB/s) is clean. The ~31 MB/s plateau in
+`docs/modulation-and-throughput.md` is a *bidirectional* figure — receive alone
+sustains closer to 40.
+
+What a drop leaves is a step in phase: de-rotate the strongest tone and the
+residual should be flat. `tools/sigmf-capture.py --verify` does that and records
+the verdict in the recording's own SigMF sidecar; `docs/capturing-iq.md` explains
+the method. Inject a tone with `bist_tone` if the air is quiet — mode 2 is inside
+the chip and transmits nothing.
+
+**The trap inside the trap:** with no tone present the strongest bin is the LO
+leak at DC, and de-rotating by ~0 Hz then measures the phase of noise. That
+reported 2968 jumps out of 3000 blocks — a confident false alarm. Blank the bins
+around DC, and treat a detector that flags most of the capture as broken rather
+than as a finding.
+
+## Two devices, two channel numberings
+
+```
+ad9361-phy      input voltage0 = RX1,        voltage1 = RX2      (gain, rate, bandwidth)
+cf-ad9361-lpc   input voltage0/1 = RX1 I/Q,  voltage2/3 = RX2 I/Q  (the sample stream)
+```
+
+Setting RX2's gain via phy `voltage2` fails silently — that channel exists but
+has no `hardwaregain`. `RX_LO` is an **output** channel and needs `-o`; reading
+it with `-i` returns nothing. Verified on hardware: RX1 at 10 dB against RX2 at
+73 dB made stream words 0,1 exactly 32.4 dB quieter than words 2,3.
+
 ## pyadi-iio returns receive data from BEFORE your last change
 
 libiio keeps a few kernel blocks queued for a receive buffer. Once they fill,
