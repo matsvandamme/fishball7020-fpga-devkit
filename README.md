@@ -172,6 +172,7 @@ pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 | use both receivers with the FPGA decimator on | [Two receivers that both survive decimation](docs/both-receive-channels.md) |
 | check my HDL in a second, before a 20-minute build | [Simulating your HDL first](docs/building.md#simulating-your-hdl-first) |
 | change a driver or the kernel | [Changing the kernel](docs/kernel.md) |
+| capture IQ that is still useful in a year | [Capturing IQ](docs/capturing-iq.md) — SigMF sidecars, and a check for dropped samples |
 | get my build onto the board | [Flashing the board](docs/flashing.md) |
 | iterate on the FPGA in seconds over JTAG | [Option D — JTAG](docs/flashing.md#option-d--jtag-temporary-but-the-fastest-hdl-loop) |
 | blink the USER LED | [Controlling the USER LED](docs/user-led.md) |
