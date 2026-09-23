@@ -1,0 +1,73 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fishball7020 FPGA devkit</title>
+<meta name="description" content="Buildable firmware and an FPGA/SDR course for the Fishball7020 / PlutoSky software-defined radio.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{--bg:#F5F7F8;--surface:#fff;--ink:#141C24;--ink-2:#3A4858;--muted:#5F6D7A;
+  --rule:#D9E0E6;--accent:#C2541F}
+@media(prefers-color-scheme:dark){:root{--bg:#10151A;--surface:#161C23;--ink:#E6EDF3;
+  --ink-2:#B3C0CC;--muted:#8695A3;--rule:#2A333C;--accent:#E0752F}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Source Serif 4",Georgia,serif;font-size:17px;line-height:1.6}
+main{max-width:720px;margin:0 auto;padding:64px 20px 80px}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--accent);margin:0 0 14px}
+h1{font-family:Bitter,Georgia,serif;font-size:40px;line-height:1.1;margin:0 0 16px;
+  letter-spacing:-.01em}
+h2{font-family:Bitter,Georgia,serif;font-size:20px;margin:44px 0 12px}
+p{margin:0 0 16px;color:var(--ink-2)}
+a{color:var(--accent)}
+.card{display:block;background:var(--surface);border:1px solid var(--rule);
+  border-radius:8px;padding:20px 22px;margin:0 0 14px;text-decoration:none;color:inherit}
+.card:hover{border-color:var(--accent)}
+.card h3{font-family:Bitter,Georgia,serif;font-size:19px;margin:0 0 6px;color:var(--accent)}
+.card p{margin:0;font-size:15.5px;color:var(--ink-2)}
+.meta{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--muted);
+  margin-top:8px}
+footer{border-top:1px solid var(--rule);margin-top:48px;padding-top:20px;
+  font-size:14px;color:var(--muted)}
+</style></head><body><main>
+
+<p class="eyebrow">Fishball7020 &middot; PlutoSky &middot; 7020-SDR</p>
+<h1>A buildable firmware for this radio</h1>
+<p>A Zynq XC7Z020 and an AD9361 sold under several names, reverse-engineered far enough that you can
+  build every file on the SD card from source — and then put your own logic in the radio's datapath.</p>
+
+<h2>Start here</h2>
+
+<a class="card" href="course/">
+  <h3>Fabric School &rarr;</h3>
+  <p>A ground-up course in software-defined radio and the FPGA inside this one. Thirty-nine lessons,
+    from what a radio <em>is</em> to your own signal processing running in the AD9361 datapath.
+    Assumes no Verilog, no Vivado and no signal processing.</p>
+  <p class="meta">interactive &middot; ten live calculators &middot; day / night</p>
+</a>
+
+<a class="card" href="course/Fabric-School.pdf">
+  <h3>Fabric School, as a book &rarr;</h3>
+  <p>The same material as a 98-page PDF, with every answer already open.</p>
+  <p class="meta">2.9 MB &middot; A4</p>
+</a>
+
+<a class="card" href="https://github.com/matsvandamme/fishball7020-fpga-devkit">
+  <h3>The repository &rarr;</h3>
+  <p>The firmware, the patches, the build scripts, the self-test, and the written documentation —
+    the block design IP by IP, what one board actually measures, and how to flash it without
+    bricking it.</p>
+  <p class="meta">github.com/matsvandamme/fishball7020-fpga-devkit</p>
+</a>
+
+<h2>Why the documentation is not here</h2>
+<p>Everything under <code>docs/</code> is Markdown, and GitHub renders Markdown properly while this
+  site would hand you the raw file. So the prose lives
+  <a href="https://github.com/matsvandamme/fishball7020-fpga-devkit/tree/main/docs">in the repository</a>;
+  this site exists for the one thing that has to be a web page.</p>
+
+<footer>
+  Built against Vivado / Vitis 2022.2 on Ubuntu 22.04. Every measured number in the course came off
+  one board, with its conditions attached.
+</footer>
+</main></body></html>

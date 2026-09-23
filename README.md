@@ -148,7 +148,7 @@ pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 
 | I want to… | Start here |
 |---|---|
-| learn this from nothing — SDR, Verilog and Vivado | **[Fabric School](docs/course/)** — a 39-lesson course written against this board |
+| learn this from nothing — SDR, Verilog and Vivado | **[Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)** — a 39-lesson course written against this board ([PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)) |
 | understand what the build produces and why | [How it works](docs/how-it-works.md) |
 | install the tools and build | [Building your own firmware](docs/building.md) |
 | add my own HDL to the radio's datapath | [Add your own HDL](docs/building.md#add-your-own-hdl) · [the block design](docs/block-design.md) |

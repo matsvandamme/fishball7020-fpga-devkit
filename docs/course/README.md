@@ -17,9 +17,12 @@ is either. Every term is defined the first time it appears.
 
 ## Reading it
 
-Open `index.html` in a browser — it needs nothing else installed. GitHub will
-show you the source rather than the page, so either clone the repository, or
-download the file and open it locally:
+**[matsvandamme.github.io/fishball7020-fpga-devkit/course/](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)** — published
+from this folder, so it is always what is committed here.
+
+Or open `index.html` locally; it is self-contained and needs nothing installed.
+Browsing to it on github.com shows you the source rather than the page, so
+download it first:
 
 ```bash
 # run from: anywhere
