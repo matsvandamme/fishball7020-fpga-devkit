@@ -110,6 +110,10 @@ mkdir -p "$CHOME"
 # absolute paths inside pluto.xpr, so a project created on the host and one
 # created in the container are only interchangeable if the path matches. Get
 # this wrong and --hdl-only silently rebuilds against a project it cannot find.
+# XILINX_DIR is passed in as well as mounted: doctor.sh, build_all.sh and
+# env-vivado.sh read it to find Vivado, so mounting alone would leave them
+# looking at /tools/Xilinx inside a container that has no such directory.
+#
 # /run/udev is mounted because Vivado's licence manager fingerprints the host
 # through libudev. With no udev database in the container,
 # udev_enumerate_scan_devices() returns a pointer that malloc_usable_size()
@@ -120,6 +124,7 @@ ARGS=(
     --rm
     -v "$HERE:$HERE"
     -v "$XILINX_DIR:$XILINX_DIR:ro"
+    -e "XILINX_DIR=$XILINX_DIR"
     -v "$CHOME:/home/builder"
     -v /run/udev:/run/udev:ro
     -e HOME=/home/builder

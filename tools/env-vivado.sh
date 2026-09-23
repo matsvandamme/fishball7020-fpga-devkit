@@ -16,5 +16,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if ! ldconfig -p 2>/dev/null | grep -q 'libtinfo\.so\.5'; then
     export LD_LIBRARY_PATH="$SCRIPT_DIR/legacy-libs/libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 fi
-source /tools/Xilinx/Vivado/2022.2/settings64.sh
-export PATH="$PATH:/tools/Xilinx/Vitis/2022.2/bin"
+# Where Vivado/Vitis 2022.2 live. Override XILINX_DIR if you installed
+# somewhere other than the default - the container build does exactly
+# that to test against a throwaway installation.
+XILINX_DIR="${XILINX_DIR:-/tools/Xilinx}"
+source "$XILINX_DIR/Vivado/2022.2/settings64.sh"
+export PATH="$PATH:$XILINX_DIR/Vitis/2022.2/bin"

@@ -22,8 +22,12 @@ bad()  { say "FAIL" "$1"; fail=$((fail+1)); }
 soft() { say "warn" "$1"; warn=$((warn+1)); }
 
 echo "== toolchain =="
-VIVADO_DIR=/tools/Xilinx/Vivado/2022.2
-VITIS_DIR=/tools/Xilinx/Vitis/2022.2
+# Where Vivado/Vitis 2022.2 live. Override XILINX_DIR if you installed
+# somewhere other than the default - the container build does exactly
+# that to test against a throwaway installation.
+XILINX_DIR="${XILINX_DIR:-/tools/Xilinx}"
+VIVADO_DIR="$XILINX_DIR/Vivado/2022.2"
+VITIS_DIR="$XILINX_DIR/Vitis/2022.2"
 if [ -x "$VIVADO_DIR/bin/vivado" ]; then ok "Vivado 2022.2 at $VIVADO_DIR"
 else bad "Vivado 2022.2 not found at $VIVADO_DIR (see README step 1)"; fi
 if [ -x "$VITIS_DIR/bin/xsct" ]; then ok "Vitis 2022.2 (xsct) - needed for the FSBL"

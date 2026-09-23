@@ -62,9 +62,10 @@ for c in git make dtc mkimage bison flex python3; do
     command -v "$c" >/dev/null 2>&1 || {
         echo "ERROR: '$c' not found." >&2; preflight_fail=1; }
 done
-for f in /tools/Xilinx/Vivado/2022.2/bin/vivado \
-         /tools/Xilinx/Vitis/2022.2/bin/xsct \
-         /tools/Xilinx/Vitis/2022.2/bin/bootgen; do
+XILINX_DIR="${XILINX_DIR:-/tools/Xilinx}"
+for f in "$XILINX_DIR/Vivado/2022.2/bin/vivado" \
+         "$XILINX_DIR/Vitis/2022.2/bin/xsct" \
+         "$XILINX_DIR/Vitis/2022.2/bin/bootgen"; do
     [ -x "$f" ] || { echo "ERROR: missing $f (is Vivado/Vitis 2022.2 installed?)" >&2
                      preflight_fail=1; }
 done
@@ -213,7 +214,7 @@ fi
 echo "=== [2/7] Building FSBL ==="
 (
     source "$REPO_ROOT/tools/env-vivado.sh"
-    export PATH="/tools/Xilinx/Vitis/2022.2/bin:$PATH"
+    export PATH="$XILINX_DIR/Vitis/2022.2/bin:$PATH"
     mkdir -p "$SRC_DIR/hdl/fsbl"
     cd "$SRC_DIR/hdl/fsbl"
     cp "$BUILD_ALL_DIR/gen_fsbl_create.tcl" "$BUILD_ALL_DIR/gen_fsbl_build.tcl" .
