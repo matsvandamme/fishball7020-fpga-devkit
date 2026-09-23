@@ -1,4 +1,0 @@
-interface:
-  display_name: "Goal Creator"
-  short_description: "Compile durable, verifiable agent goals"
-  default_prompt: "Use $goal-creator to turn this task into a concise, verifiable agent goal contract."
