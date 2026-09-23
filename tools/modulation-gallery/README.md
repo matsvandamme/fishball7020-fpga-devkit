@@ -51,6 +51,8 @@ capture means anything, and they run in seconds.
 | `spurhunt.py` · `band.py` · `ip2.py` · `pickLO.py` | receiver-only diagnostics: is a peak a signal, a receiver spur, or a distortion product, and which tuning avoids it |
 | `atlas2.py` · `twoears.py` | the same transmission heard by the board's own receiver and by the HackRF, which is what attributes a spur to one radio or the other |
 | `whoselo.py` · `combclock.py` · `fs4.py` | does a spur follow either local oscillator, either sample rate, or neither |
+| `hackrf_tx.py` · `decisive.py` | the HackRF transmits and the board receives — the one path with no shared reference. **Needs a receive antenna on the board** |
+| `thirdparty.py` · `scaling.py` | two attempts to attribute the 1 MHz pair that did not have the sensitivity to succeed; kept so the attempt is not repeated blind |
 | `theme.py` · `palette.py` | the plot style, and the check that its colours are separable |
 | `fig1.py` … `fig5.py` | the five figures |
 
@@ -88,6 +90,14 @@ said "the board's own, −40 dBc, at a quarter of the transmit rate" about the
 regardless of transmit rate, and a second receiver puts it 26 dB weaker through
 the board than through the HackRF — it is not in what the board transmits.
 Attributing a multiplicative spur needs a second receiver, not a power sweep.
+
+**And the board's own receiver is not a fully independent one.** Its transmit and
+receive synthesisers come from a single 40 MHz reference, so a perturbation of
+that reference lands on both and cancels in the loopback — by 20·log10(f/Δf),
+about 53 dB at a 2 MHz separation. "Absent from the board's receiver" therefore
+means *either* absent from the transmitter *or* reference-borne, and the two
+cannot be told apart that way. Breaking the tie needs a receive antenna on the
+board so the HackRF can transmit to it, which is what `decisive.py` does.
 
 **Check the analysis before trusting it.** `rx.py`'s self-test runs the whole
 demodulator on a synthetic channel at a known signal-to-noise ratio and requires

@@ -120,7 +120,7 @@ So the board's own contributions to a CW spectrum are carrier feedthrough at
 about −47 dBc, an I/Q image at −58 dBc, and a third-order product at −41 dBc.
 The ±1 MHz pair is not among them.
 
-## The comb that is not the board's
+## The comb, and which radio makes it
 
 Around the carrier sits a comb of lines spaced **exactly 8.000 kHz**, each
 flanked by satellites ±1.95 kHz away, plus the pair at exactly ±1.000 MHz. What
@@ -142,22 +142,46 @@ they are, in order of what the measurements rule out:
 - **Not in what the board transmits**, by the two-receiver table above: 26 dB
   weaker through the board's own receiver, which is to say at its noise floor.
 
-**What this page cannot tell you is which oscillator.** The board's transmit and
-receive synthesisers are derived from one 40 MHz reference, so a perturbation
-*of that reference* would appear on both and largely cancel in the board's own
-loopback — by 20·log₁₀(866.5/2.0) ≈ 53 dB at the 2 MHz separation used, which is
-enough to hide it. "Absent from the board's receiver" therefore means *either*
-the HackRF's oscillator *or* the board's shared reference, and this measurement
-cannot choose between them.
+**With a receive antenna on the board, the comb is settled.** The board's own
+loopback could not attribute it, because the board's transmit and receive
+synthesisers come from one 40 MHz reference and a perturbation *of that
+reference* cancels there by about 53 dB. Fitting an antenna to RX1 opens the
+path that has nothing in common: the **HackRF transmits and the board
+receives**.
 
-Separating the two needs a third path. Repeating at 2.45 GHz, where the HackRF
-bypasses a conversion stage, was the attempt; the antenna is badly matched there,
-the phase-noise floor came out 33 dB worse and two runs disagreed, so it settles
-nothing. **A receive antenna on the board would settle it in one measurement** —
-the board could then hear the HackRF transmit, two genuinely independent
-oscillators with nothing shared. The board under test has none.
+| | 8 kHz comb | ±1.000 MHz pair |
+|---|---|---|
+| board transmits → HackRF receives | −48 dBc | −42 dBc |
+| HackRF transmits → board receives | **−66 dBc** | −43 to −51 dBc |
+| board transmits → board receives | at its floor, −68.6 dBc | at its floor |
 
-`whoselo.py`, `combclock.py`, `fs4.py`, `twoears.py` and `atlas2.py` in
+The comb comes back **18 dB weaker** when the board is the receiver. If it were
+on the board's 40 MHz reference it would appear at full strength through the
+board's receive oscillator, whose multiplier is within 0.2 % of the transmit
+one — it does not. And a spur belonging to the board's transmit PLL specifically,
+rather than the reference, would not cancel in the loopback, where there is
+nothing. **The 8 kHz comb is the HackRF's.**
+
+The ±1 MHz pair is *probably* the same story and is certainly not in what the
+board transmits, but it is not proven. It comes back at a similar level in both
+directions, which fits the HackRF's synthesiser (shared between its transmit and
+receive) and fits the board's reference equally well. Two attempts to break the
+tie both failed, and it is worth saying why rather than quoting the one that
+looked better:
+
+- Receiving a third-party carrier on the board would show whether its receive
+  oscillator stamps the pair onto a signal neither radio made. The only strong
+  carrier nearby is weak enough at the board that the phase-noise floor came out
+  −50 dBc, with the 1 MHz line within 4 dB of a control bin — and its frequency
+  drifted between runs. No verdict.
+- Repeating at 2.45 GHz tests whether the pair scales with the board's
+  multiplier, +9.0 dB from 865 MHz. Measured +4.9 dB — but **both** hypotheses
+  predict +9 dB, because the HackRF's multiplier scales with frequency in
+  exactly the same way. The test cannot discriminate, which is a fault in the
+  experiment, not a result.
+
+`whoselo.py`, `combclock.py`, `fs4.py`, `twoears.py`, `atlas2.py` and
+`decisive.py` in
 [`tools/modulation-gallery/`](../tools/modulation-gallery/) reproduce each step.
 
 ## The peak that was not a signal
