@@ -59,3 +59,6 @@ firmware/src/
 *.swp
 __pycache__/
 firmware/.flash-backups/
+
+# Vivado writes ~/.Xilinx; the container keeps its home here.
+firmware/.container-home/

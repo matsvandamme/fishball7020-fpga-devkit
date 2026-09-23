@@ -1,0 +1,86 @@
+# Vivado 2022.2's build environment, pinned to the OS it was built against.
+#
+# The point is not to package Vivado - it is 44 GB and lives at /tools/Xilinx,
+# bind-mounted at run time. The point is to pin the *userspace around it*:
+# glibc, the X libraries and the handful of packages build_all.sh needs. A
+# toolchain bump is not an option here - it changes the bitstream, and this
+# repo makes provenance claims that rest on the current one. Pinning the OS
+# instead leaves the host free to move to something Vivado 2022.2 has never
+# heard of.
+#
+# 22.04, although UG973 lists 18.04, 20.04 and 22.04 for Vivado 2022.2 and
+# 20.04 looks like the tidier choice - it is the newest Ubuntu still shipping
+# libtinfo5, libncurses5 and libssl1.1, so Vivado's runtime dependencies would
+# come from the archive instead of tools/legacy-libs/.
+#
+# 20.04 was tried and does not work. Vivado's licence manager fingerprints the
+# host through udev_enumerate_scan_devices(), and Vivado's bundled tcmalloc has
+# replaced malloc process-wide by then. focal's libudev 245 frees through
+# glibc, the two allocators disagree, and synthesis dies in malloc_usable_size
+# with SIGSEGV - sometimes after printing "tcmalloc: large alloc
+# 115875935977472 bytes", a 115 TB request that is really an integer underflow.
+# The stack names neither licensing nor udev near the top, so this costs an
+# afternoon to find. jammy's libudev 249 does not trip it, which is why the
+# same Vivado works on the host.
+#
+FROM docker.io/library/ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Acquire::Retries because a single mirror hiccup should not fail a build
+# whose whole purpose is to be reproducible.
+RUN apt-get -o Acquire::Retries=5 update \
+ && apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
+      `# libtinfo5, libncurses5 and libssl1.1 are NOT installed: jammy has none` \
+      `# of them, which is exactly why tools/legacy-libs/ exists. Those copies` \
+      `# were extracted on 22.04, so they load here and env-vivado.sh puts them` \
+      `# on LD_LIBRARY_PATH by itself.` \
+      `# doctor.sh's NEED list - each one names a stage that fails without it` \
+      git make gcc bison flex device-tree-compiler u-boot-tools python3 \
+      `# the kernel's GCC plugins #include these; the failure surfaces at` \
+      `# stage 4 as a bare "gmp.h: No such file"` \
+      libgmp-dev libmpc-dev libmpfr-dev \
+      `# the FSBL stage drives Vitis, which wants a display even in batch` \
+      xvfb \
+      `# doctor treats these as soft, but a container that cannot simulate` \
+      `# sends you back to the host for the one-second check` \
+      iverilog sshpass \
+      `# kernel and buildroot` \
+      build-essential g++ libssl-dev bc cpio rsync kmod libelf-dev \
+      unzip wget file perl patch diffutils findutils tar gzip bzip2 xz-utils \
+      libncurses-dev ca-certificates locales \
+      `# Vivado links these even in batch mode` \
+      libx11-6 libxext6 libxrender1 libxtst6 libxi6 libxft2 \
+      `# xsct shells out to xlsclients and refuses to start without it,` \
+      `# which surfaces much later as a failed FSBL stage` \
+      x11-utils \
+      libfontconfig1 libfreetype6 libsm6 libice6 libglib2.0-0 \
+      `# Vivado's own GUI wants GTK2; Vitis is Eclipse-based and its launcher` \
+      `# refuses GTK2, falls back to GTK3 and then dies with a bare` \
+      `# "Channel closed" from xsct if GTK3 and the SWT dependencies are` \
+      `# absent. The FSBL stage is the first thing to notice.` \
+      libgtk2.0-0 libcanberra-gtk-module dbus-x11 \
+      libgtk-3-0 libwebkit2gtk-4.0-37 libsecret-1-0 \
+      libxss1 libasound2 libnss3 libnspr4 libgbm1 libdrm2 \
+      libatk1.0-0 libatk-bridge2.0-0 libcups2 libpango-1.0-0 libcairo2 \
+      libxrandr2 libxcomposite1 libxcursor1 libxdamage1 libxfixes3 libxinerama1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Vivado warns about an unset locale and some Tcl paths misbehave without one.
+RUN locale-gen en_US.UTF-8
+ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+# Vivado's licence manager dlopens libudev.so.1 by name and enumerates every
+# device to fingerprint the host. In a container that walk aborts the build in
+# glibc's heap checker, because Vivado's tcmalloc has taken over malloc while
+# libudev still frees through glibc. udev-stub.c answers with an empty list and
+# never allocates, so the two allocators never meet. See the file for why this
+# is preferable to switching the heap checker off.
+#
+# dlopen searches LD_LIBRARY_PATH first, so the stub wins over the real
+# libudev. tools/env-vivado.sh prepends to LD_LIBRARY_PATH rather than
+# replacing it, so this survives sourcing it.
+COPY udev-stub.c /opt/udev-stub/udev-stub.c
+RUN gcc -shared -fPIC -O2 -o /opt/udev-stub/libudev.so.1 /opt/udev-stub/udev-stub.c \
+ && ln -s libudev.so.1 /opt/udev-stub/libudev.so.0
+ENV LD_LIBRARY_PATH=/opt/udev-stub

@@ -81,3 +81,31 @@ Keep a copy of a known-good `output/` before experimenting. The distributor's
 prebuilt factory firmware is at `OpenSourceSDRLab/PlutoSky_7020_AD936X_SDR`,
 confirmed by checksum against a real unit; copying those files onto the SD card
 returns the board to its shipped state.
+
+## Building in a container
+
+`./devkit container build --hdl-only` runs the build inside a pinned Ubuntu
+22.04 image with `/tools/Xilinx` bind-mounted read-only. Verified to produce a
+**byte-for-byte identical `BOOT.bin`** to a host build.
+
+Two failures cost an afternoon and neither error names its cause:
+
+**Vivado dies mid-synthesis** with `tcmalloc: large alloc 115875935977472
+bytes` or `realloc(): invalid pointer`. Its licence manager `dlopen`s
+`libudev.so.1` and enumerates every device to fingerprint the host, by which
+point Vivado's tcmalloc has replaced malloc process-wide while libudev still
+frees through glibc. `tools/container/udev-stub.c` answers with an empty list
+and never allocates. Do **not** reach for `MALLOC_CHECK_` - that hides real
+heap corruption in the tool that builds your bitstream. Mounting `/run/udev`,
+`config_webtalk -user off` and using 20.04 all fail to fix it.
+
+**The FSBL stage reports a bare `Channel closed`** from `xsct`. Vitis is
+Eclipse-based and needs GTK3 plus the SWT dependencies; Vivado's own GUI needs
+GTK2. The image carries both.
+
+Also: mount the repo at **its own absolute path**, because `pluto.xpr` stores
+absolute paths; and `tools/env-vivado.sh` now engages the `legacy-libs` shim
+only where the distro lacks `libtinfo.so.5`, since those copies link
+`GLIBC_2.33` and cannot load on anything older than jammy.
+
+Full write-up: [`docs/building-in-a-container.md`](../../../../docs/building-in-a-container.md)
