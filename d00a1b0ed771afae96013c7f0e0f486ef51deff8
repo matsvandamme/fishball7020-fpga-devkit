@@ -1,0 +1,10 @@
+The message describes only the FR-4 correction. This commit also restructured
+the document head of docs/course/index.html, which the message does not
+mention: the file began at <title>, so it had no doctype (browsers rendered it
+in quirks mode), no <meta charset> despite 1200 non-ASCII characters in the
+maths, no viewport - which meant the two @media(max-width:940px) breakpoints
+already in the stylesheet never fired on a phone - no lang attribute, and no
+closing </body></html>.
+
+Recorded as a note rather than amended: the commit was already pushed and had
+another commit on top of it.
