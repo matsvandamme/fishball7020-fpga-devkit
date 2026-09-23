@@ -51,7 +51,7 @@ AD9361 does is derived from it, so its accuracy is the radio's accuracy.
 
 | Ref | Frequency | Feeds | Sheet |
 |---|---|---|---|
-| `Y3` | **40 MHz** | the AD9361 reference. Its tuning voltage, `XTAL_VTC`, is brought out on **JP5 pin 15**, so the oscillator can be disciplined from outside — a GPSDO, for instance | 10 |
+| `Y3` | **40 MHz** | the AD9361 reference: a **VCTCXO**, whose output goes through `R107` (33 Ω) to the AD9361's `XTALN` (ball M12). Its tuning voltage, `XTAL_VTC`, is brought out on **JP5 pin 15** | 10 |
 | `Y2` | 33.333 MHz | `PS_CLK`, the Zynq processing system | 6 |
 | `Y1` | 50 MHz | the PL fabric, at 1.8 V | 5 |
 | `OS1` | 25 MHz | the Ethernet PHY | 4 |
@@ -63,7 +63,7 @@ AD9361 does is derived from it, so its accuracy is the radio's accuracy.
 | Ref | What it is |
 |---|---|
 | 4 × SMA | `TX1A`, `RX1A`, `TX2A`, `RX2A`. **Read the silkscreen** rather than counting positions |
-| `RF1` | `EXT_CLK`, U.FL — feed the board an external reference instead of `Y3` |
+| `RF1` | `EXT_CLK`, U.FL — **goes to the FPGA, not to the radio.** Through `R110` (marked `33R/NC`) to Zynq pin `K17`, a clock-capable fabric pin. See [locking to an external reference](#locking-the-board-to-an-external-reference) |
 | `RF2` `RF3` | `TX_LO` and `RX_LO`, U.FL — the AD9361's local oscillators, brought out |
 | `JP5` | the 2×10 expansion header. Pins 7/9/11/13 are `sample_gpio[3:0]`; see [the pinout](tx-gpio-bitmap.md#the-pins) |
 | `JP1`–`JP4` | further headers |
@@ -71,11 +71,59 @@ AD9361 does is derived from it, so its accuracy is the radio's accuracy.
 | `RJ1`, 2 × USB-C, microSD, `FAN1` | network, host connections, boot media, fan |
 | `RED1` `BLUE1` | the two LEDs, each through 240 Ω |
 
-`RF1`, `RF2` and `RF3` are worth knowing about. An external reference and
-brought-out LOs are what you would use to run two of these boards coherently,
-which is the same problem the [sample-locked GPIO
-outputs](tx-gpio-bitmap.md) address from the digital
-side.
+`RF2` and `RF3` are worth knowing about: brought-out local oscillators are part
+of what you would need to run two of these boards coherently, which is the same
+problem the [sample-locked GPIO outputs](tx-gpio-bitmap.md) address from the
+digital side. `RF1` is **not** the other half of that — despite being labelled
+`EXT_CLK` it reaches a fabric pin, not the radio. What to do instead is below.
+
+## Locking the board to an external reference
+
+The radio's reference is `Y3`, a 40 MHz VCTCXO whose output goes through `R107`
+(33 Ω) into the AD9361's `XTALN` pin. **There is no switch.** This board has
+none of the `clock_extern_en` / `clock_internal_en` GPIOs that a Rev.C ADALM-Pluto
+uses to select between an internal and an external reference — confirmed by their
+absence from the running device tree — and the U.FL marked `EXT_CLK` does not go
+anywhere near the AD9361.
+
+Three things follow, in increasing order of effort.
+
+**The driver is already expecting an external clock.** `Y3` is an active
+oscillator rather than a passive crystal, so the device tree already carries
+`adi,xo-disable-use-ext-refclk-enable` with `clock-frequency = <40000000>`. A
+reference substituted at 40 MHz therefore needs **no software change at all**.
+
+**Correcting the frequency in software, with no soldering.** The driver exposes
+`xo_correction`, which tells it the reference's true frequency:
+
+```bash
+# run on the board
+cat /sys/bus/iio/devices/iio:device0/xo_correction_available
+#   [39992000 1 40008000]     min, step, max  -> 1 Hz steps, about 0.025 ppm
+cat /sys/bus/iio/devices/iio:device0/xo_correction
+#   40000000
+```
+
+Measure how far `Y3` actually is from 40 MHz against a disciplined reference,
+write the true value here, and every frequency the board tunes to becomes
+accurate. This buys **accuracy, not stability** — the VCTCXO still wanders with
+temperature — but it costs nothing and needs no modification.
+
+**Substituting the reference, which means soldering.** Set the external source
+to exactly 40 MHz, take `Y3` out of circuit, and inject at `R107`. Two things to
+respect at the `XTALN` pin: it must be **AC-coupled**, and it takes **1.3 V p-p
+maximum** ([AD9361 datasheet](https://www.analog.com/media/en/technical-documentation/data-sheets/ad9361.pdf);
+the phase detectors accept 10–80 MHz). A 3.3 V CMOS GPSDO output is far too hot
+and wants roughly 6 dB of pad. There is a 100 nF part (`C164`) near `R107` in
+the schematic, but the text extraction cannot resolve whether it is the series
+coupling capacitor or `Y3`'s supply decoupling — check the PDF or ring it out
+before relying on it, and add your own DC block if in doubt.
+
+**What `EXT_CLK` on `RF1` is actually for.** It reaches Zynq pin `K17` through
+`R110`, which the schematic marks `33R/NC` — so it may not be fitted. `K17` is
+**not constrained in the stock design**, so out of the box a clock fed in there
+does nothing at all. It is a way to get a disciplined clock into *your own
+fabric logic*, which is a different job from disciplining the radio.
 
 ## Supply rails
 
