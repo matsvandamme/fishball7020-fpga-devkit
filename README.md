@@ -363,3 +363,9 @@ This repo's own scripts, patches and documentation are **GPL-2.0**. The
 upstream source that `setup` downloads (Linux, U-Boot, Buildroot) stays GPL,
 and Xilinx Vivado/Vitis and AMD IP are proprietary and licensed separately.
 The breakdown is in [`LICENSE`](LICENSE).
+
+One directory in the tree is not ours:
+[`.claude/skills/goal-creator/`](.claude/skills/goal-creator/) is a third-party
+agent skill vendored under **MIT**, with its own `LICENSE` and a
+[`VENDORED.md`](.claude/skills/goal-creator/VENDORED.md) recording where it came
+from and at which commit. Nothing in the firmware or the build depends on it.
