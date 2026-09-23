@@ -227,7 +227,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-off
   <ol>
     <li><a href="#l0"><span class="n">0</span><span>What a radio does</span></a></li>
     <li><a href="#l1"><span class="n">1</span><span>What an FPGA is</span></a></li>
-    <li><a href="#l2"><span class="n">2</span><span>What's on this board</span></a></li>
+    <li><a href="#l2"><span class="n">2</span><span>The Fishball7020, part by part</span></a></li>
     <li><a href="#l3"><span class="n">3</span><span>The toolchain and the build system</span></a></li>
   </ol>
   <h4>Verilog from nothing</h4>
@@ -426,7 +426,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-off
 </section>
 
 <section class="part" id="l2">
-  <div class="part-head"><span class="part-n">2</span><h2>What is on this board</h2></div>
+  <div class="part-head"><span class="part-n">2</span><h2>The Fishball7020, part by part</h2></div>
   <p class="lede">Two computers, one radio chip, and the connection between them.</p>
 
   <p>The main chip is a Xilinx <strong>XC7Z020-CLG400</strong>, a <span class="newterm">Zynq</span>.
@@ -446,6 +446,110 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-off
     70 MHz to 6 GHz, with <strong>two receivers and two transmitters</strong>. It contains the
     amplifiers, the mixers, the filters, and the ADCs and DACs. It is connected to the FPGA fabric by
     a fast digital interface, and configured by the Linux driver over SPI, a simple serial control bus.</p>
+
+  <h3>The parts that matter, and what each is for</h3>
+  <p>Nine chips do the work. Every one of these is read off the vendor schematic in the repository,
+    with the sheet number, and cross-checked against what a running board reports &mdash; see
+    <code>docs/hardware.md</code> for the full table with datasheet links.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Part</th><th>What it is</th><th>Why you care</th></tr></thead>
+    <tbody>
+      <tr><td>Xilinx <strong>XC7Z020-CLG400</strong></td><td>Zynq-7000: two Cortex-A9 cores plus
+        Artix-7 fabric</td><td>53&thinsp;200 LUTs and 220 DSP slices. Everything in this course that
+        says "the fabric" means this.</td></tr>
+      <tr><td>Analog Devices <strong>AD9361</strong></td><td>2&times;2 transceiver, 70&nbsp;MHz&ndash;6&nbsp;GHz</td>
+        <td>The radio. Two complete receive and two complete transmit chains, hence
+        <strong>2R2T</strong>.</td></tr>
+      <tr><td>2 &times; Mini-Circuits <strong>PGA-102+</strong></td><td>transmit power amplifier, one
+        per channel</td><td><strong>The part that makes this board not a Pluto.</strong> Measured here
+        at about 15.7&nbsp;dB of gain at 900&nbsp;MHz.</td></tr>
+      <tr><td>2 &times; Micron <strong>MT41K256M16</strong></td><td>DDR3L, 4&nbsp;Gbit each on a 32-bit
+        bus</td><td>1&nbsp;GB. The board reports <code>MemTotal: 1027848 kB</code>.</td></tr>
+      <tr><td>Realtek <strong>RTL8211F</strong></td><td>gigabit Ethernet PHY</td><td>A stock Pluto has
+        USB only. Wired gigabit is why streaming both receivers off this board is practical.</td></tr>
+      <tr><td>Winbond <strong>W25Q128JV</strong></td><td>16&nbsp;MB QSPI flash</td><td>Holds the FSBL,
+        U-Boot and a small recovery Linux, in four partitions totalling exactly 16&nbsp;MiB.</td></tr>
+      <tr><td>FTDI <strong>FT2232HL</strong></td><td>USB to JTAG <em>and</em> serial console</td>
+        <td>One socket, two <code>ttyUSB</code> ports. The serial console is how you watch it boot.</td></tr>
+      <tr><td>Microchip <strong>USB3320C</strong></td><td>USB 2.0 OTG PHY</td><td>The
+        <code>usb0</code> network interface &mdash; the other way to reach the board.</td></tr>
+      <tr><td>4 &times; RF baluns</td><td>single-ended SMA to the AD9361's differential pins</td>
+        <td>The schematic gives no part number for these.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>What the radio will actually do</h3>
+  <p>Not from a datasheet &mdash; these are the limits the board itself reports, which is the number
+    that governs you. Read them back from any board with <code>iio_attr</code>.</p>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>Range</th><th>Worth knowing</th></tr></thead>
+    <tbody>
+      <tr><td>RX tuning</td><td class="num">70 MHz &ndash; 6 GHz</td><td></td></tr>
+      <tr><td>TX tuning</td><td class="num">46.875 MHz &ndash; 6 GHz</td><td>The transmitter tunes
+        <em>lower</em> than the receiver. Easy to trip over.</td></tr>
+      <tr><td>Sample rate</td><td class="num">2.083 &ndash; 61.44 MSPS</td><td>Below 2.083&nbsp;MSPS you
+        must engage the AD9361's own FIR; the tools do it for you.</td></tr>
+      <tr><td>RX bandwidth</td><td class="num">200 kHz &ndash; 56 MHz</td><td>The analogue baseband
+        filter, set separately from the sample rate.</td></tr>
+      <tr><td>RX gain</td><td class="num">&minus;3 &ndash; +71 dB</td><td>An index into a gain table,
+        not a dial &mdash; lessons 47 and 48.</td></tr>
+      <tr><td>TX attenuation</td><td class="num">0 &ndash; &minus;89.75 dB</td><td>&minus;89.75 is the
+        floor, and the value every safety check in this repository asserts.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="box trap">
+    <p class="bt">This board has power amplifiers, and most Pluto advice does not</p>
+    <p>Two PGA-102+ amplifiers sit between the AD9361 and the outer SMA ports. That is the single most
+      important difference between this board and the ADALM-PLUTO everything on the internet is written
+      about, and it changes the arithmetic in both directions.</p>
+    <p><strong>Out:</strong> plan for roughly <strong>+19&nbsp;dBm</strong> flat out. That is the
+      self-test's capped estimate and has never been put on a power meter, so treat it as an order of
+      magnitude, not a specification.</p>
+    <p><strong>In:</strong> the receive input is rated to about <strong>+2.5&nbsp;dBm</strong>. Those two
+      numbers are roughly 16&nbsp;dB apart, so a bare cable from a transmit port to a receive port
+      destroys the receiver. Fit <strong>at least 20&nbsp;dB</strong> of attenuation, and measure through
+      exactly 20&nbsp;dB &mdash; a bigger pad lets the board's own internal leakage into your result
+      instead.</p>
+  </div>
+
+  <h3>Clocks, and the one that is the radio's accuracy</h3>
+  <p>Six oscillators, but only one matters for radio work: the <strong>40&nbsp;MHz</strong> reference
+    feeding the AD9361. Every frequency the radio produces or receives is derived from it, so its error
+    is the radio's error &mdash; tune to 900&nbsp;MHz with a reference 10&nbsp;ppm high and you are
+    9&nbsp;kHz off.</p>
+  <p>Two ways out, both brought to connectors. The oscillator's tuning voltage <code>XTAL_VTC</code> is
+    on <strong>JP5 pin 15</strong>, so it can be disciplined from outside &mdash; by a GPS-locked
+    reference, for instance. And <code>EXT_CLK</code> on a U.FL connector replaces the on-board
+    oscillator entirely. Both <code>TX_LO</code> and <code>RX_LO</code> are also brought out on U.FL,
+    which is what you would use to run two boards coherently.</p>
+
+  <h3>What one of these measures like</h3>
+  <p>From the repository's own bench measurements on a single unit, so treat them as indicative rather
+    than a specification &mdash; but if yours is wildly different, something is wrong.</p>
+  <div class="tw"><table>
+    <tbody>
+      <tr><td>Gain accuracy, 56 slope measurements</td><td class="num">within 1.7 % of 1.000 dB/dB</td></tr>
+      <tr><td>Image rejection, after calibration</td><td class="num">44 &ndash; 60 dBc</td></tr>
+      <tr><td>Harmonics, 2nd / 3rd</td><td class="num">&minus;64 to &minus;80 / &minus;71 to &minus;85 dBc</td></tr>
+      <tr><td>Transmit mute depth</td><td class="num">at least 75 dB</td></tr>
+      <tr><td>Loop gain through 20 dB, 200 MHz &ndash; 1 GHz</td><td class="num">+19 to +22.5 dB</td></tr>
+      <tr><td>Receiver against receiver</td><td class="num">RX2 is 1.5 dB more sensitive</td></tr>
+      <tr><td>Transmitter against transmitter</td><td class="num">within 0.2 dB</td></tr>
+      <tr><td>Fabric used by the stock build</td><td class="num">72 of 220 DSPs, 11 896 LUTs</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="box why">
+    <p class="bt">How to tell this board from the ones the internet writes about</p>
+    <p>Run <code>iio_attr -S</code> and read the model string. <code>FISH Ball PlutoSDR Rev.A
+      (Z7020-AD9361)</code> is this board. If you see <strong>Z7010</strong> you have half the fabric;
+      if you see <strong>AD9363</strong> &mdash; the chip in the ADALM-PLUTO &mdash; the radio is
+      specified to <strong>325&nbsp;MHz&ndash;3.8&nbsp;GHz</strong> with a 20&nbsp;MHz maximum channel
+      bandwidth rather than 70&nbsp;MHz&ndash;6&nbsp;GHz and 56&nbsp;MHz. It is still two receivers and
+      two transmitters; it is the AD9364 that is 1R1T. Either way the pinout differs and this firmware
+      will not fit unchanged.</p>
+  </div>
 
   <div class="box jargon">
     <p class="bt">Board vocabulary</p>
