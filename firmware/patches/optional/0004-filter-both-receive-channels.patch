@@ -1,0 +1,77 @@
+Filter both receive channels, not just channel 0
+
+Upstream routes channel 0 through rx_fir_decimator and sends channel 1 straight
+to cpack. Since cpack captures every enabled channel on channel 0's valid, the
+moment decimation is engaged channel 1 is sampled at one eighth rate with no
+anti-alias filter of its own - everything outside +-Fs/16 folds onto it - and it
+is offset from channel 0 by the filter's group delay.
+
+That wiring is harmless on the 1R1T boards this block design also targets, where
+there is no channel 1. On a 2R2T board it makes the second receiver unusable
+whenever the fabric decimator is on.
+
+The helper already loops over n_chan, so this is a parameter change plus the
+matching connections: ask for 4 channels instead of 2, feed channel 1's I and Q
+into paths 2 and 3, and take cpack's inputs 2 and 3 from the filter outputs
+rather than from axi_ad9361 directly. Both channels then share one 'active' bit,
+one coefficient set and therefore one group delay, so they stay aligned.
+
+Measured on hardware, TX2A -> 20 dB pad -> RX2A, converter at 61.44 MSPS,
+decimator engaged (7.68 MSPS delivered), a DDS tone at 10 MHz - outside the
+decimated +-3.84 MHz window:
+
+  before:  channel 1 shows an alias at +2.320 MHz at 70.1 dB   (10 - 7.68)
+  after:   no alias; strongest bin in band is DC at -2.8 dB
+
+So better than 70 dB of suppression, which is the filter's stopband doing the
+job it was always meant to do on this channel.
+
+Cost: DSP48s 72 -> 94 of 220, LUTs 11896 -> 12521 of 53200. Timing still met,
+WNS +0.215 ns over 54211 endpoints (stock build: +0.205 over 48263).
+
+Opt-in, because it moves the block design away from upstream's. setup.sh does
+not apply patches/optional/.
+
+  (cd firmware/src && git apply ../patches/optional/0004-filter-both-receive-channels.patch)
+
+diff --git a/hdl/projects/pluto/system_bd.tcl b/hdl/projects/pluto/system_bd.tcl
+--- a/hdl/projects/pluto/system_bd.tcl
++++ b/hdl/projects/pluto/system_bd.tcl
+@@ -283,7 +283,7 @@
+ ad_ip_parameter axi_ad9361_adc_dma CONFIG.DMA_DATA_WIDTH_SRC 64
+ ad_ip_parameter axi_ad9361_adc_dma CONFIG.SYNC_TRANSFER_START {true}
+ 
+-ad_add_decimation_filter "rx_fir_decimator" 8 2 1 {61.44} {61.44} \
++ad_add_decimation_filter "rx_fir_decimator" 8 4 1 {61.44} {61.44} \
+                          "$ad_hdl_dir/library/util_fir_int/coefile_int.coe"
+ ad_ip_instance xlslice decim_slice
+ ad_ip_instance util_cpack2 cpack
+@@ -320,13 +320,24 @@
+ ad_connect axi_ad9361/adc_enable_q0 rx_fir_decimator/enable_in_1
+ ad_connect axi_ad9361/adc_data_q0 rx_fir_decimator/data_in_1
+ 
++# Channel 1 through the same decimator. Upstream sends it straight to cpack,
++# which leaves it sampled on channel 0's valid with no anti-alias filter of its
++# own the moment decimation engages - see docs/block-design.md. Filtering both
++# channels identically also keeps their group delay matched.
++ad_connect axi_ad9361/adc_valid_i1 rx_fir_decimator/valid_in_2
++ad_connect axi_ad9361/adc_enable_i1 rx_fir_decimator/enable_in_2
++ad_connect axi_ad9361/adc_data_i1 rx_fir_decimator/data_in_2
++ad_connect axi_ad9361/adc_valid_q1 rx_fir_decimator/valid_in_3
++ad_connect axi_ad9361/adc_enable_q1 rx_fir_decimator/enable_in_3
++ad_connect axi_ad9361/adc_data_q1 rx_fir_decimator/data_in_3
++
+ ad_connect axi_ad9361/l_clk cpack/clk
+ ad_connect axi_ad9361/rst cpack/reset
+ 
+-ad_connect axi_ad9361/adc_enable_i1 cpack/enable_2
+-ad_connect axi_ad9361/adc_data_i1 cpack/fifo_wr_data_2
+-ad_connect axi_ad9361/adc_enable_q1 cpack/enable_3
+-ad_connect axi_ad9361/adc_data_q1 cpack/fifo_wr_data_3
++ad_connect cpack/enable_2 rx_fir_decimator/enable_out_2
++ad_connect cpack/fifo_wr_data_2 rx_fir_decimator/data_out_2
++ad_connect cpack/enable_3 rx_fir_decimator/enable_out_3
++ad_connect cpack/fifo_wr_data_3 rx_fir_decimator/data_out_3
+ 
+ ad_connect cpack/enable_0 rx_fir_decimator/enable_out_0
+ ad_connect cpack/enable_1 rx_fir_decimator/enable_out_1

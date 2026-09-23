@@ -56,6 +56,10 @@ use different pins and will not work with this firmware unchanged.
 - **A USER LED that means something.** Lit whenever RF can leave either port,
   dark when both chains are muted — instead of blinking a heartbeat.
   ([Controlling the USER LED](docs/user-led.md))
+- **Two receivers that both survive decimation.** Stock ADI wiring filters only
+  channel 0, so engaging the FPGA decimator leaves channel 1 aliased by 70 dB.
+  One optional patch fixes it for 22 DSP slices.
+  ([Two receivers that both survive decimation](docs/both-receive-channels.md))
 - **Four header pins that tick with the transmitted waveform**, carrying bits
   the DAC throws away. ([Sample-locked GPIO outputs](#sample-locked-gpio-outputs))
 - **A self-test** that tells you whether the radio is damaged, with measurements.
@@ -148,6 +152,7 @@ pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 | install the tools and build | [Building your own firmware](docs/building.md) |
 | add my own HDL to the radio's datapath | [Add your own HDL](docs/building.md#add-your-own-hdl) · [the block design](docs/block-design.md) |
 | see a complete worked example | [An FM channelizer in the FPGA](docs/wbfm-channelizer.md) |
+| use both receivers with the FPGA decimator on | [Two receivers that both survive decimation](docs/both-receive-channels.md) |
 | check my HDL in a second, before a 20-minute build | [Simulating your HDL first](docs/building.md#simulating-your-hdl-first) |
 | change a driver or the kernel | [Changing the kernel](docs/kernel.md) |
 | get my build onto the board | [Flashing the board](docs/flashing.md) |

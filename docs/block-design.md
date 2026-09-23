@@ -329,6 +329,15 @@ Step 4 is the trap. With decimation engaged, channel 1 is sampled at 1/8 rate
 it's offset from channel 0 by the FIR's group delay. Channel 1 is only a
 usable receiver with the filter bypassed. This is stock ADI behaviour.
 
+**This is fixable, and the repo ships a fix.** The Tcl helper already loops over
+its channel count, so asking it for 4 channels instead of 2 and routing channel 1
+through gives both receivers identical filters, one shared `active` bit and one
+group delay. Measured: an out-of-band tone that folded in at 70.1 dB disappears
+entirely. Costs 22 DSP slices (72 → 94 of 220) and timing still passes at
++0.215 ns. Opt-in, in
+[`patches/optional/0004-filter-both-receive-channels.patch`](../firmware/patches/optional/0004-filter-both-receive-channels.patch)
+— full write-up in [both-receive-channels.md](both-receive-channels.md).
+
 ## The transmit path
 
 The mirror image, with one difference: `tx_upack/fifo_rd_en` is the OR of the
