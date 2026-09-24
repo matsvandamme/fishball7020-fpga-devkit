@@ -52,12 +52,37 @@ def strip_uri(s: str) -> str:
 
 
 def reachable(host: str, timeout: float = 0.8) -> bool:
-    for port in PORTS:
-        try:
-            with socket.create_connection((host, port), timeout=timeout):
+    """Is this host the BOARD - not merely something with a port open?
+
+    "Something answered on 30431 or 22" is not the same question, and getting
+    them confused sends every tool at the wrong machine. 192.168.2.1 is a
+    private address that plenty of networks use for something else, and a VPN
+    routing it elsewhere is enough: on the machine this was written for, a
+    tunnel carried 192.168.2.1 to a host that accepted TCP and dropped the
+    handshake, which looked exactly like a broken board.
+
+    So ask each service to identify itself. IIOD answers VERSION with its
+    protocol version; dropbear says so in its SSH banner. Either is proof; an
+    open port is not.
+    """
+    try:
+        with socket.create_connection((host, 30431), timeout=timeout) as c:
+            c.settimeout(timeout)
+            c.sendall(b"VERSION\r\n")
+            reply = c.recv(64)
+            # e.g. b"0.25.(git tag)..." - a version triple is enough.
+            if reply[:1].isdigit() and b"." in reply:
                 return True
-        except OSError:
-            continue
+    except OSError:
+        pass
+    try:
+        with socket.create_connection((host, 22), timeout=timeout) as c:
+            c.settimeout(timeout)
+            banner = c.recv(128)
+            if banner.startswith(b"SSH-") and b"dropbear" in banner.lower():
+                return True
+    except OSError:
+        pass
     return False
 
 
