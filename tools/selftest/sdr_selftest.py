@@ -1375,17 +1375,27 @@ def test_board_scripts(rep, sh):
     except Exception:
         writers = []
     writers = [w for w in writers if not w.endswith("autorun.sh")]
-    if writers and active:
+    # Warn about a writer only if autorun.sh actually NAMES it on a live line.
+    # Asking merely whether autorun.sh does anything at all conflates "this
+    # partition is in use" with "this script is running", and then any unrelated
+    # use of autorun.sh makes a dormant script look armed. A warning that cries
+    # wolf is worse than no warning, because the next real one gets ignored.
+    started = [w for w in writers
+               if any(w.rsplit("/", 1)[-1] in line for line in active)]
+    dormant = [w for w in writers if w not in started]
+    if started:
         rep.add(g, "scripts here write radio settings", WARN,
-                f"{', '.join(writers)}\n           These can change gain or "
-                f"attenuation underneath any application, including this one. "
-                f"If a measurement below reports the settings moving on their "
-                f"own, this is where to look first.")
-    elif writers:
-        rep.add(g, "scripts here write radio settings, but are not started", INFO,
-                f"{', '.join(writers)}\n           autorun.sh does not run "
-                f"them, so they are dormant. Re-enabling one would let it "
-                f"change gain underneath any application.")
+                f"{', '.join(started)}\n           autorun.sh starts these, and "
+                f"they can change gain or attenuation underneath any "
+                f"application, including this one. If a measurement below "
+                f"reports the settings moving on their own, this is where to "
+                f"look first.")
+    if dormant:
+        rep.add(g, "scripts here could write radio settings, but nothing starts them",
+                INFO,
+                f"{', '.join(dormant)}\n           autorun.sh does not name "
+                f"them on any live line, so they are dormant. Re-enabling one "
+                f"would let it change gain underneath any application.")
 
 
 def test_digital_interface(b, rep, sh):
