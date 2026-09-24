@@ -1579,7 +1579,12 @@ def build_parser():
     # ./devkit flash, verify --board and gpio-check use, so a user who moves
     # the board sets them once. SDR_URI stays accepted for anything that
     # already scripts against it.
-    _default_uri = os.environ.get("SDR_URI") or f"ip:{os.environ.get('BOARD', '192.168.2.1')}"
+    import pathlib as _pl
+    sys.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+    from board_addr import uri as _board_uri          # noqa: E402
+    # Resolved, not hard-coded: the board answers on its mDNS name over Ethernet
+    # and on 192.168.2.1 over USB, and which one exists changes.
+    _default_uri = os.environ.get("SDR_URI") or _board_uri()
     p.add_argument("--uri", default=_default_uri,
                    help="board address (default: %(default)s; or set BOARD)")
     p.add_argument("--loopback", action="store_true",

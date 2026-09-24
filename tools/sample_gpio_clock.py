@@ -25,7 +25,9 @@ attenuated loopback. The receive port survives +2.5 dBm and this board can
 reach about +19 dBm; never transmit at power into an open connector.
 """
 import argparse
-import sys
+import sys, pathlib as _pl
+sys.path.insert(0, str(_pl.Path(__file__).resolve().parent))
+from board_addr import uri as _board_uri            # noqa: E402
 
 import numpy as np
 
@@ -80,7 +82,8 @@ def build(n_samples, frame, amplitude):
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--uri", default="ip:192.168.2.1", help="libiio URI")
+    p.add_argument("--uri", default=None,
+                   help="libiio URI (default: the board, found by name)")
     p.add_argument("--rate", type=float, default=30.72e6, help="samples/s")
     p.add_argument("--lo", type=float, default=2.4e9, help="TX centre, Hz")
     p.add_argument("--tx-gain", type=float, default=-89.75,
@@ -93,6 +96,8 @@ def main():
     p.add_argument("--off", action="store_true",
                    help="hand the pins back to Linux and exit")
     a = p.parse_args()
+    # Resolved only if not given, so --help and a supplied --uri cost nothing.
+    a.uri = a.uri or _board_uri()
 
     if a.off:
         print(f"tx_sample_gpio_en = {set_feature(a.uri, False)}")

@@ -40,6 +40,16 @@ and never hard-code an address. `usb0` keeps 192.168.2.1 whatever you did to
 `eth0`, so a USB cable is always the way back in. Full write-up:
 [`docs/networking.md`](../../../../docs/networking.md).
 
+**Never hard-code the board's address in a tool.** `tools/board_addr.py` is the
+one place the order is decided - an explicit argument, then `$BOARD`/`$SDR_URI`,
+then `Fishball7020.local`, `pluto.local`, `fishball.local`, then the USB gadget
+at 192.168.2.1. Python: `from board_addr import resolve, uri`. Shell:
+`BOARD="${BOARD:-$(python3 tools/board_addr.py)}"`. It probes candidates
+CONCURRENTLY with a deadline, because a `.local` name that does not resolve
+blocks `create_connection` for ten seconds or more - probing four in turn once
+cost twenty seconds on every invocation. CI greps for a re-introduced hard-coded
+default.
+
 **Use `./devkit net`, not `fw_setenv` by hand.** `net show | dhcp | static <ip> |
 name <host> | find`. It reads the environment back BEFORE rebooting and then
 re-finds the board by mDNS, because switching to DHCP discards the address you

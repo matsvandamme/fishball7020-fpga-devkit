@@ -37,10 +37,16 @@ SSH_OPTS=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 # because this is the command you run when you do not know the address.
 resolve_board() {
     local cands=()
-    # Fishball7020 is this repo's default; pluto is what an unpatched
-    # rootfs still answers to, and 192.168.2.1 is the USB gadget, which
-    # keeps its address whatever Ethernet is doing.
-    [ -n "${BOARD:-}" ] && cands=("$BOARD") || cands=(Fishball7020.local pluto.local 192.168.2.1)
+    # The candidate list lives in one place, board_addr.py, so this and the
+    # Python tools cannot drift apart. The fallback is only for a machine with
+    # no python3 at all.
+    if [ -n "${BOARD:-}" ]; then
+        cands=("$BOARD")
+    else
+        mapfile -t cands < <(python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/board_addr.py" --list 2>/dev/null) \
+            || cands=(Fishball7020.local pluto.local 192.168.2.1)
+        [ ${#cands[@]} -eq 0 ] && cands=(Fishball7020.local pluto.local 192.168.2.1)
+    fi
     for c in "${cands[@]}"; do
         if sshpass -p "$PASS" ssh "${SSH_OPTS[@]}" "root@$c" true 2>/dev/null; then
             echo "$c"; return 0

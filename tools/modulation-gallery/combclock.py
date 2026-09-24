@@ -7,8 +7,12 @@ transmit sample rate changes. If it moves with neither, it is a fixed-frequency
 source perturbing an oscillator, and the next question is which board it sits on.
 """
 import os, subprocess, sys, numpy as np, board as B
+import sys as _s, pathlib as _pl                     # noqa: E402
+_s.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+from board_addr import resolve as _board             # name first, USB last
 
-HOST = os.environ.get("BOARD", "192.168.2.1")
+
+HOST = _board()
 BLO, RXLO, CH = 866_500_000, 871_300_000, 1
 
 def cap(fs, n):

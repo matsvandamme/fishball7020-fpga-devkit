@@ -11,8 +11,12 @@ So retune one at a time:
 Whichever change moves the comb owns it.
 """
 import os, subprocess, sys, numpy as np, board as B, dsp
+import sys as _s, pathlib as _pl                     # noqa: E402
+_s.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+from board_addr import resolve as _board             # name first, USB last
 
-HOST = os.environ.get("BOARD", "192.168.2.1")
+
+HOST = _board()
 FS_TX, TONE, CH = 4_000_000, 600_000, 1
 
 def cap(lo, n=1 << 20):

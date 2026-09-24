@@ -54,6 +54,14 @@ jobs:
           python -m pip install --quiet numpy
           python tools/selftest/test_dsp.py
 
+      - name: Every tool agrees on where the board is
+        run: |
+          # One resolver, so a board on its mDNS name is reachable by all of
+          # them and not just whichever had the right address hard-coded.
+          python tools/board_addr.py --self-test
+          # Nothing may go back to assuming the USB address is the only one.
+          ! grep -rn '192\.168\.2\.1' --include='*.py' tools/ \
+              | grep -v 'board_addr.py' | grep -vi '# ' | grep 'default'
       - name: The self-test refuses to run without a board, rather than hanging
         run: |
           timeout 60 python tools/selftest/sdr_selftest.py --uri ip:203.0.113.1 \

@@ -13,8 +13,12 @@ equally consistent with either radio. This script was once read as proving the
 through the board than through the HackRF. Use atlas2.py for attribution.
 """
 import os, subprocess, sys, json, numpy as np, board as B, chain, dsp
+import sys as _s, pathlib as _pl                     # noqa: E402
+_s.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+from board_addr import resolve as _board             # name first, USB last
 
-HOST, BLO, TONE, CH = os.environ.get("BOARD", "192.168.2.1"), 866_500_000, 600_000, 1
+
+HOST, BLO, TONE, CH = _board(), 866_500_000, 600_000, 1
 
 def cap(n=1 << 20):
     subprocess.run([sys.executable, "hackrf_cap.py", "--freq", str(BLO - chain.OFFSET),

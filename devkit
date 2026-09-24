@@ -75,7 +75,7 @@ case "$cmd" in
         fi
         echo
         echo "== board =="
-        BOARD="${BOARD:-192.168.2.1}"
+        BOARD="${BOARD:-$(python3 "$HERE/tools/board_addr.py" 2>/dev/null || echo 192.168.2.1)}"
         if ping -c1 -W1 "$BOARD" >/dev/null 2>&1; then
             echo "   reachable at $BOARD"
             echo "   run './devkit verify --board' to check it is running this build"

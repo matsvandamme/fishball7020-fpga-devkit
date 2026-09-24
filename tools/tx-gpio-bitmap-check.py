@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify the TX-sample-nibble-to-GPIO feature on real hardware.
 
-    ./tx-gpio-bitmap-check.py [ip:192.168.2.1]
+    ./tx-gpio-bitmap-check.py [ip:Fishball7020.local]
 
 Answers one question: do the four header pins actually carry the low nibble of
 the transmit samples? It needs no scope, no jumper wire and no antenna - only
@@ -67,7 +67,7 @@ class Board:
             raise SystemExit(f"ssh to root@{self.host} failed (exit {r.returncode}): "
                              f"{(r.stderr or r.stdout).strip()[:200] or 'no output'}\n"
                              f"Check the board is up, and BOARD/BOARD_PASS if it is not "
-                             f"the default 192.168.2.1 / analog.")
+                             f"the board found by name / analog.")
         return r.stdout.strip()
 
     def discover(self):
@@ -123,9 +123,10 @@ def main():
         print(__doc__); return 0
     if not shutil.which("sshpass"):
         raise SystemExit("needs sshpass (sudo apt install sshpass)")
-    import os
-    default = os.environ.get("BOARD", "192.168.2.1")
-    host = (sys.argv[1] if len(sys.argv) > 1 else f"ip:{default}").split(":")[-1]
+    import os, pathlib as _pl
+    sys.path.insert(0, str(_pl.Path(__file__).resolve().parent))
+    from board_addr import resolve as _board_host
+    host = (sys.argv[1].split(":")[-1] if len(sys.argv) > 1 else _board_host())
     board = Board(host, os.environ.get("BOARD_PASS", "analog"))
     board.discover()
     print(f"board {host}: gpio base {board.base}, pins {board.pins}, "

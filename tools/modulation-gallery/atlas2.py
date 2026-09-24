@@ -15,8 +15,12 @@ apart, and with no receive antenna on the board there is no third path that can.
 """
 import os, json, subprocess, sys, numpy as np, board as B, dsp
 from iiod_min import mask_for
+import sys as _s, pathlib as _pl                     # noqa: E402
+_s.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+from board_addr import resolve as _board             # name first, USB last
 
-HOST = os.environ.get("BOARD", "192.168.2.1")
+
+HOST = _board()
 TXLO, BRX, HRX, CH = 866_500_000, 864_500_000, 871_300_000, 1
 RATE = 12_288_000
 

@@ -14,8 +14,12 @@ the HackRF and the receiver is the board: two references, no cancellation.
 """
 import os, subprocess, sys, time, threading, numpy as np, board as B, dsp
 from iiod_min import mask_for
+import sys as _s, pathlib as _pl                     # noqa: E402
+_s.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+from board_addr import resolve as _board             # name first, USB last
 
-HOST = os.environ.get("BOARD", "192.168.2.1")
+
+HOST = _board()
 HTX_LO, TONE, BRX, RATE = 866_500_000, 1_000_000, 865_000_000, 12_288_000
 
 b = B.Board(HOST)

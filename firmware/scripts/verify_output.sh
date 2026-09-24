@@ -111,7 +111,7 @@ fi
 if [ $CHECK_BOARD -eq 1 ]; then
     echo
     echo "== against the board =="
-    BOARD=${BOARD:-192.168.2.1}
+    BOARD="${BOARD:-$(python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../tools" && pwd)/board_addr.py" 2>/dev/null || echo 192.168.2.1)}"
     PASS=${BOARD_PASS:-analog}
     if ! command -v sshpass >/dev/null 2>&1; then
         note "sshpass not installed - cannot compare (sudo apt install sshpass)"

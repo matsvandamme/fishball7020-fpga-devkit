@@ -21,6 +21,9 @@ import numpy as np
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "selftest"))
 from iiod_min import Iiod, mask_for                                    # noqa: E402
+import sys as _s, pathlib as _pl                     # noqa: E402
+_s.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+from board_addr import resolve as _board             # name first, USB last
 
 PHY, TX, RX = "ad9361-phy", "cf-ad9361-dds-core-lpc", "cf-ad9361-lpc"
 TX_LO = "altvoltage1"
@@ -100,7 +103,7 @@ class Board:
 
 if __name__ == "__main__":
     import os
-    b = Board(sys.argv[1] if len(sys.argv) > 1 else os.environ.get("BOARD", "192.168.2.1"))
+    b = Board(sys.argv[1] if len(sys.argv) > 1 else _board())
     print("devices:", {k: v for k, v in b.dev.items()})
     print("TX atten:", b.rd(PHY, "voltage0", "hardwaregain", out=True),
           "/", b.rd(PHY, "voltage1", "hardwaregain", out=True))

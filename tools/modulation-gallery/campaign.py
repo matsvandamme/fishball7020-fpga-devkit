@@ -10,8 +10,12 @@ absolute dBFS, because a normalised spectrum makes silence look like structure.
 """
 import os, subprocess, sys, json, time, numpy as np
 import board as B, chain, dsp, rx, waveforms as W
+import sys as _s, pathlib as _pl                     # noqa: E402
+_s.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+from board_addr import resolve as _board             # name first, USB last
 
-HOST  = os.environ.get("BOARD", "192.168.2.1")
+
+HOST  = _board()
 BLO   = 866_500_000
 ATTEN = -16.0
 SCALE = 0.9

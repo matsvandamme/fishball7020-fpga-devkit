@@ -14,8 +14,12 @@ without it, the pair is not the board's, and the HackRF is the only thing left.
 """
 import os, numpy as np, board as B, dsp
 from iiod_min import mask_for
+import sys as _s, pathlib as _pl                     # noqa: E402
+_s.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+from board_addr import resolve as _board             # name first, USB last
 
-HOST = os.environ.get("BOARD", "192.168.2.1")
+
+HOST = _board()
 EXT, BRX, RATE = 864_000_000, 862_000_000, 12_288_000
 
 b = B.Board(HOST)

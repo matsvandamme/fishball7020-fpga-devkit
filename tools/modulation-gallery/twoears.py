@@ -13,8 +13,12 @@ identically on both and cancel.
 """
 import os, subprocess, sys, numpy as np, board as B
 from iiod_min import mask_for
+import sys as _s, pathlib as _pl                     # noqa: E402
+_s.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+from board_addr import resolve as _board             # name first, USB last
 
-HOST = os.environ.get("BOARD", "192.168.2.1")
+
+HOST = _board()
 TXLO, TXFS, CH = 866_500_000, 8_000_000, 1
 BRX, HRX = 864_500_000, 871_300_000
 

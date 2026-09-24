@@ -2,7 +2,11 @@
 """Does the +-1 MHz pair follow a quarter of the TRANSMIT sample rate?"""
 import os, subprocess, sys, numpy as np, dsp
 import board as B
-HOST = os.environ.get("BOARD", "192.168.2.1")
+import sys as _s, pathlib as _pl                     # noqa: E402
+_s.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+from board_addr import resolve as _board             # name first, USB last
+
+HOST = _board()
 BLO, RXLO, CH = 866_500_000, 871_300_000, 1
 
 def cap(n=1 << 20):

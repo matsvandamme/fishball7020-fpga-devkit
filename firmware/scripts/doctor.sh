@@ -136,7 +136,7 @@ fi
 
 echo
 echo "== board (optional) =="
-BOARD="${BOARD:-192.168.2.1}"     # the one knob: flash, verify, gpio-check, selftest
+BOARD="${BOARD:-$(python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../tools" && pwd)/board_addr.py" 2>/dev/null || echo 192.168.2.1)}"
 if ping -c1 -W1 "$BOARD" >/dev/null 2>&1; then
   ok "board reachable at $BOARD"
 else

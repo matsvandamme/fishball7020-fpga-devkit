@@ -23,7 +23,9 @@
 # Never DFU for BOOT.bin, and never pull power mid-write.
 set -euo pipefail
 
-BOARD="${BOARD:-192.168.2.1}"
+# Where the board is: its own name first, the USB gadget last. See
+# tools/board_addr.py; $BOARD still overrides everything.
+BOARD="${BOARD:-$(python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/board_addr.py" 2>/dev/null || echo 192.168.2.1)}"
 PASS="${BOARD_PASS:-analog}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="$(dirname "$SCRIPT_DIR")/firmware/output"

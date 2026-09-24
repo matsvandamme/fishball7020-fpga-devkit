@@ -220,8 +220,12 @@ this, and it never transmits:
 what you last built, and whether the board is reachable. Once you have built
 something, `./devkit verify --board` checks the board is really running it.
 
-**Talk to it.** To software it is a Pluto at `ip:Fishball7020.local` (or
-`ip:192.168.2.1` over USB), so libiio,
+**Talk to it.** Every tool here finds the board by name and needs no address
+typed in — `./devkit selftest`, `verify --board`, `flash`, `gpio-check` and the
+capture tools all resolve `Fishball7020.local` first and fall back to the USB
+gadget at `192.168.2.1`. `BOARD=<address>` or `SDR_URI=ip:<address>` overrides
+that wherever you need it, and `tools/board_addr.py` is the one place the order
+is decided. To software it is a Pluto at `ip:Fishball7020.local`, so libiio,
 pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 
 **Put it on your network.** The Ethernet socket asks your router for an address

@@ -124,6 +124,7 @@ pads let the board's own TX->RX leak into the result. Details in `rf-safety.md`.
 | `firmware/scripts/doctor.sh` | can this machine build? run before the hour, not during |
 | `tools/flash.sh` | flash the running board over the network, safely (`./devkit flash`) |
 | `tools/net.sh` | DHCP or a static address, permanently; finds the board again afterwards (`./devkit net`) |
+| `tools/board_addr.py` | where the board is - the one resolver every tool uses; never hard-code an address |
 | `docs/networking.md` | where the address lives, the two names, and why the SD card's uEnv.txt is a decoy |
 | `tools/tx-gpio-bitmap-check.py` | verify the sample-locked GPIO outputs on hardware (`./devkit gpio-check`) |
 | `docs/tx-gpio-bitmap.md` | the sample-locked GPIO feature, end to end |

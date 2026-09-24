@@ -34,6 +34,9 @@ import json
 import os
 import subprocess
 import sys
+import pathlib as _pl
+sys.path.insert(0, str(_pl.Path(__file__).resolve().parent))
+from board_addr import uri as _board_uri            # noqa: E402
 
 PHY = "ad9361-phy"
 RX = "cf-ad9361-lpc"
@@ -510,8 +513,8 @@ def main():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("mode", choices=["wrap", "record"])
     p.add_argument("path", help="existing .bin for wrap, or output basename for record")
-    p.add_argument("--uri", default=os.environ.get("SDR_URI", "ip:192.168.129.200"),
-                   help="libiio URI (default: $SDR_URI or ip:192.168.129.200)")
+    p.add_argument("--uri", default=None,
+                   help="libiio URI (default: $SDR_URI, else the board found by name)")
     p.add_argument("--channels", default="0", choices=["0", "1", "both"],
                    help="0 = RX1A, 1 = RX2A, both = coherent pair (default 0)")
     p.add_argument("--split", action="store_true",
@@ -533,6 +536,8 @@ def main():
     p.add_argument("--description", default=None)
     p.add_argument("--author", default=None)
     args = p.parse_args()
+    # $SDR_URI is honoured inside the resolver, along with $BOARD.
+    args.uri = args.uri or _board_uri()
 
     channels = [0, 1] if args.channels == "both" else [int(args.channels)]
     nch = len(channels)
