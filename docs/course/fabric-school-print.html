@@ -762,6 +762,85 @@ ping -c1 8.8.8.8         <span class="c"># fails: no route</span>
     <code>/mnt/jffs2/autorun.sh</code>, the board's one writable persistent partition, which runs at
     every boot.</p>
 
+  <h3>Two different names, and why the router shows neither</h3>
+  <p>A router listing this board as <code>26:ae:c6:de:ce:e0</code> is showing you two
+    separate faults, and the second is the interesting one.</p>
+
+  <p><strong>The name a router displays comes from the DHCP request</strong> &mdash; option
+    12, the client's hostname. The stock firmware never sends it: <code>udhcpc</code> runs
+    with no hostname argument, so the router has nothing to list the board as except its
+    hardware address. That is a different name from the <span class="newterm">mDNS</span>
+    one, which was working the whole time; mDNS is answered by a daemon on the board and
+    never enters the router's client list at all.</p>
+
+  <p><strong>And the hardware address is not stable.</strong> The device tree carries no
+    <code>local-mac-address</code>, so the Ethernet driver says so and improvises:</p>
+
+  <div class="code">
+    <div class="code-bar"><span class="f">dmesg</span><span class="t">Kernel</span></div>
+<pre><code>macb e000b000.ethernet: invalid hw address, using random
+</code></pre>
+  </div>
+
+  <div class="box trap">
+    <p class="bt">What a random MAC per boot actually costs you</p>
+    <p>It is not cosmetic. Every reboot, the router sees a device it has never met: a new
+      entry in the client list, a new lease, a different address. A DHCP reservation &mdash;
+      the normal way to give something a fixed address without configuring the device &mdash;
+      becomes impossible, because there is no stable identity to reserve against. Two
+      consecutive boots of this board took <code>192.168.129.139</code> and then
+      <code>.140</code>, which is easy to read as "DHCP working" rather than as the symptom
+      it is.</p>
+  </div>
+
+  <p>Both are fixed by two lines in the interface stanza that <code>S40network</code> already
+    generates, because busybox's <code>ifupdown</code> knows what to do with them:
+    <code>hostname</code> becomes <code>udhcpc -x hostname:</code>, and <code>hwaddress</code>
+    becomes an <code>ip link set addr</code> issued <em>before</em> the interface comes up.</p>
+
+  <div class="code">
+    <div class="code-bar"><span class="f">/etc/network/interfaces</span><span class="t">Generated</span></div>
+<pre><code>auto eth0
+iface eth0 inet dhcp
+        hostname Fishball7020
+        hwaddress ether 00:0a:35:00:01:22
+</code></pre>
+  </div>
+
+  <p>The address used is the one U-Boot already holds in its own environment
+    (<code>ethaddr</code>) and uses for its own networking, so the board keeps a single
+    identity from bootloader to Linux instead of two. The devkit ships this as
+    <code>firmware/patches/0013</code>, and the same patch makes the default hostname
+    <code>Fishball7020</code>, so the board answers to
+    <code>Fishball7020.local</code>.</p>
+
+  <div class="box why">
+    <p class="bt">The one thing that cannot be checked from here</p>
+    <p><code>ethaddr</code> lives in each board's own QSPI environment, so in principle it is
+      per-board. Whether the factory actually wrote a different value to every unit is not
+      something this repository can know. If you put two of these on one network and they
+      both go quiet, that is the first thing to check &mdash;
+      <code>fw_setenv ethaddr &lt;mac&gt;</code> gives one of them a different address.</p>
+  </div>
+
+  <p>Day to day none of this needs remembering, because the devkit wraps it:</p>
+
+  <div class="code">
+    <div class="code-bar"><span class="f">terminal</span><span class="t">Shell</span></div>
+<pre><code><span class="c"># run from: the repo root</span>
+./devkit net                 <span class="c"># what address did it get, and how?</span>
+./devkit net dhcp            <span class="c"># ask the router          (the default)</span>
+./devkit net static 192.168.1.50
+./devkit net name lab-sdr    <span class="c"># answer to lab-sdr.local instead</span>
+./devkit net find            <span class="c"># locate it without knowing the address</span>
+</code></pre>
+  </div>
+
+  <p>Each of those writes the environment, reads it back <em>before</em> rebooting, and then
+    goes and finds the board again &mdash; because switching to DHCP throws away the address
+    you were connected on, and that is the moment you would otherwise discover you have no
+    way back.</p>
+
   <h3>Finding the board again</h3>
   <p>If you switched to DHCP, you do not need to know the address. The board announces itself:</p>
 

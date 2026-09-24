@@ -178,6 +178,28 @@ reset = 1
 Leaving `ipaddr_eth` blank here is how you select DHCP, exactly as with
 `fw_setenv`.
 
+**This still forces a fixed address after `patches/0013`, and it is worth saying
+why.** That patch changes how `S40network` *writes* the interface file; it does
+not touch `update.sh` or the variables `config.txt` feeds it. Verified on
+hardware by editing `ipaddr_eth` in a copy of `config.txt`, parsing it with
+`update.sh`'s own `ini_parser` lifted out of the running firmware, and applying
+the result exactly as `process_ini` does:
+
+```bash
+# run on the board
+#   parsed ipaddr_eth  = 192.168.129.200
+#   ... after the reboot:
+#   address:  192.168.129.200/23
+#   MAC:      00:0a:35:00:01:22   <- still the stable one, not a random one
+```
+
+The static stanza gets the `hwaddress` line too, because the driver randomises
+the MAC whether the address is static or from DHCP. It does **not** get a
+`hostname` line: DHCP option 12 is what a router lists you by, and a static
+address never sends one. So a board you have pinned will show up in the router's
+client list by MAC — there is no DHCP conversation in which to introduce itself.
+mDNS still answers for it, so `Fishball7020.local` works either way.
+
 Under the hood, `/sbin/update.sh` compares the file's md5 against a stored copy,
 parses the `[NETWORK]`, `[WLAN]`, `[SYSTEM]` and `[USB_ETHERNET]` sections, and
 writes every value in one batch:

@@ -40,6 +40,32 @@ and never hard-code an address. `usb0` keeps 192.168.2.1 whatever you did to
 `eth0`, so a USB cable is always the way back in. Full write-up:
 [`docs/networking.md`](../../../../docs/networking.md).
 
+**Use `./devkit net`, not `fw_setenv` by hand.** `net show | dhcp | static <ip> |
+name <host> | find`. It reads the environment back BEFORE rebooting and then
+re-finds the board by mDNS, because switching to DHCP discards the address you
+are connected on.
+
+**Two different names, and they come from different places.** mDNS
+(`Fishball7020.local`) follows the `hostname` variable and is answered by avahi
+on the board. What a ROUTER lists is DHCP option 12, which stock firmware never
+sends - so a router shows a bare MAC even when mDNS is working perfectly. Patch
+`0013` adds a `hostname` line to the dhcp stanza, which busybox ifupdown turns
+into `udhcpc -x hostname:`.
+
+**The MAC is random on every boot without patch `0013`.** The device tree has no
+`local-mac-address`, so the driver logs `invalid hw address, using random`. The
+router then sees a new device each boot, issues a new lease, and a DHCP
+reservation is impossible. `0013` adds `hwaddress ether $ETHADDR` - the MAC
+U-Boot already uses - to BOTH branches, static and dhcp, since the driver
+randomises regardless of addressing mode.
+
+**`config.txt` on the USB mass-storage drive still overrides everything**, and
+it is not on the SD card - it is a loopback vfat image at `/opt/vfat.img` that
+`/sbin/update.sh` re-reads when the host EJECTS the drive. `0013` does not touch
+`update.sh`, so editing `ipaddr_eth` there still forces a static address.
+Verified by parsing an edited copy with update.sh's own `ini_parser`. Note the
+section heading is `[USB_ETHERNET]` but it configures the RJ45 socket.
+
 ## IIOD protocol gotchas
 
 All confirmed against a live board running IIOD 0.25.

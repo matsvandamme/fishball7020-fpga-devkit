@@ -46,7 +46,7 @@ works](docs/how-it-works.md)** starts from the beginning and assumes nothing.
 > It assumes no Verilog, no Vivado, no FPGA experience and no signal processing.
 > Twenty-two live calculators, day/night, one self-contained page.
 > **[Read it online](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)**
-> · **[176-page PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)**
+> · **[177-page PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)**
 > · [source](docs/course/)
 
 ## Is this your board?
@@ -196,6 +196,15 @@ It shows up as a network interface, and the board is at `192.168.2.1`:
 ssh root@192.168.2.1        # password: analog
 ```
 
+Over Ethernet it answers to its name instead, so you never need to know the
+address:
+
+```bash
+# run on your HOST, from anywhere
+ssh root@Fishball7020.local
+./devkit net                # what address did it get, and how?
+```
+
 The `DEBUG` socket is the serial console and JTAG, which you only need when the
 board will not boot. [Which USB port is which](docs/flashing.md#verify-your-build-is-actually-running).
 
@@ -211,14 +220,26 @@ this, and it never transmits:
 what you last built, and whether the board is reachable. Once you have built
 something, `./devkit verify --board` checks the board is really running it.
 
-**Talk to it.** To software it is a Pluto at `ip:192.168.2.1`, so libiio,
+**Talk to it.** To software it is a Pluto at `ip:Fishball7020.local` (or
+`ip:192.168.2.1` over USB), so libiio,
 pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 
 **Put it on your network.** The Ethernet socket asks your router for an address
-by default, and `iio_info -s` finds the board without you knowing it. To give it
-a fixed address instead — or to understand why the obvious file on the SD card is
-not the one that does it — see [changing the board's IP
-address](docs/networking.md).
+by default, and the board announces itself as **`Fishball7020.local`**, so
+nothing here needs an IP address typed into it. `./devkit net` shows what it
+got; `./devkit net dhcp` and `./devkit net static <ip>` switch between the two
+modes permanently and then go and find the board again afterwards.
+
+Two things this repo fixes that the stock firmware gets wrong, both in
+[`patches/0013`](firmware/patches/0013-stable-mac-and-dhcp-hostname.patch): the
+board sends **no hostname in its DHCP request**, so a router lists it as a hex
+MAC string; and that MAC is **randomly generated at every boot**, because the
+device tree carries none — so the router sees a new device each time and a DHCP
+reservation is impossible. Full detail, including why the obvious file on the SD
+card is not the one that sets any of this: [changing the board's IP
+address](docs/networking.md). To pin an address with no shell at all, edit
+`config.txt` on the drive the board presents over USB and eject — that route
+still works, and still wins.
 
 ## Making changes
 

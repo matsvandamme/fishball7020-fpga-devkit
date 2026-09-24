@@ -68,7 +68,7 @@ balls, bank, pull-down, the capture strobe, measured cost - is in
 [`docs/tx-gpio-bitmap.md`](../../../docs/tx-gpio-bitmap.md).
 
 **`./devkit` is the entry point; `doctor` comes first.** `doctor · setup · sim ·
-build · verify · flash · selftest · gpio-check · status`, all from the repo root
+build · verify · flash · selftest · gpio-check · net · status`, all from the repo root
 with arguments passed through. `./devkit doctor` checks Vivado/Vitis, host
 packages, `gmp.h`, disk (~25 GB), the patch stamp and the board in a second -
 every check is a failure that once cost an hour. `./devkit verify` before
@@ -120,9 +120,11 @@ pads let the board's own TX->RX leak into the result. Details in `rf-safety.md`.
 
 | | |
 |---|---|
-| `devkit` | the entry point - doctor, setup, sim, build, verify, flash, selftest, gpio-check, status |
+| `devkit` | the entry point - doctor, setup, sim, build, verify, flash, selftest, gpio-check, net, status |
 | `firmware/scripts/doctor.sh` | can this machine build? run before the hour, not during |
 | `tools/flash.sh` | flash the running board over the network, safely (`./devkit flash`) |
+| `tools/net.sh` | DHCP or a static address, permanently; finds the board again afterwards (`./devkit net`) |
+| `docs/networking.md` | where the address lives, the two names, and why the SD card's uEnv.txt is a decoy |
 | `tools/tx-gpio-bitmap-check.py` | verify the sample-locked GPIO outputs on hardware (`./devkit gpio-check`) |
 | `docs/tx-gpio-bitmap.md` | the sample-locked GPIO feature, end to end |
 | `firmware/patches/` | what makes this board's firmware; `setup.sh` applies these |
