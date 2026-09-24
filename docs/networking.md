@@ -77,6 +77,22 @@ fi
 
 So "go back to DHCP" is not a separate setting — it is *deleting* `ipaddr_eth`.
 
+## The short version
+
+```bash
+# run from: the repo root
+./devkit net                 # what is it doing now?
+./devkit net dhcp            # ask the router for an address (the default)
+./devkit net static 192.168.1.50
+./devkit net name fishball   # answer to fishball.local instead of pluto.local
+./devkit net find            # locate it without knowing the address
+```
+
+`./devkit net dhcp` writes the environment, **reads it back before rebooting**,
+and then finds the board again by name — because the switch throws away the
+address you were connected on, and doing this by hand is how people discover
+they have no way back. The rest of this page is what it does underneath and why.
+
 ## Route 1 — over ssh, with `fw_setenv` (the direct way)
 
 This is the mechanism every other route below goes through in the end.
@@ -296,6 +312,50 @@ ip route add default via 192.168.1.1     # give it a gateway too
 ```
 
 To put things back, `ip addr del 192.168.1.50/24 dev eth0`, or just reboot.
+
+## What DHCP exposes, and what it does not
+
+Worth knowing before you switch, because **a static address on this board has no
+default route — which means it cannot reach the internet at all.** DHCP supplies
+a gateway, so the board goes from no internet access to full outbound access.
+That is usually what you want; it is also a change in posture.
+
+Measured on a board in DHCP mode:
+
+- **Outbound: everything.** ICMP, DNS and HTTP to the internet all succeed. No
+  service on the board uses it — there is no `ntpd`, no `cron`, and nothing that
+  phones home — but the path is open.
+- **Inbound from the internet: no route in**, as long as your router is doing
+  ordinary NAT. Every address the board holds is RFC1918, and **the kernel has
+  no IPv6 stack at all**, which closes the usual accidental-exposure path (a
+  globally routable v6 address behind a router with no v6 firewall).
+- **Inbound from your LAN: wide open, and this is the part that matters.**
+
+| Port | Service | Authentication |
+|---|---|---|
+| 22/tcp | dropbear, root shell | password `analog` — the documented default |
+| 30431/tcp | `iiod` | **none** |
+| 80/tcp | httpd, the info page | none; discloses serial, MACs, kernel and firmware versions |
+| 5353/udp | avahi (mDNS) | n/a |
+| 67/udp | udhcpd | limited to `usb0` by its config, so it will not serve your LAN |
+
+There is **no packet filter on the board** — no netfilter tables are registered.
+
+`iiod` is the one to think about: it has no authentication and no way to add
+any, so anyone who can reach port 30431 can tune, receive **and transmit**. On a
+board with a power amplifier that is an RF-emissions question, not only a data
+one. Network isolation is the only control — a segregated VLAN, or the router's
+firewall.
+
+If you would rather the board could not reach the internet, a static address is
+the blunt way to get that: no gateway is written, so it talks to its own subnet
+and nothing else. Its missing default route is a limitation for `opkg` and an
+accidental feature here.
+
+**Changing the root password does not survive a reboot on its own.** `/etc` is
+in the ramdisk. `S21misc` restores `/mnt/jffs2/etc/{passwd,shadow,group}` at
+boot, but only when `password.md5` alongside them verifies — so persisting a new
+password means copying those files there and writing that checksum.
 
 ## Finding the board again
 

@@ -11,6 +11,7 @@
 #     ./devkit flash       copy it onto the running board over the network
 #     ./devkit selftest    is the board damaged? measures and says
 #     ./devkit gpio-check  verify the sample-locked GPIO outputs on hardware
+#     ./devkit net         how the board gets its address; switch DHCP/static
 #     ./devkit status      where am I? what is built, what is the board running
 #     ./devkit container   run any of the above inside the pinned Vivado 2022.2
 #                          environment, so the host OS is free to move. Also
@@ -36,6 +37,7 @@ case "$cmd" in
     selftest)   cd "$HERE/tools/selftest" && exec ./sdr_selftest.py "$@" ;;
     gpio-check) exec "$HERE/tools/tx-gpio-bitmap-check.py" "$@" ;;
     container)  exec "$HERE/tools/container/run.sh" "$@" ;;
+    net)        exec "$HERE/tools/net.sh" "$@" ;;
 
     status)
         echo "== repo =="
