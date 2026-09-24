@@ -28,7 +28,7 @@ the PGA-102+ is a SOT-89.
 | `U2` `U3` | Micron **MT41K256M16TW-107IT:P** | DDR3L, 4 Gbit ×16 each, so **1 GB** across a 32-bit bus | 3 | Micron logo and FBGA code `D9SHD` legible; board reports `MemTotal: 1027848 kB` | [Micron part page](https://www.micron.com/products/memory/dram-components/ddr3-sdram/part-catalog/part-detail/mt41k256m16tw-107-it-p) |
 | `U11` | Analog Devices **AD9361** | the radio: 2×2 transceiver, 70 MHz – 6 GHz | 10, 11, 12 | ADI logo legible; `ad9361-phy` in IIO | [AD9361](https://www.analog.com/media/en/technical-documentation/data-sheets/ad9361.pdf) |
 | `U12` `U13` | Mini-Circuits **PGA-102+** | transmit power amplifier, one per channel | 12 | SOT-89 packages beside the outer SMA ports; self-test measures ~15.7 dB of gain at 900 MHz | [PGA-102+](https://www.minicircuits.com/pdfs/PGA-102+.pdf) |
-| `T1`–`T4` | RF baluns (the schematic gives no part number) | single-ended SMA ↔ the AD9361's differential RF pins | 12 | four square 6-pad parts around the AD9361 | — |
+| `T1`–`T4` | RF baluns (the schematic gives no part number) | single-ended SMA ↔ the AD9361's differential RF pins, one per port. On transmit the balun is **before** the amplifier: `AD9361 TX1A_P/N → T1 → TX1A_I → U12 → TX1A_O → SMA` | 12 | four square 6-pad parts around the AD9361; pads labelled `PRIMARY`, `PRIMARY_DOT`, `SECONDARY_DOT`, `NOT_USED`, `GND` — a transformer footprint with polarity dots | — |
 | `U8` | FTDI **FT2232HL** | USB to JTAG *and* serial console, on one socket | 8 | two `ttyUSB` ports enumerate together | [FT2232H](https://ftdichip.com/wp-content/uploads/2024/09/DS_FT2232H.pdf) |
 | `U9` | Microchip **USB3320C-EZK** | USB 2.0 OTG PHY | 9 | the `usb0` network interface | [USB3320](https://ww1.microchip.com/downloads/en/DeviceDoc/00001792E.pdf) |
 | `IC2` | Realtek **RTL8211F-CG** | gigabit Ethernet PHY | 4 | Realtek logo legible; `eth0` | [Realtek product page](https://www.realtek.com/Product/Index?id=3975&cate_id=786) |
@@ -43,6 +43,30 @@ Not on the picture: the MAX809, the TXS02612, the EEPROM, the relay and the
 LEDs are too small to find reliably in an 800-pixel photo. The power
 regulators are not in the published schematic at all, so this page cannot name
 them. For the RTL8211F the link is Realtek's product page, the official source.
+
+### The baluns, and the one thing they decide
+
+The AD9361's radio ports are differential pairs — `TX1A_P`/`TX1A_N`,
+`RX1A_P`/`RX1A_N` and so on. An SMA connector and the coax behind it are
+single-ended. `T1`–`T4` translate between the two, one per port.
+
+Two things follow that are worth knowing before you plan around the chip's
+datasheet:
+
+- **The balun sets the board's usable frequency range, not the AD9361.** The
+  chip covers 70 MHz – 6 GHz. A passive transformer covers whatever it was
+  wound for, and outside that its loss climbs and its balance degrades. The
+  schematic gives no part number, so **this page cannot tell you where the
+  board's range actually ends** — it can only be measured. What is measured:
+  [loop gain is flat to 2 dB from 200 MHz to 1 GHz](measured-performance.md),
+  which is the baluns, the amplifier and the traces together.
+- **Each port has its own fixed phase offset** through its own balun and
+  traces. That is why two channels on one board are coherent but not
+  calibrated, and why a phase measurement has to be taken with a splitter and
+  matched cables before it means anything.
+
+The AD9361 also brings out `RX1B`/`RX2B` differential pairs, which this board
+does not wire to connectors — the four SMAs are the `A` ports only.
 
 ## Clocks
 

@@ -339,10 +339,35 @@ details.check .ans p{margin:0 0 2mm}
         <td>One socket, two <code>ttyUSB</code> ports. The serial console is how you watch it boot.</td></tr>
       <tr><td>Microchip <strong>USB3320C</strong></td><td>USB 2.0 OTG PHY</td><td>The
         <code>usb0</code> network interface &mdash; the other way to reach the board.</td></tr>
-      <tr><td>4 &times; RF baluns</td><td>single-ended SMA to the AD9361's differential pins</td>
-        <td>The schematic gives no part number for these.</td></tr>
+      <tr><td>4 &times; RF <span class="newterm">baluns</span> (<code>T1</code>&ndash;<code>T4</code>)</td>
+        <td>single-ended SMA to the AD9361's differential pins</td>
+        <td>One per SMA port. The schematic gives no part number for these.</td></tr>
     </tbody>
   </table></div>
+
+  <div class="box jargon">
+    <p class="bt">Balun</p>
+    <p><strong>Bal</strong>anced to <strong>un</strong>balanced &mdash; the two halves of the word are
+      the whole idea. A coaxial cable and an SMA connector are <em>unbalanced</em>: one conductor
+      carries the signal and the shield is ground. The AD9361's radio pins are <em>balanced</em>, or
+      differential: each port is a PAIR, <code>TX1A_P</code> and <code>TX1A_N</code>, carrying equal
+      and opposite swings with no ground reference between them. Those are two incompatible ways of
+      describing the same signal, and something has to translate.</p>
+    <p>A balun is that translator, and at these frequencies it is usually a tiny transformer: a couple
+      of windings on a core, in a six-pad package about a millimetre across. The schematic labels the
+      pads <code>PRIMARY</code>, <code>PRIMARY_DOT</code> and <code>SECONDARY_DOT</code> &mdash; the
+      dots mark winding polarity, which is what decides which output goes positive when the input
+      does. Get a dot backwards in a layout and the signal arrives inverted.</p>
+    <p><strong>Why differential at all?</strong> Noise picked up along a pair of closely-spaced traces
+      lands on both wires almost equally. The receiver looks only at the <em>difference</em> between
+      them, so that shared noise subtracts away. It is the same reason Ethernet uses twisted pairs.
+      On a board where a 667 MHz processor and a gigabit PHY sit centimetres from the radio, that
+      matters.</p>
+    <p>Baluns are also passive and narrowband-ish, which has a consequence worth carrying into
+      lesson 42: the AD9361 covers 70 MHz to 6 GHz, but the <em>board</em> only covers whatever its
+      baluns pass. With no part number in the schematic, nobody can say from the documents where that
+      is &mdash; only measure it.</p>
+  </div>
 
   <h3>What the radio will actually do</h3>
   <p>Not from a datasheet &mdash; these are the limits the board itself reports, which is the number
@@ -6109,6 +6134,12 @@ and for BER * FRAME_SIZE * 8 &lt;&lt; 1,   p ~= BER * FRAME_SIZE * 8
 transmit   AD9361  -->  balun  -->  PGA-102+ (U12/U13, ~15.7 dB)  -->  TX1A/TX2A
 </code></pre>
   </div>
+  <p>Note where the balun sits on transmit: <strong>before</strong> the amplifier, not after. The
+    AD9361 drives it differentially, the balun makes that single-ended, and only then does the
+    PGA-102+ amplify. So the balun handles milliwatts, not the amplifier's output &mdash; and the
+    <code>TX1A_I</code> / <code>TX1A_O</code> nets either side of <code>U12</code> in the schematic
+    are exactly that boundary.</p>
+
   <p>Baluns, a power amplifier per transmit channel, and the AD9361. <strong>No external band filter in
     either direction.</strong> The chip's own front end is deliberately wideband — it has to cover
     70 MHz to 6 GHz — so what protects a narrowband receiver elsewhere simply is not here. Two

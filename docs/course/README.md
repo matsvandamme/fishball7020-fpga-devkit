@@ -11,7 +11,7 @@ is either. Every term is defined the first time it appears.
 | File | What it is |
 |---|---|
 | [`index.html`](index.html) | The course. One self-contained file, no build step, day/night theme, twenty-two live calculators. |
-| [`Fabric-School.pdf`](Fabric-School.pdf) | The same content as a 177-page book, for reading away from a screen. |
+| [`Fabric-School.pdf`](Fabric-School.pdf) | The same content as a 179-page book, for reading away from a screen. |
 | `fabric-school-print.html` | Generated. The print layout the PDF is rendered from. |
 | `print.css` · `make_print_html.py` | The print stylesheet and the script that applies it. |
 

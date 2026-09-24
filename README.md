@@ -46,7 +46,7 @@ works](docs/how-it-works.md)** starts from the beginning and assumes nothing.
 > It assumes no Verilog, no Vivado, no FPGA experience and no signal processing.
 > Twenty-two live calculators, day/night, one self-contained page.
 > **[Read it online](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)**
-> · **[177-page PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)**
+> · **[179-page PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)**
 > · [source](docs/course/)
 
 ## Is this your board?
@@ -274,7 +274,8 @@ still works, and still wins.
 
 An **AD9361** transceiver (70 MHz – 6 GHz, two channels), a **Zynq
 XC7Z020** (two ARM cores plus FPGA fabric), 1 GB of DDR3L, a power amplifier
-on each transmit port, gigabit Ethernet and USB. Every chip with its
+on each transmit port, a balun per SMA port turning the chip's differential RF
+pins into single-ended coax, gigabit Ethernet and USB. Every chip with its
 datasheet, plus the clocks, connectors and supply rails, read off the vendor
 schematic: **[What is on the board](docs/hardware.md)**.
 
