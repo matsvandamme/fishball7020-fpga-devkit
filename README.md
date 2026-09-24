@@ -60,7 +60,7 @@ in over USB:
 ```bash
 # run on your HOST, from anywhere (needs libiio-utils)
 iio_attr -S
-#  1: 192.168.2.1 (FISH Ball PlutoSDR Rev.A (Z7020-AD9361)), serial=... [ip:pluto.local]
+#  1: 192.168.2.1 (FISH Ball PlutoSDR Rev.A (Z7020-AD9361)), serial=... [ip:Fishball7020.local]
 ```
 
 `FISH Ball PlutoSDR Rev.A (Z7020-AD9361)` means it fits. `Z7010`, `AD9363` or

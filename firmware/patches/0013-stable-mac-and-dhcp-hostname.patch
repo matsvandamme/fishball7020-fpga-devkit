@@ -1,0 +1,76 @@
+Give eth0 a stable MAC and tell the router its name
+
+Two things a router needs to show this board as anything but a hex string,
+neither of which the stock firmware does.
+
+The MAC is random on every boot. The device tree carries no local-mac-address
+property, so the macb driver logs
+
+    macb e000b000.ethernet: invalid hw address, using random
+
+and eth0 comes up as a different locally-administered address each time. The
+router therefore sees a brand new device at every reboot, hands out a fresh
+lease, and a DHCP reservation cannot be made at all. Observed directly: two
+consecutive boots took 192.168.129.139 and then .140. U-Boot already holds a MAC
+in its environment (ethaddr) and uses it for its own networking, so eth0 is now
+pinned to the same one and the board keeps a single identity from bootloader to
+Linux. If ethaddr is unset the line is omitted and behaviour is unchanged.
+
+Nothing was sent in the DHCP request to say who we are. udhcpc ran without a
+hostname option, so DHCP option 12 was absent and a router had nothing to list
+the board as except its MAC. busybox ifupdown turns a "hostname" line in the
+interface stanza into "udhcpc -x hostname:", and a "hwaddress" line into an
+"ip link set addr" before the interface comes up, so both fixes are two lines in
+the file S40network already generates.
+
+The default hostname becomes Fishball7020 rather than pluto, which is also the
+mDNS name, so the board answers to Fishball7020.local. fw_setenv hostname still
+overrides it per board - ./devkit net name <host> - and setting it back to
+pluto restores compatibility with tooling that expects pluto.local.
+
+diff --git a/buildroot/board/pluto/S40network b/buildroot/board/pluto/S40network
+--- a/buildroot/board/pluto/S40network
++++ b/buildroot/board/pluto/S40network
+@@ -22,6 +22,7 @@
+ 
+ 	ETH_IPADDR=`fw_printenv -n ipaddr_eth 2> /dev/null`
+ 	ETH_NETMASK=`fw_printenv -n netmask_eth 2> /dev/null || echo 255.255.255.0`
++	ETHADDR=`fw_printenv -n ethaddr 2> /dev/null`
+ 
+ 	WLAN_SSID=`fw_printenv -n ssid_wlan 2> /dev/null`
+ 	WLAN_PWD=`fw_printenv -n pwd_wlan 2> /dev/null`
+@@ -47,10 +48,20 @@
+ 	if [ -n "$ETH_IPADDR" ]
+ 	then
+ 		echo -e "iface eth0 inet static" >> $IFAC
+-		echo -e "\taddress $ETH_IPADDR\n""\tnetmask $ETH_NETMASK\n" >> $IFAC
++		echo -e "\taddress $ETH_IPADDR\n""\tnetmask $ETH_NETMASK" >> $IFAC
+ 	else
+-		echo -e "iface eth0 inet dhcp\n" >> $IFAC
++		echo -e "iface eth0 inet dhcp" >> $IFAC
++		# Send a hostname in the DHCP request (option 12). Without it a router
++		# has no name to show and lists the board by MAC address.
++		echo -e "\thostname $HOSTNAME" >> $IFAC
+ 	fi
++	# The macb driver finds no MAC in the device tree - it logs "invalid hw
++	# address, using random" - so eth0 gets a NEW random MAC every boot. The
++	# router then sees a different device each time, hands out a different
++	# lease, and a DHCP reservation is impossible. U-Boot already has a MAC in
++	# its environment; use the same one so the board keeps one identity.
++	[ -n "$ETHADDR" ] && echo -e "\thwaddress ether $ETHADDR" >> $IFAC
++	echo "" >> $IFAC
+ 
+ 	### /etc/wpa.conf ###
+ 	if [ -n "$WLAN_SSID" ]
+diff --git a/buildroot/configs/zynq_pluto_defconfig b/buildroot/configs/zynq_pluto_defconfig
+--- a/buildroot/configs/zynq_pluto_defconfig
++++ b/buildroot/configs/zynq_pluto_defconfig
+@@ -6,7 +6,7 @@
+ BR2_TOOLCHAIN_EXTERNAL=y
+ BR2_TOOLCHAIN_EXTERNAL_LINARO_ARM=y
+ BR2_OPTIMIZE_2=y
+-BR2_TARGET_GENERIC_HOSTNAME="pluto"
++BR2_TARGET_GENERIC_HOSTNAME="Fishball7020"
+ BR2_TARGET_GENERIC_ISSUE="Welcome to Pluto"
+ BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_MDEV=y
+ BR2_TARGET_GENERIC_ROOT_PASSWD="analog"

@@ -57,7 +57,7 @@ socket you plug into a router.
 | `ipaddr` | `192.168.2.1` | The board's own address on the USB cable (`usb0`) |
 | `ipaddr_host` | `192.168.2.10` | The single address the board's DHCP server hands *your PC* over USB |
 | `netmask` | `255.255.255.0` | The USB netmask |
-| `hostname` | `pluto` | The hostname, and therefore the mDNS name `pluto.local` |
+| `hostname` | `pluto` | The hostname, and therefore the mDNS name `Fishball7020.local` |
 | `usb_ethernet_mode` | `rndis` | USB Ethernet flavour: `rndis`, `ncm` or `ecm` |
 | `ssid_wlan`, `pwd_wlan`, `ipaddr_wlan` | *(unset)* | A USB Wi-Fi dongle, if you fit one |
 
@@ -84,7 +84,7 @@ So "go back to DHCP" is not a separate setting — it is *deleting* `ipaddr_eth`
 ./devkit net                 # what is it doing now?
 ./devkit net dhcp            # ask the router for an address (the default)
 ./devkit net static 192.168.1.50
-./devkit net name fishball   # answer to fishball.local instead of pluto.local
+./devkit net name fishball   # answer to fishball.local instead of Fishball7020.local
 ./devkit net find            # locate it without knowing the address
 ```
 
@@ -366,17 +366,58 @@ you need to find the board. In rough order of how well these work:
 The USB interface keeps its own static address no matter what you did to
 Ethernet, so a USB cable is always the way back in. This is the recovery route.
 
-**2. mDNS — the board announces itself as `pluto.local`.** It runs an
+**2. mDNS — the board announces itself as `Fishball7020.local`.** It runs an
 avahi daemon, so no scanning is needed:
 
 ```bash
 # run from: your HOST
-avahi-resolve -n pluto.local
-#   pluto.local	192.168.129.200
+avahi-resolve -n Fishball7020.local
+#   Fishball7020.local	192.168.129.142
 ```
 
-The name follows the `hostname` variable, so if you set `fw_setenv hostname
-fishball` it becomes `fishball.local`.
+The name follows the `hostname` variable. A board built before
+`firmware/patches/0013` answers to `pluto.local` instead — that was buildroot's
+default, kept from the ADALM-Pluto. `./devkit net name <host>` changes it on a
+running board without a rebuild, and setting it back to `pluto` restores
+compatibility with tooling that looks for `pluto.local`.
+
+### The router shows a MAC address instead of a name
+
+Two separate things, and neither is the mDNS name above. The name a router
+displays comes from **DHCP option 12**, which the stock firmware never sends —
+udhcpc runs with no hostname option, so the router has nothing to list but the
+MAC.
+
+Worse, that MAC is not stable. The device tree carries no `local-mac-address`,
+so the driver says so and improvises:
+
+```
+macb e000b000.ethernet: invalid hw address, using random
+```
+
+A fresh random MAC every boot means the router sees a **new device** each time,
+hands out a new lease, and a DHCP reservation is impossible. Two consecutive
+boots here took `.139` and then `.140` for exactly this reason.
+
+`firmware/patches/0013` fixes both, by adding two lines to the interface stanza
+that `S40network` already generates:
+
+```
+iface eth0 inet dhcp
+	hostname Fishball7020
+	hwaddress ether 00:0a:35:00:01:22
+```
+
+busybox ifupdown turns `hostname` into `udhcpc -x hostname:` and `hwaddress`
+into an `ip link set addr` before the interface comes up. The MAC is the one
+U-Boot already uses for its own networking (`fw_printenv ethaddr`), so the board
+keeps one identity from bootloader to Linux; if `ethaddr` is unset the line is
+omitted and nothing changes.
+
+> **If you run two of these boards on one network**, check they do not share an
+> `ethaddr` — it lives in each board's QSPI environment, but nothing here can
+> tell you whether the factory wrote the same value to every unit. `fw_setenv
+> ethaddr <mac>` gives one of them a different address.
 
 **3. libiio finds it by itself.** The board advertises the IIO service over
 DNS-SD, and `iio_info -s` picks it up without you knowing any address:
@@ -385,17 +426,17 @@ DNS-SD, and `iio_info -s` picks it up without you knowing any address:
 # run from: your HOST
 iio_info -s
 #   1: 192.168.129.200 (FISH Ball PlutoSDR Rev.A (Z7020-AD9361)),
-#      serial=b8f4c99de8525565d3f4fe3c917ad834 [ip:pluto.local]
+#      serial=b8f4c99de8525565d3f4fe3c917ad834 [ip:Fishball7020.local]
 ```
 
 That is the single most useful command here: it gives you the address, the
 model, the serial, and confirms the radio service is actually up. You can then
-use `ip:pluto.local` as a libiio URI directly and never hard-code an address.
+use `ip:Fishball7020.local` as a libiio URI directly and never hard-code an address.
 
 ```bash
 # run from: your HOST
 avahi-browse -tpr _iio._tcp
-#   =;...;iiod on pluto;_iio._tcp;local;pluto.local;192.168.129.200;30431;
+#   =;...;iiod on pluto;_iio._tcp;local;Fishball7020.local;192.168.129.200;30431;
 ```
 
 **4. The serial console always works.** The FT2232H gives you a console at
@@ -452,4 +493,4 @@ SD card uEnv.txt  -> U-Boot's RAM environment only -> discarded before Linux
 
 - [Flashing the board](flashing.md) — which does *not* change these settings
 - [Troubleshooting](troubleshooting.md) — `/mnt/jffs2` and other invisible state
-- [Capturing IQ](capturing-iq.md) — using `ip:pluto.local` instead of an address
+- [Capturing IQ](capturing-iq.md) — using `ip:Fishball7020.local` instead of an address

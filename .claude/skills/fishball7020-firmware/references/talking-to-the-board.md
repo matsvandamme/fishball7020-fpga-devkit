@@ -35,7 +35,7 @@ link-scope routes, no `default via`, `ping 8.8.8.8` fails. DHCP does set both
 route in `/mnt/jffs2/autorun.sh`.
 
 Finding a board whose address you do not know: `iio_info -s` (DNS-SD, prints
-address + model + serial and confirms IIOD is up), or `ip:pluto.local` as a URI
+address + model + serial and confirms IIOD is up), or `ip:Fishball7020.local` as a URI
 and never hard-code an address. `usb0` keeps 192.168.2.1 whatever you did to
 `eth0`, so a USB cable is always the way back in. Full write-up:
 [`docs/networking.md`](../../../../docs/networking.md).

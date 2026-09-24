@@ -37,7 +37,10 @@ SSH_OPTS=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 # because this is the command you run when you do not know the address.
 resolve_board() {
     local cands=()
-    [ -n "${BOARD:-}" ] && cands=("$BOARD") || cands=(pluto.local 192.168.2.1)
+    # Fishball7020 is this repo's default; pluto is what an unpatched
+    # rootfs still answers to, and 192.168.2.1 is the USB gadget, which
+    # keeps its address whatever Ethernet is doing.
+    [ -n "${BOARD:-}" ] && cands=("$BOARD") || cands=(Fishball7020.local pluto.local 192.168.2.1)
     for c in "${cands[@]}"; do
         if sshpass -p "$PASS" ssh "${SSH_OPTS[@]}" "root@$c" true 2>/dev/null; then
             echo "$c"; return 0
@@ -52,11 +55,12 @@ on_board() { sshpass -p "$PASS" ssh "${SSH_OPTS[@]}" "root@$1" "$2"; }
 # board's own service advertisement, and is present on any machine that can
 # already talk to the radio.
 find_by_name() {
-    local a
-    if command -v avahi-resolve >/dev/null 2>&1; then
-        a=$(timeout 6 avahi-resolve -n "${1:-pluto}.local" 2>/dev/null | awk '{print $2}')
+    local a n
+    for n in "${1:-Fishball7020}" Fishball7020 pluto; do
+        command -v avahi-resolve >/dev/null 2>&1 || break
+        a=$(timeout 6 avahi-resolve -n "$n.local" 2>/dev/null | awk '{print $2}')
         [ -n "$a" ] && { echo "$a"; return 0; }
-    fi
+    done
     if command -v iio_info >/dev/null 2>&1; then
         a=$(timeout 15 iio_info -s 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1)
         [ -n "$a" ] && { echo "$a"; return 0; }
@@ -98,7 +102,7 @@ set_and_reboot() {
     printf 'rebooting ... '
     on_board "$b" 'nohup sh -c "sleep 1; reboot" >/dev/null 2>&1 &' || true
     sleep 35
-    local name="${3:-pluto}" a=""
+    local name="${3:-Fishball7020}" a=""
     for _ in $(seq 1 14); do
         a=$(find_by_name "$name" || true)
         [ -n "$a" ] && break
@@ -135,7 +139,8 @@ case "$cmd" in
             'fw_printenv ipaddr_eth 2>&1; fw_printenv netmask_eth 2>&1' \
             "$(on_board "$b" hostname)"
         echo
-        echo "Reach it as  root@pluto.local  or the libiio URI  ip:pluto.local"
+        hn=$(on_board "$b" hostname 2>/dev/null || echo Fishball7020)
+        echo "Reach it as  root@$hn.local  or the libiio URI  ip:$hn.local"
         ;;
 
     static)
@@ -165,9 +170,9 @@ WARN
         ;;
 
     find)
-        a=$(find_by_name "${1:-pluto}" || true)
+        a=$(find_by_name "${1:-Fishball7020}" || true)
         if [ -n "$a" ]; then
-            echo "${1:-pluto}.local is $a"
+            echo "found at $a"
         else
             echo "not found by name; try a USB cable and root@192.168.2.1" >&2; exit 1
         fi ;;

@@ -67,6 +67,32 @@ jobs:
           assert not bad, "missing -from: " + " | ".join(bad)
           print(len(cmds), "datapath-only delays, all with -from")
           PY
+      - name: Confirm eth0 gets a stable MAC and a DHCP hostname (patch 0013)
+        run: |
+          # Without hwaddress the macb driver randomises the MAC every boot -
+          # "invalid hw address, using random" - so the router sees a new
+          # device each time and a DHCP reservation cannot be made. Without
+          # the hostname line, udhcpc sends no DHCP option 12 and the router
+          # has nothing to list the board as except that MAC.
+          S=firmware/src/buildroot/board/pluto/S40network
+          grep -q 'ETHADDR=`fw_printenv -n ethaddr' "$S"
+          grep -q 'hwaddress ether \$ETHADDR' "$S"
+          grep -q 'hostname \$HOSTNAME' "$S"
+          # busybox ifupdown only turns these into "ip link set addr" and
+          # "udhcpc -x hostname:" when they sit INSIDE the iface stanza, so the
+          # blank line that ends it must come after them, not before.
+          python3 - <<'PY'
+          x = open("firmware/src/buildroot/board/pluto/S40network").read()
+          blk = x[x.index('echo -e "auto eth0"'):]
+          blk = blk[:blk.index("### /etc/wpa.conf ###")]
+          for need in ("hostname $HOSTNAME", "hwaddress ether $ETHADDR"):
+              assert need in blk, need + " is not in the eth0 stanza"
+          assert blk.index('echo "" >> $IFAC') > blk.index("hwaddress"), \
+              "the stanza is closed before its options are written"
+          print("eth0 stanza carries hostname and hwaddress, in that order")
+          PY
+          grep -q 'BR2_TARGET_GENERIC_HOSTNAME="Fishball7020"' \
+            firmware/src/buildroot/configs/zynq_pluto_defconfig
       - name: Confirm the USER LED follows the transmitter (patch 0012)
         run: |
           # The kernel half: a "tx-active" trigger driven from the one place

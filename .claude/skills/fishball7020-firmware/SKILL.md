@@ -147,7 +147,12 @@ generated against a reconstructed pre-change file, never a plain `git diff`.
 flag's clock-crossing constraint the `-from` it lacked. Without it, Vivado
 dropped the line silently: `set_max_delay -datapath_only` needs both ends.
 `0012` makes the USER LED follow the transmitter, so the board shows when it is
-keyed.
+keyed. `0013` pins eth0 to the MAC U-Boot already uses and sends a hostname in
+the DHCP request - without it the macb driver logs "invalid hw address, using
+random" and picks a new MAC every boot, so a router sees a new device each time
+and a DHCP reservation is impossible. It also makes the default hostname
+`Fishball7020`, so the board answers to `Fishball7020.local` rather than
+`pluto.local`.
 To fix an applied patch, add a new one on top. Editing it would break every
 existing tree: `setup.sh` cannot re-apply a patch over its earlier version.
 
