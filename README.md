@@ -60,7 +60,7 @@ in over USB:
 ```bash
 # run on your HOST, from anywhere (needs libiio-utils)
 iio_attr -S
-#  1: 192.168.2.1 (FISH Ball PlutoSDR Rev.A (Z7020-AD9361)), serial=... [ip:Fishball7020.local]
+#  1: 192.168.2.1 (FISH Ball PlutoSDR Rev.A (Z7020-AD9361)), serial=... [ip:fishball.local]
 ```
 
 `FISH Ball PlutoSDR Rev.A (Z7020-AD9361)` means it fits. `Z7010`, `AD9363` or
@@ -201,7 +201,7 @@ address:
 
 ```bash
 # run on your HOST, from anywhere
-ssh root@Fishball7020.local
+ssh root@fishball.local
 ./devkit net                # what address did it get, and how?
 ```
 
@@ -222,14 +222,14 @@ something, `./devkit verify --board` checks the board is really running it.
 
 **Talk to it.** Every tool here finds the board by name and needs no address
 typed in — `./devkit selftest`, `verify --board`, `flash`, `gpio-check` and the
-capture tools all resolve `Fishball7020.local` first and fall back to the USB
+capture tools all resolve `fishball.local` first and fall back to the USB
 gadget at `192.168.2.1`. `BOARD=<address>` or `SDR_URI=ip:<address>` overrides
 that wherever you need it, and `tools/board_addr.py` is the one place the order
-is decided. To software it is a Pluto at `ip:Fishball7020.local`, so libiio,
+is decided. To software it is a Pluto at `ip:fishball.local`, so libiio,
 pyadi-iio, GNU Radio and SDRangel work with it as they would with a Pluto.
 
 **Put it on your network.** The Ethernet socket asks your router for an address
-by default, and the board announces itself as **`Fishball7020.local`**, so
+by default, and the board announces itself as **`fishball.local`**, so
 nothing here needs an IP address typed into it. `./devkit net` shows what it
 got; `./devkit net dhcp` and `./devkit net static <ip>` switch between the two
 modes permanently and then go and find the board again afterwards.

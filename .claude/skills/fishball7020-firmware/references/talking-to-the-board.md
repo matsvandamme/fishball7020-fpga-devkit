@@ -35,14 +35,14 @@ link-scope routes, no `default via`, `ping 8.8.8.8` fails. DHCP does set both
 route in `/mnt/jffs2/autorun.sh`.
 
 Finding a board whose address you do not know: `iio_info -s` (DNS-SD, prints
-address + model + serial and confirms IIOD is up), or `ip:Fishball7020.local` as a URI
+address + model + serial and confirms IIOD is up), or `ip:fishball.local` as a URI
 and never hard-code an address. `usb0` keeps 192.168.2.1 whatever you did to
 `eth0`, so a USB cable is always the way back in. Full write-up:
 [`docs/networking.md`](../../../../docs/networking.md).
 
 **Never hard-code the board's address in a tool.** `tools/board_addr.py` is the
 one place the order is decided - an explicit argument, then `$BOARD`/`$SDR_URI`,
-then `Fishball7020.local`, `pluto.local`, `fishball.local`, then the USB gadget
+then `fishball.local`, `pluto.local`, `fishball.local`, then the USB gadget
 at 192.168.2.1. Python: `from board_addr import resolve, uri`. Shell:
 `BOARD="${BOARD:-$(python3 tools/board_addr.py)}"`. It probes candidates
 CONCURRENTLY with a deadline, because a `.local` name that does not resolve
@@ -56,7 +56,7 @@ re-finds the board by mDNS, because switching to DHCP discards the address you
 are connected on.
 
 **Two different names, and they come from different places.** mDNS
-(`Fishball7020.local`) follows the `hostname` variable and is answered by avahi
+(`fishball.local`) follows the `hostname` variable and is answered by avahi
 on the board. What a ROUTER lists is DHCP option 12, which stock firmware never
 sends - so a router shows a bare MAC even when mDNS is working perfectly. Patch
 `0013` adds a `hostname` line to the dhcp stanza, which busybox ifupdown turns

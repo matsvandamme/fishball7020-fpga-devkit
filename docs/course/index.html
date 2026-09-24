@@ -938,7 +938,7 @@ ping -c1 8.8.8.8         <span class="c"># fails: no route</span>
     <div class="code-bar"><span class="f">/etc/network/interfaces</span><span class="t">Generated</span></div>
 <pre><code>auto eth0
 iface eth0 inet dhcp
-        hostname Fishball7020
+        hostname fishball
         hwaddress ether 00:0a:35:00:01:22
 </code></pre>
   </div>
@@ -947,8 +947,8 @@ iface eth0 inet dhcp
     (<code>ethaddr</code>) and uses for its own networking, so the board keeps a single
     identity from bootloader to Linux instead of two. The devkit ships this as
     <code>firmware/patches/0013</code>, and the same patch makes the default hostname
-    <code>Fishball7020</code>, so the board answers to
-    <code>Fishball7020.local</code>.</p>
+    <code>fishball</code>, so the board answers to
+    <code>fishball.local</code>.</p>
 
   <div class="box why">
     <p class="bt">The one thing that cannot be checked from here</p>

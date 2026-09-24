@@ -44,8 +44,8 @@ resolve_board() {
         cands=("$BOARD")
     else
         mapfile -t cands < <(python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/board_addr.py" --list 2>/dev/null) \
-            || cands=(Fishball7020.local pluto.local 192.168.2.1)
-        [ ${#cands[@]} -eq 0 ] && cands=(Fishball7020.local pluto.local 192.168.2.1)
+            || cands=(fishball.local pluto.local 192.168.2.1)
+        [ ${#cands[@]} -eq 0 ] && cands=(fishball.local pluto.local 192.168.2.1)
     fi
     for c in "${cands[@]}"; do
         if sshpass -p "$PASS" ssh "${SSH_OPTS[@]}" "root@$c" true 2>/dev/null; then
@@ -62,7 +62,7 @@ on_board() { sshpass -p "$PASS" ssh "${SSH_OPTS[@]}" "root@$1" "$2"; }
 # already talk to the radio.
 find_by_name() {
     local a n
-    for n in "${1:-Fishball7020}" Fishball7020 pluto; do
+    for n in "${1:-fishball}" fishball Fishball7020 pluto; do
         command -v avahi-resolve >/dev/null 2>&1 || break
         a=$(timeout 6 avahi-resolve -n "$n.local" 2>/dev/null | awk '{print $2}')
         [ -n "$a" ] && { echo "$a"; return 0; }
@@ -108,7 +108,7 @@ set_and_reboot() {
     printf 'rebooting ... '
     on_board "$b" 'nohup sh -c "sleep 1; reboot" >/dev/null 2>&1 &' || true
     sleep 35
-    local name="${3:-Fishball7020}" a=""
+    local name="${3:-fishball}" a=""
     for _ in $(seq 1 14); do
         a=$(find_by_name "$name" || true)
         [ -n "$a" ] && break
@@ -145,7 +145,7 @@ case "$cmd" in
             'fw_printenv ipaddr_eth 2>&1; fw_printenv netmask_eth 2>&1' \
             "$(on_board "$b" hostname)"
         echo
-        hn=$(on_board "$b" hostname 2>/dev/null || echo Fishball7020)
+        hn=$(on_board "$b" hostname 2>/dev/null || echo fishball)
         echo "Reach it as  root@$hn.local  or the libiio URI  ip:$hn.local"
         ;;
 
@@ -176,7 +176,7 @@ WARN
         ;;
 
     find)
-        a=$(find_by_name "${1:-Fishball7020}" || true)
+        a=$(find_by_name "${1:-fishball}" || true)
         if [ -n "$a" ]; then
             echo "found at $a"
         else

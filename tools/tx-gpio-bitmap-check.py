@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify the TX-sample-nibble-to-GPIO feature on real hardware.
 
-    ./tx-gpio-bitmap-check.py [ip:Fishball7020.local]
+    ./tx-gpio-bitmap-check.py [ip:fishball.local]
 
 Answers one question: do the four header pins actually carry the low nibble of
 the transmit samples? It needs no scope, no jumper wire and no antenna - only

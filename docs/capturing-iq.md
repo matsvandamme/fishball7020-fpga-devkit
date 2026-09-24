@@ -101,9 +101,9 @@ test generates one on the receive path with no RF involved at all:
 
 ```bash
 # run on your HOST — mode 2 injects into RX; nothing transmits
-iio_attr -u ip:Fishball7020.local -D ad9361-phy bist_tone "2 375000 12 0"
+iio_attr -u ip:fishball.local -D ad9361-phy bist_tone "2 375000 12 0"
 #   ... capture ...
-iio_attr -u ip:Fishball7020.local -D ad9361-phy bist_tone "0 0 0 0"
+iio_attr -u ip:fishball.local -D ad9361-phy bist_tone "0 0 0 0"
 ```
 
 ### What it writes

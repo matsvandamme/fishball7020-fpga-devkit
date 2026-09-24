@@ -10,8 +10,8 @@ Order tried:
 
     1. an address passed in explicitly      (--uri / --host / an argument)
     2. $BOARD, or $SDR_URI                  (per-shell override)
-    3. Fishball7020.local                   this repo's default hostname
-    4. pluto.local, fishball.local          older rootfs, and a common rename
+    3. fishball.local                       this repo's default hostname
+    4. Fishball7020.local, pluto.local      what earlier builds answered to
     5. 192.168.2.1                          the USB gadget, which never moves
 
 A candidate counts as "the board" when something answers on the IIOD port or on
@@ -21,8 +21,8 @@ resolve and the USB address still works, which is why it stays last in the list
 rather than first.
 
     from board_addr import resolve, uri
-    host = resolve()                  # "Fishball7020.local"
-    u    = uri()                      # "ip:Fishball7020.local"
+    host = resolve()                  # "fishball.local"
+    u    = uri()                      # "ip:fishball.local"
 
 or from a shell script:
 
@@ -35,7 +35,7 @@ import socket
 import threading
 import time
 
-NAMES = ("Fishball7020.local", "pluto.local", "fishball.local")
+NAMES = ("fishball.local", "Fishball7020.local", "pluto.local")
 USB = "192.168.2.1"
 PORTS = (30431, 22)          # iiod, then ssh - a board answers both
 _cache: dict[str, str] = {}
@@ -196,7 +196,7 @@ def self_test() -> bool:
     env = {k: os.environ.pop(k, None) for k in ("BOARD", "SDR_URI")}
     try:
         c = candidates()
-        chk("the repo's own name comes first", c[0], "Fishball7020.local")
+        chk("the repo's own name comes first", c[0], "fishball.local")
         chk("the USB gadget comes last", c[-1], USB)
         chk("no duplicates", len(c), len(set(c)))
         chk("an explicit address wins", candidates("10.0.0.7")[0], "10.0.0.7")

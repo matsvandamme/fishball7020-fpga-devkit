@@ -1,0 +1,25 @@
+Default hostname is fishball, not Fishball7020
+
+A shorter name, and one that does not need shift-key gymnastics every time you
+type ssh root@... or an mDNS URI. The board answers to fishball.local.
+
+This is a new patch rather than an edit to 0013 because 0013 has been applied to
+trees already: setup.sh cannot re-apply a patch over its own earlier version, so
+changing one in place breaks every checkout that has it.
+
+The name is still per-board: fw_setenv hostname <name> overrides the built-in
+default without a rebuild, and ./devkit net name <name> does that and finds the
+board again afterwards. Setting it back to pluto restores compatibility with
+tooling that expects pluto.local.
+diff --git a/buildroot/configs/zynq_pluto_defconfig b/buildroot/configs/zynq_pluto_defconfig
+--- a/buildroot/configs/zynq_pluto_defconfig
++++ b/buildroot/configs/zynq_pluto_defconfig
+@@ -6,7 +6,7 @@
+ BR2_TOOLCHAIN_EXTERNAL=y
+ BR2_TOOLCHAIN_EXTERNAL_LINARO_ARM=y
+ BR2_OPTIMIZE_2=y
+-BR2_TARGET_GENERIC_HOSTNAME="Fishball7020"
++BR2_TARGET_GENERIC_HOSTNAME="fishball"
+ BR2_TARGET_GENERIC_ISSUE="Welcome to Pluto"
+ BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_MDEV=y
+ BR2_TARGET_GENERIC_ROOT_PASSWD="analog"
