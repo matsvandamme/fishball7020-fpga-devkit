@@ -4,7 +4,8 @@
 A health check is only worth as much as its numbers. This asserts the parts
 that could be silently wrong - amplitude calibration, image and harmonic
 separation, the pure-Python FFT fallback, and the slope fit - against signals
-whose answers are known exactly.
+whose answers are known exactly. It also pins the IIOD wire format for debug
+attributes, which is what lets the BIST checks run without a shell.
 
     python3 test_dsp.py        # exits non-zero on failure
 """
@@ -107,6 +108,60 @@ check("the RX gain sweep stays below the gain table's LNA transition",
       open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "sdr_selftest.py")).read(),
       "38-51 dB is the widest window with no LNA transition in it")
+
+print("the BIST checks reach debugfs over IIOD, with no shell")
+# These used to shell out over ssh, on the belief that debugfs was unreachable
+# any other way. It is reachable: IIOD's READ and WRITE take DEBUG as an
+# attribute kind. The wire format is the load-bearing part of that, and nothing
+# else in CI exercises it, so assert the exact bytes against a fake socket.
+
+
+class FakeFile:
+    """Records what was written; answers reads from a canned script."""
+
+    def __init__(self, replies):
+        self.sent, self.replies = bytearray(), list(replies)
+
+    def write(self, b):
+        self.sent += b
+
+    def flush(self):
+        pass
+
+    def readline(self):
+        return self.replies.pop(0) if self.replies else b""
+
+    def read(self, n):
+        out, self.replies = self.replies.pop(0)[:n], self.replies
+        return out
+
+
+import iiod_min                                                     # noqa: E402
+
+EYE = b"CLK: 10000000 Hz 'o' = PASS\n0:o o o o . . . . . . . . . . . . \n"
+
+c = iiod_min.Iiod()
+c._sock = object()                       # so connect() does not dial out
+c._f = FakeFile([b"2\n"])
+c.write_debug("ad9361-phy", "bist_timing_analysis", 1)
+check("a debug write says DEBUG, and sends a NUL-terminated payload",
+      c._f.sent == b"WRITE ad9361-phy DEBUG bist_timing_analysis 2\r\n1\x00",
+      repr(c._f.sent.decode()))
+
+c._f = FakeFile([str(len(EYE)).encode() + b"\n", EYE, b"\n"])
+got = c.read_debug("ad9361-phy", "bist_timing_analysis")
+check("a debug read says DEBUG and returns the payload",
+      c._f.sent == b"READ ad9361-phy DEBUG bist_timing_analysis\r\n"
+      and got.startswith("CLK:"), repr(c._f.sent.decode()))
+
+# Written so both halves would have FAILED before this changed: the old test
+# took a Shell, and the old module carried a DEBUGFS path to echo into.
+src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "sdr_selftest.py")).read()
+check("the eye scan takes no Shell", "def test_digital_interface(b, rep):" in src,
+      "BIST runs whether or not --ssh was given")
+check("nothing echoes into a debugfs path any more", "DEBUGFS" not in src,
+      "Shell is only used for /mnt/jffs2 now")
 
 print()
 if fails:

@@ -8,11 +8,19 @@
 
 Two halves.
 
-The FIRST half needs no cable and never keys the transmitter. It reads the
-Zynq's own supply rails and die temperature, runs the AD9361's built-in
-digital-interface eye scan, and exercises the receiver on its own. That is
-already enough to catch a failed regulator, an overheating part, a marginal
-LVDS interface, a dead ADC, or a receiver whose gain chain no longer responds.
+The FIRST half needs no cable and puts nothing on the air. It reads the
+Zynq's own supply rails and die temperature, runs the AD9361's built-in self
+test - the digital-interface eye scan and an internal loopback - and exercises
+the receiver on its own. That is already enough to catch a failed regulator, an
+overheating part, a marginal LVDS interface, a dead ADC, or a receiver whose
+gain chain no longer responds.
+
+One caveat on "puts nothing on the air": the internal loopback closes the loop
+inside the chip, but it does run the transmit datapath to do it, at maximum
+attenuation. Mute depth measures at least 75 dB here, so the port is at its own
+noise floor - but the chain is live, not powered down. The eye scan is cleaner
+still: the driver mutes TX for its duration precisely so the PRBS is not
+radiated.
 
 The SECOND half needs a cable from TX1 to RX1 with an attenuator in it, and
 is the only part that transmits. It measures the loop end to end: level
@@ -191,6 +199,12 @@ class Board:
 
     def wr_dev(self, dev, attr, value):
         self.c.write_device(dev, attr, value)
+
+    def rd_debug(self, attr, dev=PHY):
+        return self.c.read_debug(dev, attr)
+
+    def wr_debug(self, attr, value, dev=PHY):
+        self.c.write_debug(dev, attr, value)
 
     # state ------------------------------------------------------------------
 
@@ -1293,15 +1307,22 @@ def _fit_slope(xs, ys):
 
 
 # --------------------------------------------------------------------------
-# tests that reach the AD9361's own BIST hardware, over ssh
+# tests that reach the AD9361's own BIST hardware
 # --------------------------------------------------------------------------
 #
-# These read the chip's built-in self test through debugfs, which libiio does
-# not expose - hence ssh. They are the deepest checks here and they need no
-# cable at all, so they are worth the extra access. Skipped silently if ssh
-# cannot log in.
-
-DEBUGFS = "/sys/kernel/debug/iio/iio:device0"
+# BIST - built-in self test - is a tone and PRBS generator inside the AD9361
+# itself, plus a loopback switch, plus a sweep of the FPGA-to-radio link
+# timing. It injects a signal you already know at a point you choose, which is
+# what lets you say WHICH half of the chain a fault is in. These are the
+# deepest checks here and they need no cable and no antenna.
+#
+# They live in debugfs on the board, and for a long time this script reached
+# them over ssh because of that. It does not need to: IIOD's READ and WRITE
+# take DEBUG as an attribute kind, so the whole of debugfs is available on the
+# same network connection as everything else. They now run by default.
+#
+# Only test_board_scripts() below still needs a shell, because /mnt/jffs2 is a
+# filesystem and not an IIO attribute.
 
 
 class Shell:
@@ -1398,7 +1419,7 @@ def test_board_scripts(rep, sh):
                 f"would let it change gain underneath any application.")
 
 
-def test_digital_interface(b, rep, sh):
+def test_digital_interface(b, rep):
     """The LVDS link between the FPGA and the AD9361, and the DMA path."""
     g = "Digital interface (BIST)"
 
@@ -1406,9 +1427,12 @@ def test_digital_interface(b, rep, sh):
     #    combinations with a PRBS running and reports which ones receive it
     #    cleanly. A healthy link has a large contiguous region of passes; a
     #    marginal one - a cracked joint, a degraded driver - shrinks it.
+    # Arm, then read: the write only sets a flag, and it is the READ that runs
+    # the sweep and clears it again. So a second read returns "0", which looks
+    # like a failure and is not - never treat an empty second read as one.
     try:
-        sh.run(f"echo 1 > {DEBUGFS}/bist_timing_analysis")
-        eye = sh.run(f"cat {DEBUGFS}/bist_timing_analysis")
+        b.wr_debug("bist_timing_analysis", 1)
+        eye = b.rd_debug("bist_timing_analysis")
     except Exception as exc:
         rep.add(g, "digital interface eye scan", WARN, f"unavailable: {exc}")
         eye = ""
@@ -1439,7 +1463,7 @@ def test_digital_interface(b, rep, sh):
     #    of the LVDS link, with nothing radiated and no cable fitted.
     try:
         b.mute_tx()
-        sh.run(f"echo 1 > {DEBUGFS}/loopback")
+        b.wr_debug("loopback", 1)
         fs = b.rate()
         f_off = fs / 8
         sent = b.tx_tone(f_off, fs, TX_AMPLITUDE)
@@ -1468,7 +1492,7 @@ def test_digital_interface(b, rep, sh):
         except Exception:
             pass
         try:
-            sh.run(f"echo 0 > {DEBUGFS}/loopback")
+            b.wr_debug("loopback", 0)
         except Exception:
             rep.add(g, "internal digital loopback disabled again", FAIL,
                     "could not clear the loopback - reboot the board before "
@@ -1627,9 +1651,10 @@ def build_parser():
                         "power; only do it if you know what is on the cable")
     p.add_argument("--ssh", nargs="?", const=os.environ.get("BOARD_PASS", "analog"),
                    metavar="PASSWORD",
-                   help="also run the AD9361 BIST checks, which need shell "
-                        "access to the board (default password: analog, or "
-                        "set BOARD_PASS)")
+                   help="also list what the board's persistent /mnt/jffs2 "
+                        "partition starts at boot, which needs shell access "
+                        "(default password: analog, or set BOARD_PASS). The "
+                        "BIST checks no longer need this - they run anyway")
     p.add_argument("--quick", action="store_true",
                    help="only three frequency points, for a fast check")
     p.add_argument("--sweep-points", type=int, default=8, metavar="N",
@@ -1680,16 +1705,22 @@ def main(argv=None):
         test_identity(board, rep)
         test_power(board, rep)
 
+        test_digital_interface(board, rep)
+
         if args.ssh:
             host = Board._split(args.uri)[0]
             sh = Shell(host, args.ssh)
             if sh.works():
                 test_board_scripts(rep, sh)
-                test_digital_interface(board, rep, sh)
             else:
-                rep.add("Digital interface (BIST)", "shell access", WARN,
+                rep.add("Board customisation", "shell access", WARN,
                         f"cannot log in to root@{host}. Install sshpass, or add "
-                        f"an ssh key, to run the BIST checks.")
+                        f"an ssh key, to list what /mnt/jffs2 starts at boot.")
+        else:
+            rep.add("Board customisation", "skipped", INFO,
+                    "add --ssh to list what /mnt/jffs2 starts at every boot. "
+                    "Scripts there survive reflashing and can move radio "
+                    "settings underneath this script.")
 
         test_receiver(board, rep, args.quick)
 

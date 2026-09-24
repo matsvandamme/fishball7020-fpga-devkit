@@ -4,8 +4,8 @@
 
 | Route | Reaches | Notes |
 |---|---|---|
-| libiio network protocol, port 30431 | IIO attributes, sample buffers | no library needed; `tools/selftest/iiod_min.py` speaks it with the standard library alone |
-| ssh `root@192.168.2.1` (password `analog`) | sysfs, debugfs, the filesystem | busybox — see limits below |
+| libiio network protocol, port 30431 | IIO attributes, sample buffers, **and all of debugfs** | no library needed; `tools/selftest/iiod_min.py` speaks it with the standard library alone |
+| ssh `root@192.168.2.1` (password `analog`) | the filesystem — `/mnt/jffs2`, boot scripts, dmesg | busybox — see limits below |
 | USB mass storage / serial console | firmware images, boot messages | the debug port's UART shows the whole boot; the OTG port's only appears after Linux is up |
 
 ## Where the board's address lives, and the file that is a decoy
@@ -170,10 +170,29 @@ answering until that application closes. Not a fault; just exclusive.
                                         digital_tune, and every adi,* device-tree value
 ```
 
+**Debugfs does not need ssh.** IIOD's `READ` and `WRITE` take `DEBUG` as an
+attribute kind alongside `INPUT` and `OUTPUT`, so every attribute above is
+reachable on port 30431 — that is what `iio_attr -D` does, and
+`iiod_min.read_debug`/`write_debug` do it with the standard library alone.
+`tools/selftest/sdr_selftest.py` spent a long time shelling out for these
+before anyone checked. ssh is still the only route to the *filesystem*.
+
 `bist_timing_analysis` needs a write to trigger, then a read: it walks all 16×16
-clock/data delay combinations with a PRBS running and prints the eye. `loopback`
+clock/data delay combinations with a PRBS running and prints the eye. It is a
+one-shot — the read clears the flag, so **a second read returns `0`**, which
+looks like a failure and is not. The driver mutes TX for the duration on
+purpose ("we don't want to transmit the PRBS") and restores the cached
+attenuation after. `loopback`
 = 1 routes DAC data back into the ADC path inside the chip, which exercises both
 DMAs and the LVDS link with no RF at all — remember to set it back to 0.
+
+**`bist_tone` takes exactly four integers** — `mode freq_Hz level_dB mask` —
+or the driver returns `EINVAL`. Mode 2 injects on **receive** and radiates
+nothing; **mode 1 injects on transmit, which goes out through the PA** and is
+not muted for you. The frequency field is 2 bits wide, so the only tones
+available are `fs/32`, `fs/16`, `3·fs/32` and `fs/8`; anything else is rounded
+silently. Level quantises to 6 dB steps. `mask` zeroes individual I/Q streams;
+`0` leaves all four alone.
 
 **FPGA core registers: set bit 31 of the address.** The two cores' debug
 register access (`direct_reg_access`, pylibiio `dev.reg_read/reg_write`)

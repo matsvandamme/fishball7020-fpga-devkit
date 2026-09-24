@@ -139,6 +139,27 @@ class Iiod:
         self._f.flush()
         self._status(cmd)
 
+    # -- debug attributes ---------------------------------------------------
+    #
+    # IIOD's READ/WRITE take an attribute-kind keyword, and DEBUG is one of
+    # them alongside INPUT and OUTPUT. So everything under
+    # /sys/kernel/debug/iio/iio:deviceN/ on the board - the AD9361's BIST, its
+    # loopback switch, calib_mode, every adi,* device-tree value - is reachable
+    # over the ordinary network connection, with no shell and no ssh key. This
+    # is easy to miss: `iio_attr` hides it behind a -D flag and libiio's own
+    # docs call these "debug attributes" rather than naming the wire keyword.
+
+    def read_debug(self, device, attr):
+        return self._text(f"READ {device} DEBUG {attr}")
+
+    def write_debug(self, device, attr, value):
+        payload = f"{value}".encode() + b"\x00"
+        cmd = f"WRITE {device} DEBUG {attr} {len(payload)}"
+        self._send(cmd)
+        self._f.write(payload)
+        self._f.flush()
+        self._status(cmd)
+
     def write(self, device, channel, attr, value, output=False):
         payload = f"{value}".encode() + b"\x00"
         cmd = (f"WRITE {device} {'OUTPUT' if output else 'INPUT'} "

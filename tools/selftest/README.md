@@ -57,10 +57,28 @@ A few terms used throughout:
 | Both receive channels | one channel lost |
 | Synthesiser tuning, 70 MHz – 6 GHz | a VCO band that no longer locks |
 
-The two BIST checks need shell access to the board (`--ssh`), because they
-live in debugfs and libiio does not expose them. They are the deepest tests
-here and they need no cable, so they are worth the extra access. Without
-`--ssh` they are skipped and everything else still runs.
+The two rows in bold are **BIST** — *built-in self test*, a tone and PRBS
+generator that Analog Devices put inside the AD9361 itself. They are the
+deepest tests here, and the reason is that they inject a signal the script
+already knows at a point it chooses, so a bad result says *which half of the
+chain* is at fault rather than just "something is wrong". They need no cable
+and no antenna, and they run by default.
+
+They read the chip through debugfs on the board, and this script used to reach
+that over ssh. It does not need to: IIOD's `READ` and `WRITE` take `DEBUG` as
+an attribute kind alongside `INPUT` and `OUTPUT`, so all of debugfs is
+available on the same network connection as everything else — which is what
+`iio_attr -D` has been doing all along.
+
+`--ssh` is still offered, but only for one thing now: listing what the board's
+persistent `/mnt/jffs2` partition starts at boot. That is a filesystem rather
+than an IIO attribute, so there is no way to it but a shell. Without `--ssh`
+that one check is skipped and everything else still runs.
+
+The internal loopback check does start the transmit datapath, at maximum
+attenuation, with the loop closed inside the chip. Measured mute depth on this
+board is at least 75 dB — every reading hit the noise floor — so nothing
+usable leaves the port, but the chain is live rather than powered down.
 
 ### With a loopback — this transmits
 
