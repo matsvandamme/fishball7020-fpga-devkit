@@ -62,3 +62,6 @@ firmware/.flash-backups/
 
 # Vivado writes ~/.Xilinx; the container keeps its home here.
 firmware/.container-home/
+
+# GRC regenerates this from the .grc every time it opens or runs it.
+tools/wifi-scan/fishball_wifi_live.py
