@@ -1,0 +1,180 @@
+A transmit-disable latch that debugfs cannot clear
+
+docs/networking.md says it plainly: iiod listens on port 30431 with no
+authentication of any kind, so anyone who can reach the board can tune,
+receive and transmit - on a board that reaches about +19 dBm. There are also
+two routes that raise the transmitter without looking like transmitting:
+
+  echo 1 > /sys/kernel/debug/iio/iio:device0/initialize
+
+re-runs ad9361_setup(), which re-applies adi,tx-attenuation-mdB to both
+channels, and
+
+  echo "1 7680000 0 0" > .../bist_tone
+
+injects a tone at the TRANSMIT data port, so it goes through the DAC and out
+of the PA with nothing muting it.
+
+This adds one latch, off by default:
+
+  /sys/bus/iio/devices/iio:device0/tx_disable
+
+Enforcement is inside ad9361_set_tx_atten(), which is the single choke point
+every attenuation change goes through - patch 0012 relies on the same property
+for the USER LED. It CLAMPS rather than refuses, because several callers treat
+a failure there as fatal and would leave the chain half-configured, and
+because the safe outcome is silence rather than an error. bist_tone mode 1 is
+refused separately, since a digital injection never touches the attenuator.
+
+WHERE THE FLAG LIVES IS THE WHOLE PATCH. The obvious home is
+ad9361_rf_phy_state, next to tx1_atten_cached. That is wrong, and hardware
+said so: ad9361_clear_state() does memset(st, 0, sizeof(*st)), and the
+debugfs "initialize" calls it on its way to ad9361_setup(). Measured with the
+flag in there - engage the latch, poke initialize, and the transmitter came
+back at -10 dB while tx_disable still read 1. A safety latch that the surface
+it defends against can switch off with one echo is not a latch. So it lives in
+struct ad9361_rf_phy, which clear_state does not touch.
+
+Measured on the board, every figure read back from the chip:
+
+  boot default                 -89.75 dB      (patch 0011's dtb, now flashed)
+  latch on                     -89.75 dB
+  sysfs write -20 dB           -89.75 dB      refused to rise
+  debugfs initialize           -89.75 dB      both channels, latch still 1
+  bist_tone mode 1             refused
+  bist_tone mode 2             accepted       receive-side, unaffected
+  latch off, set -30 dB        -30 dB         releases cleanly
+
+diff --git a/linux/drivers/iio/adc/ad9361.c b/linux/drivers/iio/adc/ad9361.c
+--- a/linux/drivers/iio/adc/ad9361.c
++++ b/linux/drivers/iio/adc/ad9361.c
+@@ -1095,6 +1095,15 @@
+ 		reg = 0;
+ 		break;
+ 	case BIST_INJ_TX:
++		/*
++		 * Mode 1 injects at the TRANSMIT data port, so the tone goes
++		 * through the DAC and out of the PA. Nothing mutes it for you,
++		 * and the attenuator gate above cannot see it because this is
++		 * a digital injection rather than an attenuation change - so
++		 * it needs refusing here, explicitly.
++		 */
++		if (phy->tx_disabled)
++			return -EPERM;
+ 		clk = clk_get_rate(phy->clks[TX_SAMPL_CLK]);
+ 		reg = BIST_CTRL_POINT(0) | BIST_ENABLE;
+ 		break;
+@@ -1265,6 +1274,24 @@
+ 	if (atten_mdb > MAX_TX_ATTENUATION_DB) /* 89.75 dB */
+ 		return -EINVAL;
+ 
++	/*
++	 * The latch. Clamp rather than refuse, because several callers treat a
++	 * failure here as fatal and would leave the chain half-configured -
++	 * and because the safe outcome is silence, not an error return.
++	 *
++	 * This is the only place that needs the check. Every route to a louder
++	 * transmitter passes through here: a sysfs hardwaregain write, the
++	 * kernel's own unmute, and ad9361_setup() re-applying the device-tree
++	 * attenuation when someone pokes debugfs "initialize" - which is a
++	 * ~79.75 dB raise reachable over an unauthenticated network port.
++	 */
++	if (phy->tx_disabled && atten_mdb < MAX_TX_ATTENUATION_DB) {
++		dev_dbg(&phy->spi->dev,
++			"%s: tx_disable is set - forcing maximum attenuation\n",
++			__func__);
++		atten_mdb = MAX_TX_ATTENUATION_DB;
++	}
++
+ 	atten_mdb /= 250; /* Scale to 0.25dB / LSB */
+ 
+ 	buf[0] = atten_mdb >> 8;
+@@ -7406,7 +7433,60 @@
+ 			ad9361_phy_store,
+ 			AD9361_MCS_SYNC);
+ 
++static ssize_t ad9361_tx_disable_show(struct device *dev,
++				     struct device_attribute *attr, char *buf)
++{
++	struct ad9361_rf_phy *phy = iio_priv(dev_to_iio_dev(dev));
++
++	return sprintf(buf, "%u\n", phy->tx_disabled ? 1 : 0);
++}
++
++static ssize_t ad9361_tx_disable_store(struct device *dev,
++				       struct device_attribute *attr,
++				       const char *buf, size_t len)
++{
++	struct ad9361_rf_phy *phy = iio_priv(dev_to_iio_dev(dev));
++	bool disable;
++	int ret;
++
++	ret = kstrtobool(buf, &disable);
++	if (ret)
++		return ret;
++
++	mutex_lock(&phy->lock);
++	phy->tx_disabled = disable;
++	if (disable) {
++		/*
++		 * Apply immediately. Setting the flag and waiting for the next
++		 * attenuation change would leave a live transmitter live.
++		 */
++		ad9361_set_tx_atten(phy, MAX_TX_ATTENUATION_DB,
++				    true, true, true);
++		dev_info(&phy->spi->dev,
++			 "transmit disabled - attenuation latched at maximum\n");
++	} else {
++		dev_info(&phy->spi->dev, "transmit re-enabled\n");
++	}
++	mutex_unlock(&phy->lock);
++
++	return len;
++}
++
++/*
++ * A latch an operator can set, and that the usual remote surface cannot
++ * clear. iiod on port 30431 has no authentication of any kind, so anyone who
++ * can reach the board can tune, receive and transmit; this is the switch for
++ * "not today". Clearing it is a deliberate local act.
++ *
++ * Default off: nothing changes for anyone who does not ask.
++ */
++static IIO_DEVICE_ATTR(tx_disable, S_IRUGO | S_IWUSR,
++		       ad9361_tx_disable_show,
++		       ad9361_tx_disable_store,
++		       0);
++
+ static struct attribute *ad9361_phy_attributes[] = {
++	&iio_dev_attr_tx_disable.dev_attr.attr,
+ 	&iio_dev_attr_in_voltage_filter_fir_en.dev_attr.attr,
+ 	&iio_dev_attr_out_voltage_filter_fir_en.dev_attr.attr,
+ 	&iio_dev_attr_in_out_voltage_filter_fir_en.dev_attr.attr,
+diff --git a/linux/drivers/iio/adc/ad9361.h b/linux/drivers/iio/adc/ad9361.h
+--- a/linux/drivers/iio/adc/ad9361.h
++++ b/linux/drivers/iio/adc/ad9361.h
+@@ -131,6 +131,23 @@
+ struct ad9361_ext_band_ctl;
+ 
+ struct ad9361_rf_phy {
++	/*
++	 * Latched "this board may not transmit". Enforced inside
++	 * ad9361_set_tx_atten(), which every attenuation change goes through,
++	 * so it also covers the routes that do not look like transmitting:
++	 * ad9361_setup() re-applying adi,tx-attenuation-mdB, and any tool
++	 * writing hardwaregain directly.
++	 *
++	 * It lives HERE, in the phy, and deliberately NOT in ad9361_rf_phy_state
++	 * - that struct is memset to zero by ad9361_clear_state(), which the
++	 * debugfs "initialize" calls on its way to re-running ad9361_setup().
++	 * With the flag in there, one unauthenticated echo cleared the latch
++	 * and re-applied the device-tree attenuation. Measured on the board:
++	 * the transmitter came back at -10 dB with tx_disable still reading 1.
++	 * A safety latch that the surface it defends against can switch off is
++	 * not a latch.
++	 */
++	bool			tx_disabled;
+ 	struct spi_device 	*spi;
+ 	struct clk 		*clk_refin;
+ 	struct clk 		*clk_ext_lo_rx;
+diff --git a/linux/drivers/iio/adc/ad9361_private.h b/linux/drivers/iio/adc/ad9361_private.h

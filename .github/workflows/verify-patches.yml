@@ -71,6 +71,16 @@ jobs:
           # ... and the claim it disproves must not come back.
           ! grep -q 'real guarantee rather than best effort' \
             firmware/src/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
+      - name: Confirm the transmit-disable latch landed (patch 0016)
+        run: |
+          grep -q 'tx_disable' firmware/src/linux/drivers/iio/adc/ad9361.c
+          # The latch MUST live in struct ad9361_rf_phy, not in
+          # ad9361_rf_phy_state: clear_state() memsets that, and the debugfs
+          # "initialize" calls clear_state - so a latch kept there could be
+          # cleared by the very surface it defends against. Measured.
+          grep -q 'bool[[:space:]]*tx_disabled;' \
+            firmware/src/linux/drivers/iio/adc/ad9361.h
+          ! grep -q 'tx_disabled' firmware/src/linux/drivers/iio/adc/ad9361_private.h
       - name: Confirm the sample-locked GPIO feature landed
         run: |
           grep -q tx_gpio_bitmap firmware/src/hdl/projects/pluto/system_bd.tcl

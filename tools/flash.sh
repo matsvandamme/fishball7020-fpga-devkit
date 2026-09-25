@@ -38,13 +38,16 @@ for arg in "$@"; do
         --all)         FILES=(BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz) ;;
         --boot-only)   FILES=(BOOT.bin) ;;
         --kernel-only) FILES=(uImage) ;;
+        # Three patches in this repo (0002, 0008, 0011) change only the device
+        # tree, and a dtb change needs a reboot but not a new kernel.
+        --dtb-only)    FILES=(devicetree.dtb) ;;
         --rootfs-only) FILES=(uramdisk.image.gz) ;;
         --no-reboot)   REBOOT=0 ;;
         -h|--help)     sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "unknown option: $arg" >&2
-           case "$arg" in -all|-boot-only|-kernel-only|-rootfs-only|-no-reboot)
+           case "$arg" in -all|-boot-only|-kernel-only|-dtb-only|-rootfs-only|-no-reboot)
                echo "did you mean -$arg? (options take two dashes)" >&2 ;; esac
-           echo "options: --all  --boot-only  --kernel-only  --rootfs-only  --no-reboot  --help" >&2
+           echo "options: --all  --boot-only  --kernel-only  --dtb-only  --rootfs-only  --no-reboot  --help" >&2
            exit 2 ;;
     esac
 done
