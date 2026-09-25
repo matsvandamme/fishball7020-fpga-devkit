@@ -252,6 +252,7 @@ still works, and still wins.
 | learn this from nothing — SDR, Verilog and Vivado | **[Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)** — a 53-lesson course written against this board ([PDF](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/Fabric-School.pdf)) |
 | understand what the build produces and why | [How it works](docs/how-it-works.md) |
 | install the tools and build on the host | [Building your own firmware](docs/building.md) — needs Ubuntu 18.04/20.04/22.04 |
+| build **without installing Vivado** (~50 GB) | [Building without Vivado](docs/building-without-vivado.md) — use a pre-made FPGA design, keep changing the kernel |
 | add my own HDL to the radio's datapath | [Add your own HDL](docs/building.md#add-your-own-hdl) · [the block design](docs/block-design.md) |
 | see a complete worked example | [An FM channelizer in the FPGA](docs/wbfm-channelizer.md) |
 | use both receivers with the FPGA decimator on | [Two receivers that both survive decimation](docs/both-receive-channels.md) |

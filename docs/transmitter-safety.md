@@ -51,11 +51,73 @@ no longer need it — check `/mnt/jffs2/autorun.sh`, since that partition is
 persistent and survives reflashing. `tools/selftest/sdr_selftest.py --ssh`
 lists what is there.
 
-The reason this holds even when things go wrong is that the IIO core runs the
-buffer's `postdisable` hook on teardown **even if the application crashed or
-was killed**, since teardown happens on file close. No userspace watchdog can
-promise that. The TX mute needed no device tree change of its own, as the
-driver reaches the phy through the DDS node's existing `clocks` phandle.
+### What happens when a program stops — and what used to be claimed
+
+This page used to say that the mute holds even when things go wrong, because
+the IIO core runs the buffer's `postdisable` hook on teardown **even if the
+application crashed or was killed**.
+
+**That was not true, and it was measured false.** Kill a program that is
+transmitting *from the board itself* and `buffer/enable` stays `1`: the IIO
+core never runs `postdisable`, the mute never fires, and the transmitter stays
+live with nobody watching. Through a 20 dB loop the port read −46.7 dBFS
+against −59.3 dBFS muted — 12.6 dB hotter, with the program confirmed gone.
+The full table is in [`tools/IDLE-CASES.md`](../tools/IDLE-CASES.md).
+
+The mistake was keying off an **event**. Closing, crashing and being killed are
+events, and an event can be missed.
+
+**What holds now** is a **state**: the driver watches whether the DAC is still
+being fed. If no data arrives for 250 ms while the transmitter is on, it mutes.
+A state cannot be missed, so this covers a killed program, a program that
+stalls without dying, and a buffer that is switched on and never fed at all.
+
+```bash
+# run on the board - how long the DAC may starve before muting, 0 disables
+cat /sys/bus/iio/devices/iio:device2/tx_starve_timeout_ms
+```
+
+Measured after the change: a killed local transmitter mutes to −89.75 dB in
+**0.27 s**, and a normal close still mutes exactly as before.
+
+**One deliberate exception: cyclic transmits.** A cyclic transmit hands the
+hardware one buffer and it repeats forever without software — outliving the
+program that started it is the *purpose* of the feature, so the watchdog leaves
+those alone. Because a kill then looks identical to a normal exit, there is an
+opt-in bound, off by default:
+
+```bash
+# run on the board - stop an unattended cyclic transmit after 60 s
+echo 60000 > /sys/bus/iio/devices/iio:device2/tx_cyclic_timeout_ms
+```
+
+### Refusing to transmit at all
+
+```bash
+# run on the board
+echo 1 > /sys/bus/iio/devices/iio:device0/tx_disable
+```
+
+A latch that forces maximum attenuation and **cannot be cleared by the debugfs
+routes that could previously raise the transmitter** — `initialize`, which
+re-applies the device-tree attenuation to both channels, and `bist_tone` mode 1,
+which injects a tone at the transmit port and sends it out through the power
+amplifier. Both are reachable over port 30431, which has no authentication at
+all. Clearing the latch is a deliberate local act.
+
+### Refusing to transmit when hot
+
+```bash
+# run on the board - millidegrees C; 0 (the default) disables it
+echo 60000 > /sys/bus/iio/devices/iio:device0/tx_temp_limit
+```
+
+The board has always reported its die temperature and nothing ever acted on it.
+Above the limit, requests to *lower* the attenuation are refused; muting is
+never blocked, so the failure direction is silence.
+
+The TX mute needed no device tree change of its own, as the driver reaches the
+phy through the DDS node's existing `clocks` phandle.
 
 Measured over a 50 dB attenuated loopback, **the mute costs no output power**:
 commanded and applied attenuation matched to 0.01 dB at every point including

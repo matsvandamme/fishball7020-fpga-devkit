@@ -61,6 +61,12 @@ sudo apt install -y git build-essential bison flex libssl-dev \
 
 ## Install Vivado/Vitis 2022.2
 
+> **You may not need Vivado.** It is ~50 GB and the build spends 20–70 minutes
+> in it every time. If you are changing drivers, the kernel or the root
+> filesystem rather than the FPGA design itself, you can build from a pre-made
+> hardware platform and install only Vitis:
+> **[Building without Vivado](building-without-vivado.md)**.
+
 > If your distribution is newer than 22.04, the installer will most likely not
 > run either - it is the same Java/GTK application as Vivado. Install it from
 > inside the container instead:
@@ -265,6 +271,10 @@ test, where a sample was landing between the reset and the check and papering
 over the stale value. If you add HDL, add a testbench beside these.
 
 ## Build the firmware
+
+> Skipping the FPGA stage: `./scripts/build_all.sh --xsa FILE` imports an
+> already-built hardware platform and does not run Vivado at all. See
+> [Building without Vivado](building-without-vivado.md).
 
 ```bash
 # run from: firmware/

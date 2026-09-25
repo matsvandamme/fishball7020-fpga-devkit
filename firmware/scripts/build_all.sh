@@ -36,19 +36,35 @@ fi
 # actually depend on the bitstream: HDL -> FSBL -> uEnv.txt -> BOOT.bin.
 HDL_ONLY=0
 PREFLIGHT_ONLY=0
+# --xsa takes a hardware platform somebody else (or an earlier build) already
+# produced, and skips stage [1/7] entirely. See docs/building-without-vivado.md.
+XSA_FILE=""
+_want_xsa=0
 for arg in "$@"; do
+    if [ "$_want_xsa" -eq 1 ]; then XSA_FILE="$arg"; _want_xsa=0; continue; fi
     case "$arg" in
         --hdl-only) HDL_ONLY=1 ;;
         --preflight-only) PREFLIGHT_ONLY=1 ;;
+        --xsa) _want_xsa=1 ;;
+        --xsa=*) XSA_FILE="${arg#--xsa=}" ;;
         -h|--help)
-            echo "Usage: $(basename "$0") [--hdl-only] [--preflight-only]"
+            echo "Usage: $(basename "$0") [--hdl-only] [--preflight-only] [--xsa FILE]"
             echo "  --hdl-only        rebuild HDL, FSBL and packaging only, reusing the"
             echo "                    existing kernel, u-boot and root filesystem."
             echo "  --preflight-only  run the checks that guard the build, then stop."
+            echo "  --xsa FILE        use an already-built hardware platform and do NOT"
+            echo "                    run Vivado. Vitis is still required: the FSBL is"
+            echo "                    compiled from the ps7_init.c inside the .xsa."
+            echo "                    See docs/building-without-vivado.md"
             exit 0 ;;
         *) echo "ERROR: unknown option '$arg' (try --help)" >&2; exit 1 ;;
     esac
 done
+[ "$_want_xsa" -eq 1 ] && { echo "ERROR: --xsa needs a file path" >&2; exit 1; }
+if [ -n "$XSA_FILE" ]; then
+    case "$XSA_FILE" in /*) ;; *) XSA_FILE="$PWD/$XSA_FILE" ;; esac
+    echo "*** --xsa: importing $XSA_FILE, Vivado will NOT run ***"
+fi
 [ "$HDL_ONLY" -eq 1 ] && echo "*** --hdl-only: skipping u-boot, kernel and rootfs stages ***"
 
 # ---------------------------------------------------------------------------
@@ -63,9 +79,13 @@ for c in git make dtc mkimage bison flex python3; do
         echo "ERROR: '$c' not found." >&2; preflight_fail=1; }
 done
 XILINX_DIR="${XILINX_DIR:-/tools/Xilinx}"
-for f in "$XILINX_DIR/Vivado/2022.2/bin/vivado" \
-         "$XILINX_DIR/Vitis/2022.2/bin/xsct" \
-         "$XILINX_DIR/Vitis/2022.2/bin/bootgen"; do
+# Vitis is required either way - the FSBL is compiled from the ps7_init.c
+# inside the hardware platform, so there is no build without it. Vivado is
+# only required when we are actually going to run it, which --xsa skips; that
+# is the whole point of the flag, and demanding the tool anyway would defeat it.
+_required_tools="$XILINX_DIR/Vitis/2022.2/bin/xsct $XILINX_DIR/Vitis/2022.2/bin/bootgen"
+[ -z "$XSA_FILE" ] && _required_tools="$XILINX_DIR/Vivado/2022.2/bin/vivado $_required_tools"
+for f in $_required_tools; do
     [ -x "$f" ] || { echo "ERROR: missing $f (is Vivado/Vitis 2022.2 installed?)" >&2
                      preflight_fail=1; }
 done
@@ -127,7 +147,11 @@ fi
 # top level, constraint file or coefficient set is silently ignored and the
 # old bitstream is rebuilt. Catch that by mtime rather than let it happen.
 PLUTO="$SRC_DIR/hdl/projects/pluto"
-if [ -f "$PLUTO/pluto.xpr" ]; then
+# Irrelevant under --xsa: the guard exists because build_hdl.tcl reuses an
+# existing project and would ignore an edited system_bd.tcl. With Vivado not
+# running at all there is no project to reuse, and refusing here would block a
+# perfectly good build for a reason that cannot apply.
+if [ -z "$XSA_FILE" ] && [ -f "$PLUTO/pluto.xpr" ]; then
     stale=""
     for f in "$PLUTO"/system_bd.tcl "$PLUTO"/system_top.v "$PLUTO"/system_constr.xdc \
              "$PLUTO"/*.v "$BUILD_ALL_DIR"/coefile_*.coe; do
@@ -188,6 +212,91 @@ buildroot_defconfig() {
     PATH="$CLEAN_PATH" make -C "$SRC_DIR/buildroot" olddefconfig
 }
 
+if [ -n "$XSA_FILE" ]; then
+echo "=== [1/7] Importing a pre-built XSA (Vivado not invoked) ==="
+(
+    set -e
+    PLUTO_DIR="$SRC_DIR/hdl/projects/pluto"
+
+    [ -r "$XSA_FILE" ] || { echo "ERROR: cannot read $XSA_FILE" >&2; exit 1; }
+
+    # An .xsa is a zip. Check that before anything else, so a wrong file gets
+    # one clear sentence instead of a confusing failure three stages later.
+    unzip -l "$XSA_FILE" >/dev/null 2>&1 || {
+        echo "ERROR: $XSA_FILE is not a readable zip archive." >&2
+        echo "       An .xsa is a zip. Did you pass a .bit or a .bin by mistake?" >&2
+        exit 1; }
+    unzip -l "$XSA_FILE" | grep -q ' system_top.bit$' || {
+        echo "ERROR: $XSA_FILE contains no system_top.bit." >&2
+        echo "       It was probably exported without the bitstream. The export" >&2
+        echo "       needs -include_bit; see docs/building-without-vivado.md" >&2
+        exit 1; }
+
+    # Refuse a platform for another part or another tool version rather than
+    # let it reach the FSBL build and fail there, where the message is about
+    # xsct rather than about the file you passed.
+    sysdef="$(unzip -p "$XSA_FILE" sysdef.xml 2>/dev/null || true)"
+    case "$sysdef" in
+        *'PART="xc7z020clg400-2"'*) ;;
+        "") echo "WARNING: $XSA_FILE has no sysdef.xml - cannot check the part" >&2 ;;
+        *)  echo "ERROR: that XSA is not for this board's part (xc7z020clg400-2)." >&2
+            echo "       It says: $(printf '%s' "$sysdef" | grep -o 'PART="[^\"]*"' | head -1)" >&2
+            exit 1 ;;
+    esac
+    case "$sysdef" in
+        *'Version="2022.2"'*|"") ;;
+        *)  echo "ERROR: that XSA was written by a different tool version." >&2
+            echo "       It says: $(printf '%s' "$sysdef" | grep -o 'Version="[^\"]*"' | head -1)" >&2
+            echo "       This repository builds with 2022.2; mixing versions puts a" >&2
+            echo "       mismatched ps7_init.c into the FSBL." >&2
+            exit 1 ;;
+    esac
+
+    mkdir -p "$PLUTO_DIR/pluto.runs/impl_1"
+    # Pointing --xsa at the tree's own platform is a reasonable thing to do
+    # (rebuild from what is already here without re-running Vivado), and cp
+    # refuses to copy a file onto itself.
+    if [ "$XSA_FILE" -ef "$PLUTO_DIR/system_top.xsa" ]; then
+        echo "    (already in place - reusing it where it is)"
+    else
+        cp -f "$XSA_FILE" "$PLUTO_DIR/system_top.xsa"
+    fi
+
+    # Stage [7/7] copies the bitstream out of the RUN directory, not out of
+    # the XSA, so it has to land there. Verified byte-identical to a Vivado
+    # run's own output.
+    unzip -p "$XSA_FILE" system_top.bit > "$PLUTO_DIR/pluto.runs/impl_1/system_top.bit"
+    [ -s "$PLUTO_DIR/pluto.runs/impl_1/system_top.bit" ] || {
+        echo "ERROR: extracted system_top.bit is empty." >&2; exit 1; }
+
+    # Delete rather than ignore. verify_output.sh reads these, and a report
+    # left over from an earlier build would describe a bitstream it never saw
+    # - which is exactly how a design gets vouched for by the wrong numbers.
+    rm -f "$PLUTO_DIR/timing.rpt" "$PLUTO_DIR/utilization.rpt"
+
+    mkdir -p "$OUT_DIR"
+    {
+        echo "# Written by build_all.sh --xsa. This bitstream was NOT built here."
+        echo "source:   $XSA_FILE"
+        echo "md5:      $(md5sum "$XSA_FILE" | cut -d' ' -f1)"
+        echo "mtime:    $(date -r "$XSA_FILE" -Is 2>/dev/null || echo unknown)"
+        echo "imported: $(date -Is)"
+        echo "bitstream_md5: $(md5sum "$PLUTO_DIR/pluto.runs/impl_1/system_top.bit" | cut -d' ' -f1)"
+        echo "# IP instances, read from the platform's own system.hwh - this"
+        echo "# describes the BITSTREAM, unlike system_bd.tcl which describes"
+        echo "# whatever source happens to be in the tree."
+        unzip -p "$XSA_FILE" system.hwh 2>/dev/null \
+            | grep -oE 'INSTANCE="[A-Za-z_0-9]+"' | sort -u | sed 's/^/ip: /' || true
+    } > "$OUT_DIR/xsa-provenance.txt"
+
+    bit_sz=$(stat -c %s "$PLUTO_DIR/pluto.runs/impl_1/system_top.bit")
+    echo "    hardware platform: $PLUTO_DIR/system_top.xsa"
+    echo "    bitstream:         $bit_sz bytes"
+    echo "    provenance:        $OUT_DIR/xsa-provenance.txt"
+    echo "    NOTE: this design was not implemented here, so there is no timing"
+    echo "          report to check. ./scripts/verify_output.sh will say so."
+)
+else
 echo "=== [1/7] Building HDL: synth -> impl -> bitstream -> hardware platform ==="
 (
     source "$REPO_ROOT/tools/env-vivado.sh"
@@ -201,6 +310,7 @@ echo "=== [1/7] Building HDL: synth -> impl -> bitstream -> hardware platform ==
     vivado -mode batch -source build_hdl.tcl -journal build_hdl.jou -log build_hdl.log
     echo "    Timing summary:"; grep -A3 "Design Timing Summary" timing.rpt | tail -2 || true
 )
+fi
 
 echo "=== [1b/7] Building the cross-compilation toolchain (Linaro GCC 7.3-2018.05) ==="
 if [ ! -x "$SRC_DIR/buildroot/output/host/bin/arm-linux-gnueabihf-gcc" ]; then

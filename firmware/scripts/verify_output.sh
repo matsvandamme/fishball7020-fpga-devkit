@@ -42,7 +42,12 @@ echo "== SD-card files =="
 for f in BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz; do
     ck "$f present and non-trivial" "[ -s '$OUT/$f' ] && [ \$(stat -c%s '$OUT/$f') -gt 1000 ]"
 done
-ck "no stray files in output/" "[ \$(ls -A '$OUT' | grep -cv '^\.gitkeep$') -eq 5 ]"
+# xsa-provenance.txt is written by build_all.sh --xsa and belongs here: it
+# records where an imported bitstream came from. It is not an SD-card file.
+XSA_PROV="$OUT/xsa-provenance.txt"
+_want=5
+[ -r "$XSA_PROV" ] && _want=6
+ck "no stray files in output/" "[ \$(ls -A '$OUT' | grep -cv '^\.gitkeep$') -eq $_want ]"
 
 echo
 echo "== FPGA design =="
@@ -57,18 +62,44 @@ if [ -r "$PRJ/utilization.rpt" ]; then
         96) note "-> channelizer filter (321 taps)" ;;
         *)  note "-> custom design" ;;
     esac
+elif [ -r "$XSA_PROV" ]; then
+    note "utilization: NOT AVAILABLE - this design was not implemented here."
+    note "             The IP list below is read from the platform instead."
 else
     ck "utilization report present ($PRJ/utilization.rpt)" "false"
 fi
 
-if grep -q 'rx_ddc' "$PRJ/system_bd.tcl" 2>/dev/null; then
-    note "block design: rx_ddc (Fs/4 shifter) is wired in"
-    ck "ad_fs4_ddc.v present alongside it" "[ -e '$PRJ/ad_fs4_ddc.v' ]"
+# An imported bitstream was not built from the sources in this tree, so
+# describing it from system_bd.tcl would describe the wrong thing, and do it
+# confidently. The platform carries its own system.hwh, which names the IP
+# instances actually present in the bitstream. Prefer that.
+if [ -r "$XSA_PROV" ]; then
+    note "bitstream was IMPORTED, not built here:"
+    note "  $(grep '^source:' "$XSA_PROV" | cut -d' ' -f2-)"
+    note "  bitstream md5 $(grep '^bitstream_md5:' "$XSA_PROV" | cut -d' ' -f2-)"
+    ips=$(grep '^ip: ' "$XSA_PROV" | sed 's/^ip: INSTANCE="//; s/"$//' | tr '\n' ' ')
+    if [ -n "$ips" ]; then
+        note "IP in the bitstream, from its own system.hwh (not from source):"
+        note "  $ips"
+        case "$ips" in
+            *gpio_bitmap*) note "  -> sample-locked GPIO IS in this bitstream" ;;
+            *)             note "  -> no gpio_bitmap: this bitstream lacks that feature" ;;
+        esac
+    else
+        note "the platform carries no system.hwh - cannot describe the design"
+    fi
+    note "system_bd.tcl describes the SOURCE and is not compared against an"
+    note "imported bitstream, because it need not match it."
 else
-    note "block design: stock RX path, no rx_ddc"
+    if grep -q 'rx_ddc' "$PRJ/system_bd.tcl" 2>/dev/null; then
+        note "block design: rx_ddc (Fs/4 shifter) is wired in"
+        ck "ad_fs4_ddc.v present alongside it" "[ -e '$PRJ/ad_fs4_ddc.v' ]"
+    else
+        note "block design: stock RX path, no rx_ddc"
+    fi
+    coe=$(grep -o 'coefile[A-Za-z_0-9]*\.coe' "$PRJ/system_bd.tcl" 2>/dev/null | sort -u | tr '\n' ' ')
+    note "FIR coefficients: ${coe:-<none found>}"
 fi
-coe=$(grep -o 'coefile[A-Za-z_0-9]*\.coe' "$PRJ/system_bd.tcl" 2>/dev/null | sort -u | tr '\n' ' ')
-note "FIR coefficients: ${coe:-<none found>}"
 
 echo
 echo "== bitstream =="
@@ -93,13 +124,20 @@ echo "== timing =="
 # vouch for an earlier build while the newest one has failed. That nearly put
 # a bitstream on a board it was never built for.
 newest_impl=$(ls -t "$PRJ"/pluto.runs/impl_1/*timing_summary_postroute*.rpt 2>/dev/null | head -1)
-if [ -n "$newest_impl" ] && [ -r "$PRJ/timing.rpt" ]    && [ "$newest_impl" -nt "$PRJ/timing.rpt" ]; then
+if [ ! -r "$XSA_PROV" ] && [ -n "$newest_impl" ] && [ -r "$PRJ/timing.rpt" ] \
+   && [ "$newest_impl" -nt "$PRJ/timing.rpt" ]; then
     ck "the reports describe the newest build" "false"
     note "a later build ran and did not finish: $(basename "$newest_impl") is newer"
     note "than timing.rpt, so everything below is from an earlier build."
     note "Check the build log before flashing any of this."
 fi
-if [ -r "$PRJ/timing.rpt" ]; then
+if [ -r "$XSA_PROV" ]; then
+    # Not a failure: the design was implemented elsewhere and no report here
+    # could honestly describe it. "Unknown" is the accurate answer - failing
+    # would imply something is wrong, passing would imply timing was checked.
+    note "timing: NOT AVAILABLE - this design was not implemented here."
+    note "        Whoever built the XSA is the one who saw its timing report."
+elif [ -r "$PRJ/timing.rpt" ]; then
     read -r wns _ tnsfail total < <(grep -A6 'Design Timing Summary' "$PRJ/timing.rpt" \
         | awk 'NF>=8 && $1 ~ /^-?[0-9.]+$/ {print $1, $2, $3, $4; exit}')
     ck "no failing setup endpoints" "[ '${tnsfail:-x}' = 0 ]"

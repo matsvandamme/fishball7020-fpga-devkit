@@ -61,10 +61,20 @@ fi
 XILINX_DIR="${XILINX_DIR:-/tools/Xilinx}"
 VIVADO_DIR="$XILINX_DIR/Vivado/2022.2"
 VITIS_DIR="$XILINX_DIR/Vitis/2022.2"
+# Vivado is needed to BUILD the FPGA design. It is not needed to build
+# firmware from a hardware platform somebody already exported, which is what
+# --xsa is for - so a missing Vivado is a warning with a way forward rather
+# than a dead end. Vitis below stays fatal: the FSBL cannot be built without it.
 if [ -x "$VIVADO_DIR/bin/vivado" ]; then ok "Vivado 2022.2 at $VIVADO_DIR"
 elif [ "$IN_CONTAINER" -eq 0 ] && ! host_supported_by_vivado; then
-    bad "Vivado 2022.2 not found at $VIVADO_DIR - and this OS cannot install it; use ./devkit container"
-else bad "Vivado 2022.2 not found at $VIVADO_DIR (see README step 1)"; fi
+    soft "Vivado 2022.2 not found at $VIVADO_DIR, and this OS cannot install it."
+    soft "  Either use ./devkit container, or build from a pre-made hardware"
+    soft "  platform: ./scripts/build_all.sh --xsa FILE (docs/building-without-vivado.md)"
+else
+    soft "Vivado 2022.2 not found at $VIVADO_DIR (see README step 1)."
+    soft "  You can still build without it from a pre-made hardware platform:"
+    soft "  ./scripts/build_all.sh --xsa FILE  (docs/building-without-vivado.md)"
+fi
 if [ -x "$VITIS_DIR/bin/xsct" ]; then ok "Vitis 2022.2 (xsct) - needed for the FSBL"
 else bad "Vitis 2022.2 not found at $VITIS_DIR - the FSBL stage will fail"; fi
 if [ -r "$REPO_DIR/tools/env-vivado.sh" ]; then ok "tools/env-vivado.sh present"
