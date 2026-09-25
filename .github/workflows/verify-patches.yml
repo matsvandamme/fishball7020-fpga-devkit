@@ -81,6 +81,15 @@ jobs:
           grep -q 'bool[[:space:]]*tx_disabled;' \
             firmware/src/linux/drivers/iio/adc/ad9361.h
           ! grep -q 'tx_disabled' firmware/src/linux/drivers/iio/adc/ad9361_private.h
+      - name: Confirm the DMA counters and thermal limit landed (0017, 0018)
+        run: |
+          grep -q tx_dma_underflow_count \
+            firmware/src/linux/drivers/iio/frequency/cf_axi_dds.c
+          grep -q cf_axi_dds_dma_stat_poll \
+            firmware/src/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
+          grep -q tx_temp_limit firmware/src/linux/drivers/iio/adc/ad9361.c
+          # Same rule as the latch: it must survive clear_state().
+          grep -q 'tx_temp_limit;' firmware/src/linux/drivers/iio/adc/ad9361.h
       - name: Confirm the sample-locked GPIO feature landed
         run: |
           grep -q tx_gpio_bitmap firmware/src/hdl/projects/pluto/system_bd.tcl

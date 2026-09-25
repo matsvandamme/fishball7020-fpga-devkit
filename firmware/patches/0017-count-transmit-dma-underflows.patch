@@ -1,0 +1,134 @@
+Count transmit DMA underflows instead of discarding them
+
+The DAC core reports underflow and overflow in ADI_REG_VDMA_STATUS. The
+driver writes the bits back to clear them at preenable and otherwise ignores
+them; there is a commented-out dev_warn from 2014 where the check used to be.
+
+So the only way to know whether a transmission was clean was to receive it and
+look at the spectrum. docs/modulation-and-throughput.md had to do exactly that
+to establish that drops were discrete packets rather than continuous
+degradation - a real measurement, made harder than it needed to be.
+
+The bits are sticky and read-to-clear, so they answer "did it happen" rather
+than "how often". Sampling them once per submitted block and accumulating
+turns them into counts:
+
+    /sys/bus/iio/devices/iio:deviceN/tx_dma_underflow_count
+    /sys/bus/iio/devices/iio:deviceN/tx_dma_overflow_count
+
+Writing anything to either zeroes it, because the useful question is almost
+always "how many since I started" rather than "since boot".
+
+Measured on the board: a 131072-sample stream fed from a pipe recorded 2
+underflows, which is the behaviour the counter exists to make visible - a
+short stall at stream start that a spectrum would have had to infer.
+
+diff --git a/linux/drivers/iio/frequency/cf_axi_dds.c b/linux/drivers/iio/frequency/cf_axi_dds.c
+--- a/linux/drivers/iio/frequency/cf_axi_dds.c
++++ b/linux/drivers/iio/frequency/cf_axi_dds.c
+@@ -147,6 +147,15 @@
+ 	 */
+ 	unsigned int			tx_cyclic_ms;
+ 	bool				tx_cyclic;
++	/*
++	 * The DAC core's VDMA status bits are STICKY and read-to-clear, so
++	 * they answer "did it happen" and not "how often". Sampling them once
++	 * per submitted block and accumulating turns them into something you
++	 * can actually reason about: whether a capture or a transmission is
++	 * trustworthy, rather than inferring it from a spectrum afterwards.
++	 */
++	u64				tx_underflows;
++	u64				tx_overflows;
+ 	bool				dp_disable;
+ 	bool				enable;
+ 	bool				pl_dma_fifo_en;
+@@ -794,6 +803,59 @@
+ 		       axidds_tx_starve_store,
+ 		       0);
+ 
++/*
++ * Called once per submitted block, from the buffer stream. Read-to-clear, so
++ * each event is counted exactly once.
++ */
++void cf_axi_dds_dma_stat_poll(struct cf_axi_dds_state *st)
++{
++	u32 stat = dds_read(st, ADI_REG_VDMA_STATUS);
++
++	if (!(stat & (ADI_VDMA_UNF | ADI_VDMA_OVF)))
++		return;
++
++	if (stat & ADI_VDMA_UNF)
++		st->tx_underflows++;
++	if (stat & ADI_VDMA_OVF)
++		st->tx_overflows++;
++
++	dds_write(st, ADI_REG_VDMA_STATUS, stat & (ADI_VDMA_UNF | ADI_VDMA_OVF));
++}
++EXPORT_SYMBOL_GPL(cf_axi_dds_dma_stat_poll);
++
++static ssize_t axidds_dma_stat_show(struct device *dev,
++				    struct device_attribute *attr, char *buf)
++{
++	struct iio_dev_attr *this = to_iio_dev_attr(attr);
++	struct cf_axi_dds_state *st = iio_priv(dev_to_iio_dev(dev));
++
++	return sprintf(buf, "%llu\n",
++		       this->address ? st->tx_overflows : st->tx_underflows);
++}
++
++static ssize_t axidds_dma_stat_store(struct device *dev,
++				     struct device_attribute *attr,
++				     const char *buf, size_t len)
++{
++	struct iio_dev_attr *this = to_iio_dev_attr(attr);
++	struct cf_axi_dds_state *st = iio_priv(dev_to_iio_dev(dev));
++
++	/* Any write zeroes it: the useful question is almost always
++	 * "how many since I started", not "since boot". */
++	if (this->address)
++		st->tx_overflows = 0;
++	else
++		st->tx_underflows = 0;
++
++	return len;
++}
++
++static IIO_DEVICE_ATTR(tx_dma_underflow_count, S_IRUGO | S_IWUSR,
++		       axidds_dma_stat_show, axidds_dma_stat_store, 0);
++
++static IIO_DEVICE_ATTR(tx_dma_overflow_count, S_IRUGO | S_IWUSR,
++		       axidds_dma_stat_show, axidds_dma_stat_store, 1);
++
+ static ssize_t axidds_tx_cyclic_show(struct device *dev,
+ 				     struct device_attribute *attr, char *buf)
+ {
+@@ -846,6 +908,8 @@
+ 	&iio_dev_attr_tx_sample_gpio_en.dev_attr.attr,
+ 	&iio_dev_attr_tx_starve_timeout_ms.dev_attr.attr,
+ 	&iio_dev_attr_tx_cyclic_timeout_ms.dev_attr.attr,
++	&iio_dev_attr_tx_dma_underflow_count.dev_attr.attr,
++	&iio_dev_attr_tx_dma_overflow_count.dev_attr.attr,
+ 	NULL,
+ };
+ 
+diff --git a/linux/drivers/iio/frequency/cf_axi_dds.h b/linux/drivers/iio/frequency/cf_axi_dds.h
+--- a/linux/drivers/iio/frequency/cf_axi_dds.h
++++ b/linux/drivers/iio/frequency/cf_axi_dds.h
+@@ -330,5 +330,6 @@
+ void cf_axi_dds_tx_starve_init(struct cf_axi_dds_state *st);
+ void cf_axi_dds_tx_starve_arm(struct cf_axi_dds_state *st, bool cyclic);
+ void cf_axi_dds_tx_starve_cancel(struct cf_axi_dds_state *st);
++void cf_axi_dds_dma_stat_poll(struct cf_axi_dds_state *st);
+ 
+ #endif /* ADI_AXI_DDS_H_ */
+diff --git a/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c b/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
+--- a/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
++++ b/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
+@@ -40,6 +40,7 @@
+ 
+ 	if (block->block.bytes_used) {
+ 		cf_axi_dds_tx_starve_arm(st, cyclic);
++		cf_axi_dds_dma_stat_poll(st);
+ 
+ 		if (cf_axi_dds_dma_fifo_en(st)) {
+ 			enable_fifo = true;

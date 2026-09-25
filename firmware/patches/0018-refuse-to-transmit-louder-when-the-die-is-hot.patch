@@ -1,0 +1,136 @@
+Refuse to transmit louder when the die is hot
+
+The board has reported its own die temperature all along - tools/selftest
+reads it, and a healthy board sits around 40 C. Nothing ever acted on it.
+
+A transmitter is the one part here that heats itself, and the PGA-102+ sits
+next to the AD9361. tx_temp_limit, in millidegrees C, refuses to LOWER the
+attenuation while the die is above it:
+
+    echo 60000 > /sys/bus/iio/devices/iio:device0/tx_temp_limit
+
+Off by default (0), because the right threshold depends on the enclosure and
+the duty cycle, and any value chosen here would be wrong for somebody.
+
+It is checked in ad9361_set_tx_atten(), the same choke point patch 0016 uses,
+and ONLY when something asks to be louder than fully muted. So the cost is one
+AuxADC read per gain change rather than anything per-sample, and muting is
+never blocked by it - the failure direction is silence.
+
+Measured on the board at a real die temperature of 48.246 C:
+
+  limit 43.246 C, asked for -30 dB   ->  -89.75 dB, refused
+  limit 68.246 C, asked for -30 dB   ->  -30 dB, allowed
+  dmesg: "die at 48.246 C is over the 43.246 C transmit limit - staying muted"
+
+diff --git a/linux/drivers/iio/adc/ad9361.c b/linux/drivers/iio/adc/ad9361.c
+--- a/linux/drivers/iio/adc/ad9361.c
++++ b/linux/drivers/iio/adc/ad9361.c
+@@ -1262,6 +1262,9 @@
+ 	return 0;
+ }
+ 
++/* Defined further down; needed by the thermal gate in set_tx_atten(). */
++static int ad9361_get_temp(struct ad9361_rf_phy *phy);
++
+ static int ad9361_set_tx_atten(struct ad9361_rf_phy *phy, u32 atten_mdb,
+ 			       bool tx1, bool tx2, bool immed)
+ {
+@@ -1285,6 +1288,28 @@
+ 	 * attenuation when someone pokes debugfs "initialize" - which is a
+ 	 * ~79.75 dB raise reachable over an unauthenticated network port.
+ 	 */
++	/*
++	 * Thermal limit. Checked only when something asks to be LOUDER than
++	 * fully muted, so the cost is one AuxADC read per gain change rather
++	 * than anything per-sample - and muting is never blocked by it.
++	 *
++	 * The board already reports die temperature and the self-test reads
++	 * it; nothing acted on it. A transmitter is the one part here that
++	 * can heat itself, and the PA sits next to the AD9361.
++	 */
++	if (phy->tx_temp_limit && atten_mdb < MAX_TX_ATTENUATION_DB) {
++		int temp = ad9361_get_temp(phy);
++
++		if (temp > phy->tx_temp_limit) {
++			dev_warn_ratelimited(&phy->spi->dev,
++				"die at %d.%03d C is over the %d.%03d C transmit limit - staying muted\n",
++				temp / 1000, abs(temp % 1000),
++				phy->tx_temp_limit / 1000,
++				abs(phy->tx_temp_limit % 1000));
++			atten_mdb = MAX_TX_ATTENUATION_DB;
++		}
++	}
++
+ 	if (phy->tx_disabled && atten_mdb < MAX_TX_ATTENUATION_DB) {
+ 		dev_dbg(&phy->spi->dev,
+ 			"%s: tx_disable is set - forcing maximum attenuation\n",
+@@ -7480,6 +7505,44 @@
+  *
+  * Default off: nothing changes for anyone who does not ask.
+  */
++static ssize_t ad9361_tx_temp_limit_show(struct device *dev,
++					 struct device_attribute *attr,
++					 char *buf)
++{
++	struct ad9361_rf_phy *phy = iio_priv(dev_to_iio_dev(dev));
++
++	return sprintf(buf, "%d\n", phy->tx_temp_limit);
++}
++
++static ssize_t ad9361_tx_temp_limit_store(struct device *dev,
++					  struct device_attribute *attr,
++					  const char *buf, size_t len)
++{
++	struct ad9361_rf_phy *phy = iio_priv(dev_to_iio_dev(dev));
++	s32 limit;
++	int ret;
++
++	ret = kstrtoint(buf, 0, &limit);
++	if (ret)
++		return ret;
++	if (limit < 0)
++		return -EINVAL;
++
++	phy->tx_temp_limit = limit;
++
++	return len;
++}
++
++/*
++ * Millidegrees C, 0 to disable. Deliberately off by default: the right
++ * threshold depends on enclosure and duty cycle, and a limit chosen here
++ * would be wrong for somebody.
++ */
++static IIO_DEVICE_ATTR(tx_temp_limit, S_IRUGO | S_IWUSR,
++		       ad9361_tx_temp_limit_show,
++		       ad9361_tx_temp_limit_store,
++		       0);
++
+ static IIO_DEVICE_ATTR(tx_disable, S_IRUGO | S_IWUSR,
+ 		       ad9361_tx_disable_show,
+ 		       ad9361_tx_disable_store,
+@@ -7487,6 +7550,7 @@
+ 
+ static struct attribute *ad9361_phy_attributes[] = {
+ 	&iio_dev_attr_tx_disable.dev_attr.attr,
++	&iio_dev_attr_tx_temp_limit.dev_attr.attr,
+ 	&iio_dev_attr_in_voltage_filter_fir_en.dev_attr.attr,
+ 	&iio_dev_attr_out_voltage_filter_fir_en.dev_attr.attr,
+ 	&iio_dev_attr_in_out_voltage_filter_fir_en.dev_attr.attr,
+diff --git a/linux/drivers/iio/adc/ad9361.h b/linux/drivers/iio/adc/ad9361.h
+--- a/linux/drivers/iio/adc/ad9361.h
++++ b/linux/drivers/iio/adc/ad9361.h
+@@ -148,6 +148,12 @@
+ 	 * not a latch.
+ 	 */
+ 	bool			tx_disabled;
++	/*
++	 * Refuse to get louder above this die temperature, in millidegrees C.
++	 * 0 disables it. Here rather than in the state struct for the same
++	 * reason as tx_disabled: clear_state() would wipe it.
++	 */
++	s32			tx_temp_limit;
+ 	struct spi_device 	*spi;
+ 	struct clk 		*clk_refin;
+ 	struct clk 		*clk_ext_lo_rx;
