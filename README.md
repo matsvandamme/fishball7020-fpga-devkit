@@ -290,7 +290,8 @@ stay in step with the transmitter, such as radar or MIMO receivers. It costs
 nothing: the DAC never sees those bits.
 
 The idea of routing those least significant bits straight to the GPIO outputs
-was suggested by [Akil0515](https://github.com/Akil0515).
+was suggested by **Akil0515** ([Telegram](https://t.me/Akil0515)) — see
+[CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/saleae-timing-dark.svg">

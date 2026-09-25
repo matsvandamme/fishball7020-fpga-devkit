@@ -3,6 +3,10 @@
 A hobby-scale reverse-engineering and build-system project. Contributions are
 welcome; these are the things that save everyone time.
 
+Credit for ideas as well as commits lives in [CONTRIBUTORS.md](CONTRIBUTORS.md).
+A suggestion that changed the firmware counts, and GitHub's contributors graph
+cannot record one.
+
 ## Where the code actually lives
 
 **The HDL, kernel, U-Boot and Buildroot source is not in this repo.**
