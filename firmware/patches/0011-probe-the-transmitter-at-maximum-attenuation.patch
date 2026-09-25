@@ -1,0 +1,64 @@
+Probe the transmitter at maximum attenuation, not 10 dB
+
+adi,tx-attenuation-mdB is the attenuation the driver applies to both
+transmit channels in ad9361_setup() (ad9361.c:5243). It is 10000 - 10 dB
+- which on a board that reaches about +19 dBm is roughly +9 dBm at the
+SMA, against a receive port rated +2.5 dBm and whatever the operator has
+or has not attached to TX.
+
+That value is live in two places, and both are exposures.
+
+The first is every boot. The driver probes and applies 10 dB, and the
+transmitter sits there until the buildroot init script's tx_quiesce
+(patches/0004) writes -89.75 dB over it. The window is short and has
+never been measured from outside - the board's own receiver cannot
+observe its own boot - but it is real, and it is the one moment an
+unterminated TX port is exposed without anybody having asked for
+anything.
+
+The second has no window at all: it lasts until someone notices.
+DBGFS_INIT (ad9361.c:8312-8323), reached by
+
+    echo 1 > /sys/kernel/debug/iio/iio:device0/initialize
+
+re-runs ad9361_setup() and therefore re-applies pd->tx_atten to both
+channels - this board sets adi,2rx-2tx-mode-enable, so both. From a
+muted -89.75 dB that is a ~79.75 dB raise, with no unmute, no buffer
+enable, and nothing in the log. patches/0005 does not help here: this is
+not an ad9361_tx_mute() unmute and never touches the cached attenuation.
+
+Setting the property to maximum attenuation makes the driver's own
+default agree with the state tx_quiesce already enforces on every boot,
+and makes a debugfs re-init land on silence instead of 10 dB.
+
+What this does NOT change:
+
+  - The TX LO still comes up powered. patches/0004 explains why that is
+    deliberate, and nothing here touches it.
+  - tx_quiesce keeps its job and its fw_setenv escape hatch. This makes
+    it a backstop rather than the only thing standing between a fresh
+    boot and +9 dBm.
+  - The mute cache is untouched. ad9361_tx_mute() still caches on mute
+    and restores on unmute exactly as before.
+  - Receive is untouched - this is a transmit attenuator.
+
+The cost is that a transmitter which is never given a gain now stays
+silent instead of emitting at 10 dB. Every tool in this repo already
+sets an attenuation before transmitting, because tx_quiesce has made
+that necessary since patches/0004; the MCP server's tx_gain_db even
+documents it ("Must be set, because the firmware idles at maximum
+attenuation"). Anything that relied on the 10 dB default was relying on
+a value tx_quiesce overwrote milliseconds later.
+
+diff --git a/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts b/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
+--- a/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
++++ b/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
+@@ -295,7 +295,7 @@
+ 				adi,rx-rf-port-input-select-lock-enable;
+ 				adi,tx-rf-port-input-select = <0x00>;
+ 				adi,tx-rf-port-input-select-lock-enable;
+-				adi,tx-attenuation-mdB = <0x2710>;
++				adi,tx-attenuation-mdB = <0x15E96>;
+ 				adi,tx-lo-powerdown-managed-enable;
+ 				adi,rf-rx-bandwidth-hz = <0x112a880>;
+ 				adi,rf-tx-bandwidth-hz = <0x112a880>;

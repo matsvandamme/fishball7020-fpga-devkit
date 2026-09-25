@@ -47,6 +47,16 @@ jobs:
         run: |
           grep -q gpio-line-names firmware/src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
           grep -q sample_gpio0 firmware/src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
+      - name: Confirm the transmitter probes at maximum attenuation (patch 0011)
+        run: |
+          # 0x15E96 is 89750 mdB. The stock value is 0x2710 - 10 dB - which the
+          # driver applies to BOTH channels in ad9361_setup(), both at every
+          # boot and again on every debugfs "initialize". On a board that
+          # reaches about +19 dBm that is roughly +9 dBm out of an SMA nobody
+          # has necessarily terminated. This patch went untracked for a while
+          # and shipped to nobody; the assertion is here so that cannot recur.
+          grep -q 'adi,tx-attenuation-mdB = <0x15E96>' \
+            firmware/src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
       - name: Confirm the sample-locked GPIO feature landed
         run: |
           grep -q tx_gpio_bitmap firmware/src/hdl/projects/pluto/system_bd.tcl
