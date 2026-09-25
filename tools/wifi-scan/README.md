@@ -9,6 +9,32 @@ Fishball7020 and draws what it found.
 ./plot_scan.py scan.json                 # -> scan-2.4.png, scan-5.png
 ```
 
+There is also a **flowgraph you can open in GNU Radio Companion**, for watching
+one channel live instead of sweeping the whole band:
+
+```bash
+# run from: tools/wifi-scan/
+gnuradio-companion fishball_wifi_live.grc
+```
+
+Pick a channel from the chooser, press play, and **turn on Max Hold** in the
+frequency sink's control panel — Wi-Fi is silent between bursts and the average
+alone will tell you an occupied channel is empty. The waterfall underneath is
+where the burstiness becomes obvious: a beacon every 100 ms is a dashed line, a
+busy channel is solid.
+
+The radio is deliberately **not** tuned to the channel centre. It sits 15 MHz
+below it, so the AD9361's own LO leak lands clear of the traffic; the display is
+corrected back, so the x-axis reads true frequency and the spike 15 MHz below
+the channel is the receiver looking at itself. Two notes on the block: its gain
+slider stops at 62 dB, which is the limit above 4 GHz (below 4 GHz the chip
+allows 71), and its bandwidth field refuses anything above 52 MHz even though
+the driver itself accepts 56.
+
+A sweep cannot be drawn as a plain flowgraph — it needs a controller that
+retunes between dwells — which is why `wifi_scan.py` is a Python application
+rather than a `.grc`.
+
 Needs `gnuradio` with `gr-iio` (the `fmcomms2` blocks), plus `numpy`, `scipy`
 and `matplotlib`. **Receive antennas on RX1** — without one the sweep returns
 the board's own noise floor and reports every channel free.

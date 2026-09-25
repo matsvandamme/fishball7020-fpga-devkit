@@ -1,0 +1,279 @@
+options:
+  parameters:
+    author: Matthieu
+    catch_exceptions: 'True'
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: "Live Wi-Fi band viewer for the Fishball7020.\n\nThe sweeping scanner\
+      \ next door (wifi_scan.py) cannot be drawn as a plain\nflowgraph, because a sweep\
+      \ needs a controller that retunes between dwells.\nThis is the other half: point\
+      \ it at one channel and watch it in real time.\n\nPick a channel from the chooser.\
+      \ The radio is NOT tuned to the channel\ncentre - it is tuned 15 MHz below it,\
+      \ so the AD9361's own LO leak lands\nwell clear of the traffic. The display is\
+      \ corrected back, so what you read\noff the x-axis is the true frequency; the\
+      \ spike 15 MHz below the channel is\nthe receiver looking at itself."
+    copyright: ''
+    description: Live 2.4/5 GHz Wi-Fi viewer for the Fishball7020
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: qt_gui
+    hier_block_src_path: '.:'
+    id: fishball_wifi_live
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: Fishball7020 - live Wi-Fi band viewer
+    window_size: (1400,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: "The AD9361's maximum: 56 MHz of usable window,
+      so about three 20 MHz channels at once."
+    value: '61440000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [200, 12]
+    rotation: 0
+    state: enabled
+- name: nfft
+  id: variable
+  parameters:
+    comment: 15.0 kHz resolution at 61.44 MSPS.
+    value: '4096'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [312, 12]
+    rotation: 0
+    state: enabled
+- name: uri
+  id: variable
+  parameters:
+    comment: Found by name, so DHCP may move the board.
+    value: '''ip:fishball.local'''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [392, 12]
+    rotation: 0
+    state: enabled
+- name: lo_offset
+  id: variable
+  parameters:
+    comment: "Offset tuning. The LO leak and the converters' DC offset land at
+      the centre of whatever the radio is tuned to, so do not tune to the thing
+      you want to measure. 15 MHz puts the artefact outside the channel while
+      keeping the channel inside the 56 MHz window."
+    value: '-15000000'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [560, 12]
+    rotation: 0
+    state: enabled
+- name: chan
+  id: variable_qtgui_chooser
+  parameters:
+    comment: ''
+    gui_hint: 0,0,1,1
+    label: Wi-Fi channel
+    label0: ''
+    label1: ''
+    label2: ''
+    label3: ''
+    label4: ''
+    labels: '[''2.4 GHz  ch 1  - 2412 MHz'', ''2.4 GHz  ch 6  - 2437 MHz'', ''2.4
+      GHz  ch 11 - 2462 MHz'', ''5 GHz  ch 36 - 5180 MHz'', ''5 GHz  ch 40 - 5200
+      MHz'', ''5 GHz  ch 44 - 5220 MHz'', ''5 GHz  ch 48 - 5240 MHz'', ''5 GHz  ch
+      52 - 5260 MHz'', ''5 GHz  ch 56 - 5280 MHz'', ''5 GHz  ch 60 - 5300 MHz'', ''5
+      GHz  ch 64 - 5320 MHz'', ''5 GHz  ch 100 - 5500 MHz'', ''5 GHz  ch 108 - 5540
+      MHz'', ''5 GHz  ch 149 - 5745 MHz'']'
+    num_opts: '0'
+    option0: '0'
+    option1: '1'
+    option2: '2'
+    option3: '3'
+    option4: '4'
+    options: '[2412000000, 2437000000, 2462000000, 5180000000, 5200000000, 5220000000,
+      5240000000, 5260000000, 5280000000, 5300000000, 5320000000, 5500000000, 5540000000,
+      5745000000]'
+    orient: Qt.QVBoxLayout
+    type: int
+    value: '5320000000'
+    widget: combo
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [200, 92]
+    rotation: 0
+    state: enabled
+- name: gain
+  id: variable_qtgui_range
+  parameters:
+    comment: "Manual, never AGC: automatic gain moves the reference level under
+      you and nothing on screen means anything absolute afterwards. NOTE the
+      chip swaps gain tables at 4 GHz - the maximum is 71 dB below it and only
+      62 dB above, and a value out of range is refused with nothing but a log
+      line."
+    gui_hint: 1,0,1,1
+    label: RX gain (dB)   -   max is 71 below 4 GHz, 62 above
+    min_len: '200'
+    orient: Qt.Horizontal
+    rangeType: float
+    start: '0'
+    step: '1'
+    stop: '62'
+    value: '55'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [392, 92]
+    rotation: 0
+    state: enabled
+- name: iio_fmcomms2_source_0
+  id: iio_fmcomms2_source
+  parameters:
+    affinity: ''
+    alias: ''
+    bandwidth: '52000000'
+    bbdc: 'True'
+    buffer_size: '32768'
+    comment: "RX1 only. Quadrature tracking keeps a strong signal from putting a
+      mirror image of itself on the other side of the centre; the two DC loops
+      keep the LO leak from growing."
+    filter: ''
+    filter_source: '''Off'''
+    fpass: '0'
+    frequency: int(chan + lo_offset)
+    fstop: '0'
+    gain1: '''manual'''
+    gain2: '''manual'''
+    len_tag_key: packet_len
+    manual_gain1: gain
+    manual_gain2: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    rf_port_select: '''A_BALANCED'''
+    rx1_en: 'True'
+    rx2_en: 'False'
+    samplerate: samp_rate
+    type: fc32
+    uri: uri
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [160, 236]
+    rotation: 0
+    state: enabled
+- name: qtgui_freq_sink_x_0
+  id: qtgui_freq_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    autoscale: 'False'
+    average: '0.2'
+    axislabels: 'True'
+    bw: samp_rate
+    color1: '"blue"'
+    comment: "Turn on Max Hold in the control panel (right-click, or the Control
+      Panel checkbox): Wi-Fi is silent between bursts, and the average alone
+      will tell you an occupied channel is empty."
+    ctrlpanel: 'True'
+    fc: int(chan + lo_offset)
+    fftsize: nfft
+    freqhalf: 'True'
+    grid: 'True'
+    gui_hint: 2,0,4,1
+    label: Relative Gain
+    label1: RX1
+    legend: 'True'
+    name: '"Spectrum - the channel sits 15 MHz above the DC spike"'
+    nconnections: '1'
+    norm_window: 'False'
+    showports: 'False'
+    tr_chan: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_tag: '""'
+    type: complex
+    units: dB
+    update_time: '0.10'
+    width1: '1'
+    wintype: window.WIN_BLACKMAN_hARRIS
+    ymax: '0'
+    ymin: '-110'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [560, 204]
+    rotation: 0
+    state: enabled
+- name: qtgui_waterfall_sink_x_0
+  id: qtgui_waterfall_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    axislabels: 'True'
+    bw: samp_rate
+    color1: '0'
+    comment: "Time runs downwards. This is where Wi-Fi's burstiness becomes
+      obvious - a beacon every 100 ms is a dashed line, a busy channel is solid."
+    fc: int(chan + lo_offset)
+    fftsize: nfft
+    freqhalf: 'True'
+    grid: 'False'
+    gui_hint: 6,0,4,1
+    int_max: '-20'
+    int_min: '-110'
+    label: Relative Gain
+    label1: RX1
+    legend: 'True'
+    name: '"Waterfall - bursts over time"'
+    nconnections: '1'
+    showports: 'False'
+    type: complex
+    update_time: '0.10'
+    wintype: window.WIN_BLACKMAN_hARRIS
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [560, 372]
+    rotation: 0
+    state: enabled
+
+connections:
+- [iio_fmcomms2_source_0, '0', qtgui_freq_sink_x_0, '0']
+- [iio_fmcomms2_source_0, '0', qtgui_waterfall_sink_x_0, '0']
+
+metadata:
+  file_format: 1
+  grc_version: 3.10.7.0
