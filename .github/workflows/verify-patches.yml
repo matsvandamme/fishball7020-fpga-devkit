@@ -57,6 +57,20 @@ jobs:
           # and shipped to nobody; the assertion is here so that cannot recur.
           grep -q 'adi,tx-attenuation-mdB = <0x15E96>' \
             firmware/src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts
+      - name: Confirm the transmit starvation watchdog landed (patch 0015)
+        run: |
+          # postdisable is an event and events can be missed: a local process
+          # killed mid-stream leaves buffer/enable at 1 and the transmitter
+          # live. The watchdog keys off state instead - no DMA block for N ms.
+          grep -q cf_axi_dds_tx_starve_arm \
+            firmware/src/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
+          grep -q tx_starve_timeout_ms \
+            firmware/src/linux/drivers/iio/frequency/cf_axi_dds.c
+          grep -q tx_cyclic_timeout_ms \
+            firmware/src/linux/drivers/iio/frequency/cf_axi_dds.c
+          # ... and the claim it disproves must not come back.
+          ! grep -q 'real guarantee rather than best effort' \
+            firmware/src/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
       - name: Confirm the sample-locked GPIO feature landed
         run: |
           grep -q tx_gpio_bitmap firmware/src/hdl/projects/pluto/system_bd.tcl
