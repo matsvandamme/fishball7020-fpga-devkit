@@ -4,16 +4,19 @@ options:
     catch_exceptions: 'True'
     category: '[GRC Hier Blocks]'
     cmake_opt: ''
-    comment: "Live Wi-Fi band viewer for the Fishball7020.\n\nThe sweeping scanner\
-      \ next door (wifi_scan.py) cannot be drawn as a plain\nflowgraph, because a sweep\
-      \ needs a controller that retunes between dwells.\nThis is the other half: point\
-      \ it at one channel and watch it in real time.\n\nPick a channel from the chooser.\
-      \ The radio is NOT tuned to the channel\ncentre - it is tuned 15 MHz below it,\
-      \ so the AD9361's own LO leak lands\nwell clear of the traffic. The display is\
-      \ corrected back, so what you read\noff the x-axis is the true frequency; the\
-      \ spike 15 MHz below the channel is\nthe receiver looking at itself."
+    comment: "Live Wi-Fi channel analyser for the Fishball7020.\n\nFive measurements\
+      \ from one receive stream, plus a sweep controller that\nlives inside the flowgraph\
+      \ as a Python Snippet - so this DOES sweep, it\njust cannot draw the sweeping\
+      \ as wires.\n\n  spectrum + waterfall   what is on the air, both receivers\n\
+      \  channel power          the selected 20 MHz channel alone, in dBFS\n  busy\
+      \  percentage of captured time over the threshold\n  burst envelope         individual\
+      \ packets, in the time domain\n  RX1-RX2 phase          the two coherent receivers\
+      \ against each other\n\nThe radio is NOT tuned to the channel centre. It sits\
+      \ 15 MHz below it, so\nthe AD9361's own LO leak lands clear of the traffic; every\
+      \ display is\ncorrected back, so the x-axis reads true frequency and the spike\
+      \ 15 MHz\nbelow the channel is the receiver looking at itself."
     copyright: ''
-    description: Live 2.4/5 GHz Wi-Fi viewer for the Fishball7020
+    description: Live 2.4/5 GHz Wi-Fi channel analyser for the Fishball7020
     gen_cmake: 'On'
     gen_linking: dynamic
     generate_options: qt_gui
@@ -29,8 +32,8 @@ options:
     run_options: prompt
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: Fishball7020 - live Wi-Fi band viewer
-    window_size: (1400,1000)
+    title: Fishball7020 - live Wi-Fi channel analyser
+    window_size: (1600,1100)
   states:
     bus_sink: false
     bus_source: false
@@ -43,72 +46,85 @@ blocks:
 - name: samp_rate
   id: variable
   parameters:
-    comment: "The AD9361's maximum: 56 MHz of usable window,
-      so about three 20 MHz channels at once."
+    comment: "The AD9361's maximum. Wide enough that a whole 20 MHz channel fits
+      clear of DC once the LO is offset - which a narrower rate cannot do.
+      The cost: 61.44 MSPS is 245 MB/s and this link carries about 31, so the
+      stream arrives in bursts. Spectra are unaffected (every transform sees
+      contiguous samples); the busy percentage is over CAPTURED time."
     value: '61440000'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [200, 12]
-    rotation: 0
-    state: enabled
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [184,
+      12], rotation: 0, state: enabled}
 - name: nfft
   id: variable
   parameters:
     comment: 15.0 kHz resolution at 61.44 MSPS.
     value: '4096'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [312, 12]
-    rotation: 0
-    state: enabled
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [288,
+      12], rotation: 0, state: enabled}
 - name: uri
   id: variable
   parameters:
     comment: Found by name, so DHCP may move the board.
     value: '''ip:fishball.local'''
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [392, 12]
-    rotation: 0
-    state: enabled
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [360,
+      12], rotation: 0, state: enabled}
 - name: lo_offset
   id: variable
   parameters:
-    comment: "Offset tuning. The LO leak and the converters' DC offset land at
-      the centre of whatever the radio is tuned to, so do not tune to the thing
-      you want to measure. 15 MHz puts the artefact outside the channel while
-      keeping the channel inside the 56 MHz window."
+    comment: "Offset tuning. The LO leak and the converters' DC offset land at the
+      centre of whatever the radio is tuned to, so do not tune to the thing you
+      want to measure."
     value: '-15000000'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [560, 12]
-    rotation: 0
-    state: enabled
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [528,
+      12], rotation: 0, state: enabled}
+- name: chan_bw
+  id: variable
+  parameters:
+    comment: One 802.11 channel.
+    value: '20000000'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [648,
+      12], rotation: 0, state: enabled}
+- name: chan_decim
+  id: variable
+  parameters:
+    comment: 61.44 -> 30.72 MSPS, still comfortably over one 20 MHz channel.
+    value: '2'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [752,
+      12], rotation: 0, state: enabled}
+- name: chan_taps
+  id: variable
+  parameters:
+    comment: "The channel-selecting filter. 3 MHz of transition either side, which
+      is cheap here because the xlating FFT filter convolves in the frequency
+      domain rather than tap by tap."
+    value: firdes.low_pass(1.0, samp_rate, chan_bw/2, 3000000)
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [856,
+      12], rotation: 0, state: enabled}
+- name: sweep_list
+  id: variable
+  parameters:
+    comment: What the sweep walks through, when it is switched on.
+    value: '[2412000000, 2437000000, 2462000000, 5180000000, 5200000000, 5220000000,
+      5240000000, 5260000000, 5280000000, 5300000000, 5320000000, 5500000000, 5540000000,
+      5745000000]'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1080,
+      12], rotation: 0, state: enabled}
 - name: chan
   id: variable_qtgui_chooser
   parameters:
     comment: ''
-    gui_hint: 0,0,1,1
+    gui_hint: 0,0,1,2
     label: Wi-Fi channel
     label0: ''
     label1: ''
     label2: ''
     label3: ''
     label4: ''
-    labels: '[''2.4 GHz  ch 1  - 2412 MHz'', ''2.4 GHz  ch 6  - 2437 MHz'', ''2.4
-      GHz  ch 11 - 2462 MHz'', ''5 GHz  ch 36 - 5180 MHz'', ''5 GHz  ch 40 - 5200
-      MHz'', ''5 GHz  ch 44 - 5220 MHz'', ''5 GHz  ch 48 - 5240 MHz'', ''5 GHz  ch
-      52 - 5260 MHz'', ''5 GHz  ch 56 - 5280 MHz'', ''5 GHz  ch 60 - 5300 MHz'', ''5
-      GHz  ch 64 - 5320 MHz'', ''5 GHz  ch 100 - 5500 MHz'', ''5 GHz  ch 108 - 5540
-      MHz'', ''5 GHz  ch 149 - 5745 MHz'']'
+    labels: '[''2.4 GHz  ch 1  - 2412'', ''2.4 GHz  ch 6  - 2437'', ''2.4 GHz  ch
+      11 - 2462'', ''5 GHz  ch 36 - 5180'', ''5 GHz  ch 40 - 5200'', ''5 GHz  ch 44
+      - 5220'', ''5 GHz  ch 48 - 5240'', ''5 GHz  ch 52 - 5260'', ''5 GHz  ch 56 -
+      5280'', ''5 GHz  ch 60 - 5300'', ''5 GHz  ch 64 - 5320'', ''5 GHz  ch 100 -
+      5500'', ''5 GHz  ch 108 - 5540'', ''5 GHz  ch 149 - 5745'']'
     num_opts: '0'
     option0: '0'
     option1: '1'
@@ -122,23 +138,17 @@ blocks:
     type: int
     value: '5320000000'
     widget: combo
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [200, 92]
-    rotation: 0
-    state: enabled
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [184,
+      108], rotation: 0, state: enabled}
 - name: gain
   id: variable_qtgui_range
   parameters:
-    comment: "Manual, never AGC: automatic gain moves the reference level under
-      you and nothing on screen means anything absolute afterwards. NOTE the
-      chip swaps gain tables at 4 GHz - the maximum is 71 dB below it and only
-      62 dB above, and a value out of range is refused with nothing but a log
-      line."
-    gui_hint: 1,0,1,1
-    label: RX gain (dB)   -   max is 71 below 4 GHz, 62 above
+    comment: "Manual, never AGC: automatic gain moves the reference level under you
+      and nothing on screen means anything absolute afterwards. The chip swaps
+      gain tables at 4 GHz - 71 dB is the ceiling below it, 62 above, and a
+      value out of range is refused with nothing but a log line."
+    gui_hint: 0,2,1,2
+    label: RX gain (dB)  -  max 71 below 4 GHz, 62 above
     min_len: '200'
     orient: Qt.Horizontal
     rangeType: float
@@ -147,13 +157,39 @@ blocks:
     stop: '62'
     value: '55'
     widget: counter_slider
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [392, 92]
-    rotation: 0
-    state: enabled
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [360,
+      108], rotation: 0, state: enabled}
+- name: busy_thresh
+  id: variable_qtgui_range
+  parameters:
+    comment: "Above this, the channel counts as occupied. Read the channel power
+      reading with nothing transmitting and set this a few dB over it."
+    gui_hint: 0,4,1,2
+    label: Busy threshold (dBFS)
+    min_len: '200'
+    orient: Qt.Horizontal
+    rangeType: float
+    start: '-100'
+    step: '1'
+    stop: '0'
+    value: '-55'
+    widget: counter_slider
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [528,
+      108], rotation: 0, state: enabled}
+- name: sweep_on
+  id: variable_qtgui_check_box
+  parameters:
+    comment: "Read by the Python Snippet below, which steps the chooser through
+      sweep_list. A flowgraph cannot draw a sweep as wires - but it can carry
+      the controller that does it."
+    'false': '0'
+    gui_hint: 1,0,1,2
+    label: Sweep the channel list (1 s per channel)
+    type: int
+    'true': '1'
+    value: '0'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [704,
+      108], rotation: 0, state: enabled}
 - name: iio_fmcomms2_source_0
   id: iio_fmcomms2_source
   parameters:
@@ -162,9 +198,10 @@ blocks:
     bandwidth: '52000000'
     bbdc: 'True'
     buffer_size: '32768'
-    comment: "RX1 only. Quadrature tracking keeps a strong signal from putting a
-      mirror image of itself on the other side of the centre; the two DC loops
-      keep the LO leak from growing."
+    comment: "BOTH receivers. They share one local oscillator, which is what makes
+      the phase measurement below mean anything. Quadrature tracking keeps a
+      strong signal from putting a mirror image of itself on the other side of
+      the centre; the two DC loops keep the LO leak from growing."
     filter: ''
     filter_source: '''Off'''
     fpass: '0'
@@ -174,47 +211,429 @@ blocks:
     gain2: '''manual'''
     len_tag_key: packet_len
     manual_gain1: gain
-    manual_gain2: '0'
+    manual_gain2: gain
     maxoutbuf: '0'
     minoutbuf: '0'
     rf_port_select: '''A_BALANCED'''
     rx1_en: 'True'
-    rx2_en: 'False'
+    rx2_en: 'True'
     samplerate: samp_rate
     type: fc32
     uri: uri
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [160, 236]
-    rotation: 0
-    state: enabled
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [80,
+      308], rotation: 0, state: enabled}
+- name: chan_filter
+  id: freq_xlating_fft_filter_ccc
+  parameters:
+    affinity: ''
+    alias: ''
+    center_freq: '-lo_offset'
+    comment: "Selects the chosen channel out of the 56 MHz window and brings it to
+      baseband. center_freq is +15 MHz because the radio was tuned 15 MHz low -
+      this undoes the offset tuning, so everything downstream sees the channel
+      and nothing else, including none of the LO leak."
+    decim: chan_decim
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nthreads: '1'
+    samp_delay: '0'
+    samp_rate: samp_rate
+    taps: chan_taps
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [400,
+      460], rotation: 0, state: enabled}
+- name: blocks_complex_to_mag_squared_0
+  id: blocks_complex_to_mag_squared
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: 'Power per sample. gr-iio scales full scale to 1.0, so 1.0 here is
+      0 dBFS.'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [648,
+      452], rotation: 0, state: enabled}
+- name: pwr_smooth
+  id: blocks_moving_average_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: "67 us of smoothing: long enough to settle the estimate, short enough
+      that a Wi-Fi packet still looks like a packet rather than a smear."
+    length: '2048'
+    max_iter: '4096'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale: '1.0/2048'
+    type: float
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [816,
+      452], rotation: 0, state: enabled}
+- name: pwr_decim
+  id: blocks_keep_one_in_n
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: 30.72 MSPS is far more than a meter needs. Down to about 30 kHz.
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    n: '1024'
+    type: float
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1000,
+      452], rotation: 0, state: enabled}
+- name: blocks_nlog10_ff_0
+  id: blocks_nlog10_ff
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: 10*log10 - power, so 10 and not 20.
+    k: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    n: '10'
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1152,
+      452], rotation: 0, state: enabled}
+- name: qtgui_number_sink_pwr
+  id: qtgui_number_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    autoscale: 'False'
+    avg: '0.0'
+    color1: ("black", "red")
+    comment: The selected channel alone, with the LO leak filtered out of it.
+    factor1: '1'
+    graph_type: qtgui.NUM_GRAPH_HORIZ
+    gui_hint: 1,2,1,2
+    label1: channel power
+    max: '0'
+    min: '-100'
+    name: '"Channel power (dBFS)"'
+    nconnections: '1'
+    type: float
+    unit1: dBFS
+    update_time: '0.10'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1352,
+      436], rotation: 0, state: enabled}
+- name: blocks_threshold_ff_0
+  id: blocks_threshold_ff
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: "1 while the channel is over the threshold, 0 under it. The 2 dB gap
+      between the two levels is hysteresis, so a signal sitting exactly on the
+      threshold does not chatter."
+    high: busy_thresh+1
+    init: '0'
+    low: busy_thresh-1
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1152,
+      572], rotation: 0, state: enabled}
+- name: busy_smooth
+  id: blocks_moving_average_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: "The mean of a 0/1 signal IS the duty cycle. About a second of it at
+      this rate."
+    length: '30000'
+    max_iter: '60000'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale: '100.0/30000'
+    type: float
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1320,
+      572], rotation: 0, state: enabled}
+- name: qtgui_number_sink_busy
+  id: qtgui_number_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    autoscale: 'False'
+    avg: '0.0'
+    color1: ("black", "red")
+    comment: "Percentage of CAPTURED time, not of wall-clock time - at 61.44 MSPS
+      this link delivers roughly an eighth of the samples. It is a fair sample
+      of the channel's state, not a census of it."
+    factor1: '1'
+    graph_type: qtgui.NUM_GRAPH_HORIZ
+    gui_hint: 1,4,1,2
+    label1: busy
+    max: '100'
+    min: '0'
+    name: '"Channel busy (% of captured time)"'
+    nconnections: '1'
+    type: float
+    unit1: '%'
+    update_time: '0.10'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1520,
+      556], rotation: 0, state: enabled}
+- name: env_decim
+  id: blocks_keep_one_in_n
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: "480 kSPS, so 1024 points on the time sink is about 2 ms - the scale
+      on which a Wi-Fi packet is visible as a packet."
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    n: '64'
+    type: complex
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [648,
+      700], rotation: 0, state: enabled}
+- name: blocks_complex_to_mag_0
+  id: blocks_complex_to_mag
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [840,
+      700], rotation: 0, state: enabled}
+- name: qtgui_time_sink_x_0
+  id: qtgui_time_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'True'
+    axislabels: 'True'
+    color1: blue
+    color10: dark blue
+    color2: red
+    color3: green
+    color4: black
+    color5: cyan
+    color6: magenta
+    color7: yellow
+    color8: dark red
+    color9: dark green
+    comment: "Individual packets. Set the trigger to Normal on channel 0 with a
+      level just above the noise and a burst will hold still on screen."
+    ctrlpanel: 'False'
+    entags: 'True'
+    grid: 'True'
+    gui_hint: 10,0,3,6
+    label1: envelope
+    label10: Signal 10
+    label2: Signal 2
+    label3: Signal 3
+    label4: Signal 4
+    label5: Signal 5
+    label6: Signal 6
+    label7: Signal 7
+    label8: Signal 8
+    label9: Signal 9
+    legend: 'True'
+    marker1: '-1'
+    marker10: '-1'
+    marker2: '-1'
+    marker3: '-1'
+    marker4: '-1'
+    marker5: '-1'
+    marker6: '-1'
+    marker7: '-1'
+    marker8: '-1'
+    marker9: '-1'
+    name: '"Burst envelope - individual packets"'
+    nconnections: '1'
+    size: '1024'
+    srate: samp_rate/chan_decim/64
+    stemplot: 'False'
+    style1: '1'
+    style10: '1'
+    style2: '1'
+    style3: '1'
+    style4: '1'
+    style5: '1'
+    style6: '1'
+    style7: '1'
+    style8: '1'
+    style9: '1'
+    tr_chan: '0'
+    tr_delay: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: float
+    update_time: '0.10'
+    width1: '2'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    ylabel: magnitude
+    ymax: '1'
+    ymin: '0'
+    yunit: '""'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1040,
+      684], rotation: 0, state: enabled}
+- name: blocks_multiply_conjugate_cc_0
+  id: blocks_multiply_conjugate_cc
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: "RX1 x conj(RX2). The angle of the result is the phase difference
+      between the two antennas - the quantity a direction finder works from.
+      Both receivers share one LO, so this is stable rather than drifting."
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [400,
+      860], rotation: 0, state: enabled}
+- name: phase_smooth
+  id: blocks_moving_average_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: "Averaged as a COMPLEX number, before taking the angle. Averaging
+      angles is wrong - they wrap, and the mean of +179 and -179 degrees is not
+      zero."
+    length: '8192'
+    max_iter: '16384'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale: '1.0/8192'
+    type: complex
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [648,
+      860], rotation: 0, state: enabled}
+- name: phase_decim
+  id: blocks_keep_one_in_n
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    n: '4096'
+    type: complex
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [840,
+      860], rotation: 0, state: enabled}
+- name: blocks_complex_to_arg_0
+  id: blocks_complex_to_arg
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1000,
+      860], rotation: 0, state: enabled}
+- name: rad_to_deg
+  id: blocks_multiply_const_vxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    const: '57.29577951308232'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    type: float
+    vlen: '1'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1160,
+      860], rotation: 0, state: enabled}
+- name: qtgui_number_sink_phase
+  id: qtgui_number_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    autoscale: 'False'
+    avg: '0.0'
+    color1: ("black", "red")
+    comment: "NOT calibrated. Each port has its own fixed offset through its own
+      balun and traces, so this is a repeatable number rather than a bearing.
+      Measure the offset with a splitter and matched cables before trusting any
+      angle - and note it changes with frequency."
+    factor1: '1'
+    graph_type: qtgui.NUM_GRAPH_HORIZ
+    gui_hint: 2,0,1,6
+    label1: RX1 - RX2 phase (uncalibrated)
+    max: '180'
+    min: '-180'
+    name: '"RX1 - RX2 phase, degrees (uncalibrated)"'
+    nconnections: '1'
+    type: float
+    unit1: deg
+    update_time: '0.10'
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1352,
+      844], rotation: 0, state: enabled}
 - name: qtgui_freq_sink_x_0
   id: qtgui_freq_sink_x
   parameters:
     affinity: ''
     alias: ''
     alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
     autoscale: 'False'
     average: '0.2'
     axislabels: 'True'
     bw: samp_rate
     color1: '"blue"'
-    comment: "Turn on Max Hold in the control panel (right-click, or the Control
-      Panel checkbox): Wi-Fi is silent between bursts, and the average alone
-      will tell you an occupied channel is empty."
+    color10: '"dark blue"'
+    color2: '"red"'
+    color3: '"green"'
+    color4: '"black"'
+    color5: '"cyan"'
+    color6: '"magenta"'
+    color7: '"yellow"'
+    color8: '"dark red"'
+    color9: '"dark green"'
+    comment: "Both receivers. Turn on Max Hold in the control panel: Wi-Fi is
+      silent between bursts, and the average alone will tell you an occupied
+      channel is empty."
     ctrlpanel: 'True'
     fc: int(chan + lo_offset)
     fftsize: nfft
     freqhalf: 'True'
     grid: 'True'
-    gui_hint: 2,0,4,1
+    gui_hint: 3,0,4,6
     label: Relative Gain
     label1: RX1
+    label10: ''
+    label2: RX2
+    label3: ''
+    label4: ''
+    label5: ''
+    label6: ''
+    label7: ''
+    label8: ''
+    label9: ''
     legend: 'True'
     name: '"Spectrum - the channel sits 15 MHz above the DC spike"'
-    nconnections: '1'
+    nconnections: '2'
     norm_window: 'False'
     showports: 'False'
     tr_chan: '0'
@@ -225,36 +644,67 @@ blocks:
     units: dB
     update_time: '0.10'
     width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
     wintype: window.WIN_BLACKMAN_hARRIS
     ymax: '0'
     ymin: '-110'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [560, 204]
-    rotation: 0
-    state: enabled
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [400,
+      252], rotation: 0, state: enabled}
 - name: qtgui_waterfall_sink_x_0
   id: qtgui_waterfall_sink_x
   parameters:
     affinity: ''
     alias: ''
     alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
     axislabels: 'True'
     bw: samp_rate
     color1: '0'
-    comment: "Time runs downwards. This is where Wi-Fi's burstiness becomes
-      obvious - a beacon every 100 ms is a dashed line, a busy channel is solid."
+    color10: '0'
+    color2: '0'
+    color3: '0'
+    color4: '0'
+    color5: '0'
+    color6: '0'
+    color7: '0'
+    color8: '0'
+    color9: '0'
+    comment: "Time runs downwards. This is where burstiness becomes obvious - a
+      beacon every 100 ms is a dashed line, a busy channel is solid."
     fc: int(chan + lo_offset)
     fftsize: nfft
     freqhalf: 'True'
     grid: 'False'
-    gui_hint: 6,0,4,1
+    gui_hint: 7,0,3,6
     int_max: '-20'
     int_min: '-110'
     label: Relative Gain
     label1: RX1
+    label10: ''
+    label2: ''
+    label3: ''
+    label4: ''
+    label5: ''
+    label6: ''
+    label7: ''
+    label8: ''
+    label9: ''
     legend: 'True'
     name: '"Waterfall - bursts over time"'
     nconnections: '1'
@@ -262,17 +712,50 @@ blocks:
     type: complex
     update_time: '0.10'
     wintype: window.WIN_BLACKMAN_hARRIS
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [560, 372]
-    rotation: 0
-    state: enabled
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [400,
+      356], rotation: 0, state: enabled}
+- name: sweep_controller
+  id: snippet
+  parameters:
+    alias: ''
+    code: "import threading, time\n\ndef _sweep(tb):\n    # A flowgraph cannot draw\
+      \ a sweep as wires, but it can carry the thread\n    # that drives one. Setting\
+      \ the chooser variable is exactly what clicking\n      # it does: GRC's generated\
+      \ set_chan() retunes the source and moves the\n    # centre frequency of every\
+      \ display with it.\n    while True:\n        if getattr(tb, 'sweep_on', 0):\n\
+      \            for f in tb.sweep_list:\n                if not getattr(tb, 'sweep_on',\
+      \ 0):\n                    break\n                tb.set_chan(f)\n         \
+      \       time.sleep(1.0)\n        else:\n            time.sleep(0.2)\n\nthreading.Thread(target=_sweep,\
+      \ args=(self,), daemon=True).start()"
+    comment: ''
+    priority: '0'
+    section: main_after_start
+  states: {bus_sink: false, bus_source: false, bus_structure: null, coordinate: [1080,
+      108], rotation: 0, state: enabled}
 
 connections:
 - [iio_fmcomms2_source_0, '0', qtgui_freq_sink_x_0, '0']
+- [iio_fmcomms2_source_0, '1', qtgui_freq_sink_x_0, '1']
 - [iio_fmcomms2_source_0, '0', qtgui_waterfall_sink_x_0, '0']
+- [iio_fmcomms2_source_0, '0', chan_filter, '0']
+- [iio_fmcomms2_source_0, '0', blocks_multiply_conjugate_cc_0, '0']
+- [iio_fmcomms2_source_0, '1', blocks_multiply_conjugate_cc_0, '1']
+- [chan_filter, '0', blocks_complex_to_mag_squared_0, '0']
+- [chan_filter, '0', env_decim, '0']
+- [blocks_complex_to_mag_squared_0, '0', pwr_smooth, '0']
+- [pwr_smooth, '0', pwr_decim, '0']
+- [pwr_decim, '0', blocks_nlog10_ff_0, '0']
+- [blocks_nlog10_ff_0, '0', qtgui_number_sink_pwr, '0']
+- [blocks_nlog10_ff_0, '0', blocks_threshold_ff_0, '0']
+- [blocks_threshold_ff_0, '0', busy_smooth, '0']
+- [busy_smooth, '0', qtgui_number_sink_busy, '0']
+- [env_decim, '0', blocks_complex_to_mag_0, '0']
+- [blocks_complex_to_mag_0, '0', qtgui_time_sink_x_0, '0']
+- [blocks_multiply_conjugate_cc_0, '0', phase_smooth, '0']
+- [phase_smooth, '0', phase_decim, '0']
+- [phase_decim, '0', blocks_complex_to_arg_0, '0']
+- [blocks_complex_to_arg_0, '0', rad_to_deg, '0']
+- [rad_to_deg, '0', qtgui_number_sink_phase, '0']
 
 metadata:
   file_format: 1

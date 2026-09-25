@@ -17,23 +17,61 @@ one channel live instead of sweeping the whole band:
 gnuradio-companion fishball_wifi_live.grc
 ```
 
-Pick a channel from the chooser, press play, and **turn on Max Hold** in the
-frequency sink's control panel — Wi-Fi is silent between bursts and the average
-alone will tell you an occupied channel is empty. The waterfall underneath is
-where the burstiness becomes obvious: a beacon every 100 ms is a dashed line, a
-busy channel is solid.
+It makes **five measurements from one receive stream**:
 
-The radio is deliberately **not** tuned to the channel centre. It sits 15 MHz
-below it, so the AD9361's own LO leak lands clear of the traffic; the display is
-corrected back, so the x-axis reads true frequency and the spike 15 MHz below
-the channel is the receiver looking at itself. Two notes on the block: its gain
-slider stops at 62 dB, which is the limit above 4 GHz (below 4 GHz the chip
-allows 71), and its bandwidth field refuses anything above 52 MHz even though
-the driver itself accepts 56.
+| | |
+|---|---|
+| **Spectrum + waterfall** | what is on the air, from *both* receivers |
+| **Channel power** | the selected 20 MHz channel alone, in dBFS, with the rest of the band filtered away |
+| **Busy %** | how much of the captured time that channel spent above a threshold you set |
+| **Burst envelope** | individual packets, in the time domain |
+| **RX1 − RX2 phase** | the two coherent receivers against each other |
 
-A sweep cannot be drawn as a plain flowgraph — it needs a controller that
-retunes between dwells — which is why `wifi_scan.py` is a Python application
-rather than a `.grc`.
+Pick a channel, press play, and **turn on Max Hold** in the frequency sink's
+control panel — Wi-Fi is silent between bursts and the average alone will tell
+you an occupied channel is empty. To use the busy percentage, first read the
+channel power with nothing transmitting, then set the threshold a few dB above
+it.
+
+**It sweeps.** The checkbox starts a Python Snippet — a controller that lives
+inside the flowgraph — stepping the chooser through the channel list a second at
+a time. A sweep cannot be drawn as *wires*, because it is a loop over time
+rather than a path for samples; but GRC will happily carry the thread that
+drives one, and setting the chooser variable is exactly what clicking it does.
+
+### How the pieces earn their place
+
+- **The channel filter** is a frequency-translating FFT filter. It shifts the
+  chosen channel to baseband and throws the other 36 MHz away, so the power and
+  busy readings are about that channel and nothing else — including none of the
+  LO leak.
+- **The radio is deliberately not tuned to the channel centre.** It sits 15 MHz
+  below, so the AD9361's own LO leak lands clear of the traffic. Every display
+  is corrected back, so the x-axis reads true frequency and the spike 15 MHz
+  below the channel is visibly the receiver looking at itself. This is also why
+  the sample rate is the full 61.44 MSPS: a narrower window cannot hold a 20 MHz
+  channel *and* keep it clear of DC.
+- **The phase is averaged as a complex number before the angle is taken.**
+  Averaging angles directly is wrong — they wrap, and the mean of +179° and
+  −179° is not zero.
+- **The duty cycle is the mean of a 0/1 signal**, which is what a duty cycle is.
+  The threshold has 2 dB of hysteresis so a signal sitting on it does not
+  chatter.
+
+### Three things to hold lightly
+
+- **The phase reading is not calibrated.** Each port has its own fixed offset
+  through its own balun and traces, so it is a repeatable number rather than a
+  bearing, and it changes with frequency. Measure the offset with a splitter and
+  matched cables before trusting any angle.
+- **Busy % is a percentage of *captured* time.** At 61.44 MSPS the link carries
+  roughly an eighth of the samples, so this is a fair sample of the channel's
+  state rather than a census of it. Spectra are unaffected — every transform
+  still sees contiguous samples.
+- **Two limits of the GRC block itself**, both found by compiling it: the gain
+  slider stops at 62 dB, which is the ceiling above 4 GHz (below 4 GHz the chip
+  allows 71, so raise the slider's stop for a 2.4 GHz channel); and its bandwidth
+  field refuses anything above 52 MHz although the driver accepts 56.
 
 Needs `gnuradio` with `gr-iio` (the `fmcomms2` blocks), plus `numpy`, `scipy`
 and `matplotlib`. **Receive antennas on RX1** — without one the sweep returns
