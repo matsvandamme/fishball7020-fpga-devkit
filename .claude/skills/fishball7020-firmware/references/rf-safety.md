@@ -53,9 +53,40 @@ unmutes when one starts. `patches/0005` makes that unmute non-destructive:
 | start the stream having set nothing | the last gain you used |
 | stop the stream | maximum attenuation, TX synthesiser down |
 
-The `postdisable` hook runs even if the application crashed, because teardown
-happens on file close — which is why this is a guarantee and a userspace
-watchdog is not.
+**`postdisable` is not a guarantee, whatever this file used to say.** It was
+claimed here — and in `patches/0004` — that the hook runs even if the
+application crashed, because teardown happens on file close. Measured false:
+kill a transmitting process *on the board* and `buffer/enable` stays `1`, the
+hook never runs, and the transmitter stays live. Through a 20 dB loop that read
+12.6 dB hotter than muted, with the process gone. See
+[`tools/IDLE-CASES.md`](../../../../tools/IDLE-CASES.md).
+
+What makes it a guarantee now is `patches/0015`, which mutes on **state**
+rather than on an event: no DMA block for `tx_starve_timeout_ms` (250 ms by
+default) and the transmitter is attenuated. Measured: 0.27 s from the kill.
+Events can be missed; "the DAC is not being fed" cannot.
+
+```bash
+# run on the board
+cat /sys/bus/iio/devices/iio:device2/tx_starve_timeout_ms   # 0 disables
+cat /sys/bus/iio/devices/iio:device2/tx_cyclic_timeout_ms   # 0 = off
+cat /sys/bus/iio/devices/iio:device0/tx_disable             # latch, 0 = off
+cat /sys/bus/iio/devices/iio:device0/tx_temp_limit          # millidegC, 0 = off
+```
+
+**Cyclic transmits are deliberately exempt** — the hardware repeats one buffer
+forever and outliving the caller is the point of `CYCLIC 1`, so a kill looks
+exactly like a normal return. `tx_cyclic_timeout_ms` bounds that, off by
+default.
+
+**`tx_disable` closes the two routes that raised the transmitter without
+looking like transmitting**: debugfs `initialize`, which re-applies the
+device-tree attenuation to both channels, and `bist_tone` mode 1, which injects
+at the transmit port and goes out through the PA. Both are reachable over port
+30431, which has no authentication. The latch lives in `struct ad9361_rf_phy`
+and not in `ad9361_rf_phy_state`, because `ad9361_clear_state()` memsets the
+latter and `initialize` calls it — a latch kept there was cleared by the very
+thing it defends against.
 
 **Both mechanisms earn their place.** Measured at 900 MHz with the receive LO
 offset by 1 MHz, so leakage could be told apart from the receiver's own DC

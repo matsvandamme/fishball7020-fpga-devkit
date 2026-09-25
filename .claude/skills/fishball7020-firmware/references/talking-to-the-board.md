@@ -189,7 +189,8 @@ DMAs and the LVDS link with no RF at all — remember to set it back to 0.
 **`bist_tone` takes exactly four integers** — `mode freq_Hz level_dB mask` —
 or the driver returns `EINVAL`. Mode 2 injects on **receive** and radiates
 nothing; **mode 1 injects on transmit, which goes out through the PA** and is
-not muted for you. The frequency field is 2 bits wide, so the only tones
+not muted for you — though since `patches/0016` it is refused outright while
+`tx_disable` is set. The frequency field is 2 bits wide, so the only tones
 available are `fs/32`, `fs/16`, `3·fs/32` and `fs/8`; anything else is rounded
 silently. Level quantises to 6 dB steps. `mask` zeroes individual I/Q streams;
 `0` leaves all four alone.

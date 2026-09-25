@@ -34,8 +34,8 @@ script mounts `/dev/mmcblk0p1` on the running board, backs the card up to
 `firmware/.flash-backups/<stamp>/` (gitignored), md5-verifies each copy BEFORE
 swapping it in, keeps the old files on the card as `*.prev`, unmounts cleanly,
 reboots, and only reports success once `/proc/uptime` has reset and the card
-md5s match. `--boot-only` for HDL, `--kernel-only` for a driver change, `--all`
-for a release. `BOARD` / `BOARD_PASS` override the address and password. A bad
+md5s match. `--boot-only` for HDL, `--kernel-only` for a driver change, `--dtb-only` for a
+device-tree-only patch (0002/0008/0011), `--all` for a release. `BOARD` / `BOARD_PASS` override the address and password. A bad
 `BOOT.bin` removes this route entirely - recovery is a card reader.
 
 **Delete the Vivado project before any HDL or coefficient change.**
@@ -85,6 +85,13 @@ muted - so writing −89.75 dB before opening a buffer guarantees nothing during
 it. The selftest, the GPIO checker and the MCP all write after
 `write_samples()` and assert the read-back. The one exception is a one-shot
 buffer, which has finished by then: set first, play out, then mute.
+
+**Vivado is not required to build.** `./scripts/build_all.sh --xsa FILE` takes
+an already-built hardware platform and skips stage `[1/7]` entirely, so a
+kernel/driver/rootfs change needs only Vitis. `verify_output.sh` then describes
+the design from the platform's own `system.hwh` and reports timing as
+unavailable rather than failing. Proven byte-identical `BOOT.bin`. See
+[`docs/building-without-vivado.md`](../../../docs/building-without-vivado.md).
 
 **Simulate before you synthesise.** `./sim/run_sim.sh` checks the custom HDL
 against a golden model in about a second; a Vivado build is 20 minutes with
@@ -149,6 +156,13 @@ generated against a reconstructed pre-change file, never a plain `git diff`.
 `0008` names those GPIO lines in the device tree. `0009` gives the bit-map
 flag's clock-crossing constraint the `-from` it lacked. Without it, Vivado
 dropped the line silently: `set_max_delay -datapath_only` needs both ends.
+`0011` probes the transmitter at maximum attenuation rather than 10 dB, which
+also makes a debugfs `initialize` land on silence. `0015` mutes when the DAC
+stops being fed, because `postdisable` is an event and events get missed -
+see [`rf-safety.md`](references/rf-safety.md), it is the correction to a claim
+`0004` made and this skill repeated. `0016` adds the `tx_disable` latch that
+debugfs cannot clear. `0017` counts TX DMA underflows; `0018` refuses to get
+louder above a die temperature.
 `0012` makes the USER LED follow the transmitter, so the board shows when it is
 keyed. `0013` pins eth0 to the MAC U-Boot already uses and sends a hostname in
 the DHCP request - without it the macb driver logs "invalid hw address, using

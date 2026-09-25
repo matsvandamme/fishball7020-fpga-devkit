@@ -2874,10 +2874,22 @@ ad_connect cpack/fifo_wr_data_3  rx_fir_decimator/data_out_3
       without the host feeding anything at all.</p>
     <p>It is also a safety trap. Once started, the repetition lives in <em>hardware</em>. Your program
       exiting, crashing, or being killed does not stop it; the DMA keeps reading the same DDR buffer
-      and the transmitter keeps radiating. On this board a locally-killed transmit client has been
-      measured leaving the radio live indefinitely.</p>
-    <p>If you use cyclic mode, make stopping it explicit and verified — not something you assume
-      happens when your process ends.</p>
+      and the transmitter keeps radiating.</p>
+    <p><strong>An ordinary, non-cyclic transmit used to behave the same way</strong>, and that was a
+      defect rather than a feature. Killing a local transmit client left the buffer enabled and the
+      radio live — measured at 12.6 dB above the muted floor with the program gone. This firmware now
+      mutes when the converter stops being fed: no data for 250 ms and the attenuator goes to
+      maximum, measured at 0.27 s from the kill. Read the timeout at
+      <code>/sys/bus/iio/devices/iio:device2/tx_starve_timeout_ms</code>.</p>
+    <p><strong>Cyclic is deliberately exempt from that</strong>, and this is the part worth
+      understanding. A cyclic stream submits one buffer and then legitimately sends nothing more, so
+      "no data arriving" describes a <em>healthy</em> cyclic transmit. A watchdog that muted on
+      silence would break every one of them. Which means a <code>kill -9</code> on a cyclic transmit
+      is indistinguishable from a normal return — the hardware cannot tell, and neither can the
+      driver.</p>
+    <p>So if you use cyclic mode, make stopping it explicit and verified, not something you assume
+      happens when your process ends. There is an opt-in bound if you want one
+      (<code>tx_cyclic_timeout_ms</code>, off by default), but the habit is the real protection.</p>
   </div>
 
   <div class="calc" id="c-rate">
@@ -7892,6 +7904,13 @@ as eta -> 0:   -> ln 2 = 0.693  ->  10*log10(0.693) = -1.59 dB
       before a stream starts guarantees nothing.</li>
     <li><strong>Never loop transmit back to receive</strong> without at least 20 dB of attenuation. The
       receive port survives about +2.5 dBm; the transmitter reaches about +19 dBm.</li>
+    <li><strong>A guarantee you cannot reproduce on the bench is not a guarantee.</strong> This
+      firmware claimed for a long time that killing a transmitting program muted the radio,
+      because the kernel runs a teardown hook on file close. Measured on the board, it did
+      not: the buffer stayed enabled and the port sat 12.6 dB hotter than muted with the
+      program gone. The fix was to stop keying off an <em>event</em> - closing, crashing,
+      being killed - and key off a <em>state</em> instead: no data reaching the converter for
+      250 ms means mute. Events get missed; a state cannot.</li>
     <li><strong>When the radio misbehaves, check <code>/mnt/jffs2</code> first.</strong> It is writable,
       it survives reflashing, and a script there can rewrite settings underneath your application.</li>
   </ul>
