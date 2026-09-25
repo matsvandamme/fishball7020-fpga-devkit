@@ -101,7 +101,27 @@ cp firmware/src/hdl/projects/pluto/system_top.xsa ~/fishball-platform.xsa
 
 That one file is the durable result of the whole 70 minutes.
 
-**Option 2 — get one from somebody else.** Anyone who has built this repo can
+**Option 2 — download it from a release.** Every release here ships
+`system_top.xsa` beside the five SD-card files, with its checksum in
+`SHA256SUMS`. It is the platform those exact files were built from, so a
+rebuild starts from the same hardware design:
+
+```bash
+# run from: anywhere, with the gh CLI
+gh release download --repo matsvandamme/fishball7020-fpga-devkit \
+   --pattern 'system_top.xsa' --pattern 'SHA256SUMS'
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+Releases are built from source on a machine with a board attached and verified
+against it before publishing — the workflow refuses to publish a release whose
+own firmware was built with `--xsa`, so a release platform is never a copy of
+somebody else's.
+
+It is about **880 KB**: a zip whose members come to 6.9 MB uncompressed, most
+of that the bitstream, which compresses well because unused fabric is zeros.
+
+**Option 3 — get one from somebody else.** Anyone who has built this repo can
 send you theirs. Read the honesty section at the bottom before you do.
 
 ## Doing it

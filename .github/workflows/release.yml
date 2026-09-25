@@ -58,6 +58,25 @@ jobs:
           [ "$missing" -eq 0 ] || {
             echo "Build first: ./devkit build" >&2; exit 1; }
 
+      - name: This build must have been made from source, not imported
+        # --xsa lets anyone build firmware from a hardware platform somebody
+        # else produced. That is the point of it - and it is exactly what a
+        # RELEASE must not be. A release is the authoritative build, so its
+        # bitstream has to come from the sources in this repository, with a
+        # timing report to show for it. build_all.sh --xsa leaves this file.
+        run: |
+          if [ -r firmware/output/xsa-provenance.txt ]; then
+            echo "ERROR: this output/ was built with --xsa, from an imported" >&2
+            echo "       hardware platform. A release must be built from the" >&2
+            echo "       sources here so its bitstream has known provenance." >&2
+            echo >&2
+            sed -n '1,5p' firmware/output/xsa-provenance.txt >&2
+            echo >&2
+            echo "       Run a full ./devkit build and try again." >&2
+            exit 1
+          fi
+          echo "built from source - no imported platform"
+
       - name: The build must pass its own verification
         run: ./devkit verify
 
@@ -66,10 +85,25 @@ jobs:
         # whole reason the job runs on the machine with the board attached.
         run: ./devkit verify --board
 
+      - name: Attach the hardware platform this bitstream came from
+        # The .xsa is the FPGA design, finished, in one file - bitstream plus
+        # the ps7_init.c the FSBL is compiled from. Shipping it means anyone
+        # can rebuild this firmware with a kernel or rootfs change of their own
+        # WITHOUT installing Vivado (~50 GB):
+        #     ./scripts/build_all.sh --xsa system_top.xsa
+        # It is the durable artifact of the build; firmware/src/ is regenerated
+        # by setup.sh, so the Vivado project itself does not survive.
+        run: |
+          xsa=firmware/src/hdl/projects/pluto/system_top.xsa
+          [ -r "$xsa" ] || { echo "ERROR: $xsa is missing - was this a real build?" >&2; exit 1; }
+          cp "$xsa" firmware/output/system_top.xsa
+          printf '  %-20s %10s B\n' system_top.xsa "$(stat -c%s firmware/output/system_top.xsa)"
+
       - name: Checksums
         run: |
           cd firmware/output
-          sha256sum BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz > SHA256SUMS
+          sha256sum BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz \
+                    system_top.xsa > SHA256SUMS
           cat SHA256SUMS
 
       - name: Record what is in this bitstream
@@ -89,12 +123,32 @@ jobs:
         run: |
           cd firmware/output
           gh release create "$TAG" \
-            BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz SHA256SUMS \
+            BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz \
+            system_top.xsa SHA256SUMS \
             --repo "${{ github.repository }}" \
             --title "$TAG" \
             --draft \
             --notes "Prebuilt SD-card files. Copy all five onto a FAT32 card, or
           update a running board with \`./devkit flash --all\`.
+
+          ### \`system_top.xsa\` - build your own firmware without Vivado
+
+          The sixth file is the **FPGA design, finished**: the bitstream plus the
+          processor bring-up code the boot loader is compiled from. With it you can
+          change the kernel, a driver or the root filesystem and rebuild, **without
+          installing Vivado** (~50 GB):
+
+          \`\`\`bash
+          # run from: firmware/
+          ./scripts/build_all.sh --xsa /path/to/system_top.xsa
+          \`\`\`
+
+          You still need Vitis - the boot loader is compiled from the \`ps7_init.c\`
+          inside this file. Full instructions:
+          [Building without Vivado](https://github.com/${{ github.repository }}/blob/main/docs/building-without-vivado.md).
+
+          This is the platform the five files above were built from, so a rebuild
+          starts from exactly the same hardware design.
 
           Built and verified on hardware before publishing: \`./devkit verify\`
           passed, and \`./devkit verify --board\` confirmed the board was running
