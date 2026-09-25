@@ -289,6 +289,9 @@ usable as a clock, frame marker or trigger for external hardware that must
 stay in step with the transmitter, such as radar or MIMO receivers. It costs
 nothing: the DAC never sees those bits.
 
+The idea of routing those least significant bits straight to the GPIO outputs
+was suggested by [Akil0515](https://github.com/Akil0515).
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/saleae-timing-dark.svg">
   <img src="docs/img/saleae-timing-light.svg" alt="Logic-analyser capture of the four sample-locked GPIO pins carrying a 4-bit counter at 5 MSPS, with the decoded value D, E, F, 0, 1 and so on under each 200 ns sample" width="760">

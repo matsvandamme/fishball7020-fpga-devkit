@@ -11,6 +11,11 @@ sample, what those pins do.
 
 The trick costs nothing, because the bits it uses were being thrown away.
 
+**Where the idea came from.** Passing the least significant bits of the data
+samples straight to the GPIO output pins was suggested by
+[Akil0515](https://github.com/Akil0515). This page, the HDL and the
+measurements are what came of that suggestion.
+
 **Contents**
 
 - [The four bits nobody uses](#the-four-bits-nobody-uses) — the idea
