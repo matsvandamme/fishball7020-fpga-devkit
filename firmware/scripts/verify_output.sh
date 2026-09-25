@@ -26,6 +26,35 @@ ARGS=()
 for a in "$@"; do
     case "$a" in
         --board) CHECK_BOARD=1 ;;
+        -h|--help)
+            cat <<'USAGE'
+Check that firmware/output/ is worth flashing, before you flash it.
+
+    ./scripts/verify_output.sh [--board] [FIRMWARE_DIR]
+
+Without arguments it checks the build in this repository:
+
+    the five SD-card files are present and not truncated
+    the bitstream is COMPRESSED - an uncompressed one overflows the FSBL's
+      OCM and BOOT.bin then fails to boot with no message at all
+    timing was met, and the reports describe the build you are about to flash
+      rather than an earlier one
+    what is actually in the design - IP blocks, DSP and LUT counts
+
+    --board       Also mount the board's SD card read-only and compare every
+                  file against output/. This is the only thing that proves the
+                  board is running what you built. Needs sshpass; set BOARD and
+                  BOARD_PASS to override the address and password.
+
+    FIRMWARE_DIR  Check some other firmware/ directory instead of this one.
+
+A bitstream imported with "build_all.sh --xsa" was not implemented here, so
+there is no timing report to check. It says so, and describes the design from
+the platform's own records instead of from the source in this tree.
+
+Exit status is 0 only if nothing failed.
+USAGE
+            exit 0 ;;
         *) ARGS+=("$a") ;;
     esac
 done

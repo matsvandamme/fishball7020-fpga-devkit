@@ -1,25 +1,85 @@
 #!/bin/bash
 # One entry point, so you do not have to remember which script lives where or
-# which directory it wants to run from.
+# which directory it wants to run from. Run it from anywhere.
 #
-#     ./devkit doctor      can this machine build? (checks before the hour, not during)
-#     ./devkit setup       clone the upstream source and apply the patches
-#     ./devkit sim         simulate the custom HDL (a second, needs only iverilog)
-#     ./devkit build       build everything          (45-90 min)
-#     ./devkit build --hdl-only   rebuild just the FPGA side  (~20 min)
-#     ./devkit verify      is the build sane? add --board to compare against the board
-#     ./devkit flash       copy it onto the running board over the network
-#     ./devkit selftest    is the board damaged? measures and says
-#     ./devkit gpio-check  verify the sample-locked GPIO outputs on hardware
-#     ./devkit net         how the board gets its address; switch DHCP/static
-#     ./devkit status      where am I? what is built, what is the board running
-#     ./devkit container   run any of the above inside the pinned Vivado 2022.2
-#                          environment, so the host OS is free to move. Also
-#                          "container install <bin>" to install Vivado itself,
-#                          for a host too new to run its installer.
+# ---- Before you build -------------------------------------------------------
 #
-# Every subcommand passes extra arguments straight through, so
-# "./devkit build --hdl-only" and "./devkit selftest --loopback --pad 50" work.
+#     ./devkit doctor      Can this machine build? Checks Vivado/Vitis, host
+#                          packages, disk space, the patch stamp and the board,
+#                          in about a second. Every check is a failure that once
+#                          cost somebody an hour. Run it before the hour, not
+#                          during.
+#     ./devkit setup       Clone the upstream source into firmware/src/ and apply
+#                          this repo's patches. Safe to re-run; it stamps what it
+#                          applied. Needed once, and after every new patch.
+#
+# ---- Building ---------------------------------------------------------------
+#
+#     ./devkit sim         Simulate the custom HDL against a golden model. About
+#                          a second, needs only iverilog, and catches the logic
+#                          errors a 70-minute synthesis cannot. Do this first.
+#     ./devkit build       Everything: FPGA, boot loader, kernel, root filesystem,
+#                          packaging.                                 (45-90 min)
+#       --hdl-only         Just the FPGA side, reusing the existing kernel,
+#                          u-boot and rootfs.                            (~20 min)
+#       --xsa FILE         Do NOT run Vivado. Use a hardware platform that was
+#                          already built - your own from a previous build, or the
+#                          system_top.xsa attached to any release. You still need
+#                          Vitis. This is how you build firmware WITHOUT
+#                          installing Vivado at all (~50 GB).
+#                          -> docs/building-without-vivado.md
+#     ./devkit verify      Is the build sane? Five files present, bitstream
+#                          compressed, timing met, and what is in the design.
+#       --board            Also compare the card against what you built. This is
+#                          the only thing that proves the board runs your build.
+#
+# ---- Getting it onto the board ----------------------------------------------
+#
+#     ./devkit flash       Copy the build onto the running board over the network,
+#                          with a backup and an md5 check before anything is
+#                          swapped in. Never use DFU on this board.
+#       --all              All five SD-card files (a release).
+#       --boot-only        BOOT.bin only - an HDL or bitstream change.
+#       --kernel-only      uImage only - a driver or kernel change. Fast, and
+#                          recoverable over the network if it goes wrong.
+#       --dtb-only         devicetree.dtb only - a device-tree patch.
+#       --rootfs-only      uramdisk.image.gz only.
+#
+# ---- Once it is running -----------------------------------------------------
+#
+#     ./devkit status      Where am I? What is built, and what is the board
+#                          running right now.
+#     ./devkit selftest    Is the board damaged? Measures supply rails, die
+#                          temperatures, the AD9361 interface eye and the
+#                          receiver, and says. Never transmits.
+#       --ssh              Also list what the persistent /mnt/jffs2 partition
+#                          starts at boot - scripts there survive reflashing and
+#                          can move settings underneath your application.
+#       --loopback --pad N This one DOES transmit. Needs TX wired to RX through
+#                          at least 20 dB, or you will destroy the receiver.
+#     ./devkit gpio-check  Verify the sample-locked GPIO outputs on hardware. No
+#                          scope and no antenna needed.
+#     ./devkit net         How the board gets its address; switch DHCP/static,
+#                          set its hostname, or just find it.
+#
+# ---- If your host OS is too new for Vivado ----------------------------------
+#
+#     ./devkit container   Run any of the above inside the pinned Vivado 2022.2
+#                          environment, so the host OS is free to move.
+#     ./devkit container install <bin>
+#                          Install Vivado itself, for a host too new to run its
+#                          own installer.
+#
+# ---- The usual runs ---------------------------------------------------------
+#
+#     ./devkit doctor && ./devkit setup && ./devkit build     # from nothing
+#     ./devkit sim && ./devkit build --hdl-only \
+#       && ./devkit verify && ./devkit flash --boot-only      # an HDL change
+#     ./devkit build --xsa ~/system_top.xsa                   # no Vivado needed
+#     ./devkit selftest --ssh                                 # "is it broken?"
+#
+# Extra arguments pass straight through, so anything the underlying script
+# accepts works here too. Each subcommand's own --help has the full list.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FW="$HERE/firmware"
