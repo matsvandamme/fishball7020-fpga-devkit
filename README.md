@@ -263,6 +263,7 @@ still works, and still wins.
 | drive the GPIO pins, from the host, the board or the fabric | [GPIO](docs/gpio.md) — the three routes, and which pins are actually free |
 | blink the USER LED | [Controlling the USER LED](docs/user-led.md) |
 | build without caring what Linux I run | **[Building in a container](docs/building-in-a-container.md)** — the recommended route; installs Vivado too, byte-identical output |
+| see which Wi-Fi channels are busy around me | [Scanning the Wi-Fi bands](tools/wifi-scan/README.md) — a GNU Radio sweep of 2.4 and 5 GHz, and what buys the dynamic range |
 | drive the radio from an AI assistant | the sibling **[Fishball7020-mcp](https://github.com/matsvandamme/Fishball7020-mcp)** — 21 MCP tools: tune, sweep, capture, transmit |
 | put the board on my router, or give it a fixed IP | `./devkit net dhcp` · [Changing the board's IP address](docs/networking.md) — the four routes, what each exposes, and the SD-card file that looks like it works |
 | see what this board actually transmits | **[The modulation gallery](docs/modulation-gallery.md)** — ten modulations measured on a HackRF One, with the code to repeat it |
