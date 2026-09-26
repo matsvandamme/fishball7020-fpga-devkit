@@ -201,6 +201,41 @@ transient — and reported that number for every symbol after it. It read 23% on
 a stream that was measurably 0.3%, and held flat against changing SNR. The unit
 of "recent" for a sample stream is samples.
 
+## A .grc that compiles can still be unusable. Open it and LOOK
+
+`grcc` and the editor are different paths, and only one of them draws. The
+first version of `examples/` compiled cleanly, generated correct Python, ran
+against the board - and opened in GNU Radio Companion as a wall of overlapping
+text with the signal chain pushed off screen. Nothing automated caught it
+because nothing automated renders.
+
+The cause: **GRC draws a block's `comment` on the canvas, in full and
+unwrapped.** It is not a tooltip. A five-line comment is five lines painted
+over whatever is to the right of it, and with a comment on every block the
+canvas becomes unreadable. A chooser's option LABELS behave the same way, and
+so does the `options` block's comment, which is usually the longest of all.
+
+`examples/mkgrc.py` now asserts the limits rather than documenting them - two
+lines of 46 characters per block, eleven of 50 for the flowgraph header, 34 per
+option label - because the failure is invisible from the compiler and obvious
+only from a screenshot. Depth goes in the example's README.
+
+Two layout rules worth keeping: put the signal path at the TOP, since GRC opens
+scrolled to the top-left and that is what someone wants to see first; and keep
+variable blocks in a left-hand column with no comments at all, or their
+comments overlap each other.
+
+To look at one without a screen, run it against a virtual display and grab the
+root window - but unset `WAYLAND_DISPLAY` first, or GTK ignores `DISPLAY` and
+opens on the real session instead:
+
+```bash
+# run from: anywhere
+Xvfb :99 -screen 0 1920x1200x24 &
+env -u WAYLAND_DISPLAY DISPLAY=:99 GDK_BACKEND=x11 gnuradio-companion x.grc &
+sleep 45 && DISPLAY=:99 xwd -root -silent > shot.xwd
+```
+
 ## GRC block ids are not file names, and trailing underscores are stripped
 
 `qtgui_chooser.block.yml` declares `id: variable_qtgui_chooser`;

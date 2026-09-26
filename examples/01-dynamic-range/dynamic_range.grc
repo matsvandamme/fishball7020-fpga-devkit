@@ -4,30 +4,24 @@ options:
     catch_exceptions: 'True'
     category: '[GRC Hier Blocks]'
     cmake_opt: ''
-    comment: "Dynamic range, and how to lose it - Fishball7020\n\nEvery control here is wired\
-      \ to a number, so you can break the measurement on\npurpose and watch the cost. The\
-      \ readout is peak minus noise floor on the trace\nyou are looking at.\n\nTHE ONE TO\
-      \ TRY FIRST. Find any strong carrier. Set the window to Rectangular,\nthen to Blackman-Harris,\
-      \ and watch the dynamic-range figure. On a synthetic\ntwo-tone test the difference measured\
-      \ here was 78 dB: 40 bins away from a\nfull-scale carrier, a rectangular window leaves\
-      \ a skirt at -42 dBFS and\nBlackman-Harris leaves -120 dBFS. Anything weaker than that\
-      \ skirt does not\nexist as far as your spectrum is concerned. The cost is about two\
-      \ bins of\nextra width - that is the whole trade.\n\nWHY THE FFT IS NOT THE STOCK QT\
-      \ SINK. GNU Radio's frequency sink takes its\nwindow when it is built and offers no\
-      \ way to change it while running, so you\ncould never watch the thing this example is\
-      \ about. Doing the transform in an\nembedded block also means the dynamic-range number\
-      \ comes from the very trace\non screen, so the picture and the number cannot disagree.\n\
-      \n  LO offset    drags the receiver's own LO leak out of the middle of the\n       \
-      \        span. Set it to 0 and the spike lands on whatever you were\n              \
-      \ trying to measure. It is a FRACTION of the span, so it stays\n               sensible\
-      \ when you change the sample rate.\n  Gain mode    manual, or let the AGC decide. Switch\
-      \ to slow_attack and the\n               vertical axis stops meaning anything: the receiver\
-      \ is now\n               changing its own reference level while you read it.\n  Averaging\
-      \    a one-pole average over FFT frames, in the POWER domain.\n  Floor %      which\
-      \ percentile counts as 'noise'. Raise it through a busy\n               band and watch\
-      \ the floor climb into the signals, because a\n               percentile cannot tell\
-      \ noise from traffic.\n\nLEVELS ARE dBFS, not dBm - decibels relative to the converter's\
-      \ full scale.\nNothing in this repository is calibrated to absolute power."
+    comment: 'Dynamic range, and how to lose it
+
+
+      Press Execute, then switch FFT window between
+
+      rectangular and blackman-harris, and watch the
+
+      dynamic-range readout move.
+
+
+      Measured on a two-tone test: 40 bins from a
+
+      full-scale carrier, rectangular leaves a skirt at
+
+      -42 dBFS where blackman-harris leaves -120.
+
+
+      Levels are dBFS, not dBm. Detail in the README.'
     copyright: ''
     description: Spectrum, waterfall and a live dynamic-range readout
     gen_cmake: 'On'
@@ -66,62 +60,117 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 8
     - 180
+    - 580
+    rotation: 0
+    state: enabled
+- name: note_rate
+  id: note
+  parameters:
+    note: 'Sample rate and buffer are a trade, not a setting.
+
+
+      Dynamic range is BETTER at a lower rate: the same 4096-point FFT over a
+
+      narrower span puts less noise in each bin. 5 MS/s is the default for that
+
+      reason, not to be gentle on the link.
+
+
+      Push the chooser to 61.44 MS/s and the span gets 12x wider, every bin gets
+
+      about 11 dB noisier, and the stream needs 245 MB/s - which no Ethernet link
+
+      carries, so samples will be dropped. Raise `buf` to 1048576 or more first: a
+
+      bigger libiio buffer was measured to be worth about 3x the throughput over a
+
+      network. See docs/modulation-and-throughput.md.
+
+
+      `buf` is fixed when the flowgraph starts, so changing it needs a re-run.'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 8
+    - 690
+    rotation: 0
+    state: enabled
+- name: note_gain
+  id: note
+  parameters:
+    note: 'The gain slider goes to 71, and above 4 GHz that is a lie.
+
+
+      The AD9361''s gain table depends on the band: full scale is 71 dB at 2.4 GHz
+
+      but 62 dB above 4 GHz. gr-iio only LOGS a refusal from the driver, so a value
+
+      past the end of the table leaves the gain wherever it was and nothing on
+
+      screen says so. If a level looks stuck, check the gain actually took with
+
+      `./devkit status`.
+
+
+      RX2 is off in this example. Turning it on doubles the data rate for a channel
+
+      you are not looking at.
+
+
+      FFT size is not a live control and no GUI could make it one: it is the width
+
+      of a vector port, and GNU Radio fixes port widths when the flowgraph is
+
+      built. Edit `nfft` and re-run.'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate:
+    - 8
+    - 790
     rotation: 0
     state: enabled
 - name: uri
   id: variable
   parameters:
     value: '''ip:fishball.local'''
-    comment: 'Found by name. `python3 tools/board_addr.py` prints an address if
-
-      mDNS is not working on your network; put ''ip:<address>'' here.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 12
+    - 8
+    - 360
     rotation: 0
     state: enabled
 - name: nfft
   id: variable
   parameters:
     value: '4096'
-    comment: 'FFT size. NOT a live control, and no GUI could make it one: it is
-
-      the width of a vector port, and GNU Radio fixes port widths when
-
-      the flowgraph is built. Edit it here and re-run.
-
-      4096 bins over 5 MS/s is 1.2 kHz per bin.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 256
-    - 12
+    - 180
+    - 360
     rotation: 0
     state: enabled
 - name: buf
   id: variable
   parameters:
     value: '262144'
-    comment: 'libiio buffer, in samples. 262144 is 1 MB - about 52 ms at the
-
-      default rate, which keeps the controls feeling immediate. Raise it
-
-      to 1048576+ before selecting a high sample rate; see the note.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 352
-    - 12
+    - 8
+    - 470
     rotation: 0
     state: enabled
 - name: center_hz
@@ -133,24 +182,21 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 464
-    - 12
+    - 180
+    - 470
     rotation: 0
     state: enabled
 - name: lo_off_hz
   id: variable
   parameters:
     value: lo_frac * samp_rate
-    comment: 'The LO offset in Hz, derived from the fraction so that it can
-
-      never fall outside the span when the sample rate changes.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 584
-    - 12
+    - 8
+    - 580
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -161,7 +207,7 @@ blocks:
     num_opts: '5'
     options: '[2560000, 5000000, 10000000, 20000000, 61440000]'
     labels: '[''2.56 MS/s  (10 MB/s)'', ''5 MS/s  (20 MB/s)'', ''10 MS/s  (40 MB/s)'', ''20
-      MS/s  (80 MB/s)'', ''61.44 MS/s  (245 MB/s - raise buf first)'']'
+      MS/s  (80 MB/s)'', ''61.44 MS/s  (245 MB/s)'']'
     value: '5000000'
     widget: combo_box
     orient: Qt.QVBoxLayout
@@ -175,15 +221,15 @@ blocks:
     option3: '20000000'
     label3: '''20 MS/s  (80 MB/s)'''
     option4: '61440000'
-    label4: '''61.44 MS/s  (245 MB/s - raise buf first)'''
-    comment: Span. Lower is better for dynamic range - see the note.
+    label4: '''61.44 MS/s  (245 MB/s)'''
+    comment: Lower is better for dynamic range.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 100
+    - 520
+    - 640
     rotation: 0
     state: enabled
 - name: center_mhz
@@ -199,14 +245,14 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 1,0,1,2
-    comment: Where to look. The AD9361 covers 70 MHz to 6 GHz.
+    comment: 70 MHz to 6 GHz.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 352
-    - 100
+    - 840
+    - 640
     rotation: 0
     state: enabled
 - name: lo_frac
@@ -222,16 +268,14 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 2,0,1,2
-    comment: 'LO offset as a fraction of the span. 0 puts the
-
-      receiver''s own LO leak in the middle of your measurement.'
+    comment: 0 puts the LO leak on your signal.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 528
-    - 100
+    - 1090
+    - 640
     rotation: 0
     state: enabled
 - name: gain_mode
@@ -241,26 +285,25 @@ blocks:
     type: string
     num_opts: '3'
     options: '[''manual'', ''slow_attack'', ''fast_attack'']'
-    labels: '[''manual - levels mean something'', ''slow_attack - AGC, levels drift'', ''fast_attack
-      - AGC, levels drift fast'']'
+    labels: '[''manual'', ''slow_attack (AGC)'', ''fast_attack (AGC)'']'
     value: '''manual'''
     widget: combo_box
     orient: Qt.QVBoxLayout
     gui_hint: 3,0,1,2
     option0: '''manual'''
-    label0: '''manual - levels mean something'''
+    label0: '''manual'''
     option1: '''slow_attack'''
-    label1: '''slow_attack - AGC, levels drift'''
+    label1: '''slow_attack (AGC)'''
     option2: '''fast_attack'''
-    label2: '''fast_attack - AGC, levels drift fast'''
-    comment: Manual, or let the AGC move your reference level.
+    label2: '''fast_attack (AGC)'''
+    comment: An AGC moves your reference level.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 704
-    - 100
+    - 1340
+    - 640
     rotation: 0
     state: enabled
 - name: rx_gain
@@ -276,14 +319,14 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 4,0,1,2
-    comment: Ignored unless the gain mode is manual.
+    comment: Ignored unless the mode is manual.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 880
-    - 100
+    - 1620
+    - 640
     rotation: 0
     state: enabled
 - name: fft_win
@@ -293,14 +336,13 @@ blocks:
     type: string
     num_opts: '3'
     options: '[''rectangular'', ''hann'', ''blackman-harris'']'
-    labels: '[''rectangular  (sidelobes -13 dB)'', ''hann  (-31 dB)'', ''blackman-harris  (-92
-      dB)'']'
+    labels: '[''rectangular  (-13 dB)'', ''hann  (-31 dB)'', ''blackman-harris  (-92 dB)'']'
     value: '''blackman-harris'''
     widget: combo_box
     orient: Qt.QVBoxLayout
     gui_hint: 5,0,1,2
     option0: '''rectangular'''
-    label0: '''rectangular  (sidelobes -13 dB)'''
+    label0: '''rectangular  (-13 dB)'''
     option1: '''hann'''
     label1: '''hann  (-31 dB)'''
     option2: '''blackman-harris'''
@@ -311,8 +353,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 220
+    - 520
+    - 960
     rotation: 0
     state: enabled
 - name: avg
@@ -328,14 +370,14 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 6,0,1,2
-    comment: Frames in the power-domain average. 1 disables it.
+    comment: Frames averaged, in the POWER domain.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 352
-    - 220
+    - 840
+    - 960
     rotation: 0
     state: enabled
 - name: floor_pct
@@ -351,14 +393,14 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 7,0,1,2
-    comment: Which percentile of the trace counts as noise.
+    comment: What counts as noise. It is a choice.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 528
-    - 220
+    - 1090
+    - 960
     rotation: 0
     state: enabled
 - name: hold
@@ -376,8 +418,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 704
-    - 220
+    - 1340
+    - 960
     rotation: 0
     state: enabled
 - name: frames
@@ -393,69 +435,14 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 8,1,1,1
-    comment: 'Display frames per second. Frames in between are dropped
-
-      on purpose - see the keep-one-in-n block.'
+    comment: FFTs per second. The rest are dropped.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 880
-    - 220
-    rotation: 0
-    state: enabled
-- name: note_rate
-  id: note
-  parameters:
-    note: 'Sample rate and buffer size are a trade, not a setting.
-
-
-      Dynamic range is BETTER at a lower rate: the same 4096-point FFT over a
-
-      narrower span puts less noise in each bin. 5 MS/s is the default for that
-
-      reason, not to be gentle on the link.
-
-
-      Push the chooser to 61.44 MS/s and two things happen. The span gets 12x
-
-      wider and every bin gets 11 dB noisier - and the stream needs 245 MB/s,
-
-      which no Ethernet link carries. Samples will be dropped. Raise `buf` to
-
-      1048576 or more first: a bigger libiio buffer was measured to be worth about
-
-      3x the throughput over a network. See docs/modulation-and-throughput.md.
-
-
-      `buf` is fixed when the flowgraph starts, so changing it needs a re-run.'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate:
-    - 176
-    - 340
-    rotation: 0
-    state: enabled
-- name: note_gain
-  id: note
-  parameters:
-    note: "The gain slider goes to 71, and above 4 GHz that is a lie.\n\nThe AD9361's gain\
-      \ table depends on the band: full scale is 71 dB at 2.4 GHz\nbut 62 dB above 4 GHz.\
-      \ gr-iio only LOGS a refusal from the driver, so a value\npast the end of the table\
-      \ leaves the gain wherever it was and nothing on\nscreen says so. If a level looks stuck,\
-      \ check the gain actually took:\n\n    # run from: the repo root\n    ./devkit status\n\
-      \nRX2 is off in this example. Turn it on and you double the data rate for a\nchannel\
-      \ you are not looking at."
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate:
-    - 176
-    - 420
+    - 1620
+    - 960
     rotation: 0
     state: enabled
 - name: rx
@@ -482,22 +469,16 @@ blocks:
     fstop: '0'
     bandwidth: int(samp_rate)
     len_tag_key: packet_len
-    comment: 'RX1 only. The LO sits lo_off_hz BELOW the frequency you
+    comment: 'RX1 only. LO sits below what you asked
 
-      asked for; the rotator downstream shifts it back, which
-
-      leaves the LO leak off to one side instead of on top of
-
-      your signal. Quadrature and both DC loops on: they are
-
-      what keeps the image and the leak from growing.'
+      for; the rotator shifts it back.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 400
-    - 400
+    - 520
+    - 8
     rotation: 0
     state: enabled
 - name: shift_back
@@ -505,18 +486,16 @@ blocks:
   parameters:
     phase_inc: -2 * math.pi * lo_frac
     tag_inc_update: 'False'
-    comment: 'Undo the LO offset digitally, so the x-axis reads true
+    comment: 'Undo the LO offset, so the axis reads
 
-      frequency. phase_inc is just -2*pi*lo_frac: the offset in
-
-      cycles per sample IS the fraction of the span.'
+      true frequency.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 672
-    - 424
+    - 840
+    - 48
     rotation: 0
     state: enabled
 - name: to_frames
@@ -525,14 +504,14 @@ blocks:
     type: complex
     num_items: nfft
     vlen: '1'
-    comment: One FFT frame per item from here on.
+    comment: One FFT frame per item from here.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 872
-    - 424
+    - 1090
+    - 48
     rotation: 0
     state: enabled
 - name: drop_frames
@@ -541,24 +520,14 @@ blocks:
     type: complex
     n: max(1, int(samp_rate / (nfft * frames)))
     vlen: nfft
-    comment: 'Keep a dozen frames a second and DROP the rest.
-
-      Deliberate: a Python FFT cannot keep up with 1200
-
-      frames/s, and a block that cannot keep up applies
-
-      backpressure all the way to the radio, which turns into
-
-      dropped buffers you did not ask for. Dropping on purpose
-
-      is cheaper and visible.'
+    comment: Drop frames ON PURPOSE - see the README.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1048
-    - 424
+    - 1340
+    - 48
     rotation: 0
     state: enabled
 - name: dr
@@ -569,11 +538,7 @@ blocks:
     avg: avg
     hold: hold
     floor_pct: floor_pct
-    comment: 'Window, FFT, power averaging, max hold and the
-
-      dynamic-range metric. examples/lib/spectrum_engine.py -
-
-      edit it there and re-run examples/mkgrc.py.'
+    comment: examples/lib/spectrum_engine.py
     _source_code: "\"\"\"Spectrum, max-hold, and the dynamic range you are actually getting.\n\
       \nThis block exists because GNU Radio's stock QT frequency sink takes its FFT\nwindow\
       \ as a constructor argument and offers no callback to change it. You\ncannot switch\
@@ -678,8 +643,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1240
-    - 396
+    - 1610
+    - 8
     rotation: 0
     state: enabled
     _io_cache: '(''Spectrum + dynamic range'', ''blk'', [(''nfft'', ''4096''), (''window'',
@@ -731,14 +696,14 @@ blocks:
     color2: '''red'''
     alpha2: '0.6'
     gui_hint: 0,2,6,10
-    comment: 'Two traces from one engine: the average and the max hold.'
+    comment: Average and max hold, one engine.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1512
-    - 300
+    - 520
+    - 330
     rotation: 0
     state: enabled
 - name: waterfall
@@ -760,18 +725,16 @@ blocks:
     legend: 'True'
     axislabels: 'True'
     gui_hint: 6,2,4,10
-    comment: 'On the shifted stream, so the axis reads true frequency.
+    comment: 'Its own window is fixed; it is here for
 
-      Its own window is fixed; it is here for the time axis,
-
-      not for the levels.'
+      the time axis, not the levels.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 872
-    - 552
+    - 860
+    - 330
     rotation: 0
     state: enabled
 - name: range_num
@@ -791,14 +754,14 @@ blocks:
     color1: '''black'''
     factor1: '1'
     gui_hint: 9,0,1,2
-    comment: Peak minus floor, on the averaged trace.
+    comment: Peak minus floor, on the average trace.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1512
-    - 452
+    - 1200
+    - 330
     rotation: 0
     state: enabled
 - name: level_num
@@ -826,16 +789,16 @@ blocks:
     color3: '''black'''
     factor3: '1'
     gui_hint: 10,0,2,2
-    comment: 'The two numbers the dynamic range is the difference of,
+    comment: 'The two numbers the range is made of,
 
-      plus what the chosen window is capable of.'
+      plus what the window allows.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1512
-    - 580
+    - 1500
+    - 330
     rotation: 0
     state: enabled
 connections:

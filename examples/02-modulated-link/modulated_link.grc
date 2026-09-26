@@ -4,42 +4,24 @@ options:
     catch_exceptions: 'True'
     category: '[GRC Hier Blocks]'
     cmake_opt: ''
-    comment: "A modulated link you can watch - Fishball7020\n\nTHIS FLOWGRAPH TRANSMITS. Read\
-      \ this part before you run it.\n\nThe board reaches roughly +19 dBm at an antenna port,\
-      \ through a power\namplifier. What leaves that port is your responsibility and nobody\
-      \ else's:\ntransmitting without a licence is illegal in most of the spectrum, and this\n\
-      radio tunes 70 MHz to 6 GHz, which is nearly all of it. The default centre is\n2437\
-      \ MHz, inside the 2.4 GHz ISM band, because that is the least bad default -\nnot because\
-      \ it is automatically permitted where you are. Check your own\nregulations, and prefer\
-      \ a cable and an attenuator to an antenna.\n\n  * `arm` starts UNTICKED and nothing\
-      \ is transmitted until you tick it.\n  * `TX1 attenuation` starts at 89.75 dB, the most\
-      \ the AD9361 offers.\n    HIGHER IS QUIETER. The safe end of that slider is the right-hand\
-      \ end.\n  * The attenuation shown beside `arm` is not an echo of the slider. It is\n\
-      \    read back out of the chip by an IIO Attribute Source, four times a\n    second.\
-      \ If the driver refuses a write - the thermal limit of patch 0018,\n    the transmit\
-      \ latch of patch 0016 - the slider will move and that number\n    will not. Believe\
-      \ the number.\n  * A LOOPBACK WITHOUT AN ATTENUATOR DESTROYS THE RECEIVER. The RX input\
-      \ is\n    rated about +2.5 dBm (AD9361 Rev. G, Table 11) and this board transmits\n\
-      \    about +19. Fit at least 20 dB of pad. See docs/rf-safety notes and\n    tools/tx-guard.sh.\n\
-      \nWHAT IT DOES. Random bytes become QPSK (or 16-/64-QAM), get shaped by a root\nraised\
-      \ cosine, transmitted, received, matched-filtered, timing-recovered,\ncarrier-recovered,\
-      \ and measured. The constellation, the eye and a live EVM\nfigure all come from the\
-      \ same recovered symbols.\n\nTWO EVM NUMBERS, and the gap between them is the interesting\
-      \ one. The first is\nthe error as it arrives. The second is the error after dividing\
-      \ out a single\ncomplex gain - one fixed amplitude and one fixed rotation, fitted across\
-      \ the\nblock, which is what a real vector analyser does before quoting a figure. The\n\
-      difference is the share of your error that is a static rotation you could have\ncalibrated\
-      \ away rather than noise you could not. Mistune the carrier loop and\nwatch the two\
-      \ separate.\n\nTHE CAVEAT THAT MATTERS. This board is listening to itself, so the\n\
-      transmitter and the receiver share one reference clock. There is no frequency\noffset\
-      \ to track and no independent phase noise, and the EVM is therefore\nbetter than the\
-      \ same modulation would achieve between two radios. It is a real\nmeasurement of a link\
-      \ that is easier than any real link.\ndocs/modulation-gallery.md measured this path\
-      \ with a separate radio and is the\nhonest comparison.\n\nOFFSET TUNING, AT BOTH ENDS.\
-      \ The transmitter's own carrier leak sits at its\nLO, and the receiver's at its own.\
-      \ Both offsets default to a fraction of the\nspan so that neither leak lands on the\
-      \ signal. Set them both to 0 and watch\ntwo spikes appear in the middle of your own\
-      \ transmission."
+    comment: 'A modulated link you can watch - IT TRANSMITS
+
+
+      +19 dBm through a power amplifier, 70 MHz-6 GHz.
+
+      Transmitting unlicensed is illegal in most of it.
+
+
+      arm starts OFF. Attenuation starts at 89.75 dB,
+
+      the most there is - HIGHER IS QUIETER. The number
+
+      beside arm is read from the CHIP, not the slider.
+
+
+      A loopback with no pad destroys the receiver: RX
+
+      is rated +2.5 dBm. Fit 20 dB. Read the README.'
     copyright: ''
     description: QPSK/QAM over the air, with constellation, eye and live EVM
     gen_cmake: 'On'
@@ -78,8 +60,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 8
-    - 180
+    - 190
+    - 830
     rotation: 0
     state: enabled
 - name: qam
@@ -105,142 +87,94 @@ blocks:
       \ 4, 16, 64 ...')\n    lv = 2 * np.arange(m) - (m - 1)                  # -3 -1 1 3\
       \ for m = 4\n    pts = (lv[:, None] + 1j * lv[None, :]).ravel()\n    pts = pts / np.sqrt((np.abs(pts)\
       \ ** 2).mean())\n    return [complex(p) for p in pts]\n"
-    comment: 'Square QAM points. Feeds BOTH the constellation the modulator
+    comment: 'One definition of the constellation, used by
 
-      is built from and the reference the EVM meter measures
-
-      against, so the two cannot drift apart.'
+      BOTH the modulator and the EVM meter.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 8
-    - 260
+    - 180
+    - 860
     rotation: 0
     state: enabled
 - name: uri
   id: variable
   parameters:
     value: '''ip:fishball.local'''
-    comment: '`python3 tools/board_addr.py` prints an address if mDNS is not
-
-      working on your network.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 12
+    - 8
+    - 390
     rotation: 0
     state: enabled
 - name: samp_rate
   id: variable
   parameters:
     value: '2000000'
-    comment: '2 MS/s each way, so 500 ksym/s at 4 samples per symbol. Modest on
-
-      purpose: 8 MB/s in each direction, and with the buffer below it
-
-      gives the transmitter 524 ms of slack against a link stall -
-
-      twice what patch 0015''s mute watchdog needs. Raise it once you
-
-      have watched the thing work, and read the buffer note first:
-
-      transmitting is latency-critical in a way receiving is not.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 256
-    - 12
+    - 190
+    - 390
     rotation: 0
     state: enabled
 - name: sps
   id: variable
   parameters:
     value: '4'
-    comment: 'Samples per symbol, so 1 Msym/s at the default rate. Fixed when
-
-      the modulator is built.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 336
-    - 12
+    - 8
+    - 500
     rotation: 0
     state: enabled
 - name: order
   id: variable
   parameters:
     value: '4'
-    comment: '4 = QPSK, and QPSK is what this receiver actually recovers.
-
-      16 and 64 will transmit correctly and will NOT resolve at the
-
-      receiver - which is worth seeing once, and is explained in the
-
-      note. A re-run parameter either way: the modulator takes its
-
-      constellation object at construction, and the number of bits
-
-      packed per symbol is fixed with it.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 416
-    - 12
+    - 190
+    - 500
     rotation: 0
     state: enabled
 - name: tx_alpha
   id: variable
   parameters:
     value: '0.35'
-    comment: 'The TRANSMIT root-raised-cosine roll-off. Baked into the
-
-      modulator''s taps, so changing it needs a re-run. The receive
-
-      side has its own, live, control - see the note.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 496
-    - 12
+    - 8
+    - 610
     rotation: 0
     state: enabled
 - name: buf
   id: variable
   parameters:
     value: '1048576'
-    comment: 'libiio buffer, in samples, both directions. At 2 MS/s this is
-
-      524 ms of samples, and the transmit buffer''s DURATION is how long
-
-      a link stall the DAC can ride out. Patch 0015 mutes the
-
-      transmitter after 250 ms of starvation, so this is twice the
-
-      margin that needs. Disarming is still immediate - the attenuator
-
-      is analogue and unbuffered, so it does not wait for the buffer to
-
-      drain. See the note.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 576
-    - 12
+    - 190
+    - 610
     rotation: 0
     state: enabled
 - name: center_hz
@@ -252,24 +186,21 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 664
-    - 12
+    - 8
+    - 720
     rotation: 0
     state: enabled
 - name: cnst
   id: variable
   parameters:
     value: qam.points(order)
-    comment: 'Just the points; the Constellation Object block turns them into
-
-      the object the modulator needs.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 744
-    - 12
+    - 190
+    - 720
     rotation: 0
     state: enabled
 - name: cnst_obj
@@ -283,18 +214,16 @@ blocks:
     normalization: digital.constellation.POWER_NORMALIZATION
     precision: '8'
     soft_dec_lut: None
-    comment: 'Built from qam.points(order), the same function the EVM
+    comment: 'From qam.points(order) - the same function
 
-      meter uses. Power normalisation makes the transmit level
-
-      independent of the order.'
+      the EVM meter measures against.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 560
+    - 8
+    - 830
     rotation: 0
     state: enabled
 - name: arm
@@ -306,18 +235,16 @@ blocks:
     'true': 'True'
     'false': 'False'
     gui_hint: 0,0,1,1
-    comment: 'Nothing is transmitted until this is ticked. It gates the
+    comment: 'Gates the samples AND forces maximum
 
-      samples AND forces maximum attenuation - either alone
-
-      would do; both is cheap.'
+      attenuation. Either alone would do.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 100
+    - 520
+    - 1280
     rotation: 0
     state: enabled
 - name: tx_atten
@@ -333,16 +260,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 1,0,1,2
-    comment: 'Attenuation, so HIGHER IS QUIETER. 89.75 dB is the most
+    comment: 'HIGHER IS QUIETER. 89.75 dB is the most
 
-      the AD9361 offers and is where this starts.'
+      the AD9361 offers.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 256
-    - 100
+    - 780
+    - 1280
     rotation: 0
     state: enabled
 - name: tx_scale
@@ -358,16 +285,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 2,0,1,2
-    comment: 'Digital amplitude before the converter. 0.20 keeps the
+    comment: '0.20 keeps the worst peak near -6 dBFS.
 
-      worst-case peak near -6 dBFS; see the note.'
+      A root raised cosine overshoots.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 416
-    - 100
+    - 1040
+    - 1280
     rotation: 0
     state: enabled
 - name: center_mhz
@@ -383,16 +310,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 3,0,1,2
-    comment: '2437 MHz is in the 2.4 GHz ISM band. That is a least-bad
+    comment: '2437 MHz is ISM. A least-bad default,
 
-      default, not a permission.'
+      not a permission.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 576
-    - 100
+    - 1300
+    - 1280
     rotation: 0
     state: enabled
 - name: rx_gain
@@ -408,16 +335,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 4,0,1,2
-    comment: 'Manual only. An AGC would hide the thing you are
+    comment: 'Manual only. An AGC would move the
 
-      measuring by moving the reference level under it.'
+      reference level under your measurement.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 736
-    - 100
+    - 1560
+    - 1280
     rotation: 0
     state: enabled
 - name: rrc_alpha
@@ -433,18 +360,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 5,0,1,2
-    comment: 'The RECEIVE matched filter''s roll-off, and it IS live.
+    comment: 'Live. Leave it at tx_alpha to stay
 
-      Leave it at tx_alpha to stay matched; move it to watch
-
-      what a mismatched matched filter costs.'
+      matched; move it to see what that costs.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 200
+    - 520
+    - 1490
     rotation: 0
     state: enabled
 - name: sync_bw
@@ -460,16 +385,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 6,0,1,2
-    comment: 'Timing loop bandwidth. Too low and it never acquires;
+    comment: 'Too low never acquires; too high tracks
 
-      too high and it tracks noise into the constellation.'
+      noise into the constellation.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 336
-    - 200
+    - 780
+    - 1490
     rotation: 0
     state: enabled
 - name: costas_bw
@@ -485,16 +410,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 7,0,1,2
-    comment: 'Carrier loop bandwidth. This is the one that moves the
+    comment: 'The one that moves the two EVM figures
 
-      two EVM figures apart.'
+      apart.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 496
-    - 200
+    - 1040
+    - 1490
     rotation: 0
     state: enabled
 - name: tx_off_frac
@@ -510,16 +435,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 8,0,1,2
-    comment: 'Pushes the TRANSMITTER''s carrier leak off the signal, by
+    comment: 'Pushes the TRANSMITTER''s carrier leak off
 
-      shifting baseband up and the LO down by the same amount.'
+      the signal. Set both offsets to 0 to see.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 656
-    - 200
+    - 1300
+    - 1490
     rotation: 0
     state: enabled
 - name: rx_off_frac
@@ -535,16 +460,14 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 9,0,1,2
-    comment: 'Same trick at the RECEIVER. Set both to 0 and two leaks
-
-      land on top of your own transmission.'
+    comment: Same trick at the RECEIVER.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 816
-    - 200
+    - 1560
+    - 1490
     rotation: 0
     state: enabled
 - name: note_level
@@ -566,8 +489,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 300
+    - 8
+    - 1070
     rotation: 0
     state: enabled
 - name: note_buffer
@@ -604,8 +527,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 380
+    - 8
+    - 1170
     rotation: 0
     state: enabled
 - name: note_qam
@@ -639,8 +562,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 460
+    - 8
+    - 1270
     rotation: 0
     state: enabled
 - name: note_rerun
@@ -677,8 +600,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 540
+    - 8
+    - 1370
     rotation: 0
     state: enabled
 - name: bits
@@ -689,16 +612,16 @@ blocks:
     max: '255'
     num_samps: '100000'
     repeat: 'True'
-    comment: 'Random bytes. Nothing here is a real protocol - the point
+    comment: 'Random bytes. The point is the modulation,
 
-      is the modulation, not the payload.'
+      not the payload.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 660
+    - 520
+    - 8
     rotation: 0
     state: enabled
 - name: mod
@@ -711,18 +634,16 @@ blocks:
     verbose: 'False'
     log: 'False'
     truncate: 'False'
-    comment: 'Bits to shaped symbols. differential=False: the carrier
+    comment: 'Bits to shaped symbols. Nothing here
 
-      loop''s 90-degree ambiguity would scramble the bits, but
-
-      nothing here decodes bits, and EVM does not care.'
+      decodes, so no differential coding.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 360
-    - 644
+    - 820
+    - 8
     rotation: 0
     state: enabled
 - name: tx_shift
@@ -730,18 +651,16 @@ blocks:
   parameters:
     phase_inc: 2 * math.pi * tx_off_frac
     tag_inc_update: 'False'
-    comment: 'Move baseband UP by the TX offset, so that with the LO
+    comment: 'Baseband UP by the TX offset; the LO goes
 
-      moved DOWN by the same amount the signal lands where you
-
-      asked and the carrier leak does not.'
+      DOWN by the same amount.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 608
-    - 668
+    - 1120
+    - 48
     rotation: 0
     state: enabled
 - name: tx_gate
@@ -750,18 +669,16 @@ blocks:
     type: complex
     const: tx_scale if arm else 0.0
     vlen: '1'
-    comment: 'Amplitude and the arm gate in one block. Unarmed this is
+    comment: 'Unarmed this is exactly 0.0 - nothing to
 
-      exactly 0.0, so there is no modulation to transmit even
-
-      if the attenuation were wrong.'
+      transmit even if attenuation were wrong.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 784
-    - 668
+    - 1400
+    - 48
     rotation: 0
     state: enabled
 - name: tx
@@ -784,18 +701,16 @@ blocks:
     filter: ''
     fpass: '0'
     fstop: '0'
-    comment: 'TX1 only. Attenuation is the ARMED value or 89.75 dB, and
+    comment: 'TX1 only. Attenuation re-asserted AFTER
 
-      it is re-asserted after the stream opens - see the
-
-      snippet, and patch 0005 for why that is necessary.'
+      the stream opens - see patch 0005.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 968
-    - 636
+    - 1680
+    - 8
     rotation: 0
     state: enabled
 - name: rx
@@ -822,16 +737,16 @@ blocks:
     fstop: '0'
     bandwidth: int(samp_rate)
     len_tag_key: packet_len
-    comment: 'RX1 only, manual gain. The LO sits below the signal by the
+    comment: 'RX1 only. The LO sits below the signal;
 
-      RX offset; the rotator downstream brings it back.'
+      the rotator brings it back.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 820
+    - 520
+    - 400
     rotation: 0
     state: enabled
 - name: rx_shift
@@ -839,16 +754,16 @@ blocks:
   parameters:
     phase_inc: -2 * math.pi * rx_off_frac
     tag_inc_update: 'False'
-    comment: 'Undo the RX offset, so the signal sits at baseband zero
+    comment: 'Signal to baseband zero; the receiver''s
 
-      and the receiver''s own leak sits off to one side.'
+      own leak goes off to one side.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 448
-    - 844
+    - 840
+    - 440
     rotation: 0
     state: enabled
 - name: mf
@@ -862,18 +777,16 @@ blocks:
     sym_rate: samp_rate / sps
     alpha: rrc_alpha
     ntaps: 11 * sps + 1
-    comment: 'The matched filter. Its taps ARE live (set_taps), which is
+    comment: 'Matched filter. Its taps are live, which
 
-      what makes rrc_alpha a control rather than a constant.
-
-      Gain sps so the symbol amplitude survives the filter.'
+      makes rrc_alpha a control.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 624
-    - 812
+    - 1080
+    - 400
     rotation: 0
     state: enabled
 - name: sync
@@ -891,26 +804,16 @@ blocks:
     resamp_type: digital.IR_MMSE_8TAP
     nfilters: '128'
     pfb_mf_taps: '[]'
-    comment: 'Timing recovery, decision-directed (modified Mueller and
+    comment: 'Mueller and Mueller, chosen by measurement:
 
-      Mueller). Chosen by measurement, not by preference: with
-
-      Gardner''s detector this chain did not lock at all - the
-
-      recovered magnitudes had a spread of 0.30 against 0.002
-
-      for this one, and EVM sat near 45% on a noiseless signal.
-
-      The cost is that it IS decision-directed, which is why
-
-      this receiver is a QPSK receiver - see the note.'
+      Gardner did not lock at all here.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 872
-    - 796
+    - 1340
+    - 400
     rotation: 0
     state: enabled
 - name: costas
@@ -919,16 +822,16 @@ blocks:
     w: costas_bw
     order: '4'
     use_snr: 'False'
-    comment: 'Carrier recovery. Order 4 for every square QAM: it locks
+    comment: 'Order 4 locks to the 90-degree symmetry
 
-      to the 90-degree symmetry the constellation already has.'
+      QPSK already has.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1128
-    - 812
+    - 1660
+    - 440
     rotation: 0
     state: enabled
 - name: evm
@@ -936,9 +839,9 @@ blocks:
   parameters:
     order: order
     chunk: '2048'
-    comment: 'examples/lib/evm_meter.py. Port 0 is the symbols rescaled
+    comment: 'examples/lib/evm_meter.py - port 0 is
 
-      to the reference, so the picture and the numbers agree.'
+      rescaled, so picture and numbers agree.'
     _source_code: "\"\"\"Error vector magnitude, the way a real analyser reports it.\n\nFeed\
       \ this the recovered symbols - after the matched filter, the symbol\nsynchroniser and\
       \ the carrier loop - and it tells you how far they land from\nwhere they should. That\
@@ -1070,8 +973,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1304
-    - 788
+    - 1920
+    - 400
     rotation: 0
     state: enabled
     _io_cache: '(''EVM meter'', ''blk'', [(''order'', ''4''), (''chunk'', ''2048'')], [(''0'',
@@ -1103,20 +1006,16 @@ blocks:
     type: '1'
     update_interval_ms: '250'
     samples_per_update: '8'
-    comment: 'TX1''s hardwaregain, read out of ad9361-phy four times a
+    comment: 'Read out of the CHIP four times a second,
 
-      second. This is the attenuation the CHIP has, negated -
-
-      not the number the slider is showing. If the driver
-
-      refuses a write, only this tells you.'
+      not echoed from the slider.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 968
-    - 460
+    - 520
+    - 760
     rotation: 0
     state: enabled
 - name: spectrum
@@ -1152,18 +1051,16 @@ blocks:
     color1: '"blue"'
     alpha1: '1.0'
     gui_hint: 0,2,5,10
-    comment: 'The received spectrum, after the shift, so the axis reads
+    comment: 'True frequency. Both carrier leaks show
 
-      true frequency. Both carrier leaks are visible here, and
-
-      so is clipping if you raise the transmit scale too far.'
+      here, and so does clipping.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 448
-    - 940
+    - 520
+    - 980
     rotation: 0
     state: enabled
 - name: constellation
@@ -1194,14 +1091,16 @@ blocks:
     marker1: '0'
     alpha1: '0.4'
     gui_hint: 5,2,7,5
-    comment: The recovered symbols, at the reference's scale.
+    comment: 'The recovered symbols, at the reference''s
+
+      scale.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1528
-    - 740
+    - 900
+    - 980
     rotation: 0
     state: enabled
 - name: eye
@@ -1237,16 +1136,16 @@ blocks:
     marker1: '-1'
     alpha1: '0.3'
     gui_hint: 5,7,7,5
-    comment: 'The eye, on the matched filter''s output - before timing
+    comment: 'Before timing recovery, so an open eye
 
-      recovery, so an open eye means the SHAPING is right.'
+      means the SHAPING is right.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 872
-    - 964
+    - 1260
+    - 980
     rotation: 0
     state: enabled
 - name: atten_num
@@ -1266,14 +1165,14 @@ blocks:
     color1: '''black'''
     factor1: '1'
     gui_hint: 0,1,1,1
-    comment: Read from the chip, not from the slider.
+    comment: Read from the chip, not the slider.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1200
-    - 452
+    - 880
+    - 760
     rotation: 0
     state: enabled
 - name: evm_num
@@ -1297,14 +1196,14 @@ blocks:
     color2: '''black'''
     factor2: '1'
     gui_hint: 10,0,1,2
-    comment: The pair. Their difference is the static rotation.
+    comment: Their difference is the static rotation.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1528
-    - 900
+    - 1620
+    - 980
     rotation: 0
     state: enabled
 - name: mer_num
@@ -1324,16 +1223,14 @@ blocks:
     color1: '''black'''
     factor1: '1'
     gui_hint: 11,0,1,2
-    comment: 'The same thing in dB, because that is how link budgets
-
-      are written.'
+    comment: The same thing in dB.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1528
-    - 1030
+    - 1900
+    - 980
     rotation: 0
     state: enabled
 - name: reassert_atten
@@ -1354,8 +1251,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1200
-    - 320
+    - 8
+    - 970
     rotation: 0
     state: enabled
 connections:

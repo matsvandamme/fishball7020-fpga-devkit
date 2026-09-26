@@ -4,86 +4,24 @@ options:
     catch_exceptions: 'True'
     category: '[GRC Hier Blocks]'
     cmake_opt: ''
-    comment: 'Two coherent receivers - Fishball7020
+    comment: 'Two coherent receivers
 
 
-      This is the measurement a one-channel radio cannot make. RX1 and RX2 live in
+      RX1 and RX2 share one oscillator and one clock, so
 
-      one AD9361, behind one local oscillator and one sample clock, so the phase
+      the phase between them means something. Nothing
 
-      between them is a property of the signal and the cabling rather than of two
-
-      clocks wandering apart. Nothing else in this repository demonstrates it.
+      else in this repository shows it.
 
 
-      WHAT YOU GET. The angle of the cross-correlation between the two channels,
+      READ COHERENCE BEFORE THE ANGLE. Near 1 the angle
 
-      averaged as a COMPLEX NUMBER and only then turned into an angle. Averaging
+      is a measurement; near 0 it is noise wearing the
 
-      angles instead is a mistake that hides itself: angles wrap at +/-180 degrees,
-
-      so a true phase near 180 has samples landing at +179 and -179 which average to
-
-      roughly zero, and a signal hard against the wrap reads as no phase shift at
-
-      all. Summing complex numbers has no wrap to fall foul of.
+      same clothes. The dial''s radius IS the coherence.
 
 
-      COHERENCE IS THE NUMBER THAT SAYS WHETHER TO BELIEVE THE ANGLE. It is the
-
-      magnitude of the normalised correlation, 0 to 1. Two independent noise streams
-
-      correlate to something that random-walks toward zero, so their angle is a
-
-      random number that the display shows just as confidently as a real one. Watch
-
-      coherence first. Near 1, the angle means something. Near 0, you are reading
-
-      noise with a decimal point on it.
-
-
-      THE DIAL, bottom middle, is a constellation sink used as a polar meter: the
-
-      point''s ANGLE is the phase and its RADIUS is the coherence. A dot pinned to
-
-      the rim is a measurement. A dot wandering near the origin is noise.
-
-
-      THE TRAP THIS EXAMPLE IS BUILT TO AVOID. The receiver''s own LO leak sits at
-
-      DC in both channels, it is the same leak, and it is almost perfectly
-
-      correlated with itself. Correlate the raw channels and you measure the leak:
-
-      coherence pins to 1 and the angle is a property of the board, not of anything
-
-      in the air. So the LO is offset, and each channel is band-selected around the
-
-      signal with an IDENTICAL filter - identical, so that whatever phase the filter
-
-      adds, it adds twice and cancels out of the difference. Widen the band-select
-
-      until DC is inside it and watch a convincing, meaningless coherence appear.
-
-
-      REPEATABLE IS NOT CALIBRATED. Each path has its own fixed delay through its
-
-      own balun and its own traces, so there is an offset that has nothing to do
-
-      with the signal. `zero` latches the current reading and subtracts it, which
-
-      makes later readings relative to that moment. It does NOT turn the angle into
-
-      a direction of arrival: that needs a splitter, matched cables and a known
-
-      geometry. The offset also changes with frequency, so zeroing at 2.4 GHz does
-
-      not hold at 5 GHz. docs/measured-performance.md has the measured asymmetry
-
-      between these two channels - about 1.5 dB in receive gain, which is normal.
-
-
-      Receive only. Nothing here transmits.'
+      Repeatable is not calibrated. Receive only.'
     copyright: ''
     description: RX1/RX2 phase and coherence from one shared oscillator
     gen_cmake: 'On'
@@ -122,58 +60,47 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 8
-    - 180
+    - 190
+    - 720
     rotation: 0
     state: enabled
 - name: uri
   id: variable
   parameters:
     value: '''ip:fishball.local'''
-    comment: '`python3 tools/board_addr.py` prints an address if mDNS is not
-
-      working on your network.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 12
+    - 8
+    - 390
     rotation: 0
     state: enabled
 - name: buf
   id: variable
   parameters:
     value: '262144'
-    comment: 'libiio buffer, in samples. BOTH receivers are on, so the data rate
-
-      is twice a single channel - 8 bytes per sample pair, not 4.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 264
-    - 12
+    - 190
+    - 390
     rotation: 0
     state: enabled
 - name: chunk
   id: variable
   parameters:
     value: '4096'
-    comment: 'Samples per phase estimate. The phase block decimates by this, so
-
-      it is a port rate and fixed when the flowgraph is built.
-
-      4096 at 5 MS/s is 1220 estimates a second.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 344
-    - 12
+    - 8
+    - 500
     rotation: 0
     state: enabled
 - name: center_hz
@@ -185,8 +112,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 424
-    - 12
+    - 190
+    - 500
     rotation: 0
     state: enabled
 - name: lo_off_hz
@@ -198,28 +125,21 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 528
-    - 12
+    - 8
+    - 610
     rotation: 0
     state: enabled
 - name: sel_taps
   id: variable
   parameters:
     value: firdes.low_pass(1.0, samp_rate, sel_bw_khz * 500.0, sel_bw_khz * 200.0)
-    comment: 'One set of taps, used by BOTH band-select filters. Sharing the
-
-      expression is the point: two filters with different taps would add
-
-      different phases and the difference between the channels would be
-
-      partly the filters. sel_bw_khz*500 is half the width in Hz.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 648
-    - 12
+    - 190
+    - 610
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -229,26 +149,26 @@ blocks:
     type: real
     num_opts: '3'
     options: '[2560000, 5000000, 10000000]'
-    labels: '[''2.56 MS/s  (20 MB/s for two channels)'', ''5 MS/s  (40 MB/s)'', ''10 MS/s  (80
-      MB/s)'']'
+    labels: '[''2.56 MS/s  (20 MB/s, 2ch)'', ''5 MS/s  (40 MB/s, 2ch)'', ''10 MS/s  (80 MB/s,
+      2ch)'']'
     value: '5000000'
     widget: combo_box
     orient: Qt.QVBoxLayout
     gui_hint: 0,0,1,2
     option0: '2560000'
-    label0: '''2.56 MS/s  (20 MB/s for two channels)'''
+    label0: '''2.56 MS/s  (20 MB/s, 2ch)'''
     option1: '5000000'
-    label1: '''5 MS/s  (40 MB/s)'''
+    label1: '''5 MS/s  (40 MB/s, 2ch)'''
     option2: '10000000'
-    label2: '''10 MS/s  (80 MB/s)'''
+    label2: '''10 MS/s  (80 MB/s, 2ch)'''
     comment: Two channels, so twice the bytes of one.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 100
+    - 520
+    - 800
     rotation: 0
     state: enabled
 - name: center_mhz
@@ -270,8 +190,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 352
-    - 100
+    - 780
+    - 800
     rotation: 0
     state: enabled
 - name: lo_frac
@@ -287,18 +207,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 2,0,1,2
-    comment: 'Offset tuning, as a fraction of the span. This is what
+    comment: 'Keeps the LO leak out of the correlation.
 
-      keeps the LO leak out of the correlation. Set it to 0 and
-
-      the leak lands inside the band-select.'
+      Set it to 0 to see what that costs.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 528
-    - 100
+    - 1040
+    - 800
     rotation: 0
     state: enabled
 - name: sel_bw_khz
@@ -314,16 +232,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 3,0,1,2
-    comment: 'Band-select width in kHz. Widen it past the LO offset and
+    comment: 'Widen it past the LO offset and the leak
 
-      the leak gets in - which is the lesson, once.'
+      gets in. Worth seeing once.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 704
-    - 100
+    - 1300
+    - 800
     rotation: 0
     state: enabled
 - name: rx1_gain
@@ -339,16 +257,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 4,0,1,2
-    comment: 'Separate per channel on purpose: these two receivers are
+    comment: 'Separate on purpose: the two receivers
 
-      not identical. About 1.5 dB apart on the measured board.'
+      differ by about 1.5 dB.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 200
+    - 520
+    - 1030
     rotation: 0
     state: enabled
 - name: rx2_gain
@@ -364,16 +282,16 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 5,0,1,2
-    comment: 'Unequal gains change the amplitudes but NOT the phase -
+    comment: 'Unequal gains change amplitude but NOT
 
-      worth proving to yourself with the dial.'
+      phase. Prove it on the dial.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 352
-    - 200
+    - 780
+    - 1030
     rotation: 0
     state: enabled
 - name: avg
@@ -389,14 +307,14 @@ blocks:
     orient: Qt.Horizontal
     min_len: '200'
     gui_hint: 6,0,1,2
-    comment: Frames in the complex-domain average. Steadier, slower.
+    comment: Complex-domain average. Steadier, slower.
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 528
-    - 200
+    - 1040
+    - 1030
     rotation: 0
     state: enabled
 - name: zero
@@ -408,18 +326,16 @@ blocks:
     'true': 'True'
     'false': 'False'
     gui_hint: 7,0,1,2
-    comment: 'Latches the CURRENT phase as zero, on the rising edge
+    comment: 'Latches on the RISING EDGE only, or it
 
-      only. Holding it ticked would re-zero forever and the
-
-      reading would sit at zero whatever the antennas did.'
+      would re-zero forever.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 704
-    - 200
+    - 1300
+    - 1030
     rotation: 0
     state: enabled
 - name: note_try
@@ -443,8 +359,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 300
+    - 8
+    - 720
     rotation: 0
     state: enabled
 - name: rx
@@ -471,18 +387,16 @@ blocks:
     fstop: '0'
     bandwidth: int(samp_rate)
     len_tag_key: packet_len
-    comment: 'BOTH receivers, one LO, one sample clock. That shared
+    comment: 'BOTH receivers, one LO, one clock. That
 
-      oscillator is the whole reason this example exists.
-
-      The LO sits lo_off_hz below the frequency you asked for.'
+      shared oscillator is the whole point.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 176
-    - 460
+    - 520
+    - 8
     rotation: 0
     state: enabled
 - name: sel1
@@ -494,18 +408,16 @@ blocks:
     samp_rate: samp_rate
     samp_delay: '0'
     nthreads: '1'
-    comment: 'Band-select RX1 around the signal, which also throws away
+    comment: 'Band-select RX1, which throws DC and the
 
-      DC and the LO leak with it. center_freq brings the offset
-
-      signal down to baseband.'
+      LO leak away with it.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 528
-    - 420
+    - 860
+    - 8
     rotation: 0
     state: enabled
 - name: sel2
@@ -517,20 +429,16 @@ blocks:
     samp_rate: samp_rate
     samp_delay: '0'
     nthreads: '1'
-    comment: 'IDENTICAL to sel1 - same taps, same centre. Any phase the
+    comment: 'IDENTICAL to sel1, so whatever phase it
 
-      filter adds, it adds to both, so it cancels out of the
-
-      difference. Two different filters here would make the
-
-      measurement partly a measurement of the filters.'
+      adds cancels out of the difference.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 528
-    - 540
+    - 860
+    - 210
     rotation: 0
     state: enabled
 - name: phase
@@ -539,11 +447,9 @@ blocks:
     chunk: chunk
     avg: avg
     zero: zero
-    comment: 'examples/lib/phase_meter.py. Averages the correlation as a
+    comment: 'Averages the correlation as a COMPLEX
 
-      complex number, then takes the angle - never the other way
-
-      round. Decimates by chunk.'
+      number, then takes the angle.'
     _source_code: "\"\"\"The phase between two receivers that share one oscillator.\n\nThis\
       \ is the measurement the Fishball7020 can make and a single-channel radio\ncannot. RX1\
       \ and RX2 sit in one AD9361 behind one LO and one sample clock, so\nthe phase difference\
@@ -611,8 +517,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 816
-    - 468
+    - 1180
+    - 8
     rotation: 0
     state: enabled
     _io_cache: '(''RX1/RX2 phase + coherence'', ''blk'', [(''chunk'', ''4096''), (''avg'',
@@ -664,20 +570,16 @@ blocks:
     color2: '"red"'
     alpha2: '1.0'
     gui_hint: 0,2,5,10
-    comment: 'Both receivers, UNfiltered, so you can see where the LO
+    comment: 'UNfiltered, centred on the LO. The spike
 
-      leak is and where the band-select sits relative to it.
-
-      The axis is centred on the LO, not on center_mhz - the
-
-      spike in the middle is the receiver looking at itself.'
+      in the middle is the receiver itself.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 528
-    - 680
+    - 520
+    - 470
     rotation: 0
     state: enabled
 - name: dial
@@ -708,20 +610,16 @@ blocks:
     marker1: '0'
     alpha1: '0.8'
     gui_hint: 5,2,6,5
-    comment: 'A constellation sink used as a polar meter. Angle is the
+    comment: 'A polar meter: angle is phase, radius is
 
-      phase, radius is the coherence. The unit circle is the
-
-      edge of the plot, so a point on the rim is a measurement
-
-      you can trust and one near the middle is not.'
+      coherence. The rim is coherence 1.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1088
-    - 396
+    - 900
+    - 470
     rotation: 0
     state: enabled
 - name: phase_time
@@ -757,16 +655,16 @@ blocks:
     marker1: '-1'
     alpha1: '1.0'
     gui_hint: 5,7,6,5
-    comment: 'Phase against time. A coherent pair drifts slowly or not
+    comment: 'A coherent pair holds still here. Two
 
-      at all; two independent radios would not hold still here.'
+      independent radios would not.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1088
-    - 556
+    - 1260
+    - 470
     rotation: 0
     state: enabled
 - name: phase_num
@@ -790,16 +688,16 @@ blocks:
     color2: '''black'''
     factor2: '1'
     gui_hint: 8,0,1,2
-    comment: 'Both the zeroed reading and the raw one, so zeroing can
+    comment: 'Zeroed AND raw, so zeroing can never hide
 
-      never hide what the board is actually doing.'
+      what the board is doing.'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1088
-    - 700
+    - 1620
+    - 470
     rotation: 0
     state: enabled
 - name: coh_num
@@ -825,8 +723,8 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate:
-    - 1088
-    - 828
+    - 1900
+    - 470
     rotation: 0
     state: enabled
 connections:

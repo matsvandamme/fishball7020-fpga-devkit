@@ -43,6 +43,37 @@ URI = "'ip:fishball.local'"
 # --------------------------------------------------------------------------
 # the little bit of .grc structure we need
 # --------------------------------------------------------------------------
+#: GRC draws a block's `comment` on the canvas, in full, UNWRAPPED, below the
+#: block. It is not a tooltip. Long comments therefore overlap their
+#: neighbours and turn the flowgraph into a wall of text - the first version of
+#: these examples was unusable for exactly that reason, while still compiling
+#: and running perfectly, so nothing caught it but opening the editor and
+#: looking. The same is true of a chooser's option LABELS.
+#:
+#: So: two short lines at most, and the depth goes in the example's README,
+#: which is where this repository keeps depth anyway. These limits are asserted
+#: rather than documented, because the failure is invisible from the compiler.
+COMMENT_MAX_LINES = 2
+COMMENT_MAX_CHARS = 46
+OPTIONS_MAX_LINES = 11
+OPTIONS_MAX_CHARS = 50
+
+
+def _check_comment(bname, comment, max_lines=COMMENT_MAX_LINES,
+                   max_chars=COMMENT_MAX_CHARS):
+    lines = comment.split("\n")
+    if len(lines) > max_lines:
+        raise AssertionError(
+            f"{bname}: {len(lines)} comment lines, max {max_lines}. GRC draws "
+            f"every line on the canvas - put the detail in the README.")
+    for line in lines:
+        if len(line) > max_chars:
+            raise AssertionError(
+                f"{bname}: comment line is {len(line)} chars, max {max_chars}:"
+                f"\n  {line!r}\nGRC does not wrap it; it will overlap the "
+                f"block to its right.")
+
+
 def _states(coord, extra=None):
     s = {"bus_sink": False, "bus_source": False, "bus_structure": None,
          "coordinate": list(coord), "rotation": 0, "state": "enabled"}
@@ -60,6 +91,7 @@ def blk(bname, bid, coord, comment=None, states_extra=None, **params):
     """
     p = {k: str(v) for k, v in params.items()}
     if comment:
+        _check_comment(bname, comment)
         p["comment"] = comment
     return {"name": bname, "id": bid, "parameters": p,
             "states": _states(coord, states_extra)}
@@ -75,6 +107,11 @@ def chooser(bname, coord, label, dtype, opts, labels, value, gui_hint,
     """
     assert len(opts) == len(labels) <= 5, bname
     assert value in opts, f"{bname}: default {value!r} is not one of the options"
+    # Option labels are drawn on the canvas too, and overflow the same way.
+    for l in labels:
+        if len(l) > 34:
+            raise AssertionError(
+                f"{bname}: option label is {len(l)} chars, max 34: {l}")
     p = dict(label=label, type=dtype, num_opts=str(len(opts)),
              options="[" + ", ".join(opts) + "]",
              labels="[" + ", ".join(labels) + "]",
@@ -122,13 +159,14 @@ def epy_mod(bname, module, coord, comment=None):
     return blk(bname, "epy_module", coord, comment=comment, source_code=src)
 
 
-def options(fid, title, desc, comment, window="(1800,1100)"):
+def options(fid, title, desc, comment, window="(1800,1100)"):  # noqa: C901
     """The flowgraph's own options block.
 
     No `name` or `id` key here, unlike every other block: GRC loads this one
     with `options_block.import_data(name='', **data['options'])`, so a `name`
     in the mapping arrives twice and the whole file fails to load.
     """
+    _check_comment("options", comment, OPTIONS_MAX_LINES, OPTIONS_MAX_CHARS)
     return {
         "parameters": {
             "author": "Matthieu", "catch_exceptions": "True",
@@ -160,52 +198,29 @@ def write(path, opts, blocks, connections):
 # --------------------------------------------------------------------------
 # 01 - dynamic range, and how to lose it
 # --------------------------------------------------------------------------
-EX01_HEADER = """Dynamic range, and how to lose it - Fishball7020
+EX01_HEADER = """Dynamic range, and how to lose it
 
-Every control here is wired to a number, so you can break the measurement on
-purpose and watch the cost. The readout is peak minus noise floor on the trace
-you are looking at.
+Press Execute, then switch FFT window between
+rectangular and blackman-harris, and watch the
+dynamic-range readout move.
 
-THE ONE TO TRY FIRST. Find any strong carrier. Set the window to Rectangular,
-then to Blackman-Harris, and watch the dynamic-range figure. On a synthetic
-two-tone test the difference measured here was 78 dB: 40 bins away from a
-full-scale carrier, a rectangular window leaves a skirt at -42 dBFS and
-Blackman-Harris leaves -120 dBFS. Anything weaker than that skirt does not
-exist as far as your spectrum is concerned. The cost is about two bins of
-extra width - that is the whole trade.
+Measured on a two-tone test: 40 bins from a
+full-scale carrier, rectangular leaves a skirt at
+-42 dBFS where blackman-harris leaves -120.
 
-WHY THE FFT IS NOT THE STOCK QT SINK. GNU Radio's frequency sink takes its
-window when it is built and offers no way to change it while running, so you
-could never watch the thing this example is about. Doing the transform in an
-embedded block also means the dynamic-range number comes from the very trace
-on screen, so the picture and the number cannot disagree.
+Levels are dBFS, not dBm. Detail in the README."""
 
-  LO offset    drags the receiver's own LO leak out of the middle of the
-               span. Set it to 0 and the spike lands on whatever you were
-               trying to measure. It is a FRACTION of the span, so it stays
-               sensible when you change the sample rate.
-  Gain mode    manual, or let the AGC decide. Switch to slow_attack and the
-               vertical axis stops meaning anything: the receiver is now
-               changing its own reference level while you read it.
-  Averaging    a one-pole average over FFT frames, in the POWER domain.
-  Floor %      which percentile counts as 'noise'. Raise it through a busy
-               band and watch the floor climb into the signals, because a
-               percentile cannot tell noise from traffic.
-
-LEVELS ARE dBFS, not dBm - decibels relative to the converter's full scale.
-Nothing in this repository is calibrated to absolute power."""
-
-EX01_NOTE_RATE = """Sample rate and buffer size are a trade, not a setting.
+EX01_NOTE_RATE = """Sample rate and buffer are a trade, not a setting.
 
 Dynamic range is BETTER at a lower rate: the same 4096-point FFT over a
 narrower span puts less noise in each bin. 5 MS/s is the default for that
 reason, not to be gentle on the link.
 
-Push the chooser to 61.44 MS/s and two things happen. The span gets 12x
-wider and every bin gets 11 dB noisier - and the stream needs 245 MB/s,
-which no Ethernet link carries. Samples will be dropped. Raise `buf` to
-1048576 or more first: a bigger libiio buffer was measured to be worth about
-3x the throughput over a network. See docs/modulation-and-throughput.md.
+Push the chooser to 61.44 MS/s and the span gets 12x wider, every bin gets
+about 11 dB noisier, and the stream needs 245 MB/s - which no Ethernet link
+carries, so samples will be dropped. Raise `buf` to 1048576 or more first: a
+bigger libiio buffer was measured to be worth about 3x the throughput over a
+network. See docs/modulation-and-throughput.md.
 
 `buf` is fixed when the flowgraph starts, so changing it needs a re-run."""
 
@@ -214,13 +229,15 @@ EX01_NOTE_GAIN = """The gain slider goes to 71, and above 4 GHz that is a lie.
 The AD9361's gain table depends on the band: full scale is 71 dB at 2.4 GHz
 but 62 dB above 4 GHz. gr-iio only LOGS a refusal from the driver, so a value
 past the end of the table leaves the gain wherever it was and nothing on
-screen says so. If a level looks stuck, check the gain actually took:
+screen says so. If a level looks stuck, check the gain actually took with
+`./devkit status`.
 
-    # run from: the repo root
-    ./devkit status
+RX2 is off in this example. Turning it on doubles the data rate for a channel
+you are not looking at.
 
-RX2 is off in this example. Turn it on and you double the data rate for a
-channel you are not looking at."""
+FFT size is not a live control and no GUI could make it one: it is the width
+of a vector port, and GNU Radio fixes port widths when the flowgraph is
+built. Edit `nfft` and re-run."""
 
 
 def ex01():
@@ -229,100 +246,80 @@ def ex01():
                 "Spectrum, waterfall and a live dynamic-range readout",
                 EX01_HEADER)
     b = [
-        # `import`, not `import_`: the block definition file declares
-        # `id: import_`, and GRC strips trailing underscores when it registers
-        # a block (core/platform.py), so the flowgraph must use the stripped
-        # form. Get it wrong and the import silently contributes nothing,
-        # which shows up as "name 'math' is not defined" on an unrelated block.
-        blk("import_math", "import", (8, 180), imports="import math"),
-        var("uri", URI, (176, 12),
-            "Found by name. `python3 tools/board_addr.py` prints an address if\n"
-            "mDNS is not working on your network; put 'ip:<address>' here."),
-        var("nfft", 4096, (256, 12),
-            "FFT size. NOT a live control, and no GUI could make it one: it is\n"
-            "the width of a vector port, and GNU Radio fixes port widths when\n"
-            "the flowgraph is built. Edit it here and re-run.\n"
-            "4096 bins over 5 MS/s is 1.2 kHz per bin."),
-        var("buf", 262144, (352, 12),
-            "libiio buffer, in samples. 262144 is 1 MB - about 52 ms at the\n"
-            "default rate, which keeps the controls feeling immediate. Raise it\n"
-            "to 1048576+ before selecting a high sample rate; see the note."),
-        var("center_hz", "int(center_mhz * 1e6)", (464, 12)),
-        var("lo_off_hz", "lo_frac * samp_rate", (584, 12),
-            "The LO offset in Hz, derived from the fraction so that it can\n"
-            "never fall outside the span when the sample rate changes."),
+        blk("import_math", "import", (180, 580), imports="import math"),
+        blk("note_rate", "note", (8, 690), note=EX01_NOTE_RATE),
+        blk("note_gain", "note", (8, 790), note=EX01_NOTE_GAIN),
 
-        # ---- controls
-        chooser("samp_rate", (176, 100), "'Sample rate'", "real",
+        # ---- plain variables. No comments: GRC draws them on the canvas and
+        # they would overlap. The why is in the README.
+        var("uri", URI, (8, 360)),
+        var("nfft", 4096, (180, 360)),
+        var("buf", 262144, (8, 470)),
+        var("center_hz", "int(center_mhz * 1e6)", (180, 470)),
+        var("lo_off_hz", "lo_frac * samp_rate", (8, 580)),
+
+        # ---- controls, row 1
+        chooser("samp_rate", (520, 640), "'Sample rate'", "real",
                 ["2560000", "5000000", "10000000", "20000000", "61440000"],
                 ["'2.56 MS/s  (10 MB/s)'", "'5 MS/s  (20 MB/s)'",
                  "'10 MS/s  (40 MB/s)'", "'20 MS/s  (80 MB/s)'",
-                 "'61.44 MS/s  (245 MB/s - raise buf first)'"],
+                 "'61.44 MS/s  (245 MB/s)'"],
                 "5000000", "0,0,1,2",
-                comment="Span. Lower is better for dynamic range - see the note."),
-        blk("center_mhz", "variable_qtgui_range", (352, 100),
-            comment="Where to look. The AD9361 covers 70 MHz to 6 GHz.",
+                comment="Lower is better for dynamic range."),
+        blk("center_mhz", "variable_qtgui_range", (840, 640),
+            comment="70 MHz to 6 GHz.",
             label="'Centre frequency (MHz)'", rangeType="float", value="2437",
             start="70", stop="6000", step="0.5", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="1,0,1,2"),
-        blk("lo_frac", "variable_qtgui_range", (528, 100),
-            comment="LO offset as a fraction of the span. 0 puts the\n"
-                    "receiver's own LO leak in the middle of your measurement.",
+        blk("lo_frac", "variable_qtgui_range", (1090, 640),
+            comment="0 puts the LO leak on your signal.",
             label="'LO offset (fraction of span)'", rangeType="float",
             value="0.25", start="-0.4", stop="0.4", step="0.01",
             widget="counter_slider", orient="Qt.Horizontal", min_len="200",
             gui_hint="2,0,1,2"),
-        chooser("gain_mode", (704, 100), "'Gain mode (RX1)'", "string",
+        chooser("gain_mode", (1340, 640), "'Gain mode (RX1)'", "string",
                 ["'manual'", "'slow_attack'", "'fast_attack'"],
-                ["'manual - levels mean something'",
-                 "'slow_attack - AGC, levels drift'",
-                 "'fast_attack - AGC, levels drift fast'"],
+                ["'manual'", "'slow_attack (AGC)'", "'fast_attack (AGC)'"],
                 "'manual'", "3,0,1,2",
-                comment="Manual, or let the AGC move your reference level."),
-        blk("rx_gain", "variable_qtgui_range", (880, 100),
-            comment="Ignored unless the gain mode is manual.",
+                comment="An AGC moves your reference level."),
+        blk("rx_gain", "variable_qtgui_range", (1620, 640),
+            comment="Ignored unless the mode is manual.",
             label="'RX1 gain (dB)'", rangeType="float", value="55",
             start="0", stop="71", step="1", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="4,0,1,2"),
-        # NOT named `window`: GRC blacklists any id that an import has already
-        # bound, and the waterfall sink pulls in gnuradio.fft.window.
-        chooser("fft_win", (176, 220), "'FFT window'", "string",
+
+        # ---- controls, row 2
+        # NOT named `window`: GRC blacklists any id an import has bound, and
+        # the waterfall sink pulls in gnuradio.fft.window.
+        chooser("fft_win", (520, 960), "'FFT window'", "string",
                 ["'rectangular'", "'hann'", "'blackman-harris'"],
-                ["'rectangular  (sidelobes -13 dB)'", "'hann  (-31 dB)'",
+                ["'rectangular  (-13 dB)'", "'hann  (-31 dB)'",
                  "'blackman-harris  (-92 dB)'"],
                 "'blackman-harris'", "5,0,1,2",
                 comment="The control this example exists for."),
-        blk("avg", "variable_qtgui_range", (352, 220),
-            comment="Frames in the power-domain average. 1 disables it.",
+        blk("avg", "variable_qtgui_range", (840, 960),
+            comment="Frames averaged, in the POWER domain.",
             label="'Averaging (frames)'", rangeType="float", value="16",
             start="1", stop="64", step="1", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="6,0,1,2"),
-        blk("floor_pct", "variable_qtgui_range", (528, 220),
-            comment="Which percentile of the trace counts as noise.",
+        blk("floor_pct", "variable_qtgui_range", (1090, 960),
+            comment="What counts as noise. It is a choice.",
             label="'Noise floor percentile'", rangeType="float", value="10",
             start="1", stop="50", step="1", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="7,0,1,2"),
-        blk("hold", "variable_qtgui_check_box", (704, 220),
+        blk("hold", "variable_qtgui_check_box", (1340, 960),
             comment="Unticking is also the reset.",
             label="'Max hold'", type="bool", value="True", true="True",
             false="False", gui_hint="8,0,1,1"),
-        blk("frames", "variable_qtgui_range", (880, 220),
-            comment="Display frames per second. Frames in between are dropped\n"
-                    "on purpose - see the keep-one-in-n block.",
+        blk("frames", "variable_qtgui_range", (1620, 960),
+            comment="FFTs per second. The rest are dropped.",
             label="'Display rate (FFT/s)'", rangeType="float", value="12",
             start="1", stop="30", step="1", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="8,1,1,1"),
 
-        blk("note_rate", "note", (176, 340), note=EX01_NOTE_RATE),
-        blk("note_gain", "note", (176, 420), note=EX01_NOTE_GAIN),
-
         # ---- signal path
-        blk("rx", "iio_fmcomms2_source", (400, 400),
-            comment="RX1 only. The LO sits lo_off_hz BELOW the frequency you\n"
-                    "asked for; the rotator downstream shifts it back, which\n"
-                    "leaves the LO leak off to one side instead of on top of\n"
-                    "your signal. Quadrature and both DC loops on: they are\n"
-                    "what keeps the image and the leak from growing.",
+        blk("rx", "iio_fmcomms2_source", (520, 8),
+            comment="RX1 only. LO sits below what you asked\nfor; the rotator shifts it back.",
             type="fc32", uri="uri", frequency="int(center_hz - lo_off_hz)",
             samplerate="samp_rate", buffer_size="buf", rx1_en="True",
             rx2_en="False", quadrature="True", rfdc="True", bbdc="True",
@@ -330,33 +327,24 @@ def ex01():
             manual_gain2="20", rf_port_select="'A_BALANCED'",
             filter_source="'Auto'", filter="", fpass="0", fstop="0",
             bandwidth="int(samp_rate)", len_tag_key="packet_len"),
-        blk("shift_back", "blocks_rotator_cc", (672, 424),
-            comment="Undo the LO offset digitally, so the x-axis reads true\n"
-                    "frequency. phase_inc is just -2*pi*lo_frac: the offset in\n"
-                    "cycles per sample IS the fraction of the span.",
+        blk("shift_back", "blocks_rotator_cc", (840, 48),
+            comment="Undo the LO offset, so the axis reads\ntrue frequency.",
             phase_inc="-2 * math.pi * lo_frac", tag_inc_update="False"),
-        blk("to_frames", "blocks_stream_to_vector", (872, 424),
-            comment="One FFT frame per item from here on.",
+        blk("to_frames", "blocks_stream_to_vector", (1090, 48),
+            comment="One FFT frame per item from here.",
             type="complex", num_items="nfft", vlen="1"),
-        blk("drop_frames", "blocks_keep_one_in_n", (1048, 424),
-            comment="Keep a dozen frames a second and DROP the rest.\n"
-                    "Deliberate: a Python FFT cannot keep up with 1200\n"
-                    "frames/s, and a block that cannot keep up applies\n"
-                    "backpressure all the way to the radio, which turns into\n"
-                    "dropped buffers you did not ask for. Dropping on purpose\n"
-                    "is cheaper and visible.",
+        blk("drop_frames", "blocks_keep_one_in_n", (1340, 48),
+            comment="Drop frames ON PURPOSE - see the README.",
             type="complex", n="max(1, int(samp_rate / (nfft * frames)))",
             vlen="nfft"),
-        epy("dr", "spectrum_engine", (1240, 396),
-            comment="Window, FFT, power averaging, max hold and the\n"
-                    "dynamic-range metric. examples/lib/spectrum_engine.py -\n"
-                    "edit it there and re-run examples/mkgrc.py.",
+        epy("dr", "spectrum_engine", (1610, 8),
+            comment="examples/lib/spectrum_engine.py",
             nfft="nfft", window="fft_win", avg="avg", hold="hold",
             floor_pct="floor_pct"),
 
         # ---- displays
-        blk("spectrum", "qtgui_vector_sink_f", (1512, 300),
-            comment="Two traces from one engine: the average and the max hold.",
+        blk("spectrum", "qtgui_vector_sink_f", (520, 330),
+            comment="Average and max hold, one engine.",
             name="'Spectrum - average and max hold'", vlen="nfft",
             x_start="center_mhz - samp_rate / 2e6",
             x_step="samp_rate / nfft / 1e6",
@@ -367,25 +355,22 @@ def ex01():
             legend="True", label1="'average'", width1="1", color1="'blue'",
             alpha1="1.0", label2="'max hold'", width2="1", color2="'red'",
             alpha2="0.6", gui_hint="0,2,6,10"),
-        blk("waterfall", "qtgui_waterfall_sink_x", (872, 552),
-            comment="On the shifted stream, so the axis reads true frequency.\n"
-                    "Its own window is fixed; it is here for the time axis,\n"
-                    "not for the levels.",
+        blk("waterfall", "qtgui_waterfall_sink_x", (860, 330),
+            comment="Its own window is fixed; it is here for\nthe time axis, not the levels.",
             type="complex", name="'Waterfall'", fftsize="1024",
             freqhalf="True", wintype="window.WIN_BLACKMAN_hARRIS",
             fc="center_hz", bw="samp_rate", int_min="-130", int_max="-20",
             grid="False", nconnections="1", update_time="0.10",
             showports="False", legend="True", axislabels="True",
             gui_hint="6,2,4,10"),
-        blk("range_num", "qtgui_number_sink", (1512, 452),
-            comment="Peak minus floor, on the averaged trace.",
+        blk("range_num", "qtgui_number_sink", (1200, 330),
+            comment="Peak minus floor, on the average trace.",
             name="'Dynamic range'", type="float", autoscale="False",
             avg="0", graph_type="qtgui.NUM_GRAPH_HORIZ", nconnections="1",
             min="0", max="140", update_time="0.10", label1="'peak - floor'",
             unit1="'dB'", color1="'black'", factor1="1", gui_hint="9,0,1,2"),
-        blk("level_num", "qtgui_number_sink", (1512, 580),
-            comment="The two numbers the dynamic range is the difference of,\n"
-                    "plus what the chosen window is capable of.",
+        blk("level_num", "qtgui_number_sink", (1500, 330),
+            comment="The two numbers the range is made of,\nplus what the window allows.",
             name="'Levels, and what the window allows'", type="float",
             autoscale="False", avg="0", graph_type="qtgui.NUM_GRAPH_HORIZ",
             nconnections="3", min="-140", max="10", update_time="0.10",
@@ -433,56 +418,17 @@ print('[02] the number beside ARM is read back out of the chip - if it '
 # --------------------------------------------------------------------------
 # 02 - a modulated link you can watch  (THIS ONE TRANSMITS)
 # --------------------------------------------------------------------------
-EX02_HEADER = """A modulated link you can watch - Fishball7020
+EX02_HEADER = """A modulated link you can watch - IT TRANSMITS
 
-THIS FLOWGRAPH TRANSMITS. Read this part before you run it.
++19 dBm through a power amplifier, 70 MHz-6 GHz.
+Transmitting unlicensed is illegal in most of it.
 
-The board reaches roughly +19 dBm at an antenna port, through a power
-amplifier. What leaves that port is your responsibility and nobody else's:
-transmitting without a licence is illegal in most of the spectrum, and this
-radio tunes 70 MHz to 6 GHz, which is nearly all of it. The default centre is
-2437 MHz, inside the 2.4 GHz ISM band, because that is the least bad default -
-not because it is automatically permitted where you are. Check your own
-regulations, and prefer a cable and an attenuator to an antenna.
+arm starts OFF. Attenuation starts at 89.75 dB,
+the most there is - HIGHER IS QUIETER. The number
+beside arm is read from the CHIP, not the slider.
 
-  * `arm` starts UNTICKED and nothing is transmitted until you tick it.
-  * `TX1 attenuation` starts at 89.75 dB, the most the AD9361 offers.
-    HIGHER IS QUIETER. The safe end of that slider is the right-hand end.
-  * The attenuation shown beside `arm` is not an echo of the slider. It is
-    read back out of the chip by an IIO Attribute Source, four times a
-    second. If the driver refuses a write - the thermal limit of patch 0018,
-    the transmit latch of patch 0016 - the slider will move and that number
-    will not. Believe the number.
-  * A LOOPBACK WITHOUT AN ATTENUATOR DESTROYS THE RECEIVER. The RX input is
-    rated about +2.5 dBm (AD9361 Rev. G, Table 11) and this board transmits
-    about +19. Fit at least 20 dB of pad. See docs/rf-safety notes and
-    tools/tx-guard.sh.
-
-WHAT IT DOES. Random bytes become QPSK (or 16-/64-QAM), get shaped by a root
-raised cosine, transmitted, received, matched-filtered, timing-recovered,
-carrier-recovered, and measured. The constellation, the eye and a live EVM
-figure all come from the same recovered symbols.
-
-TWO EVM NUMBERS, and the gap between them is the interesting one. The first is
-the error as it arrives. The second is the error after dividing out a single
-complex gain - one fixed amplitude and one fixed rotation, fitted across the
-block, which is what a real vector analyser does before quoting a figure. The
-difference is the share of your error that is a static rotation you could have
-calibrated away rather than noise you could not. Mistune the carrier loop and
-watch the two separate.
-
-THE CAVEAT THAT MATTERS. This board is listening to itself, so the
-transmitter and the receiver share one reference clock. There is no frequency
-offset to track and no independent phase noise, and the EVM is therefore
-better than the same modulation would achieve between two radios. It is a real
-measurement of a link that is easier than any real link.
-docs/modulation-gallery.md measured this path with a separate radio and is the
-honest comparison.
-
-OFFSET TUNING, AT BOTH ENDS. The transmitter's own carrier leak sits at its
-LO, and the receiver's at its own. Both offsets default to a fraction of the
-span so that neither leak lands on the signal. Set them both to 0 and watch
-two spikes appear in the middle of your own transmission."""
+A loopback with no pad destroys the receiver: RX
+is rated +2.5 dBm. Fit 20 dB. Read the README."""
 
 EX02_NOTE_LEVEL = """Why the transmit scale defaults to 0.20 and not 1.0.
 
@@ -605,157 +551,104 @@ def ex02():
                 "QPSK/QAM over the air, with constellation, eye and live EVM",
                 EX02_HEADER)
     b = [
-        blk("import_math", "import", (8, 180), imports="import math"),
-        epy_mod("qam", "qam", (8, 260),
-                "Square QAM points. Feeds BOTH the constellation the modulator\n"
-                "is built from and the reference the EVM meter measures\n"
-                "against, so the two cannot drift apart."),
-        var("uri", URI, (176, 12),
-            "`python3 tools/board_addr.py` prints an address if mDNS is not\n"
-            "working on your network."),
-        var("samp_rate", 2000000, (256, 12),
-            "2 MS/s each way, so 500 ksym/s at 4 samples per symbol. Modest on\n"
-            "purpose: 8 MB/s in each direction, and with the buffer below it\n"
-            "gives the transmitter 524 ms of slack against a link stall -\n"
-            "twice what patch 0015's mute watchdog needs. Raise it once you\n"
-            "have watched the thing work, and read the buffer note first:\n"
-            "transmitting is latency-critical in a way receiving is not."),
-        var("sps", 4, (336, 12),
-            "Samples per symbol, so 1 Msym/s at the default rate. Fixed when\n"
-            "the modulator is built."),
-        var("order", 4, (416, 12),
-            "4 = QPSK, and QPSK is what this receiver actually recovers.\n"
-            "16 and 64 will transmit correctly and will NOT resolve at the\n"
-            "receiver - which is worth seeing once, and is explained in the\n"
-            "note. A re-run parameter either way: the modulator takes its\n"
-            "constellation object at construction, and the number of bits\n"
-            "packed per symbol is fixed with it."),
-        var("tx_alpha", 0.35, (496, 12),
-            "The TRANSMIT root-raised-cosine roll-off. Baked into the\n"
-            "modulator's taps, so changing it needs a re-run. The receive\n"
-            "side has its own, live, control - see the note."),
-        var("buf", 1048576, (576, 12),
-            "libiio buffer, in samples, both directions. At 2 MS/s this is\n"
-            "524 ms of samples, and the transmit buffer's DURATION is how long\n"
-            "a link stall the DAC can ride out. Patch 0015 mutes the\n"
-            "transmitter after 250 ms of starvation, so this is twice the\n"
-            "margin that needs. Disarming is still immediate - the attenuator\n"
-            "is analogue and unbuffered, so it does not wait for the buffer to\n"
-            "drain. See the note."),
-        var("center_hz", "int(center_mhz * 1e6)", (664, 12)),
-        var("cnst", "qam.points(order)", (744, 12),
-            "Just the points; the Constellation Object block turns them into\n"
-            "the object the modulator needs."),
+        blk("import_math", "import", (190, 830), imports="import math"),
+        epy_mod("qam", "qam", (180, 860),
+                "One definition of the constellation, used by\nBOTH the modulator and the EVM meter."),
+        var("uri", URI, (8, 390)),
+        var("samp_rate", 2000000, (190, 390)),
+        var("sps", 4, (8, 500)),
+        var("order", 4, (190, 500)),
+        var("tx_alpha", 0.35, (8, 610)),
+        var("buf", 1048576, (190, 610)),
+        var("center_hz", "int(center_mhz * 1e6)", (8, 720)),
+        var("cnst", "qam.points(order)", (190, 720)),
 
         # ---- the constellation both ends share
-        blk("cnst_obj", "variable_constellation", (176, 560),
-            comment="Built from qam.points(order), the same function the EVM\n"
-                    "meter uses. Power normalisation makes the transmit level\n"
-                    "independent of the order.",
+        blk("cnst_obj", "variable_constellation", (8, 830),
+            comment="From qam.points(order) - the same function\nthe EVM meter measures against.",
             type="calcdist", sym_map="list(range(order))",
             const_points="qam.points(order)", rot_sym="4", dims="1",
             normalization="digital.constellation.POWER_NORMALIZATION",
             precision="8", soft_dec_lut="None"),
 
         # ---- controls
-        blk("arm", "variable_qtgui_check_box", (176, 100),
-            comment="Nothing is transmitted until this is ticked. It gates the\n"
-                    "samples AND forces maximum attenuation - either alone\n"
-                    "would do; both is cheap.",
+        blk("arm", "variable_qtgui_check_box", (520, 1280),
+            comment="Gates the samples AND forces maximum\nattenuation. Either alone would do.",
             label="'ARM TRANSMITTER'", type="bool", value="False",
             true="True", false="False", gui_hint="0,0,1,1"),
-        blk("tx_atten", "variable_qtgui_range", (256, 100),
-            comment="Attenuation, so HIGHER IS QUIETER. 89.75 dB is the most\n"
-                    "the AD9361 offers and is where this starts.",
+        blk("tx_atten", "variable_qtgui_range", (780, 1280),
+            comment="HIGHER IS QUIETER. 89.75 dB is the most\nthe AD9361 offers.",
             label="'TX1 attenuation (dB) - higher is quieter'",
             rangeType="float", value="89.75", start="0", stop="89.75",
             step="0.25", widget="counter_slider", orient="Qt.Horizontal",
             min_len="200", gui_hint="1,0,1,2"),
-        blk("tx_scale", "variable_qtgui_range", (416, 100),
-            comment="Digital amplitude before the converter. 0.20 keeps the\n"
-                    "worst-case peak near -6 dBFS; see the note.",
+        blk("tx_scale", "variable_qtgui_range", (1040, 1280),
+            comment="0.20 keeps the worst peak near -6 dBFS.\nA root raised cosine overshoots.",
             label="'TX digital scale (peak, not RMS)'", rangeType="float",
             value="0.20", start="0.02", stop="0.45", step="0.01",
             widget="counter_slider", orient="Qt.Horizontal", min_len="200",
             gui_hint="2,0,1,2"),
-        blk("center_mhz", "variable_qtgui_range", (576, 100),
-            comment="2437 MHz is in the 2.4 GHz ISM band. That is a least-bad\n"
-                    "default, not a permission.",
+        blk("center_mhz", "variable_qtgui_range", (1300, 1280),
+            comment="2437 MHz is ISM. A least-bad default,\nnot a permission.",
             label="'Centre frequency (MHz)'", rangeType="float", value="2437",
             start="70", stop="6000", step="0.5", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="3,0,1,2"),
-        blk("rx_gain", "variable_qtgui_range", (736, 100),
-            comment="Manual only. An AGC would hide the thing you are\n"
-                    "measuring by moving the reference level under it.",
+        blk("rx_gain", "variable_qtgui_range", (1560, 1280),
+            comment="Manual only. An AGC would move the\nreference level under your measurement.",
             label="'RX1 gain (dB)'", rangeType="float", value="20",
             start="0", stop="71", step="1", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="4,0,1,2"),
-        blk("rrc_alpha", "variable_qtgui_range", (176, 200),
-            comment="The RECEIVE matched filter's roll-off, and it IS live.\n"
-                    "Leave it at tx_alpha to stay matched; move it to watch\n"
-                    "what a mismatched matched filter costs.",
+        blk("rrc_alpha", "variable_qtgui_range", (520, 1490),
+            comment="Live. Leave it at tx_alpha to stay\nmatched; move it to see what that costs.",
             label="'RX matched-filter roll-off (TX is fixed)'",
             rangeType="float", value="0.35", start="0.05", stop="0.90",
             step="0.01", widget="counter_slider", orient="Qt.Horizontal",
             min_len="200", gui_hint="5,0,1,2"),
-        blk("sync_bw", "variable_qtgui_range", (336, 200),
-            comment="Timing loop bandwidth. Too low and it never acquires;\n"
-                    "too high and it tracks noise into the constellation.",
+        blk("sync_bw", "variable_qtgui_range", (780, 1490),
+            comment="Too low never acquires; too high tracks\nnoise into the constellation.",
             label="'Timing loop bandwidth'", rangeType="float", value="0.045",
             start="0.002", stop="0.200", step="0.001", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="6,0,1,2"),
-        blk("costas_bw", "variable_qtgui_range", (496, 200),
-            comment="Carrier loop bandwidth. This is the one that moves the\n"
-                    "two EVM figures apart.",
+        blk("costas_bw", "variable_qtgui_range", (1040, 1490),
+            comment="The one that moves the two EVM figures\napart.",
             label="'Carrier loop bandwidth'", rangeType="float", value="0.030",
             start="0.001", stop="0.200", step="0.001", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="7,0,1,2"),
-        blk("tx_off_frac", "variable_qtgui_range", (656, 200),
-            comment="Pushes the TRANSMITTER's carrier leak off the signal, by\n"
-                    "shifting baseband up and the LO down by the same amount.",
+        blk("tx_off_frac", "variable_qtgui_range", (1300, 1490),
+            comment="Pushes the TRANSMITTER's carrier leak off\nthe signal. Set both offsets to 0 to see.",
             label="'TX LO offset (fraction of span)'", rangeType="float",
             value="0.20", start="-0.4", stop="0.4", step="0.01",
             widget="counter_slider", orient="Qt.Horizontal", min_len="200",
             gui_hint="8,0,1,2"),
-        blk("rx_off_frac", "variable_qtgui_range", (816, 200),
-            comment="Same trick at the RECEIVER. Set both to 0 and two leaks\n"
-                    "land on top of your own transmission.",
+        blk("rx_off_frac", "variable_qtgui_range", (1560, 1490),
+            comment="Same trick at the RECEIVER.",
             label="'RX LO offset (fraction of span)'", rangeType="float",
             value="0.25", start="-0.4", stop="0.4", step="0.01",
             widget="counter_slider", orient="Qt.Horizontal", min_len="200",
             gui_hint="9,0,1,2"),
 
-        blk("note_level", "note", (176, 300), note=EX02_NOTE_LEVEL),
-        blk("note_buffer", "note", (176, 380), note=EX02_NOTE_BUFFER),
-        blk("note_qam", "note", (176, 460), note=EX02_NOTE_QAM),
-        blk("note_rerun", "note", (176, 540), note=EX02_NOTE_RERUN),
+        blk("note_level", "note", (8, 1070), note=EX02_NOTE_LEVEL),
+        blk("note_buffer", "note", (8, 1170), note=EX02_NOTE_BUFFER),
+        blk("note_qam", "note", (8, 1270), note=EX02_NOTE_QAM),
+        blk("note_rerun", "note", (8, 1370), note=EX02_NOTE_RERUN),
 
         # ---- transmit chain
-        blk("bits", "analog_random_source_x", (176, 660),
-            comment="Random bytes. Nothing here is a real protocol - the point\n"
-                    "is the modulation, not the payload.",
+        blk("bits", "analog_random_source_x", (520, 8),
+            comment="Random bytes. The point is the modulation,\nnot the payload.",
             type="byte", min="0", max="255", num_samps="100000", repeat="True"),
-        blk("mod", "digital_constellation_modulator", (360, 644),
-            comment="Bits to shaped symbols. differential=False: the carrier\n"
-                    "loop's 90-degree ambiguity would scramble the bits, but\n"
-                    "nothing here decodes bits, and EVM does not care.",
+        blk("mod", "digital_constellation_modulator", (820, 8),
+            comment="Bits to shaped symbols. Nothing here\ndecodes, so no differential coding.",
             constellation="cnst_obj", differential="False",
             samples_per_symbol="sps", excess_bw="tx_alpha", verbose="False",
             log="False", truncate="False"),
-        blk("tx_shift", "blocks_rotator_cc", (608, 668),
-            comment="Move baseband UP by the TX offset, so that with the LO\n"
-                    "moved DOWN by the same amount the signal lands where you\n"
-                    "asked and the carrier leak does not.",
+        blk("tx_shift", "blocks_rotator_cc", (1120, 48),
+            comment="Baseband UP by the TX offset; the LO goes\nDOWN by the same amount.",
             phase_inc="2 * math.pi * tx_off_frac", tag_inc_update="False"),
-        blk("tx_gate", "blocks_multiply_const_vxx", (784, 668),
-            comment="Amplitude and the arm gate in one block. Unarmed this is\n"
-                    "exactly 0.0, so there is no modulation to transmit even\n"
-                    "if the attenuation were wrong.",
+        blk("tx_gate", "blocks_multiply_const_vxx", (1400, 48),
+            comment="Unarmed this is exactly 0.0 - nothing to\ntransmit even if attenuation were wrong.",
             type="complex", const="tx_scale if arm else 0.0", vlen="1"),
-        blk("tx", "iio_fmcomms2_sink", (968, 636),
-            comment="TX1 only. Attenuation is the ARMED value or 89.75 dB, and\n"
-                    "it is re-asserted after the stream opens - see the\n"
-                    "snippet, and patch 0005 for why that is necessary.",
+        blk("tx", "iio_fmcomms2_sink", (1680, 8),
+            comment="TX1 only. Attenuation re-asserted AFTER\nthe stream opens - see patch 0005.",
             type="fc32", uri="uri", frequency="int(center_hz - tx_off_frac * samp_rate)",
             samplerate="samp_rate", bandwidth="int(samp_rate)",
             buffer_size="buf", tx1_en="True", tx2_en="False", cyclic="False",
@@ -764,9 +657,8 @@ def ex02():
             filter="", fpass="0", fstop="0"),
 
         # ---- receive chain
-        blk("rx", "iio_fmcomms2_source", (176, 820),
-            comment="RX1 only, manual gain. The LO sits below the signal by the\n"
-                    "RX offset; the rotator downstream brings it back.",
+        blk("rx", "iio_fmcomms2_source", (520, 400),
+            comment="RX1 only. The LO sits below the signal;\nthe rotator brings it back.",
             type="fc32", uri="uri",
             frequency="int(center_hz - rx_off_frac * samp_rate)",
             samplerate="samp_rate", buffer_size="buf", rx1_en="True",
@@ -775,45 +667,32 @@ def ex02():
             manual_gain2="20", rf_port_select="'A_BALANCED'",
             filter_source="'Auto'", filter="", fpass="0", fstop="0",
             bandwidth="int(samp_rate)", len_tag_key="packet_len"),
-        blk("rx_shift", "blocks_rotator_cc", (448, 844),
-            comment="Undo the RX offset, so the signal sits at baseband zero\n"
-                    "and the receiver's own leak sits off to one side.",
+        blk("rx_shift", "blocks_rotator_cc", (840, 440),
+            comment="Signal to baseband zero; the receiver's\nown leak goes off to one side.",
             phase_inc="-2 * math.pi * rx_off_frac", tag_inc_update="False"),
-        blk("mf", "root_raised_cosine_filter", (624, 812),
-            comment="The matched filter. Its taps ARE live (set_taps), which is\n"
-                    "what makes rrc_alpha a control rather than a constant.\n"
-                    "Gain sps so the symbol amplitude survives the filter.",
+        blk("mf", "root_raised_cosine_filter", (1080, 400),
+            comment="Matched filter. Its taps are live, which\nmakes rrc_alpha a control.",
             type="fir_filter_ccf", decim="1", interp="1", gain="sps",
             samp_rate="samp_rate", sym_rate="samp_rate / sps",
             alpha="rrc_alpha", ntaps="11 * sps + 1"),
-        blk("sync", "digital_symbol_sync_xx", (872, 796),
-            comment="Timing recovery, decision-directed (modified Mueller and\n"
-                    "Mueller). Chosen by measurement, not by preference: with\n"
-                    "Gardner's detector this chain did not lock at all - the\n"
-                    "recovered magnitudes had a spread of 0.30 against 0.002\n"
-                    "for this one, and EVM sat near 45% on a noiseless signal.\n"
-                    "The cost is that it IS decision-directed, which is why\n"
-                    "this receiver is a QPSK receiver - see the note.",
+        blk("sync", "digital_symbol_sync_xx", (1340, 400),
+            comment="Mueller and Mueller, chosen by measurement:\nGardner did not lock at all here.",
             type="cc", ted_type="digital.TED_MOD_MUELLER_AND_MULLER",
             constellation="cnst_obj",
             sps="sps", ted_gain="1.0", loop_bw="sync_bw", damping="1.0",
             max_dev="1.5", osps="1", resamp_type="digital.IR_MMSE_8TAP",
             nfilters="128", pfb_mf_taps="[]"),
-        blk("costas", "digital_costas_loop_cc", (1128, 812),
-            comment="Carrier recovery. Order 4 for every square QAM: it locks\n"
-                    "to the 90-degree symmetry the constellation already has.",
+        blk("costas", "digital_costas_loop_cc", (1660, 440),
+            comment="Order 4 locks to the 90-degree symmetry\nQPSK already has.",
             w="costas_bw", order="4", use_snr="False"),
-        epy("evm", "evm_meter", (1304, 788),
-            comment="examples/lib/evm_meter.py. Port 0 is the symbols rescaled\n"
-                    "to the reference, so the picture and the numbers agree.",
+        epy("evm", "evm_meter", (1920, 400),
+            comment="examples/lib/evm_meter.py - port 0 is\n"
+                    "rescaled, so picture and numbers agree.",
             order="order", chunk="2048"),
 
         # ---- the read-back that is not an echo
-        blk("atten_rb", "iio_attr_source", (968, 460),
-            comment="TX1's hardwaregain, read out of ad9361-phy four times a\n"
-                    "second. This is the attenuation the CHIP has, negated -\n"
-                    "not the number the slider is showing. If the driver\n"
-                    "refuses a write, only this tells you.",
+        blk("atten_rb", "iio_attr_source", (520, 760),
+            comment="Read out of the CHIP four times a second,\nnot echoed from the slider.",
             # attr_type/output/type are enums whose option VALUES are bare
             # 0/1/True, not quoted strings. Quoting them matches no option and
             # the block silently falls back to the first - which is a float64
@@ -826,10 +705,8 @@ def ex02():
             samples_per_update="8"),
 
         # ---- displays
-        blk("spectrum", "qtgui_freq_sink_x", (448, 940),
-            comment="The received spectrum, after the shift, so the axis reads\n"
-                    "true frequency. Both carrier leaks are visible here, and\n"
-                    "so is clipping if you raise the transmit scale too far.",
+        blk("spectrum", "qtgui_freq_sink_x", (520, 980),
+            comment="True frequency. Both carrier leaks show\nhere, and so does clipping.",
             type="complex", name="'Received spectrum'", fftsize="4096",
             freqhalf="True", wintype="window.WIN_BLACKMAN_hARRIS",
             norm_window="False", fc="center_hz", bw="samp_rate", grid="True",
@@ -839,8 +716,8 @@ def ex02():
             tr_level="0.0", tr_chan="0", tr_tag="''", ctrlpanel="False",
             legend="True", axislabels="True", label1="'RX1'", width1="1",
             color1='"blue"', alpha1="1.0", gui_hint="0,2,5,10"),
-        blk("constellation", "qtgui_const_sink_x", (1528, 740),
-            comment="The recovered symbols, at the reference's scale.",
+        blk("constellation", "qtgui_const_sink_x", (900, 980),
+            comment="The recovered symbols, at the reference's\nscale.",
             type="complex", name="'Constellation - recovered symbols'",
             size="2048", grid="True", autoscale="False", ymin="-2", ymax="2",
             xmin="-2", xmax="2", nconnections="1", update_time="0.10",
@@ -849,9 +726,8 @@ def ex02():
             axislabels="True", label1="'symbols'", width1="1",
             color1='"blue"', style1="0", marker1="0", alpha1="0.4",
             gui_hint="5,2,7,5"),
-        blk("eye", "qtgui_eye_sink_x", (872, 964),
-            comment="The eye, on the matched filter's output - before timing\n"
-                    "recovery, so an open eye means the SHAPING is right.",
+        blk("eye", "qtgui_eye_sink_x", (1260, 980),
+            comment="Before timing recovery, so an open eye\nmeans the SHAPING is right.",
             type="complex", name="'Eye diagram - matched filter output'",
             ylabel="'amplitude'", yunit="''", size="1024",
             samp_per_symbol="sps", srate="samp_rate", grid="True",
@@ -862,31 +738,30 @@ def ex02():
             ctrlpanel="False", legend="False", axislabels="True",
             label1="'I'", width1="1", color1='"blue"', style1="1", marker1="-1",
             alpha1="0.3", gui_hint="5,7,7,5"),
-        blk("atten_num", "qtgui_number_sink", (1200, 452),
-            comment="Read from the chip, not from the slider.",
+        blk("atten_num", "qtgui_number_sink", (880, 760),
+            comment="Read from the chip, not the slider.",
             name="'TX1 hardwaregain, READ BACK FROM THE CHIP'", type="float",
             autoscale="False", avg="0", graph_type="qtgui.NUM_GRAPH_HORIZ",
             nconnections="1", min="-90", max="0", update_time="0.10",
             label1="'chip says'", unit1="'dB'", color1="'black'", factor1="1",
             gui_hint="0,1,1,1"),
-        blk("evm_num", "qtgui_number_sink", (1528, 900),
-            comment="The pair. Their difference is the static rotation.",
+        blk("evm_num", "qtgui_number_sink", (1620, 980),
+            comment="Their difference is the static rotation.",
             name="'EVM'", type="float", autoscale="False", avg="0",
             graph_type="qtgui.NUM_GRAPH_HORIZ", nconnections="2", min="0",
             max="60", update_time="0.10", label1="'as received'", unit1="'%'",
             color1="'black'", factor1="1",
             label2="'after one complex gain'", unit2="'%'", color2="'black'",
             factor2="1", gui_hint="10,0,1,2"),
-        blk("mer_num", "qtgui_number_sink", (1528, 1030),
-            comment="The same thing in dB, because that is how link budgets\n"
-                    "are written.",
+        blk("mer_num", "qtgui_number_sink", (1900, 980),
+            comment="The same thing in dB.",
             name="'MER'", type="float", autoscale="False", avg="0",
             graph_type="qtgui.NUM_GRAPH_HORIZ", nconnections="1", min="0",
             max="45", update_time="0.10", label1="'modulation error ratio'",
             unit1="'dB'", color1="'black'", factor1="1", gui_hint="11,0,1,2"),
 
         # ---- the rule this repository keeps learning
-        blk("reassert_atten", "snippet", (1200, 320), section="main_after_start",
+        blk("reassert_atten", "snippet", (8, 970), section="main_after_start",
             priority="0", code=SNIPPET_REASSERT),
     ]
     c = [
@@ -913,50 +788,17 @@ def ex02():
 # --------------------------------------------------------------------------
 # 03 - two coherent receivers
 # --------------------------------------------------------------------------
-EX03_HEADER = """Two coherent receivers - Fishball7020
+EX03_HEADER = """Two coherent receivers
 
-This is the measurement a one-channel radio cannot make. RX1 and RX2 live in
-one AD9361, behind one local oscillator and one sample clock, so the phase
-between them is a property of the signal and the cabling rather than of two
-clocks wandering apart. Nothing else in this repository demonstrates it.
+RX1 and RX2 share one oscillator and one clock, so
+the phase between them means something. Nothing
+else in this repository shows it.
 
-WHAT YOU GET. The angle of the cross-correlation between the two channels,
-averaged as a COMPLEX NUMBER and only then turned into an angle. Averaging
-angles instead is a mistake that hides itself: angles wrap at +/-180 degrees,
-so a true phase near 180 has samples landing at +179 and -179 which average to
-roughly zero, and a signal hard against the wrap reads as no phase shift at
-all. Summing complex numbers has no wrap to fall foul of.
+READ COHERENCE BEFORE THE ANGLE. Near 1 the angle
+is a measurement; near 0 it is noise wearing the
+same clothes. The dial's radius IS the coherence.
 
-COHERENCE IS THE NUMBER THAT SAYS WHETHER TO BELIEVE THE ANGLE. It is the
-magnitude of the normalised correlation, 0 to 1. Two independent noise streams
-correlate to something that random-walks toward zero, so their angle is a
-random number that the display shows just as confidently as a real one. Watch
-coherence first. Near 1, the angle means something. Near 0, you are reading
-noise with a decimal point on it.
-
-THE DIAL, bottom middle, is a constellation sink used as a polar meter: the
-point's ANGLE is the phase and its RADIUS is the coherence. A dot pinned to
-the rim is a measurement. A dot wandering near the origin is noise.
-
-THE TRAP THIS EXAMPLE IS BUILT TO AVOID. The receiver's own LO leak sits at
-DC in both channels, it is the same leak, and it is almost perfectly
-correlated with itself. Correlate the raw channels and you measure the leak:
-coherence pins to 1 and the angle is a property of the board, not of anything
-in the air. So the LO is offset, and each channel is band-selected around the
-signal with an IDENTICAL filter - identical, so that whatever phase the filter
-adds, it adds twice and cancels out of the difference. Widen the band-select
-until DC is inside it and watch a convincing, meaningless coherence appear.
-
-REPEATABLE IS NOT CALIBRATED. Each path has its own fixed delay through its
-own balun and its own traces, so there is an offset that has nothing to do
-with the signal. `zero` latches the current reading and subtracts it, which
-makes later readings relative to that moment. It does NOT turn the angle into
-a direction of arrival: that needs a splitter, matched cables and a known
-geometry. The offset also changes with frequency, so zeroing at 2.4 GHz does
-not hold at 5 GHz. docs/measured-performance.md has the measured asymmetry
-between these two channels - about 1.5 dB in receive gain, which is normal.
-
-Receive only. Nothing here transmits."""
+Repeatable is not calibrated. Receive only."""
 
 EX03_NOTE_TRY = """Three things to try, in order.
 
@@ -985,83 +827,63 @@ def ex03():
                 "RX1/RX2 phase and coherence from one shared oscillator",
                 EX03_HEADER)
     b = [
-        blk("import_math", "import", (8, 180), imports="import math"),
-        var("uri", URI, (176, 12),
-            "`python3 tools/board_addr.py` prints an address if mDNS is not\n"
-            "working on your network."),
-        var("buf", 262144, (264, 12),
-            "libiio buffer, in samples. BOTH receivers are on, so the data rate\n"
-            "is twice a single channel - 8 bytes per sample pair, not 4."),
-        var("chunk", 4096, (344, 12),
-            "Samples per phase estimate. The phase block decimates by this, so\n"
-            "it is a port rate and fixed when the flowgraph is built.\n"
-            "4096 at 5 MS/s is 1220 estimates a second."),
-        var("center_hz", "int(center_mhz * 1e6)", (424, 12)),
-        var("lo_off_hz", "lo_frac * samp_rate", (528, 12)),
+        blk("import_math", "import", (190, 720), imports="import math"),
+        var("uri", URI, (8, 390)),
+        var("buf", 262144, (190, 390)),
+        var("chunk", 4096, (8, 500)),
+        var("center_hz", "int(center_mhz * 1e6)", (190, 500)),
+        var("lo_off_hz", "lo_frac * samp_rate", (8, 610)),
         var("sel_taps", "firdes.low_pass(1.0, samp_rate, sel_bw_khz * 500.0, "
-                        "sel_bw_khz * 200.0)", (648, 12),
-            "One set of taps, used by BOTH band-select filters. Sharing the\n"
-            "expression is the point: two filters with different taps would add\n"
-            "different phases and the difference between the channels would be\n"
-            "partly the filters. sel_bw_khz*500 is half the width in Hz."),
+                "sel_bw_khz * 200.0)", (190, 610)),
 
         # ---- controls
-        chooser("samp_rate", (176, 100), "'Sample rate'", "real",
+        chooser("samp_rate", (520, 800), "'Sample rate'", "real",
                 ["2560000", "5000000", "10000000"],
-                ["'2.56 MS/s  (20 MB/s for two channels)'",
-                 "'5 MS/s  (40 MB/s)'", "'10 MS/s  (80 MB/s)'"],
+                ["'2.56 MS/s  (20 MB/s, 2ch)'",
+                 "'5 MS/s  (40 MB/s, 2ch)'", "'10 MS/s  (80 MB/s, 2ch)'"],
                 "5000000", "0,0,1,2",
                 comment="Two channels, so twice the bytes of one."),
-        blk("center_mhz", "variable_qtgui_range", (352, 100),
+        blk("center_mhz", "variable_qtgui_range", (780, 800),
             comment="Where to look.",
             label="'Centre frequency (MHz)'", rangeType="float", value="2437",
             start="70", stop="6000", step="0.5", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="1,0,1,2"),
-        blk("lo_frac", "variable_qtgui_range", (528, 100),
-            comment="Offset tuning, as a fraction of the span. This is what\n"
-                    "keeps the LO leak out of the correlation. Set it to 0 and\n"
-                    "the leak lands inside the band-select.",
+        blk("lo_frac", "variable_qtgui_range", (1040, 800),
+            comment="Keeps the LO leak out of the correlation.\nSet it to 0 to see what that costs.",
             label="'LO offset (fraction of span)'", rangeType="float",
             value="0.25", start="-0.4", stop="0.4", step="0.01",
             widget="counter_slider", orient="Qt.Horizontal", min_len="200",
             gui_hint="2,0,1,2"),
-        blk("sel_bw_khz", "variable_qtgui_range", (704, 100),
-            comment="Band-select width in kHz. Widen it past the LO offset and\n"
-                    "the leak gets in - which is the lesson, once.",
+        blk("sel_bw_khz", "variable_qtgui_range", (1300, 800),
+            comment="Widen it past the LO offset and the leak\ngets in. Worth seeing once.",
             label="'Band-select width (kHz)'", rangeType="float", value="400",
             start="20", stop="3000", step="10", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="3,0,1,2"),
-        blk("rx1_gain", "variable_qtgui_range", (176, 200),
-            comment="Separate per channel on purpose: these two receivers are\n"
-                    "not identical. About 1.5 dB apart on the measured board.",
+        blk("rx1_gain", "variable_qtgui_range", (520, 1030),
+            comment="Separate on purpose: the two receivers\ndiffer by about 1.5 dB.",
             label="'RX1 gain (dB)'", rangeType="float", value="40",
             start="0", stop="71", step="1", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="4,0,1,2"),
-        blk("rx2_gain", "variable_qtgui_range", (352, 200),
-            comment="Unequal gains change the amplitudes but NOT the phase -\n"
-                    "worth proving to yourself with the dial.",
+        blk("rx2_gain", "variable_qtgui_range", (780, 1030),
+            comment="Unequal gains change amplitude but NOT\nphase. Prove it on the dial.",
             label="'RX2 gain (dB)'", rangeType="float", value="40",
             start="0", stop="71", step="1", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="5,0,1,2"),
-        blk("avg", "variable_qtgui_range", (528, 200),
-            comment="Frames in the complex-domain average. Steadier, slower.",
+        blk("avg", "variable_qtgui_range", (1040, 1030),
+            comment="Complex-domain average. Steadier, slower.",
             label="'Averaging (estimates)'", rangeType="float", value="8",
             start="1", stop="200", step="1", widget="counter_slider",
             orient="Qt.Horizontal", min_len="200", gui_hint="6,0,1,2"),
-        blk("zero", "variable_qtgui_check_box", (704, 200),
-            comment="Latches the CURRENT phase as zero, on the rising edge\n"
-                    "only. Holding it ticked would re-zero forever and the\n"
-                    "reading would sit at zero whatever the antennas did.",
+        blk("zero", "variable_qtgui_check_box", (1300, 1030),
+            comment="Latches on the RISING EDGE only, or it\nwould re-zero forever.",
             label="'zero (latch this phase as the reference)'", type="bool",
             value="False", true="True", false="False", gui_hint="7,0,1,2"),
 
-        blk("note_try", "note", (176, 300), note=EX03_NOTE_TRY),
+        blk("note_try", "note", (8, 720), note=EX03_NOTE_TRY),
 
         # ---- signal path
-        blk("rx", "iio_fmcomms2_source", (176, 460),
-            comment="BOTH receivers, one LO, one sample clock. That shared\n"
-                    "oscillator is the whole reason this example exists.\n"
-                    "The LO sits lo_off_hz below the frequency you asked for.",
+        blk("rx", "iio_fmcomms2_source", (520, 8),
+            comment="BOTH receivers, one LO, one clock. That\nshared oscillator is the whole point.",
             type="fc32", uri="uri", frequency="int(center_hz - lo_off_hz)",
             samplerate="samp_rate", buffer_size="buf", rx1_en="True",
             rx2_en="True", quadrature="True", rfdc="True", bbdc="True",
@@ -1069,31 +891,21 @@ def ex03():
             manual_gain2="rx2_gain", rf_port_select="'A_BALANCED'",
             filter_source="'Auto'", filter="", fpass="0", fstop="0",
             bandwidth="int(samp_rate)", len_tag_key="packet_len"),
-        blk("sel1", "freq_xlating_fft_filter_ccc", (528, 420),
-            comment="Band-select RX1 around the signal, which also throws away\n"
-                    "DC and the LO leak with it. center_freq brings the offset\n"
-                    "signal down to baseband.",
+        blk("sel1", "freq_xlating_fft_filter_ccc", (860, 8),
+            comment="Band-select RX1, which throws DC and the\nLO leak away with it.",
             decim="1", taps="sel_taps", center_freq="lo_off_hz",
             samp_rate="samp_rate", samp_delay="0", nthreads="1"),
-        blk("sel2", "freq_xlating_fft_filter_ccc", (528, 540),
-            comment="IDENTICAL to sel1 - same taps, same centre. Any phase the\n"
-                    "filter adds, it adds to both, so it cancels out of the\n"
-                    "difference. Two different filters here would make the\n"
-                    "measurement partly a measurement of the filters.",
+        blk("sel2", "freq_xlating_fft_filter_ccc", (860, 210),
+            comment="IDENTICAL to sel1, so whatever phase it\nadds cancels out of the difference.",
             decim="1", taps="sel_taps", center_freq="lo_off_hz",
             samp_rate="samp_rate", samp_delay="0", nthreads="1"),
-        epy("phase", "phase_meter", (816, 468),
-            comment="examples/lib/phase_meter.py. Averages the correlation as a\n"
-                    "complex number, then takes the angle - never the other way\n"
-                    "round. Decimates by chunk.",
+        epy("phase", "phase_meter", (1180, 8),
+            comment="Averages the correlation as a COMPLEX\nnumber, then takes the angle.",
             chunk="chunk", avg="avg", zero="zero"),
 
         # ---- displays
-        blk("spectrum", "qtgui_freq_sink_x", (528, 680),
-            comment="Both receivers, UNfiltered, so you can see where the LO\n"
-                    "leak is and where the band-select sits relative to it.\n"
-                    "The axis is centred on the LO, not on center_mhz - the\n"
-                    "spike in the middle is the receiver looking at itself.",
+        blk("spectrum", "qtgui_freq_sink_x", (520, 470),
+            comment="UNfiltered, centred on the LO. The spike\nin the middle is the receiver itself.",
             type="complex", name="'Both receivers, as tuned (centre = the LO)'",
             fftsize="4096", freqhalf="True",
             wintype="window.WIN_BLACKMAN_hARRIS", norm_window="False",
@@ -1106,11 +918,8 @@ def ex03():
             label1="'RX1'", width1="1", color1='"blue"', alpha1="1.0",
             label2="'RX2'", width2="1", color2='"red"', alpha2="1.0",
             gui_hint="0,2,5,10"),
-        blk("dial", "qtgui_const_sink_x", (1088, 396),
-            comment="A constellation sink used as a polar meter. Angle is the\n"
-                    "phase, radius is the coherence. The unit circle is the\n"
-                    "edge of the plot, so a point on the rim is a measurement\n"
-                    "you can trust and one near the middle is not.",
+        blk("dial", "qtgui_const_sink_x", (900, 470),
+            comment="A polar meter: angle is phase, radius is\ncoherence. The rim is coherence 1.",
             type="complex",
             name="'Phase dial - angle is phase, radius is coherence'",
             size="64", grid="True", autoscale="False", ymin="-1.1", ymax="1.1",
@@ -1120,9 +929,8 @@ def ex03():
             axislabels="True", label1="'coherence * exp(j phase)'", width1="1",
             color1='"blue"', style1="0", marker1="0", alpha1="0.8",
             gui_hint="5,2,6,5"),
-        blk("phase_time", "qtgui_time_sink_x", (1088, 556),
-            comment="Phase against time. A coherent pair drifts slowly or not\n"
-                    "at all; two independent radios would not hold still here.",
+        blk("phase_time", "qtgui_time_sink_x", (1260, 470),
+            comment="A coherent pair holds still here. Two\nindependent radios would not.",
             type="float", name="'Phase over time'", ylabel="'phase'",
             yunit="'degrees'", size="1024", srate="samp_rate / chunk",
             grid="True", autoscale="False", ymin="-180", ymax="180",
@@ -1132,16 +940,15 @@ def ex03():
             ctrlpanel="False", legend="False", axislabels="True",
             stemplot="False", label1="'phase'", width1="1", color1='"blue"',
             style1="1", marker1="-1", alpha1="1.0", gui_hint="5,7,6,5"),
-        blk("phase_num", "qtgui_number_sink", (1088, 700),
-            comment="Both the zeroed reading and the raw one, so zeroing can\n"
-                    "never hide what the board is actually doing.",
+        blk("phase_num", "qtgui_number_sink", (1620, 470),
+            comment="Zeroed AND raw, so zeroing can never hide\nwhat the board is doing.",
             name="'Phase RX1 - RX2'", type="float", autoscale="False",
             avg="0", graph_type="qtgui.NUM_GRAPH_HORIZ", nconnections="2",
             min="-180", max="180", update_time="0.10",
             label1="'zeroed'", unit1="'deg'", color1="'black'", factor1="1",
             label2="'raw'", unit2="'deg'", color2="'black'", factor2="1",
             gui_hint="8,0,1,2"),
-        blk("coh_num", "qtgui_number_sink", (1088, 828),
+        blk("coh_num", "qtgui_number_sink", (1900, 470),
             comment="Read this BEFORE the angle.",
             name="'Coherence - read this first'", type="float",
             autoscale="False", avg="0", graph_type="qtgui.NUM_GRAPH_HORIZ",
