@@ -61,6 +61,12 @@
 #                          scope and no antenna needed.
 #     ./devkit net         How the board gets its address; switch DHCP/static,
 #                          set its hostname, or just find it.
+#     ./devkit temps       Both die temperatures against their ratings - the
+#                          Zynq via its XADC, the AD9361 via its own sensor.
+#                          Those are the only two sensors on the board; there is
+#                          nothing on the amplifiers, the DDR or the regulators.
+#       --watch            Keep reading, for watching it heat under load.
+#       --json             Machine-readable.
 #
 # ---- If your host OS is too new for Vivado ----------------------------------
 #
@@ -120,6 +126,7 @@ case "$cmd" in
     gpio-check) exec "$HERE/tools/tx-gpio-bitmap-check.py" "$@" ;;
     container)  exec "$HERE/tools/container/run.sh" "$@" ;;
     net)        exec "$HERE/tools/net.sh" "$@" ;;
+    temps)      exec python3 "$HERE/tools/temps.py" "$@" ;;
 
     status)
         echo "== repo =="
