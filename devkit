@@ -70,6 +70,20 @@
 #                          nothing on the amplifiers, the DDR or the regulators.
 #       --watch            Keep reading, for watching it heat under load.
 #       --json             Machine-readable.
+#     ./devkit loopback    The AD9361's internal digital loopback: transmit
+#                          samples are fed to the receiver INSIDE the chip, so a
+#                          whole transmit-and-receive flowgraph can be exercised
+#                          with nothing radiated and no licence question. With no
+#                          argument it just reports the current state.
+#       on                 Engage it. The antennas go deaf while it is on, so
+#                          the tool says so loudly - a board left in loopback
+#                          looks broken for no visible reason.
+#       off                Put it back. Cleared by a reboot too.
+#       --json             Machine-readable.
+#                          It bypasses everything analogue, so a clean result
+#                          proves the DSP and proves nothing about the mixers,
+#                          the amplifier or the antennas. Used by
+#                          examples/02-modulated-link.
 #
 # ---- If your host OS is too new for Vivado ----------------------------------
 #
@@ -139,6 +153,7 @@ case "$cmd" in
     container)  exec "$HERE/tools/container/run.sh" "$@" ;;
     net)        exec "$HERE/tools/net.sh" "$@" ;;
     temps)      exec python3 "$HERE/tools/temps.py" "$@" ;;
+    loopback)   exec python3 "$HERE/tools/examples_loopback.py" "$@" ;;
     completion)
         # No argument: print the script, so one command sets this shell up
         #     source <(./devkit completion)

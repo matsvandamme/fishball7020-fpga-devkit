@@ -128,3 +128,98 @@ issuing it (exit 144). Use `pgrep -x <name>` for a process name, or the bracket
 trick `pgrep -f "[b]uild_all"`. A shell `for ...; do [ test ] && echo; done`
 exits 1 when the LAST iteration's test is false, so a wrapper that checks exit
 codes must end such loops with `; true` and judge the output instead.
+
+## `Unable to create buffer: -16` is a stale session on the BOARD
+
+`-16` is `EBUSY`. A libiio client that is killed rather than closed leaves its
+session open on the board, holding the DMA. The board showed **three** open
+connections on port 30431 while the host showed none, and every later transmit
+allocation was refused indefinitely. Restarting the client, or the host, does
+nothing. `killall iiod` on the board clears it; so does a reboot.
+
+Do not read a size limit into it. A 4 MB (1048576-sample) transmit buffer
+allocates fine as a fresh process's first request, and a 1 MB one is refused as
+the same process's second. An hour went into a non-existent "1 MB transmit
+buffer ceiling" because the large sizes happened to be tested second.
+
+A related one: with the digital loopback engaged, allocating a large transmit
+buffer returned `-104` (`ECONNRESET`) — IIOD reset the session — and *that*
+left the DMA allocated, producing the `-16` cascade afterwards. Memory was not
+the cause: 963 MB free, 260 MB of 262 MB CMA free.
+
+## Transmitting over a wireless host link starves the DAC, and 0015 then mutes
+
+Receiving tolerates a slow link: samples pile up on the board and you lose
+some, which prints `O`. Transmitting does not — the converter must be fed in
+real time, so a late buffer prints `U`, and **patch 0015 mutes the transmitter
+after 250 ms of starvation** and switches the data source to the DDS. The
+symptom is a flowgraph that looks like it is still working while nothing is on
+the air, and a receiver seeing exactly zero.
+
+Measured: transmit and receive together at 4 MS/s over WiFi produced bursts of
+20–40 underflows in 45 s, each beside `Unable to push buffer: Connection timed
+out`, while a transmit-only stream at the same rate and buffer produced none.
+It is intermittent — the same configuration ran clean an hour later — so it is
+contention, not a throughput limit. The defence is buffer DURATION,
+`buf / samp_rate`, because that is the stall you can absorb. Lowering the rate
+helps twice (more slack, less traffic); raising the buffer helps once.
+
+## A receive buffer as big as the whole capture never returns
+
+`head` for exactly 262144 samples behind a 262144-sample receive buffer hung
+indefinitely; a 65536-sample buffer delivered the same 262144 samples in 1.4 s.
+Long-running streams at 262144 are fine — it is the ask-for-one-bufferful-and-
+stop pattern that wedges. Any one-shot capture should bound its own wait rather
+than trust `tb.wait()`.
+
+## Digital loopback exercises transmit without radiating
+
+`./devkit loopback on` sets the AD9361's `loopback` debugfs attribute to 1, so
+transmit samples reach the receiver inside the chip — past the mixers and the
+amplifier. Nothing is radiated, which makes it the right way to test a
+transmit-and-receive flowgraph before making a licensing decision. Three
+things to know: it does **not** translate frequency, so a transmit LO offset and
+a receive LO offset do not cancel and must be set equal; the analogue
+attenuator does not apply, so level is set by the digital scale alone; and a
+board left in loopback is deaf to its antennas and looks broken for no visible
+reason. It survives everything short of a reboot.
+
+## A slow Python block gets your transmitter muted
+
+An embedded block that pegs a core starves the GNU Radio scheduler's other
+threads, and on this firmware a starved DAC is a muted transmitter (patch
+0015). `examples/lib/evm_meter.py` decided symbols with an `n x order` distance
+matrix on every call to `work()`; at a megasymbol a second that produced 40
+underflows in 45 s where a bare transmit stream produced none. Two habits fix
+it: decide separably where the constellation allows it (O(n), same answer), and
+recompute statistics once per bufferful.
+
+Throttle that recomputation by **samples, not by wall time**. A 40 ms clock was
+correct in the live flowgraph and silently wrong everywhere else: an offline run
+finishes inside 40 ms, so the meter measured once — on the acquisition
+transient — and reported that number for every symbol after it. It read 23% on
+a stream that was measurably 0.3%, and held flat against changing SNR. The unit
+of "recent" for a sample stream is samples.
+
+## GRC block ids are not file names, and trailing underscores are stripped
+
+`qtgui_chooser.block.yml` declares `id: variable_qtgui_chooser`;
+`import.block.yml` declares `id: import_`, and GRC strips the trailing
+underscore when it registers the block, so a flowgraph must say `import`. Get
+it wrong and the block contributes nothing — a missing `import math` surfaced as
+"name 'math' is not defined" on an unrelated block's parameter. Three more
+traps while hand-writing a `.grc`: the `options` mapping must carry no `name`
+key (GRC loads it with `name=''` and the duplicate kills the whole file); a QT
+Chooser validates its default against `option0..option4` individually, not
+against the `options` list; and an id that any import has already bound is
+blacklisted, which is why a window-selection variable cannot be called
+`window` — the waterfall sink imports `gnuradio.fft.window`.
+
+## Sample-rate transitions can fail the AD9361's interface tuning
+
+`ad9361_dig_tune_delay: Tuning TX FAILED!` with every one of 16x16 delay
+positions marked `#` appeared after repeated sample-rate changes, and left
+transmit unusable until a reboot. A healthy board passes 157–181 of 256
+positions. It is a transition effect rather than a property of a particular
+rate — 2.5 MS/s provoked it once and ran clean other times — so treat it as a
+reason to check `dmesg` when transmit goes strange, not as a rate to avoid.

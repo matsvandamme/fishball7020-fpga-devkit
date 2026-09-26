@@ -203,6 +203,7 @@ makes a DHCP reservation impossible.
 | understand what the build produces and why | [How it works](docs/how-it-works.md) |
 | install a toolchain, or avoid needing one | [Building](docs/building.md) · [in a container](docs/building-in-a-container.md) · [without Vivado](docs/building-without-vivado.md) |
 | add my own HDL to the radio's datapath | [Add your own HDL](docs/building.md#add-your-own-hdl) · [the block design](docs/block-design.md) |
+| **see the board do something, with controls that teach** | **[Examples](examples/)** — three graded GNU Radio showcases: [dynamic range and how to lose it](examples/01-dynamic-range/), [a QPSK link you can watch](examples/02-modulated-link/) (transmits), [two coherent receivers](examples/03-coherent-receivers/) |
 | see a complete worked example | [An FM channelizer in the FPGA](docs/wbfm-channelizer.md) |
 | check my HDL in a second, before a 20-minute build | [Simulating your HDL first](docs/building.md#simulating-your-hdl-first) |
 | use both receivers with the FPGA decimator on | [Two receivers that survive decimation](docs/both-receive-channels.md) |
@@ -215,6 +216,7 @@ makes a DHCP reservation impossible.
 | blink the USER LED | [Controlling the USER LED](docs/user-led.md) |
 | put the board on my router, or fix its IP | `./devkit net dhcp` · [Changing the IP address](docs/networking.md) |
 | drive the radio from an AI assistant | the sibling **[Fishball7020-mcp](https://github.com/matsvandamme/Fishball7020-mcp)** — 21 MCP tools |
+| use a tool better suited than GNU Radio | [Other tools, and when they beat GNU Radio](docs/other-sdr-tools.md) — Maia SDR on the fabric, inspectrum, URH, pyadi-iio |
 | fix a build that fails | [Troubleshooting](docs/troubleshooting.md) |
 
 ## What is on the board

@@ -41,7 +41,7 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Everything compiles
-        run: python -m compileall -q tools firmware/scripts
+        run: python -m compileall -q tools firmware/scripts examples
 
       # Deliberately with no numpy installed: the pure-Python FFT fallback is
       # the path most users on a bare machine will take, so it is the one that
@@ -53,6 +53,32 @@ jobs:
         run: |
           python -m pip install --quiet numpy
           python tools/selftest/test_dsp.py
+
+      # The examples' embedded Python blocks. No radio and no GNU Radio needed
+      # for the DSP half; the GRC half is skipped where gnuradio is absent.
+      - name: The examples' DSP, and the .grc files are not stale
+        run: |
+          python -m pip install --quiet numpy pyyaml
+          if python -c "import gnuradio" 2>/dev/null; then
+            python examples/test_blocks.py
+            python examples/mkgrc.py --check
+          else
+            echo "gnuradio not present - checking the parts that do not need it"
+            python - <<'PY'
+          import importlib.util, os, sys
+          import numpy as np
+          lib = os.path.join("examples", "lib")
+          # qam.py is the shared constellation and imports nothing but numpy.
+          spec = importlib.util.spec_from_file_location("qam", os.path.join(lib, "qam.py"))
+          qam = importlib.util.module_from_spec(spec); spec.loader.exec_module(qam)
+          for order in (4, 16, 64):
+              pts = np.array(qam.points(order))
+              assert len(pts) == order, order
+              assert abs((np.abs(pts) ** 2).mean() - 1.0) < 1e-9, order
+              assert qam.bits(order) == int(round(np.log2(order)))
+          print("qam.py: %d orders, all unit mean power" % 3)
+          PY
+          fi
 
       - name: Every tool agrees on where the board is
         run: |
