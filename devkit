@@ -90,7 +90,29 @@ cmd="${1:-}"; shift || true
 case "$cmd" in
     doctor)     exec "$FW/scripts/doctor.sh" "$@" ;;
     setup)      cd "$FW" && exec ./scripts/setup.sh "$@" ;;
-    build)      cd "$FW" && exec ./scripts/build_all.sh "$@" ;;
+    build)
+        # build_all.sh runs from firmware/, so a RELATIVE --xsa path would be
+        # resolved against firmware/ rather than against the directory you
+        # typed it in. Make it absolute here, while we still know where that
+        # was. Measured the wrong way round first: "--xsa local-test.xsa" from
+        # the repo root went looking in firmware/local-test.xsa.
+        args=()
+        take_next=0
+        for a in "$@"; do
+            if [ "$take_next" -eq 1 ]; then
+                case "$a" in /*) ;; *) a="$PWD/$a" ;; esac
+                take_next=0
+            elif [ "$a" = "--xsa" ]; then
+                take_next=1
+            else
+                case "$a" in
+                    --xsa=/*) ;;
+                    --xsa=*)  a="--xsa=$PWD/${a#--xsa=}" ;;
+                esac
+            fi
+            args+=("$a")
+        done
+        cd "$FW" && exec ./scripts/build_all.sh "${args[@]}" ;;
     verify)     cd "$FW" && exec ./scripts/verify_output.sh "$@" ;;
     sim)        cd "$FW" && exec ./sim/run_sim.sh "$@" ;;
     flash)      exec "$HERE/tools/flash.sh" "$@" ;;
