@@ -178,5 +178,83 @@
   "note": "The host used for the network measurements has NO wired interface - every byte crossed WiFi to the router and only then the board's Ethernet. So the network figures are a property of THIS path, not of the board.",
   "wifi_phy_mbit": 540,
   "wifi_phy_mbs": 67.5
+ },
+ "theoretical": {
+  "note": "4 bytes per complex sample per channel, at the converter's full 61.44 MS/s. Ethernet is full duplex, so the busiest single direction is what a link must carry, not the sum.",
+  "combinations": [
+   {
+    "name": "1 RX",
+    "rx": 1,
+    "tx": 0,
+    "total_mbs": 245.8,
+    "busiest_direction_mbs": 245.8,
+    "gigabit_limited_msps": 31.25
+   },
+   {
+    "name": "2 RX",
+    "rx": 2,
+    "tx": 0,
+    "total_mbs": 491.5,
+    "busiest_direction_mbs": 491.5,
+    "gigabit_limited_msps": 15.62
+   },
+   {
+    "name": "1 TX",
+    "rx": 0,
+    "tx": 1,
+    "total_mbs": 245.8,
+    "busiest_direction_mbs": 245.8,
+    "gigabit_limited_msps": 31.25
+   },
+   {
+    "name": "2 TX",
+    "rx": 0,
+    "tx": 2,
+    "total_mbs": 491.5,
+    "busiest_direction_mbs": 491.5,
+    "gigabit_limited_msps": 15.62
+   },
+   {
+    "name": "1 RX + 1 TX",
+    "rx": 1,
+    "tx": 1,
+    "total_mbs": 491.5,
+    "busiest_direction_mbs": 245.8,
+    "gigabit_limited_msps": 31.25
+   },
+   {
+    "name": "1 RX + 2 TX",
+    "rx": 1,
+    "tx": 2,
+    "total_mbs": 737.3,
+    "busiest_direction_mbs": 491.5,
+    "gigabit_limited_msps": 15.62
+   },
+   {
+    "name": "2 RX + 1 TX",
+    "rx": 2,
+    "tx": 1,
+    "total_mbs": 737.3,
+    "busiest_direction_mbs": 491.5,
+    "gigabit_limited_msps": 15.62
+   },
+   {
+    "name": "2 RX + 2 TX",
+    "rx": 2,
+    "tx": 2,
+    "total_mbs": 983.0,
+    "busiest_direction_mbs": 491.5,
+    "gigabit_limited_msps": 15.62
+   }
+  ],
+  "gigabit_per_direction_mbs": 125.0,
+  "lvds": {
+   "lanes_each_way": 6,
+   "ddr": true,
+   "data_clk_hz": 245760000.0,
+   "gbit_per_direction": 2.949,
+   "bits_per_channel_sample": 24,
+   "source": "AD9361 data sheet Rev. G: RX_D0-RX_D5 / TX_D0-TX_D5, DATA_CLK period 4.069 ns"
+  }
  }
 }

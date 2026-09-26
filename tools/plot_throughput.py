@@ -50,11 +50,52 @@ def draw(data, theme_name, path):
         "axes.spines.top": False, "axes.spines.right": False,
         "grid.color": t["grid"], "grid.linewidth": 0.7,
     })
-    fig, (ax, bx) = plt.subplots(1, 2, figsize=(12.2, 4.4),
-                                 gridspec_kw={"width_ratios": [1.45, 1],
-                                              "wspace": 0.28})
+    fig, (cx, bx, ax) = plt.subplots(1, 3, figsize=(17.2, 4.6),
+                                     gridspec_kw={"width_ratios": [1.15, 1, 1.25],
+                                                  "wspace": 0.34})
 
-    # ---- left: throughput against buffer size --------------------------
+    # ---- panel 1: what each RX/TX combination demands -------------------
+    combos = data["theoretical"]["combinations"]
+    names = [c["name"] for c in combos]
+    busiest = [c["busiest_direction_mbs"] for c in combos]
+    total = [c["total_mbs"] for c in combos]
+    pos = np.arange(len(combos))
+
+    # The pale bar is the sum of both directions; the solid one is the
+    # busiest single direction, which is what a full-duplex link must carry.
+    cx.barh(pos, total, height=0.62, color="#1f6feb", alpha=0.28,
+            edgecolor="none", label="both directions summed")
+    cx.barh(pos, busiest, height=0.62, color="#1f6feb", edgecolor=t["bg"],
+            linewidth=1, label="busiest single direction")
+
+    # Reference lines, labelled ABOVE the bars (y is inverted, so -0.75 is the
+    # top) and staggered so the two captions cannot overlap each other.
+    gig = data["theoretical"]["gigabit_per_direction_mbs"]
+    board = data["local"]["1 receive channel"]["mbs"]
+    for v, lab, style, dy in (
+            (gig, f"a gigabit link: {gig:.0f} MB/s\neach direction", (0, (4, 3)), -1.35),
+            (board, f"this board, measured:\n{board:.0f} MB/s", (0, (1, 2)), -0.55)):
+        cx.axvline(v, color=t["muted"], linewidth=1.2, linestyle=style)
+        cx.annotate(lab, xy=(v, dy), xytext=(4, 0), textcoords="offset points",
+                    fontsize=7.5, va="center", color=t["muted"], linespacing=1.35)
+
+    for i, v in enumerate(busiest):
+        cx.annotate(f"{v:.0f}", (v, pos[i]), xytext=(4, 0),
+                    textcoords="offset points", va="center", fontsize=8,
+                    color=t["fg"], fontweight="bold")
+
+    cx.set_yticks(pos)
+    cx.set_yticklabels(names, fontsize=8.5)
+    cx.invert_yaxis()
+    cx.set_xlabel("MB/s demanded at the full 61.44 MS/s")
+    cx.set_xlim(0, max(total) * 1.16)
+    cx.set_ylim(len(combos) - 0.4, -1.9)   # headroom at the top for the labels
+    cx.grid(axis="x")
+    cx.legend(loc="center right", frameon=False, fontsize=7.5)
+    cx.set_title("What each configuration asks for",
+                 loc="left", fontsize=10.5, color=t["fg"], pad=8)
+
+    # ---- panel 3: throughput against buffer size ------------------------
     for label, (colour, marker, style) in SERIES.items():
         pts = data["buffer_sweep"][label]
         x = np.array([p["buffer_samples"] for p in pts], dtype=float)
@@ -96,7 +137,7 @@ def draw(data, theme_name, path):
     ax.set_title("Streaming to a host? Raise the buffer.",
                  loc="left", fontsize=10.5, color=t["fg"], pad=8)
 
-    # ---- right: what that means in samples per second -------------------
+    # ---- panel 2: what the board actually delivers ----------------------
     cfg = data["configurations"]
     names = [c["name"] for c in cfg]
     vals = [c["msps_per_channel"] for c in cfg]
@@ -138,7 +179,17 @@ def draw(data, theme_name, path):
                 xy=(0.60, 0.46), xycoords="axes fraction", ha="center",
                 va="top", fontsize=8, color=t["muted"], linespacing=1.45)
 
-    fig.text(0.012, -0.02, "\n".join(textwrap.wrap(data["footnote"], 118)),
+    lv = data["theoretical"]["lvds"]
+    caption = (
+        f"LEFT: 4 bytes per complex sample per channel, at the converter's full "
+        f"61.44 MS/s. Ethernet is full duplex, so a link must carry the busiest "
+        f"single direction, not the sum \u2014 which is why 1 RX + 1 TX asks no more "
+        f"of a link than 1 RX alone. The chip's own ceiling is "
+        f"{lv['lanes_each_way']} LVDS lanes each way, DDR at "
+        f"{lv['data_clk_hz']/1e6:.2f} MHz = {lv['gbit_per_direction']:.3f} Gbit/s, "
+        f"which is exactly 2 channels \u00d7 61.44 MS/s. "
+        + data["footnote"].replace("Left:", "RIGHT:").replace("Right:", "MIDDLE:"))
+    fig.text(0.012, -0.04, "\n".join(textwrap.wrap(caption, 178)),
              fontsize=7.2, color=t["muted"], va="top")
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)

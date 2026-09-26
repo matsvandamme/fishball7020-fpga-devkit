@@ -302,7 +302,7 @@ Both are true, and multiplying them together is the mistake everyone makes.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/throughput-dark.svg">
-  <img src="docs/img/throughput-light.svg" alt="Two panels. Left: streaming throughput against libiio buffer size for one and two receive channels, rising from about 15 MB/s at a 16 Ksample buffer to a plateau near 44 MB/s above 1 Msample, with a band showing the spread over three runs, annotated that a small buffer costs two thirds of the rate on any link. Right: sustained sample rate per channel - 49.8 MS/s for one receive channel run on the board and 46.2 for two, 1.7 over the USB gadget, and a hatched bar at 11.3 for one example network link, against a dashed line marking the converter at 61.44 MS/s." width="900">
+  <img src="docs/img/throughput-light.svg" alt="Three panels. Left: what each RX/TX combination demands at the full 61.44 MS/s - a pale bar for both directions summed and a solid bar for the busiest single direction, from 246 MB/s for one channel to 983 MB/s summed for two receive plus two transmit, with vertical reference lines at a gigabit link's 125 MB/s per direction and at the 199 MB/s this board was measured to sustain. One receive plus one transmit shows a busiest direction of 246 MB/s, the same as one receive alone. Middle: sustained sample rate per channel - 49.8 MS/s for one receive channel run on the board and 46.2 for two, 1.7 over the USB gadget, and a hatched bar at 11.3 for one example network link, against a dashed line marking the converter at 61.44 MS/s. Right: streaming throughput against libiio buffer size, rising from about 15 MB/s at a 16 Ksample buffer to a plateau near 44 MB/s above 1 Msample." width="900">
 </picture>
 
 **What the board can do**, measured with the capture running on the board so
@@ -316,9 +316,8 @@ That is most of what the converter produces. **What you will actually get is
 set by the link to your host**, not by the board — so a number measured on
 somebody else's desk will not be yours.
 
-**What each configuration demands.** One complex sample is 4 bytes, so this is
-just `4 × channels × sample rate` — the ceiling every real link is measured
-against:
+**What each configuration demands** is the left panel above, and it is just
+`4 × channels × sample rate` — one complex sample being 4 bytes:
 
 | Active channels | At the full 61.44 MS/s | A gigabit link allows |
 |---|---:|---:|
