@@ -112,7 +112,11 @@ def render(temps: dict, colour: bool, extra: dict | None = None,
     if extra:
         out.append("")
         for k, v in extra.items():
+            if k.startswith("_"):
+                continue
             out.append(f"  {k}: {v}")
+        for line in extra.get("_limit_lines", []):
+            out.append(f"  {line}" if line else "")
     return "\n".join(out)
 
 
@@ -130,14 +134,56 @@ def tx_state(c: Iiod) -> dict:
     # Reporting them the same way would tell somebody to go install a patch
     # they already have.
     try:
-        lim = int(c.read_device(PHY, "tx_temp_limit"))
-        info["tx_temp_limit"] = (
-            f"{lim/1000:.1f} C - transmit power will not be raised above this"
-            if lim else
-            "0 - present but disabled; set it to refuse transmit when hot")
+        info["_tx_temp_limit_mC"] = int(c.read_device(PHY, "tx_temp_limit"))
     except Exception:
-        info["tx_temp_limit"] = "absent - this firmware predates patch 0018"
+        info["_tx_temp_limit_mC"] = None
     return info
+
+
+#: What to suggest when the limit is off. The AD9361 is specified to 85 C and
+#: idles around 45 C on this board, so 70 C acts well before the rating while
+#: leaving room for a warm room and a busy transmitter.
+SUGGEST_C = 70
+
+
+def tx_limit_lines(limit_mC, ad9361_c: float, host: str) -> list[str]:
+    """What the thermal limit is, and exactly how to change it."""
+    if limit_mC is None:
+        return ["tx_temp_limit: absent - this firmware predates patch 0018.",
+                "    Build and flash a current devkit kernel to get it."]
+
+    if limit_mC:
+        lim_c = limit_mC / 1000
+        head = lim_c - ad9361_c
+        return [
+            f"tx_temp_limit: {lim_c:.1f} C - ACTIVE. Above this the driver",
+            "    refuses to lower the attenuation, so transmit power cannot be",
+            f"    raised. Muting is never blocked. AD9361 is at {ad9361_c:.1f} C,"
+            + (f" {head:.1f} C below the limit." if head >= 0
+               else f" {-head:.1f} C OVER the limit - transmit is being refused."),
+            "    To turn it off:",
+            f"        # run on your HOST",
+            f"        iio_attr -u ip:{host} -d ad9361-phy tx_temp_limit 0",
+        ]
+
+    return [
+        "tx_temp_limit: 0 - OFF. Nothing stops the board transmitting hot.",
+        f"    To refuse transmit above {SUGGEST_C} C, either:",
+        "",
+        "        # run on your HOST",
+        f"        iio_attr -u ip:{host} -d ad9361-phy tx_temp_limit {SUGGEST_C * 1000}",
+        "",
+        "        # or run on the board",
+        f"        echo {SUGGEST_C * 1000} > /sys/bus/iio/devices/iio:device0/tx_temp_limit",
+        "",
+        "    The value is MILLIdegrees C, so 70 C is 70000. Above it, requests",
+        "    to lower the attenuation are refused and muting still works - the",
+        "    failure direction is silence, never a stuck-on transmitter.",
+        "    It does NOT survive a reboot; the driver starts at 0. To make it",
+        "    stick, set it from /mnt/jffs2/autorun.sh - but read docs/kernel.md",
+        "    first, because that partition survives reflashing and is the usual",
+        "    reason a board behaves unlike its firmware.",
+    ]
 
 
 def main(argv=None) -> int:
@@ -176,7 +222,11 @@ def main(argv=None) -> int:
 
             print(f"die temperatures on {host}")
             if not args.watch:
-                print(render(read_temps(c), colour, tx_state(c)))
+                temps = read_temps(c)
+                extra = tx_state(c)
+                extra["_limit_lines"] = tx_limit_lines(
+                    extra.get("_tx_temp_limit_mC"), temps["AD9361"], host)
+                print(render(temps, colour, extra))
                 return 0
 
             # Print where the limits come from once, then just the numbers -
