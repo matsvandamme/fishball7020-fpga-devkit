@@ -47,3 +47,17 @@ in this repository was read off **this** PDF.
 [`../img/make_schematic_figures.py`](../img/make_schematic_figures.py) draws
 annotated crops of those three sheets straight from this file. The figures are
 in [the GPIO reference](../tx-gpio-bitmap.md#where-the-pin-numbers-come-from).
+
+## Missing, and worth adding
+
+Two datasheets would let the tooling cite its numbers instead of asserting
+them. Neither is here, and neither can be fetched non-interactively — AMD's
+documentation site serves a JavaScript shell rather than the PDF.
+
+| Document | Wanted for |
+|---|---|
+| **DS187** — Zynq-7000 SoC (XC7Z010/XC7Z020) Data Sheet | The junction-temperature limits `./devkit temps` reports. The part is confirmed commercial grade from the hardware platform's `sysdef.xml`; the 0–85 °C figure that grade implies is not confirmed from anything here. |
+| **AD9361 Data Sheet** (Analog Devices) | Same: the operating range and absolute-maximum junction temperature are currently quoted from memory. |
+
+Drop either in this directory and update `SENSORS` in
+[`tools/temps.py`](../../tools/temps.py) to cite it.

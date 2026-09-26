@@ -17,18 +17,32 @@ or the regulators, and no `hwmon` or thermal-zone entries at all - checked on
 the board, not assumed. So "the board is at N degrees" is never something this
 tool can tell you; it reports two dies and says which.
 
-WHERE THE RATINGS COME FROM. A limit quoted without a source is a guess, so:
+WHERE THE RATINGS COME FROM - AND HOW FAR TO TRUST THEM. Read this before
+quoting a number out of this tool.
 
-  Zynq 85 C   The fitted part is `xc7z020clg400-2` - recorded in the hardware
-              platform's own sysdef.xml - with no industrial suffix, so it is
-              commercial grade: 0 to 85 C junction. tools/selftest has used
-              this limit all along.
+  **Neither limit has been read from a datasheet.** No datasheet for either
+  part is in docs/vendor/, which holds only the board schematic, and AMD's
+  documentation site cannot be fetched non-interactively. So:
 
-  AD9361      The datasheet specifies operation over -40 to +85 C and gives an
-              absolute maximum junction temperature of 150 C. NOTE: there is no
-              AD9361 datasheet in docs/vendor/, so unlike the Zynq figure this
-              one is not checkable from anything in this repository. It is
-              reported as a datasheet value, and labelled as one.
+  Zynq 85 C   What IS established: the fitted part is `xc7z020clg400-2`, with
+              no industrial suffix, so it is commercial grade. That comes from
+              the hardware platform's own sysdef.xml and is checkable here.
+              What is NOT: that commercial grade means 0-85 C junction. That
+              figure is inherited from tools/selftest, which has used it all
+              along, and is consistent with what Xilinx specifies for
+              commercial parts - but nobody in this repository has opened
+              DS187 to confirm it.
+
+  AD9361      -40 to +85 C operating and 150 C absolute maximum junction are
+              quoted from memory of the ADI datasheet. Treat them as
+              approximately right and not as citations.
+
+  Both are almost certainly the right order of magnitude, and both are the
+  right SHAPE of limit - the XADC and the AuxADC each report junction
+  temperature, which is what an operating-range figure constrains. If you are
+  making a thermal decision that matters, get the datasheets: DS187 for the
+  Zynq, the AD9361 data sheet from Analog Devices. Dropping them in
+  docs/vendor/ would let this tool cite them properly.
 
 The transmitter is the only part here that heats itself appreciably, and the
 amplifier sits next to the AD9361. If you want the board to act on this rather
@@ -56,9 +70,10 @@ PHY, XADC = "ad9361-phy", "xadc"
 # name, spec limit (C), absolute max (C) or None, where the number comes from
 SENSORS = [
     ("Zynq XC7Z020", 85.0, None,
-     "commercial grade (xc7z020clg400-2), 0-85 C junction"),
+     "commercial grade, confirmed (xc7z020clg400-2). The 85 C itself is"
+     " UNVERIFIED - no DS187 here. --help explains."),
     ("AD9361", 85.0, 150.0,
-     "datasheet: -40 to +85 C operating, 150 C absolute max junction"),
+     "85 / 150 C quoted from memory, NOT from a datasheet. --help explains."),
 ]
 
 # Fractions of the spec limit at which to start saying something. Warning well
