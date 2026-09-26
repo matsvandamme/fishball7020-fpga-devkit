@@ -6752,6 +6752,11 @@ fractional 3 dB bandwidth = 1 / Q
     one measurement with <em>two viewpoints</em>, and the difference between those viewpoints carries
     information.</p>
 
+  <p>There is a working flowgraph for this in the repository:
+    <a href="../../examples/03-coherent-receivers/">examples/03-coherent-receivers</a>. It shows the
+    phase on a dial whose <em>radius</em> is the coherence, so you can tell a real measurement from
+    noise at a glance — and it is arranged to avoid the trap described at the end of this lesson.</p>
+
   <h3>What the phase difference tells you</h3>
   <p>A wave arriving at an angle reaches one antenna slightly before the other. That delay appears as a
     <strong>phase difference</strong> between the channels — and from it you can compute the direction
@@ -7685,6 +7690,12 @@ as eta -> 0:   -> ln 2 = 0.693  ->  10*log10(0.693) = -1.59 dB
 <section class="part" id="l50">
   <div class="part-head"><span class="part-n">50</span><h2>Projects, in order of difficulty</h2></div>
   <p class="lede">Each one uses the board for something software cannot do as well.</p>
+
+  <p>Before building something new, it is worth running something that already works. The repository
+    ships three graded GNU Radio showcases in <a href="../../examples/">examples/</a> — dynamic range
+    and how to lose it, a QPSK link you can watch end to end, and the two coherent receivers of
+    lesson 45. Every control on them is wired to a number, so you can break the measurement on purpose
+    and see what it cost.</p>
 
   <ol class="body">
     <li><strong>A sample-locked trigger.</strong> Divide the sample stream and pulse a header pin. You
