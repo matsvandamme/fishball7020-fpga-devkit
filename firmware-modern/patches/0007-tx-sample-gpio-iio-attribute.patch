@@ -1,0 +1,82 @@
+Rebased onto Linux 6.12 (Analog Devices `main`) for firmware-modern.
+Everything this patch ADDS is byte-for-byte what the 5.15 original added; only
+the surrounding context moved. Verified by comparing the added lines of both
+patches, not by eye.
+
+diff --git a/drivers/iio/frequency/cf_axi_dds.c b/drivers/iio/frequency/cf_axi_dds.c
+index 70d40741e..5a2e7d9bc 100644
+--- a/drivers/iio/frequency/cf_axi_dds.c
++++ b/drivers/iio/frequency/cf_axi_dds.c
+@@ -676,6 +676,64 @@ static IIO_DEVICE_ATTR(sync_start_enable_available, 0444,
+ 		       NULL,
+ 		       1);
+ 
++/*
++ * Bit 1 of the DAC core's GP_CONTROL register routes the low nibble of each
++ * transmit sample to four header pins instead of discarding it - the four bits
++ * the 12-bit DAC does not convert. Bit 0 of the same register is the
++ * interpolator bypass, so both reads and writes are read-modify-write.
++ *
++ * Without this attribute the only way to reach the bit is poking
++ * direct_reg_access in debugfs, which is a poor interface for a documented
++ * feature and requires the caller to know the register layout.
++ */
++#define ADI_TX_SAMPLE_GPIO_EN	BIT(1)
++
++static ssize_t axidds_tx_sample_gpio_show(struct device *dev,
++					  struct device_attribute *attr,
++					  char *buf)
++{
++	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
++	struct cf_axi_dds_state *st = iio_priv(indio_dev);
++	u32 reg;
++
++	cf_axi_dds_lock(st);
++	reg = dds_read(st, ADI_REG_DAC_GP_CONTROL);
++	cf_axi_dds_unlock(st);
++
++	return sprintf(buf, "%u\n", !!(reg & ADI_TX_SAMPLE_GPIO_EN));
++}
++
++static ssize_t axidds_tx_sample_gpio_store(struct device *dev,
++					   struct device_attribute *attr,
++					   const char *buf, size_t len)
++{
++	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
++	struct cf_axi_dds_state *st = iio_priv(indio_dev);
++	bool enable;
++	u32 reg;
++	int ret;
++
++	ret = kstrtobool(buf, &enable);
++	if (ret)
++		return ret;
++
++	cf_axi_dds_lock(st);
++	reg = dds_read(st, ADI_REG_DAC_GP_CONTROL);
++	if (enable)
++		reg |= ADI_TX_SAMPLE_GPIO_EN;
++	else
++		reg &= ~ADI_TX_SAMPLE_GPIO_EN;
++	dds_write(st, ADI_REG_DAC_GP_CONTROL, reg);
++	cf_axi_dds_unlock(st);
++
++	return len;
++}
++
++static IIO_DEVICE_ATTR(tx_sample_gpio_en, 0644,
++		       axidds_tx_sample_gpio_show,
++		       axidds_tx_sample_gpio_store,
++		       0);
++
+ static IIO_DEVICE_ATTR(out_voltage_sampling_frequency_available, 0444,
+ 		       cf_axi_sampling_frequency_available,
+ 		       NULL,
+@@ -685,6 +743,7 @@ static struct attribute *cf_axi_attributes[] = {
+ 	&iio_dev_attr_sync_start_enable.dev_attr.attr,
+ 	&iio_dev_attr_sync_start_enable_available.dev_attr.attr,
+ 	&iio_dev_attr_out_voltage_sampling_frequency_available.dev_attr.attr,
++	&iio_dev_attr_tx_sample_gpio_en.dev_attr.attr,
+ 	NULL,
+ };
+ 

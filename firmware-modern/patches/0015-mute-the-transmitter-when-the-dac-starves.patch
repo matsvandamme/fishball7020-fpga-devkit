@@ -1,0 +1,409 @@
+Mute the transmitter when the DAC stops being fed
+
+patches/0004 mutes the transmitter from the buffer's postdisable hook, and
+describes that as a real guarantee on the grounds that the IIO core runs
+postdisable even when the application crashed or was killed.
+
+It measured false. tools/IDLE-CASES.md, case B: kill -9 a LOCAL process
+feeding a TX buffer and buffer/enable stays 1, so the IIO core never runs
+postdisable, the mute never fires, and the transmitter stays live
+indefinitely. Through a 20 dB loop the port read -46.7 dBFS against -59.3
+dBFS muted - 12.6 dB hotter, with both the writer and its feeding process
+confirmed gone and nobody having asked for anything. Case C, a client that
+stalls mid-stream without dying, was never covered at all.
+
+tools/tx-guard.sh mitigates this from userspace and says plainly why that is
+not enough: it is a tool-level gate rather than enforcement, anything writing
+out_voltageN_hardwaregain directly bypasses it, and its affirmation file lives
+in world-writable tmpfs where any process can forge it with touch.
+
+The fix is to stop keying off events. Closing, killing and crashing are
+events, and an event can be missed. "No DMA block has arrived for N
+milliseconds" is a state, and a state cannot be. One timer closes both B
+and C.
+
+  - dds_buffer_submit_block() re-arms it on every block, which is the only
+    place the driver reliably learns that data is still flowing.
+  - preenable arms it too, so a buffer enabled and then never fed at all -
+    which is case C's worst version - is covered rather than sitting unmuted
+    with nothing to arm the watchdog.
+  - postdisable cancels it, so the clean path is unchanged.
+
+CYCLIC streams are deliberately exempt. The hardware repeats a single
+submitted block forever, so silence on the submission path is the feature
+working, not a fault, and muting those would break every cyclic transmit on
+the board. The flag is read BEFORE the PL DDR FIFO branch, which clears it.
+
+It is a workqueue rather than a timer because muting talks to the AD9361 over
+SPI, and that sleeps.
+
+The timeout is tunable and readable at
+
+    /sys/bus/iio/devices/iio:deviceN/tx_starve_timeout_ms
+
+defaulting to 250 ms, with 0 to disable it. Values under 20 ms are refused:
+this board's network path already delivers in bursts with gaps, and a timeout
+inside that would mute a healthy stream and present as a mysterious dropout.
+
+CYCLIC streams get a SEPARATE, opt-in backstop at
+
+    /sys/bus/iio/devices/iio:deviceN/tx_cyclic_timeout_ms
+
+defaulting to 0, which is off. Outliving the program that started it is what
+a cyclic transmit is FOR - docs/block-design.md calls that out as the point of
+the DMA's CYCLIC 1 - so nothing changes unless an operator asks. But once
+started, a kill -9 is indistinguishable from a normal return, and the board
+will happily radiate a repeating waveform forever with nobody watching. Being
+able to bound that is worth one attribute.
+
+The stale claim in cf_axi_dds_buffer_stream.c is corrected in place, since a
+comment asserting a guarantee that does not hold is worse than no comment.
+
+Measured on the board, all through attenuation read-back rather than trusting
+a call to have returned:
+
+  A  normal close            -89.75 dB, buffer 0     unchanged
+  B  kill -9, local          -89.75 dB after 0.27 s  was -40 dB, live forever
+  C  client stalls alive     -89.75 dB               was never covered
+  D  cyclic, running          -40 dB, buffer 1       correctly left alone
+  D' cyclic + backstop 2 s   -89.75 dB after 2.10 s  opt-in
+  E  timeout 0                -40 dB                 disabled as asked
+  F  timeout 5 ms            refused, stays 250      floor enforced
+
+One trap worth recording for anyone writing a test here: do NOT use `sleep`
+immediately after `kill -9` on a background job in busybox sh. It returns
+instantly on SIGCHLD, so the script reads the attenuation about 10 ms after
+the kill and sees the pre-mute value. That nearly went down as "mutes after
+3 to 6 seconds" when the real figure is 0.27 s. Poll /proc/uptime instead.
+
+Rebased onto Linux 6.12 (Analog Devices `main`) for firmware-modern.
+
+One hunk needed new code. Which field carries the cyclic flag depends on the
+buffer ABI the kernel was built with, and 6.12 has both:
+
+    CONFIG_IIO_DMA_BUF_MMAP_LEGACY=y   block->block.flags & ..._FLAG_CYCLIC
+    otherwise                          block->cyclic
+
+The legacy path is the live one on this board, and that is not a detail: the
+board's libiio is pinned at 38483f31 (0.25), which probes BLOCK_FREE_IOCTL to
+reach its high-speed path, and cyclic mode exists only there. Both are handled
+so the driver still builds either way. The starvation timeout, the cyclic
+backstop and the mute itself are byte-for-byte the 5.15 code.
+
+Re-measured on 6.12 rather than assumed: the selftest's cyclic loopback tone
+still passes (digital_loopback_error_db 0.0), and the transmitters read
+-89.75 dB at probe.
+
+diff --git a/drivers/iio/frequency/cf_axi_dds.c b/drivers/iio/frequency/cf_axi_dds.c
+index 5a2e7d9bc..2cd98e8e1 100644
+--- a/drivers/iio/frequency/cf_axi_dds.c
++++ b/drivers/iio/frequency/cf_axi_dds.c
+@@ -126,6 +126,28 @@ struct cf_axi_dds_state {
+ 	 * attenuation, i.e. key the transmitter at full output.
+ 	 */
+ 	bool				tx_muted;
++	/*
++	 * Starvation watchdog. tx_starve_ms is how long the DAC may go without
++	 * a DMA block before the transmitter is muted; 0 disables it. Re-armed
++	 * from dds_buffer_submit_block(), cancelled on postdisable.
++	 *
++	 * tx_cyclic records that the buffer in flight is a CYCLIC one, which
++	 * the hardware repeats forever from a single submission. Such a stream
++	 * is not starving when no further block arrives - it is working
++	 * exactly as asked - so the watchdog must leave it alone.
++	 */
++	struct delayed_work		tx_starve_work;
++	unsigned int			tx_starve_ms;
++	/*
++	 * Backstop for CYCLIC streams, which the hardware repeats forever from
++	 * a single submission. Outliving the program that started one is their
++	 * documented purpose, so this is OFF by default and nothing changes
++	 * unless an operator asks for it - but "transmits forever, unattended,
++	 * and a kill -9 looks exactly like a normal return" is worth being able
++	 * to bound.
++	 */
++	unsigned int			tx_cyclic_ms;
++	bool				tx_cyclic;
+ 	bool				dp_disable;
+ 	bool				enable;
+ 	bool				pl_dma_fifo_en;
+@@ -734,6 +756,88 @@ static IIO_DEVICE_ATTR(tx_sample_gpio_en, 0644,
+ 		       axidds_tx_sample_gpio_store,
+ 		       0);
+ 
++static ssize_t axidds_tx_starve_show(struct device *dev,
++				     struct device_attribute *attr, char *buf)
++{
++	struct cf_axi_dds_state *st = iio_priv(dev_to_iio_dev(dev));
++
++	return sprintf(buf, "%u\n", st->tx_starve_ms);
++}
++
++static ssize_t axidds_tx_starve_store(struct device *dev,
++				      struct device_attribute *attr,
++				      const char *buf, size_t len)
++{
++	struct cf_axi_dds_state *st = iio_priv(dev_to_iio_dev(dev));
++	unsigned int ms;
++	int ret;
++
++	ret = kstrtouint(buf, 0, &ms);
++	if (ret)
++		return ret;
++
++	/*
++	 * A very short timeout would mute a healthy stream between blocks over
++	 * a slow link; this board's own network path already delivers in bursts
++	 * with gaps. Refuse the values that would do that rather than let
++	 * someone discover it as a mysterious dropout.
++	 */
++	if (ms && ms < CF_AXI_DDS_TX_STARVE_MS_MIN)
++		return -EINVAL;
++
++	st->tx_starve_ms = ms;
++
++	if (!ms)
++		cancel_delayed_work_sync(&st->tx_starve_work);
++
++	return len;
++}
++
++static IIO_DEVICE_ATTR(tx_starve_timeout_ms, 0644,
++		       axidds_tx_starve_show,
++		       axidds_tx_starve_store,
++		       0);
++
++static ssize_t axidds_tx_cyclic_show(struct device *dev,
++				     struct device_attribute *attr, char *buf)
++{
++	struct cf_axi_dds_state *st = iio_priv(dev_to_iio_dev(dev));
++
++	return sprintf(buf, "%u\n", st->tx_cyclic_ms);
++}
++
++static ssize_t axidds_tx_cyclic_store(struct device *dev,
++				      struct device_attribute *attr,
++				      const char *buf, size_t len)
++{
++	struct cf_axi_dds_state *st = iio_priv(dev_to_iio_dev(dev));
++	unsigned int ms;
++	int ret;
++
++	ret = kstrtouint(buf, 0, &ms);
++	if (ret)
++		return ret;
++
++	/*
++	 * No minimum beyond the starve floor: a cyclic backstop is a
++	 * deliberate "stop after this long" and the operator picks the length.
++	 */
++	if (ms && ms < CF_AXI_DDS_TX_STARVE_MS_MIN)
++		return -EINVAL;
++
++	st->tx_cyclic_ms = ms;
++
++	if (!ms && st->tx_cyclic)
++		cancel_delayed_work_sync(&st->tx_starve_work);
++
++	return len;
++}
++
++static IIO_DEVICE_ATTR(tx_cyclic_timeout_ms, 0644,
++		       axidds_tx_cyclic_show,
++		       axidds_tx_cyclic_store,
++		       0);
++
+ static IIO_DEVICE_ATTR(out_voltage_sampling_frequency_available, 0444,
+ 		       cf_axi_sampling_frequency_available,
+ 		       NULL,
+@@ -744,6 +848,8 @@ static struct attribute *cf_axi_attributes[] = {
+ 	&iio_dev_attr_sync_start_enable_available.dev_attr.attr,
+ 	&iio_dev_attr_out_voltage_sampling_frequency_available.dev_attr.attr,
+ 	&iio_dev_attr_tx_sample_gpio_en.dev_attr.attr,
++	&iio_dev_attr_tx_starve_timeout_ms.dev_attr.attr,
++	&iio_dev_attr_tx_cyclic_timeout_ms.dev_attr.attr,
+ 	NULL,
+ };
+ 
+@@ -1233,6 +1339,77 @@ void cf_axi_dds_tx_rf_mute(struct cf_axi_dds_state *st, bool mute) { }
+ #endif
+ EXPORT_SYMBOL_GPL(cf_axi_dds_tx_rf_mute);
+ 
++/*
++ * The transmitter must go quiet when the DAC stops being fed, not merely when
++ * software says it has finished.
++ *
++ * postdisable is an event, and events can be missed. Measured on this board
++ * (tools/IDLE-CASES.md, case B): kill -9 a local process feeding a TX buffer
++ * and buffer/enable stays 1, the IIO core never runs postdisable, the mute
++ * never fires, and the port sits 12.6 dB hotter than muted with no process
++ * alive and nobody having asked for anything. Case C - a client that stalls
++ * mid-stream without dying - was never covered at all.
++ *
++ * "No block has arrived for N milliseconds" is a state rather than an event,
++ * and a state cannot be missed. One timer closes both cases.
++ *
++ * This runs from a workqueue, not a timer, because muting talks to the AD9361
++ * over SPI and that sleeps.
++ */
++static void cf_axi_dds_tx_starve_fn(struct work_struct *work)
++{
++	struct cf_axi_dds_state *st = container_of(to_delayed_work(work),
++						   struct cf_axi_dds_state,
++						   tx_starve_work);
++
++	if (st->tx_muted)
++		return;
++
++	dev_warn(&st->indio_dev->dev,
++		 "%s for %u ms - muting the transmitter\n",
++		 st->tx_cyclic ? "cyclic transmit has run unattended"
++			       : "no transmit data",
++		 st->tx_cyclic ? st->tx_cyclic_ms : st->tx_starve_ms);
++
++	cf_axi_dds_tx_rf_mute(st, true);
++	cf_axi_dds_datasel(st, -1, DATA_SEL_DDS);
++}
++
++/*
++ * Called for every submitted block. cyclic streams are deliberately NOT armed:
++ * the hardware repeats one block forever, so silence on the submission path is
++ * correct behaviour rather than a fault.
++ */
++void cf_axi_dds_tx_starve_arm(struct cf_axi_dds_state *st, bool cyclic)
++{
++	unsigned int ms = cyclic ? st->tx_cyclic_ms : st->tx_starve_ms;
++
++	st->tx_cyclic = cyclic;
++
++	if (!ms) {
++		cancel_delayed_work(&st->tx_starve_work);
++		return;
++	}
++
++	mod_delayed_work(system_wq, &st->tx_starve_work, msecs_to_jiffies(ms));
++}
++EXPORT_SYMBOL_GPL(cf_axi_dds_tx_starve_arm);
++
++void cf_axi_dds_tx_starve_cancel(struct cf_axi_dds_state *st)
++{
++	cancel_delayed_work_sync(&st->tx_starve_work);
++	st->tx_cyclic = false;
++}
++EXPORT_SYMBOL_GPL(cf_axi_dds_tx_starve_cancel);
++
++void cf_axi_dds_tx_starve_init(struct cf_axi_dds_state *st)
++{
++	INIT_DELAYED_WORK(&st->tx_starve_work, cf_axi_dds_tx_starve_fn);
++	st->tx_starve_ms = CF_AXI_DDS_TX_STARVE_MS_DEFAULT;
++	st->tx_cyclic_ms = 0;		/* off: cyclic is meant to outlive you */
++}
++EXPORT_SYMBOL_GPL(cf_axi_dds_tx_starve_init);
++
+ static int cf_axi_dds_update_scan_mode(struct iio_dev *indio_dev,
+ 	const unsigned long *scan_mask)
+ {
+diff --git a/drivers/iio/frequency/cf_axi_dds.h b/drivers/iio/frequency/cf_axi_dds.h
+index aa332d94e..89d635e9a 100644
+--- a/drivers/iio/frequency/cf_axi_dds.h
++++ b/drivers/iio/frequency/cf_axi_dds.h
+@@ -321,4 +321,14 @@ void dds_master_write(struct cf_axi_dds_state *st,
+ bool cf_axi_dds_dma_fifo_en(struct cf_axi_dds_state *st);
+ void cf_axi_dds_tx_rf_mute(struct cf_axi_dds_state *st, bool mute);
+ 
++/*
++ * Transmit starvation watchdog. See cf_axi_dds_tx_starve_fn() for why it
++ * exists; tools/IDLE-CASES.md for the measurements that prompted it.
++ */
++#define CF_AXI_DDS_TX_STARVE_MS_DEFAULT	250
++#define CF_AXI_DDS_TX_STARVE_MS_MIN	20
++void cf_axi_dds_tx_starve_init(struct cf_axi_dds_state *st);
++void cf_axi_dds_tx_starve_arm(struct cf_axi_dds_state *st, bool cyclic);
++void cf_axi_dds_tx_starve_cancel(struct cf_axi_dds_state *st);
++
+ #endif /* ADI_AXI_DDS_H_ */
+diff --git a/drivers/iio/frequency/cf_axi_dds_buffer_stream.c b/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
+index 567dab984..d2f112984 100644
+--- a/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
++++ b/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
+@@ -28,12 +28,34 @@ static int dds_buffer_submit_block(struct iio_dma_buffer_queue *queue,
+ 	struct cf_axi_dds_state *st = iio_priv(queue->driver_data);
+ 	bool enable_fifo = false;
+ 	bool oneshot = true;
++	bool cyclic;
++
++	/*
++	 * Read the cyclic flag BEFORE the FIFO branch below, which clears it.
++	 * A cyclic stream is repeated forever by the hardware from this single
++	 * submission, so it must not be treated as starving when no further
++	 * block arrives.
++	 *
++	 * Which field carries it depends on the buffer ABI this kernel was
++	 * built with, so both are handled. CONFIG_IIO_DMA_BUF_MMAP_LEGACY is
++	 * the one libiio 0.25 speaks - it probes BLOCK_FREE_IOCTL to reach the
++	 * high-speed path, and cyclic exists only there - so that is the live
++	 * path on this board today. The other is kept so the driver still
++	 * builds without it.
++	 */
++#ifdef CONFIG_IIO_DMA_BUF_MMAP_LEGACY
++	cyclic = !!(block->block.flags & IIO_BUFFER_BLOCK_FLAG_CYCLIC);
++#else
++	cyclic = block->cyclic;
++#endif
+ 
+ #ifdef CONFIG_IIO_DMA_BUF_MMAP_LEGACY
+ 	if (block->block.bytes_used) {
+ #else
+ 	if (block->bytes_used) {
+ #endif
++		cf_axi_dds_tx_starve_arm(st, cyclic);
++
+ 		if (cf_axi_dds_dma_fifo_en(st)) {
+ 			enable_fifo = true;
+ #ifdef CONFIG_IIO_DMA_BUF_MMAP_LEGACY
+@@ -70,11 +92,18 @@ static int dds_buffer_state_set(struct iio_dev *indio_dev, bool state)
+ 	if (!state) {
+ 		/*
+ 		 * Attenuate before changing the data source, so nothing is
+-		 * radiated during the handover. The IIO core calls
+-		 * postdisable on buffer teardown even when the application
+-		 * crashed or was killed, which is what makes this a real
+-		 * guarantee rather than best effort.
++		 * radiated during the handover.
++		 *
++		 * This hook used to be described here as a real guarantee,
++		 * on the grounds that the IIO core runs postdisable even when
++		 * the application crashed or was killed. That is NOT true for
++		 * a local process killed mid-stream: buffer/enable stays 1,
++		 * postdisable never runs, and the transmitter stays live.
++		 * Measured in tools/IDLE-CASES.md, case B. The starvation
++		 * watchdog is what makes it a guarantee; this remains the
++		 * clean path.
+ 		 */
++		cf_axi_dds_tx_starve_cancel(st);
+ 		cf_axi_dds_tx_rf_mute(st, true);
+ 		return cf_axi_dds_datasel(st, -1, DATA_SEL_DDS);
+ 	}
+@@ -83,6 +112,13 @@ static int dds_buffer_state_set(struct iio_dev *indio_dev, bool state)
+ 
+ 	cf_axi_dds_start_sync(st, 1);
+ 
++	/*
++	 * Arm before the unmute, not after: a buffer that is enabled and then
++	 * never fed at all is exactly the case this is here to catch, and it
++	 * would otherwise sit unmuted with nothing arming the watchdog.
++	 */
++	cf_axi_dds_tx_starve_arm(st, false);
++
+ 	/* Restore the user's attenuation only now that the path is ready. */
+ 	cf_axi_dds_tx_rf_mute(st, false);
+ 
+@@ -144,6 +180,8 @@ int cf_axi_dds_configure_buffer(struct iio_dev *indio_dev)
+ 	 */
+ 	indio_dev->setup_ops = &dds_buffer_setup_ops;
+ 
++	cf_axi_dds_tx_starve_init(iio_priv(indio_dev));
++
+ 	/*
+ 	 * Deliberately NOT muted here. Muting at probe looks like the safe
+ 	 * thing to do, but ad9361_tx_mute() caches the attenuation it finds and

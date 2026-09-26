@@ -72,3 +72,10 @@ examples/*/fishball_*.py
 
 # --- Firmware 2 (modern): upstream source is cloned fresh, not committed ---
 firmware-modern/src/
+
+# IQ captures. tools/ and the examples write these wherever they are run from,
+# and one second at 61.44 MS/s is 240 MB - three strays at the repo root came to
+# 520 MB. Keep them out of git by default; commit a capture deliberately, under
+# docs/img/data/, if one is ever worth keeping.
+*.sigmf-data
+*.sigmf-meta

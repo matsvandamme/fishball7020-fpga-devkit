@@ -1,0 +1,304 @@
+Rebased onto Linux 6.12 (Analog Devices `main`) for firmware-modern.
+
+This is one of only two patches in the series that needed new code, and both
+times the reason was in ADI's tree rather than in the patch:
+
+  * of_find_spi_device_by_node() was public up to 5.15. In 6.12 it is static
+    inside drivers/spi/spi.c, so a local two-line equivalent replaces it.
+
+  * cf_axi_dds_configure_buffer() was rewritten upstream around
+    devm_iio_dmaengine_buffer_setup_with_ops(), so the mute hooks are attached
+    differently. Doing that exposed an upstream bug: ADI's own tree no longer
+    wires up indio_dev->setup_ops at all, which leaves dds_buffer_preenable()
+    and dds_buffer_postdisable() dead - and those are where this patch's mute
+    lives. gcc flags it as 'dds_buffer_setup_ops' defined but not used. The
+    line is restored here, with a comment saying it is not part of the fishball
+    changes. Worth reporting upstream.
+
+The 5.15 patch also edited buildroot/board/pluto/S21misc (tx_quiesce). That
+half is NOT carried here: firmware-modern still boots main's Buildroot rootfs,
+which firmware/scripts/setup.sh has already patched. Whoever replaces that
+rootfs with Debian must reimplement tx_quiesce as a unit that runs before
+anything can stream, or the board comes up at ADI's 10 dB - which on a board
+with a power amplifier is roughly +9 dBm out of an SMA.
+
+diff --git a/drivers/iio/adc/ad9361.c b/drivers/iio/adc/ad9361.c
+index fd77dc009..2ca71ce10 100644
+--- a/drivers/iio/adc/ad9361.c
++++ b/drivers/iio/adc/ad9361.c
+@@ -1425,6 +1425,26 @@ static int ad9361_synth_lo_powerdown(struct ad9361_rf_phy *phy,
+ 				 st->cached_synth_pd, 2);
+ }
+ 
++/*
++ * Power the transmit synthesiser down or up.
++ *
++ * ad9361_tx_mute() drives the attenuators, which is what removes output power,
++ * but it leaves the TX LO running - so a transmit chain that some application
++ * powered up stays energised after it closes. This is the missing half, kept
++ * as a bool wrapper so callers outside this driver do not need enum
++ * synth_pd_ctrl, which lives in the private header.
++ *
++ * Safe to use while receiving: measured effect on received channel power is
++ * 0.08 dB. The device tree sets adi,tx-lo-powerdown-managed-enable, which
++ * lets calibration temporarily bring the synthesiser back when it needs to.
++ */
++int ad9361_tx_lo_powerdown(struct ad9361_rf_phy *phy, bool powerdown)
++{
++	return ad9361_synth_lo_powerdown(phy, LO_DONTCARE,
++					 powerdown ? LO_OFF : LO_ON);
++}
++EXPORT_SYMBOL(ad9361_tx_lo_powerdown);
++
+ static u32 ad9361_rfvco_tableindex(unsigned long freq)
+ {
+ 	if (freq < 50000000UL)
+diff --git a/drivers/iio/adc/ad9361.h b/drivers/iio/adc/ad9361.h
+index 0f50a7352..48ba61789 100644
+--- a/drivers/iio/adc/ad9361.h
++++ b/drivers/iio/adc/ad9361.h
+@@ -179,6 +179,7 @@ int ad9361_set_trx_clock_chain_default(struct ad9361_rf_phy *phy);
+ int ad9361_dig_tune(struct ad9361_rf_phy *phy, unsigned long max_freq,
+ 			   enum dig_tune_flags flags);
+ int ad9361_tx_mute(struct ad9361_rf_phy *phy, u32 state);
++int ad9361_tx_lo_powerdown(struct ad9361_rf_phy *phy, bool powerdown);
+ int ad9361_write_bist_reg(struct ad9361_rf_phy *phy, u32 val);
+ bool ad9361_uses_rx2tx2(struct ad9361_rf_phy *phy);
+ bool ad9361_axi_half_dac_rate(struct ad9361_rf_phy *phy);
+diff --git a/drivers/iio/frequency/cf_axi_dds.c b/drivers/iio/frequency/cf_axi_dds.c
+index a2cf5ccf5..6306ba848 100644
+--- a/drivers/iio/frequency/cf_axi_dds.c
++++ b/drivers/iio/frequency/cf_axi_dds.c
+@@ -40,6 +40,11 @@
+ #include <linux/jesd204/adi-common.h>
+ 
+ #include "cf_axi_dds.h"
++#if IS_ENABLED(CONFIG_AD9361)
++/* ad9361.h embeds struct clk_hw / clk_onecell_data by value. */
++#include <linux/clk-provider.h>
++#include "../adc/ad9361.h"
++#endif
+ #include "ad9122.h"
+ #include "../../misc/adi-axi-data-offload.h"
+ 
+@@ -113,6 +118,14 @@ struct cf_axi_dds_state {
+ 	 */
+ 	struct mutex			lock;
+ 	bool				standalone;
++	/*
++	 * Set when this driver has muted the transmitter because no TX buffer
++	 * is streaming. Tracked rather than inferred because ad9361_tx_mute()
++	 * restores a CACHED attenuation, and that cache reads zero until the
++	 * first mute - unmuting without a prior mute would set 0 dB
++	 * attenuation, i.e. key the transmitter at full output.
++	 */
++	bool				tx_muted;
+ 	bool				dp_disable;
+ 	bool				enable;
+ 	bool				pl_dma_fifo_en;
+@@ -1043,6 +1056,106 @@ static int cf_axi_dds_reg_access(struct iio_dev *indio_dev,
+ 	return ret;
+ }
+ 
++/*
++ * Gate the AD9361's transmit chain on whether a TX buffer is actually
++ * streaming.
++ *
++ * The AD9361 keeps its transmit chain biased for as long as the ENSM is in
++ * FDD, whether or not anything is feeding the DAC. When a TX buffer is torn
++ * down the DDS driver only reverts the baseband source to the (silent) DDS -
++ * the mixer and output stage stay powered, keep emitting LO leakage and keep
++ * dissipating power until something attenuates them. Nothing did.
++ *
++ * ad9361_tx_mute() is ADI's own exported helper and is otherwise unused: it
++ * caches both channels' attenuation, sets 89.75 dB, and restores exactly what
++ * was there on unmute, so a user's chosen TX gain survives a stream.
++ *
++ * The phy is reached through the "clocks" phandle, which already points at the
++ * ad9361-phy node because it provides sampl_clk - no device tree change needed.
++ */
++#if IS_ENABLED(CONFIG_AD9361)
++/*
++ * of_find_spi_device_by_node() was a public helper up to 5.15. In 6.12 it is
++ * static inside drivers/spi/spi.c and gated on CONFIG_OF_DYNAMIC, so drivers
++ * can no longer call it. It was only ever these two lines, and spi_bus_type is
++ * exported, so keep a local copy rather than depend on an export that has
++ * already come and gone once.
++ *
++ * Caller must put_device() the result, same as the original.
++ */
++static struct spi_device *cf_axi_dds_spi_device_from_node(struct device_node *node)
++{
++	struct device *dev = bus_find_device_by_of_node(&spi_bus_type, node);
++
++	return dev ? to_spi_device(dev) : NULL;
++}
++
++static struct ad9361_rf_phy *cf_axi_dds_find_ad9361(struct cf_axi_dds_state *st)
++{
++	struct device_node *np;
++	struct spi_device *spi;
++	struct ad9361_rf_phy *phy = NULL;
++
++	if (!st->indio_dev || !st->indio_dev->dev.parent)
++		return NULL;
++
++	np = of_parse_phandle(st->indio_dev->dev.parent->of_node, "clocks", 0);
++	if (!np)
++		return NULL;
++
++	if (of_device_is_compatible(np, "adi,ad9361")) {
++		spi = cf_axi_dds_spi_device_from_node(np);
++		if (spi) {
++			/*
++			 * ad9361_spi_to_phy() dereferences the SPI drvdata
++			 * unconditionally, and that is NULL until the converter
++			 * has probed. Check before calling.
++			 */
++			if (spi_get_drvdata(spi))
++				phy = ad9361_spi_to_phy(spi);
++			put_device(&spi->dev);
++		}
++	}
++
++	of_node_put(np);
++
++	return phy;
++}
++
++void cf_axi_dds_tx_rf_mute(struct cf_axi_dds_state *st, bool mute)
++{
++	struct ad9361_rf_phy *phy;
++
++	if (mute == st->tx_muted)
++		return;
++
++	phy = cf_axi_dds_find_ad9361(st);
++	if (!phy)
++		return;
++
++	/*
++	 * Order matters in both directions: bring the signal down before the
++	 * oscillator, and the oscillator up before the signal. Attenuation is
++	 * what actually removes output power; the LO is powered too so a chain
++	 * left energised by some other application does not idle hot forever.
++	 */
++	if (mute) {
++		if (ad9361_tx_mute(phy, 1))
++			return;
++		ad9361_tx_lo_powerdown(phy, true);
++	} else {
++		ad9361_tx_lo_powerdown(phy, false);
++		if (ad9361_tx_mute(phy, 0))
++			return;
++	}
++
++	st->tx_muted = mute;
++}
++#else
++void cf_axi_dds_tx_rf_mute(struct cf_axi_dds_state *st, bool mute) { }
++#endif
++EXPORT_SYMBOL_GPL(cf_axi_dds_tx_rf_mute);
++
+ static int cf_axi_dds_update_scan_mode(struct iio_dev *indio_dev,
+ 	const unsigned long *scan_mask)
+ {
+diff --git a/drivers/iio/frequency/cf_axi_dds.h b/drivers/iio/frequency/cf_axi_dds.h
+index 21bd703c4..aa332d94e 100644
+--- a/drivers/iio/frequency/cf_axi_dds.h
++++ b/drivers/iio/frequency/cf_axi_dds.h
+@@ -319,5 +319,6 @@ void dds_master_write(struct cf_axi_dds_state *st,
+ 		      unsigned int reg, unsigned int val);
+ 
+ bool cf_axi_dds_dma_fifo_en(struct cf_axi_dds_state *st);
++void cf_axi_dds_tx_rf_mute(struct cf_axi_dds_state *st, bool mute);
+ 
+ #endif /* ADI_AXI_DDS_H_ */
+diff --git a/drivers/iio/frequency/cf_axi_dds_buffer_stream.c b/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
+index 7388f9a27..567dab984 100644
+--- a/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
++++ b/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
+@@ -67,13 +67,25 @@ static int dds_buffer_state_set(struct iio_dev *indio_dev, bool state)
+ 			 (tmp_reg & CF_AXI_DDS_DMA_STAT_OVF) ? "underflow" : "");
+ #endif
+ 
+-	if (!state)
++	if (!state) {
++		/*
++		 * Attenuate before changing the data source, so nothing is
++		 * radiated during the handover. The IIO core calls
++		 * postdisable on buffer teardown even when the application
++		 * crashed or was killed, which is what makes this a real
++		 * guarantee rather than best effort.
++		 */
++		cf_axi_dds_tx_rf_mute(st, true);
+ 		return cf_axi_dds_datasel(st, -1, DATA_SEL_DDS);
++	}
+ 
+ 	dds_write(st, ADI_REG_VDMA_STATUS, ADI_VDMA_OVF | ADI_VDMA_UNF);
+ 
+ 	cf_axi_dds_start_sync(st, 1);
+ 
++	/* Restore the user's attenuation only now that the path is ready. */
++	cf_axi_dds_tx_rf_mute(st, false);
++
+ 	return 0;
+ }
+ 
+@@ -99,9 +111,54 @@ static const struct iio_dma_buffer_ops dds_buffer_dma_buffer_ops = {
+ 
+ int cf_axi_dds_configure_buffer(struct iio_dev *indio_dev)
+ {
+-	return devm_iio_dmaengine_buffer_setup_with_ops(indio_dev->dev.parent,
++	int ret;
++
++	ret = devm_iio_dmaengine_buffer_setup_with_ops(indio_dev->dev.parent,
+ 						   indio_dev, "tx",
+ 						   IIO_BUFFER_DIRECTION_OUT,
+-						   &dds_buffer_dma_buffer_ops, indio_dev);
++						   &dds_buffer_dma_buffer_ops,
++						   indio_dev);
++	if (ret)
++		return ret;
++
++	/*
++	 * Wire up the buffer setup ops. This is NOT part of the fishball
++	 * changes - it restores behaviour that ADI's own tree lost.
++	 *
++	 * Up to 5.15 this function built the buffer by hand and ended with
++	 * indio_dev->setup_ops = &dds_buffer_setup_ops. Moving to
++	 * devm_iio_dmaengine_buffer_setup_with_ops() dropped that line, and the
++	 * helper's "ops" argument is an iio_dma_buffer_ops (submit/abort), not
++	 * an iio_buffer_setup_ops, so it does not do it either. The struct is
++	 * still defined a few lines up and gcc says so:
++	 *
++	 *     warning: 'dds_buffer_setup_ops' defined but not used
++	 *
++	 * With it unwired, dds_buffer_preenable() and dds_buffer_postdisable()
++	 * never run - so cf_axi_dds_start_sync() is skipped when a transmit
++	 * stream starts, and cf_axi_dds_datasel(st, -1, DATA_SEL_DDS) is
++	 * skipped when it stops, leaving the DAC pointed at stale DMA data
++	 * instead of the DDS. On a board with a power amplifier that is the
++	 * wrong direction to fail in, and it is also where every mute hook
++	 * below lives.
++	 */
++	indio_dev->setup_ops = &dds_buffer_setup_ops;
++
++	/*
++	 * Deliberately NOT muted here. Muting at probe looks like the safe
++	 * thing to do, but ad9361_tx_mute() caches the attenuation it finds and
++	 * at this point the phy has not yet applied adi,tx-attenuation-mdB - the
++	 * chip is still at its reset value, which is maximum attenuation. The
++	 * cache would capture 89.75 dB and every later unmute would faithfully
++	 * restore it, leaving the transmitter permanently silent. Measured: a
++	 * running TX stream sat at -89.75 dB instead of the requested -20 dB.
++	 *
++	 * So the cache is only ever populated by the postdisable below, from a
++	 * real attenuation the user chose, and tx_muted stays false until then
++	 * so the first preenable does not unmute something never muted. Quieting
++	 * the transmitter before the first stream is the boot script's job.
++	 */
++
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(cf_axi_dds_configure_buffer);

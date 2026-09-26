@@ -1,6 +1,7 @@
 # firmware-modern — a current Linux for this board
 
-**Status: running on the board. Selftest green. Driver patches not yet rebased.**
+**Status: running on the board. Selftest green. All eight driver patches rebased
+and measured.**
 
 | | |
 |---|---|
@@ -10,7 +11,8 @@
 | Ethernet, SD card, GPIO sysfs | yes |
 | transmitters at boot | **−89.75 dB**, from the device tree alone |
 | `tools/flash.sh` over the network | works again |
-| the eight driver patches | **not yet rebased** — their seven attributes are the only things missing from the IIO contract |
+| the eight driver patches | **rebased** — six add byte-identical code; see [`patches/`](patches/) |
+| the seven transmitter-safety attributes | all present, all reading their 5.15 values |
 
 This is the `modern` branch's firmware target, built for
 [issue #4](https://github.com/matsvandamme/fishball7020-fpga-devkit/issues/4).
@@ -71,10 +73,35 @@ build, and both would have booted:
 ```bash
 # run from: firmware-modern/src/linux
 CROSS=../../../firmware/src/buildroot/output/host/bin/arm-linux-gnueabihf-
-make ARCH=arm CROSS_COMPILE=$CROSS zynq_pluto_defconfig
+
+# the board's device tree and the eight driver patches
+cp ../../dts/zynq-pluto-sdr-fishball.dts arch/arm/boot/dts/xilinx/
+for p in ../../patches/*.patch; do git apply "$p" || break; done
+
+# the kernel configuration
+cp ../../config/fishball_defconfig arch/arm/configs/
+make ARCH=arm CROSS_COMPILE=$CROSS fishball_defconfig
+
 make ARCH=arm CROSS_COMPILE=$CROSS uImage LOADADDR=0x8000 -j$(nproc)
 make ARCH=arm CROSS_COMPILE=$CROSS DTC_FLAGS=-@ xilinx/zynq-pluto-sdr-fishball.dtb
 ```
+
+**Do not build `zynq_pluto_defconfig` on its own.** It rebuilds boot 1 from the
+table below: no Ethernet, no SD card, no GPIO sysfs. ADI's defconfig describes an
+ADALM-Pluto, and a Pluto has none of that hardware.
+
+Two config files, doing different jobs:
+
+| | |
+|---|---|
+| [`config/fishball_defconfig`](config/fishball_defconfig) | what to **build**. 266 lines, `savedefconfig` output, verified to reproduce the `.config` that built the tested `uImage` byte-for-byte. Sixteen lines more than `zynq_pluto_defconfig`. |
+| [`config/fishball.config`](config/fishball.config) | why each option is there — 26 entries, annotated with which part of this board needs it. Four of them (`ETHERNET`, `OF_MDIO`, `DEBUG_KERNEL`, `CRYPTO_ECB`) do not appear in the defconfig because they are implied; `savedefconfig` strips anything Kconfig will select anyway. |
+
+Keeping both is deliberate: a `defconfig` is reproducible but says nothing, and
+a commented delta explains itself but drifts. The defconfig is authoritative.
+
+The `.dts` is built by name because nothing adds it to a Makefile; that is
+deliberate, so the file stays a drop-in rather than a tree modification.
 
 `zynq_pluto_defconfig` already enables `CONFIG_AD9361`, `CONFIG_CF_AXI_ADC` and
 `CONFIG_CF_AXI_DDS`. The 2018-era Linaro GCC 7.3 from `main`'s Buildroot builds
@@ -106,10 +133,30 @@ After boot 2 the guessing stopped: comparing the `status` of every node in the
 built `.dtb` against the factory one found exactly one regression, and after
 the fix, none. That audit is cheap and worth re-running on any DTS change.
 
+## The driver patches
+
+All eight are rebased, applied in filename order, and measured on the board
+rather than declared to apply. [`patches/README.md`](patches/README.md) has the
+per-patch detail; the short version:
+
+- **six of the eight add byte-for-byte identical code.** Only `0004` and `0015`
+  needed anything different, and both times because ADI's tree changed, not
+  because the patch was fragile.
+- the rebase **found an upstream bug**: ADI's 6.12 never wires up
+  `indio_dev->setup_ops`, so the DDS buffer's pre-enable and post-disable hooks
+  are dead. gcc warns about it. `0004` restores the line.
+- the **buildroot halves of `0004` and `0012` are not carried here**, because
+  `main`'s rootfs already has them. That becomes a live trap the moment the
+  rootfs is replaced — see the README in `patches/`.
+
 ## Next
 
-Rebase the eight driver patches — 0004, 0005, 0007, 0012, 0015, 0016, 0017,
-0018 — in dependency order, finishing with 0015 and 0017. Their seven
-attributes are the only things now missing from the IIO contract, so
-`dump_context.py` gives a precise definition of done. Then Debian, on a larger
-card.
+Throughput and signal parity against `docs/measured-performance.md`,
+interleaved A/B, then Debian on a larger card.
+
+Two loose ends worth writing down:
+
+- `cf-ad9361-lpc` is missing four channel `label` attributes that 5.15 had.
+  Metadata only — nothing reads them — but it is an unexplained difference and
+  unexplained differences are how regressions hide.
+- the `setup_ops` finding should go upstream to ADI.
