@@ -77,8 +77,7 @@ def draw(data, theme_name, path):
     quoted = data["previously_quoted"]
     ax.axhline(quoted["mbs"], color=t["muted"], linewidth=1.1,
                linestyle=(0, (4, 3)))
-    ax.annotate(f"the {quoted['mbs']:.0f} MB/s figure this repo used to quote\n"
-                f"is this buffer size, not a limit of the board",
+    ax.annotate("a small buffer costs you two thirds\nof the rate, on any link",
                 xy=(quoted["buffer_samples"], quoted["mbs"]),
                 xytext=(26000, 8.5), fontsize=8, color=t["fg"],
                 arrowprops=dict(arrowstyle="->", color=t["muted"], lw=1))
@@ -88,15 +87,13 @@ def draw(data, theme_name, path):
                 xytext=(0, 9), textcoords="offset points", ha="center",
                 fontsize=8, color=t["fg"], fontweight="bold")
 
-    hp = data["host_path"]
-    ax.annotate(f"measured from a host whose only link is WiFi\n"
-                f"({hp['wifi_phy_mbit']} Mbit/s ≈ {hp['wifi_phy_mbs']:.0f} MB/s) —\n"
-                f"this plateau is the PATH, not the board",
+    ax.annotate("where this plateau sits depends on your link.\n"
+                "that it MOVES with the buffer does not.",
                 xy=(0.5, 0.97), xycoords="axes fraction", ha="center",
                 va="top", fontsize=8, color=t["muted"], linespacing=1.4)
 
     ax.legend(loc="lower right", frameon=False, fontsize=8.5)
-    ax.set_title("Over a network, the buffer size moves it threefold",
+    ax.set_title("Streaming to a host? Raise the buffer.",
                  loc="left", fontsize=10.5, color=t["fg"], pad=8)
 
     # ---- right: what that means in samples per second -------------------
@@ -135,8 +132,10 @@ def draw(data, theme_name, path):
     bx.annotate(f"converter\n{radio:.2f} MS/s", xy=(radio, len(names) - 0.4),
                 xytext=(-4, 0), textcoords="offset points", ha="right",
                 va="bottom", fontsize=7.5, color=t["muted"], linespacing=1.3)
-    bx.annotate("run on the board, the network\nis simply not in the way",
-                xy=(0.97, 0.55), xycoords="axes fraction", ha="right",
+    bx.annotate("the top two are what the BOARD does, with\n"
+                "no network in the way. the hatched bar is\n"
+                "one example link, not a specification.",
+                xy=(0.60, 0.46), xycoords="axes fraction", ha="center",
                 va="top", fontsize=8, color=t["muted"], linespacing=1.45)
 
     fig.text(0.012, -0.02, "\n".join(textwrap.wrap(data["footnote"], 118)),

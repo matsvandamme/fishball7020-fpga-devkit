@@ -1,11 +1,11 @@
 # Tab completion for ./devkit
 #
-#   # run from: the repo root — try it for this shell
-#   source tools/devkit-completion.bash
+#   source <(./devkit completion)      # this shell, one command, no files
+#   ./devkit completion install        # every new shell, from then on
 #
-#   # or install it permanently, for every new shell
-#   mkdir -p ~/.local/share/bash-completion/completions
-#   cp tools/devkit-completion.bash ~/.local/share/bash-completion/completions/devkit
+# Either is one command. There is no zero-command option: a shell will not
+# load completions out of a directory it has never been told about, which is
+# a security property rather than an oversight.
 #
 # Works with zsh too, after `autoload -U bashcompinit && bashcompinit`.
 #

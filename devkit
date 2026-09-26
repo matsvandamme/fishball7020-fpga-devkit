@@ -61,6 +61,9 @@
 #                          scope and no antenna needed.
 #     ./devkit net         How the board gets its address; switch DHCP/static,
 #                          set its hostname, or just find it.
+#     ./devkit completion  Tab completion for all of the above. Either
+#                            source <(./devkit completion)   -> this shell
+#                            ./devkit completion install     -> every shell
 #     ./devkit temps       Both die temperatures against their ratings - the
 #                          Zynq via its XADC, the AD9361 via its own sensor.
 #                          Those are the only two sensors on the board; there is
@@ -86,11 +89,8 @@
 #
 # ---- Tab completion ---------------------------------------------------------
 #
-#     source tools/devkit-completion.bash          # this shell only
-#
-#     mkdir -p ~/.local/share/bash-completion/completions   # every shell
-#     cp tools/devkit-completion.bash \
-#        ~/.local/share/bash-completion/completions/devkit
+#     source <(./devkit completion)      # this shell, one command, no files
+#     ./devkit completion install        # every new shell, from then on
 #
 # Completes subcommands, then that subcommand's own flags, so you do not have
 # to remember that --dtb-only is on flash and not on build. --xsa completes
@@ -139,6 +139,32 @@ case "$cmd" in
     container)  exec "$HERE/tools/container/run.sh" "$@" ;;
     net)        exec "$HERE/tools/net.sh" "$@" ;;
     temps)      exec python3 "$HERE/tools/temps.py" "$@" ;;
+    completion)
+        # No argument: print the script, so one command sets this shell up
+        #     source <(./devkit completion)
+        # "install": put it where bash-completion loads from by itself, so
+        # new shells have it without anyone sourcing anything. A shell cannot
+        # load completions from a directory it has never been told about, so
+        # one of these two is unavoidable - but neither is a copy-paste of
+        # two lines.
+        case "${1:-}" in
+            install)
+                dest="${BASH_COMPLETION_USER_DIR:-$HOME/.local/share/bash-completion}/completions"
+                mkdir -p "$dest"
+                cp "$HERE/tools/devkit-completion.bash" "$dest/devkit"
+                echo "installed: $dest/devkit"
+                echo "Every new shell will have it. For this one:"
+                echo "    source $dest/devkit"
+                echo "To undo:  rm $dest/devkit" ;;
+            -h|--help)
+                echo "usage: ./devkit completion [install]"
+                echo
+                echo "  (no argument)  print the script, for:"
+                echo "                     source <(./devkit completion)"
+                echo "  install        install it for every new shell" ;;
+            *)  cat "$HERE/tools/devkit-completion.bash" ;;
+        esac
+        exit 0 ;;
 
     status)
         echo "== repo =="

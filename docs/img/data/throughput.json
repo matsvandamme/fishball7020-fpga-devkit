@@ -152,22 +152,17 @@
    "measured": true
   },
   {
-   "name": "1 RX, over this WiFi path",
-   "msps_per_channel": 11.3,
-   "measured": true
-  },
-  {
-   "name": "2 RX, over this WiFi path",
-   "msps_per_channel": 5.4,
-   "measured": true
-  },
-  {
    "name": "1 RX, USB gadget",
    "msps_per_channel": 1.7,
    "measured": true
+  },
+  {
+   "name": "over a network link",
+   "msps_per_channel": 11.3,
+   "measured": false
   }
  ],
- "footnote": "Left: iio_readdev from a host whose only interface is WiFi (540 Mbit/s link), 3 runs of 33.6 Msamples per point, band = full spread. Right: the same capture run ON the board removes the network entirely. 4 bytes per complex sample.",
+ "footnote": "Left: capture streamed to a host, 3 runs of 33.6 Msamples per point, band = full spread. Absolute values depend on YOUR link - the shape is the point. Right: the same capture run on the board removes the network entirely; the hatched bar is one example network path and not a specification. 4 bytes per complex sample.",
  "local": {
   "note": "iio_readdev run ON THE BOARD, no network involved. 33.6 Msamples, -b 1048576, 3 repeats.",
   "1 receive channel": {

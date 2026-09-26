@@ -128,14 +128,12 @@ cd fishball7020-fpga-devkit
 ```
 
 `./devkit --help` describes every subcommand and flag, grouped by what you are
-trying to do. For tab completion:
+trying to do, and it completes with tab:
 
 ```bash
 # run from: the repo root
-source tools/devkit-completion.bash      # this shell
-# or, for every shell:
-mkdir -p ~/.local/share/bash-completion/completions
-cp tools/devkit-completion.bash ~/.local/share/bash-completion/completions/devkit
+source <(./devkit completion)      # this shell
+./devkit completion install        # every shell, from now on
 ```
 
 **Three routes to a toolchain**, in the order most people should try them:
@@ -299,53 +297,46 @@ signals, and where the streaming ceiling comes from:
 
 ## How fast can you actually stream?
 
-The board has **gigabit Ethernet** (confirmed: the link negotiates
-`1000 Mb/s, full duplex`) and a radio that runs at **61.44 MS/s**. Both are
-true, and multiplying them together is the mistake everyone makes — including
-this repository, until it was measured properly.
+The board has **gigabit Ethernet** and a radio that runs at **61.44 MS/s**.
+Both are true, and multiplying them together is the mistake everyone makes.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/throughput-dark.svg">
-  <img src="docs/img/throughput-light.svg" alt="Two panels. Left: host streaming throughput against libiio buffer size, for one and two receive channels, rising from about 15 MB/s at a 16 Ksample buffer to a plateau near 44 MB/s above 1 Msample, with a shaded band showing the spread over three runs; a dashed line marks the 31 MB/s this repository used to quote, annotated as being the throughput at a 64 Ksample buffer rather than a limit of the board. Right: sustained sample rate per channel by configuration - 11.3 MS/s for one receive channel over Ethernet, 5.4 for two, 1.7 over the USB gadget, with derived figures of 5.0 for one transmit plus one receive and 2.0 for two of each shown hatched." width="900">
+  <img src="docs/img/throughput-light.svg" alt="Two panels. Left: streaming throughput against libiio buffer size for one and two receive channels, rising from about 15 MB/s at a 16 Ksample buffer to a plateau near 44 MB/s above 1 Msample, with a band showing the spread over three runs, annotated that a small buffer costs two thirds of the rate on any link. Right: sustained sample rate per channel - 49.8 MS/s for one receive channel run on the board and 46.2 for two, 1.7 over the USB gadget, and a hatched bar at 11.3 for one example network link, against a dashed line marking the converter at 61.44 MS/s." width="900">
 </picture>
 
-**The board is not the bottleneck — your link is.** Run the same capture *on
-the board*, with no network at all, and it sustains **~199 MB/s (49.8 MS/s)**
-on one channel and **~369 MB/s (46.2 MS/s each)** on two. That is most of what
-the converter can produce. Everything below that is the path to your host.
+**What the board can do**, measured with the capture running on the board so
+no network is involved:
 
-**Over a network, your buffer size moves the answer threefold.** At a
-64 Ksample buffer you get ~28 MB/s — which is where this repo's long-quoted
-"~31 MB/s ceiling" came from. Ask for a 1 Msample buffer and the same link
-gives **~44 MB/s**:
+| | 1 channel | 2 channels |
+|---|---|---|
+| Sustained capture | **49.8 MS/s** | **46.2 MS/s each** |
+
+That is most of what the converter produces. **What you will actually get is
+set by the link to your host**, not by the board — so a number measured on
+somebody else's desk will not be yours.
+
+Three things are worth knowing whatever your setup:
+
+- **Raise the libiio buffer.** It is free and it matters more than anything
+  else: a small buffer costs roughly two thirds of the rate. Use `-b 1048576`
+  or larger; past a few Msamples it stops helping.
+- **Two channels give less each but more in total.** The per-buffer overhead
+  amortises while the cost per byte does not.
+- **The USB gadget is far slower than Ethernet** — around 1.7 MS/s.
 
 ```bash
 # run on your HOST — the -b matters more than anything else here
 iio_readdev -u ip:fishball.local -b 1048576 -s 33554432 cf-ad9361-lpc     voltage0 voltage1 > capture.iq
 ```
 
-At four bytes per complex sample:
+**To get the full 61.44 MS/s, take the host out of the loop entirely.** A
+cyclic transmit hands the hardware one buffer and it repeats forever with no
+host involvement — which is how QPSK measures 2.17% EVM at the top of the
+range. Equally, filtering or decimating in the fabric means fewer bytes ever
+need to cross.
 
-| Where the capture runs | 1 channel | 2 channels |
-|---|---|---|
-| **On the board** (no network) | **49.8 MS/s** | **46.2 MS/s each** |
-| Over this host's link | 11.3 MS/s | 5.4 MS/s each |
-| Over the USB gadget | 1.7 MS/s | — |
-
-> **Read the middle row as a property of the path, not of the board.** The host
-> used here has no wired interface: every byte crossed WiFi (a 540 Mbit/s link,
-> ~68 MB/s at the PHY) before reaching the board's Ethernet. A wired gigabit
-> host should do better, and if you measure one I would like the number. What
-> the board *can* do is the top row, and that was measured with the network
-> entirely out of the way.
-
-So if you are hitting a ceiling, look at your link before blaming the board —
-and raise `-b` first, since it is free.
-
-**To get the full 61.44 MS/s, take the host out of the loop.** A cyclic
-transmit hands the hardware one buffer and it repeats forever with no host
-involvement — which is how QPSK measures 2.17% EVM at the top of the range.
-Depth, the EVM tables and where the drops appear:
+The measurements, the buffer sweep and the conditions they were taken under:
 **[modulation and throughput](docs/modulation-and-throughput.md)**.
 
 ## Repository layout
