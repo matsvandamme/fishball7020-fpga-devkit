@@ -1,0 +1,445 @@
+context-attr  ad9361-phy,model
+context-attr  ad9361-phy,xo_correction
+context-attr  fw_version
+context-attr  hw_model
+context-attr  hw_model_variant
+context-attr  hw_serial
+context-attr  local,kernel
+context-attr  uri
+device-attr   ad9361-phy (iio:device0)           calib_mode
+device-attr   ad9361-phy (iio:device0)           calib_mode_available
+device-attr   ad9361-phy (iio:device0)           dcxo_tune_coarse
+device-attr   ad9361-phy (iio:device0)           dcxo_tune_coarse_available
+device-attr   ad9361-phy (iio:device0)           dcxo_tune_fine
+device-attr   ad9361-phy (iio:device0)           dcxo_tune_fine_available
+device-attr   ad9361-phy (iio:device0)           ensm_mode
+device-attr   ad9361-phy (iio:device0)           ensm_mode_available
+device-attr   ad9361-phy (iio:device0)           filter_fir_config
+device-attr   ad9361-phy (iio:device0)           gain_table_config
+device-attr   ad9361-phy (iio:device0)           multichip_sync
+device-attr   ad9361-phy (iio:device0)           rssi_gain_step_error
+device-attr   ad9361-phy (iio:device0)           rx_path_rates
+device-attr   ad9361-phy (iio:device0)           trx_rate_governor
+device-attr   ad9361-phy (iio:device0)           trx_rate_governor_available
+device-attr   ad9361-phy (iio:device0)           tx_path_rates
+device-attr   ad9361-phy (iio:device0)           waiting_for_supplier
+device-attr   ad9361-phy (iio:device0)           xo_correction
+device-attr   ad9361-phy (iio:device0)           xo_correction_available
+chan-attr     ad9361-phy (iio:device0)           altvoltage0 [out]  external
+chan-attr     ad9361-phy (iio:device0)           altvoltage0 [out]  fastlock_load
+chan-attr     ad9361-phy (iio:device0)           altvoltage0 [out]  fastlock_recall
+chan-attr     ad9361-phy (iio:device0)           altvoltage0 [out]  fastlock_save
+chan-attr     ad9361-phy (iio:device0)           altvoltage0 [out]  fastlock_store
+chan-attr     ad9361-phy (iio:device0)           altvoltage0 [out]  frequency
+chan-attr     ad9361-phy (iio:device0)           altvoltage0 [out]  frequency_available
+chan-attr     ad9361-phy (iio:device0)           altvoltage0 [out]  label
+chan-attr     ad9361-phy (iio:device0)           altvoltage0 [out]  powerdown
+chan-attr     ad9361-phy (iio:device0)           altvoltage1 [out]  external
+chan-attr     ad9361-phy (iio:device0)           altvoltage1 [out]  fastlock_load
+chan-attr     ad9361-phy (iio:device0)           altvoltage1 [out]  fastlock_recall
+chan-attr     ad9361-phy (iio:device0)           altvoltage1 [out]  fastlock_save
+chan-attr     ad9361-phy (iio:device0)           altvoltage1 [out]  fastlock_store
+chan-attr     ad9361-phy (iio:device0)           altvoltage1 [out]  frequency
+chan-attr     ad9361-phy (iio:device0)           altvoltage1 [out]  frequency_available
+chan-attr     ad9361-phy (iio:device0)           altvoltage1 [out]  label
+chan-attr     ad9361-phy (iio:device0)           altvoltage1 [out]  powerdown
+chan-attr     ad9361-phy (iio:device0)           out                voltage_filter_fir_en
+chan-attr     ad9361-phy (iio:device0)           temp0              input
+chan-attr     ad9361-phy (iio:device0)           voltage0           bb_dc_offset_tracking_en
+chan-attr     ad9361-phy (iio:device0)           voltage0           filter_fir_en
+chan-attr     ad9361-phy (iio:device0)           voltage0           gain_control_mode
+chan-attr     ad9361-phy (iio:device0)           voltage0           gain_control_mode_available
+chan-attr     ad9361-phy (iio:device0)           voltage0           hardwaregain
+chan-attr     ad9361-phy (iio:device0)           voltage0           hardwaregain_available
+chan-attr     ad9361-phy (iio:device0)           voltage0           quadrature_tracking_en
+chan-attr     ad9361-phy (iio:device0)           voltage0           rf_bandwidth
+chan-attr     ad9361-phy (iio:device0)           voltage0           rf_bandwidth_available
+chan-attr     ad9361-phy (iio:device0)           voltage0           rf_dc_offset_tracking_en
+chan-attr     ad9361-phy (iio:device0)           voltage0           rf_port_select
+chan-attr     ad9361-phy (iio:device0)           voltage0           rf_port_select_available
+chan-attr     ad9361-phy (iio:device0)           voltage0           rssi
+chan-attr     ad9361-phy (iio:device0)           voltage0           sampling_frequency
+chan-attr     ad9361-phy (iio:device0)           voltage0           sampling_frequency_available
+chan-attr     ad9361-phy (iio:device0)           voltage0 [out]     filter_fir_en
+chan-attr     ad9361-phy (iio:device0)           voltage0 [out]     hardwaregain
+chan-attr     ad9361-phy (iio:device0)           voltage0 [out]     hardwaregain_available
+chan-attr     ad9361-phy (iio:device0)           voltage0 [out]     rf_bandwidth
+chan-attr     ad9361-phy (iio:device0)           voltage0 [out]     rf_bandwidth_available
+chan-attr     ad9361-phy (iio:device0)           voltage0 [out]     rf_port_select
+chan-attr     ad9361-phy (iio:device0)           voltage0 [out]     rf_port_select_available
+chan-attr     ad9361-phy (iio:device0)           voltage0 [out]     rssi
+chan-attr     ad9361-phy (iio:device0)           voltage0 [out]     sampling_frequency
+chan-attr     ad9361-phy (iio:device0)           voltage0 [out]     sampling_frequency_available
+chan-attr     ad9361-phy (iio:device0)           voltage1           bb_dc_offset_tracking_en
+chan-attr     ad9361-phy (iio:device0)           voltage1           filter_fir_en
+chan-attr     ad9361-phy (iio:device0)           voltage1           gain_control_mode
+chan-attr     ad9361-phy (iio:device0)           voltage1           gain_control_mode_available
+chan-attr     ad9361-phy (iio:device0)           voltage1           hardwaregain
+chan-attr     ad9361-phy (iio:device0)           voltage1           hardwaregain_available
+chan-attr     ad9361-phy (iio:device0)           voltage1           quadrature_tracking_en
+chan-attr     ad9361-phy (iio:device0)           voltage1           rf_bandwidth
+chan-attr     ad9361-phy (iio:device0)           voltage1           rf_bandwidth_available
+chan-attr     ad9361-phy (iio:device0)           voltage1           rf_dc_offset_tracking_en
+chan-attr     ad9361-phy (iio:device0)           voltage1           rf_port_select
+chan-attr     ad9361-phy (iio:device0)           voltage1           rf_port_select_available
+chan-attr     ad9361-phy (iio:device0)           voltage1           rssi
+chan-attr     ad9361-phy (iio:device0)           voltage1           sampling_frequency
+chan-attr     ad9361-phy (iio:device0)           voltage1           sampling_frequency_available
+chan-attr     ad9361-phy (iio:device0)           voltage1 [out]     filter_fir_en
+chan-attr     ad9361-phy (iio:device0)           voltage1 [out]     hardwaregain
+chan-attr     ad9361-phy (iio:device0)           voltage1 [out]     hardwaregain_available
+chan-attr     ad9361-phy (iio:device0)           voltage1 [out]     rf_bandwidth
+chan-attr     ad9361-phy (iio:device0)           voltage1 [out]     rf_bandwidth_available
+chan-attr     ad9361-phy (iio:device0)           voltage1 [out]     rf_port_select
+chan-attr     ad9361-phy (iio:device0)           voltage1 [out]     rf_port_select_available
+chan-attr     ad9361-phy (iio:device0)           voltage1 [out]     rssi
+chan-attr     ad9361-phy (iio:device0)           voltage1 [out]     sampling_frequency
+chan-attr     ad9361-phy (iio:device0)           voltage1 [out]     sampling_frequency_available
+chan-attr     ad9361-phy (iio:device0)           voltage2           bb_dc_offset_tracking_en
+chan-attr     ad9361-phy (iio:device0)           voltage2           filter_fir_en
+chan-attr     ad9361-phy (iio:device0)           voltage2           gain_control_mode_available
+chan-attr     ad9361-phy (iio:device0)           voltage2           offset
+chan-attr     ad9361-phy (iio:device0)           voltage2           quadrature_tracking_en
+chan-attr     ad9361-phy (iio:device0)           voltage2           raw
+chan-attr     ad9361-phy (iio:device0)           voltage2           rf_bandwidth
+chan-attr     ad9361-phy (iio:device0)           voltage2           rf_bandwidth_available
+chan-attr     ad9361-phy (iio:device0)           voltage2           rf_dc_offset_tracking_en
+chan-attr     ad9361-phy (iio:device0)           voltage2           rf_port_select_available
+chan-attr     ad9361-phy (iio:device0)           voltage2           sampling_frequency
+chan-attr     ad9361-phy (iio:device0)           voltage2           sampling_frequency_available
+chan-attr     ad9361-phy (iio:device0)           voltage2           scale
+chan-attr     ad9361-phy (iio:device0)           voltage2 [out]     filter_fir_en
+chan-attr     ad9361-phy (iio:device0)           voltage2 [out]     raw
+chan-attr     ad9361-phy (iio:device0)           voltage2 [out]     rf_bandwidth
+chan-attr     ad9361-phy (iio:device0)           voltage2 [out]     rf_bandwidth_available
+chan-attr     ad9361-phy (iio:device0)           voltage2 [out]     rf_port_select_available
+chan-attr     ad9361-phy (iio:device0)           voltage2 [out]     sampling_frequency
+chan-attr     ad9361-phy (iio:device0)           voltage2 [out]     sampling_frequency_available
+chan-attr     ad9361-phy (iio:device0)           voltage2 [out]     scale
+chan-attr     ad9361-phy (iio:device0)           voltage3 [out]     filter_fir_en
+chan-attr     ad9361-phy (iio:device0)           voltage3 [out]     raw
+chan-attr     ad9361-phy (iio:device0)           voltage3 [out]     rf_bandwidth
+chan-attr     ad9361-phy (iio:device0)           voltage3 [out]     rf_bandwidth_available
+chan-attr     ad9361-phy (iio:device0)           voltage3 [out]     rf_port_select_available
+chan-attr     ad9361-phy (iio:device0)           voltage3 [out]     sampling_frequency
+chan-attr     ad9361-phy (iio:device0)           voltage3 [out]     sampling_frequency_available
+chan-attr     ad9361-phy (iio:device0)           voltage3 [out]     scale
+debug-attr    ad9361-phy (iio:device0)           adi,1rx-1tx-mode-use-rx-num
+debug-attr    ad9361-phy (iio:device0)           adi,1rx-1tx-mode-use-tx-num
+debug-attr    ad9361-phy (iio:device0)           adi,2rx-2tx-mode-enable
+debug-attr    ad9361-phy (iio:device0)           adi,agc-adc-large-overload-exceed-counter
+debug-attr    ad9361-phy (iio:device0)           adi,agc-adc-large-overload-inc-steps
+debug-attr    ad9361-phy (iio:device0)           adi,agc-adc-lmt-small-overload-prevent-gain-inc-enable
+debug-attr    ad9361-phy (iio:device0)           adi,agc-adc-small-overload-exceed-counter
+debug-attr    ad9361-phy (iio:device0)           adi,agc-attack-delay-extra-margin-us
+debug-attr    ad9361-phy (iio:device0)           adi,agc-dig-gain-step-size
+debug-attr    ad9361-phy (iio:device0)           adi,agc-dig-sat-ovrg-enable
+debug-attr    ad9361-phy (iio:device0)           adi,agc-dig-saturation-exceed-counter
+debug-attr    ad9361-phy (iio:device0)           adi,agc-gain-update-interval-us
+debug-attr    ad9361-phy (iio:device0)           adi,agc-immed-gain-change-if-large-adc-overload-enable
+debug-attr    ad9361-phy (iio:device0)           adi,agc-immed-gain-change-if-large-lmt-overload-enable
+debug-attr    ad9361-phy (iio:device0)           adi,agc-inner-thresh-high
+debug-attr    ad9361-phy (iio:device0)           adi,agc-inner-thresh-high-dec-steps
+debug-attr    ad9361-phy (iio:device0)           adi,agc-inner-thresh-low
+debug-attr    ad9361-phy (iio:device0)           adi,agc-inner-thresh-low-inc-steps
+debug-attr    ad9361-phy (iio:device0)           adi,agc-lmt-overload-large-exceed-counter
+debug-attr    ad9361-phy (iio:device0)           adi,agc-lmt-overload-large-inc-steps
+debug-attr    ad9361-phy (iio:device0)           adi,agc-lmt-overload-small-exceed-counter
+debug-attr    ad9361-phy (iio:device0)           adi,agc-outer-thresh-high
+debug-attr    ad9361-phy (iio:device0)           adi,agc-outer-thresh-high-dec-steps
+debug-attr    ad9361-phy (iio:device0)           adi,agc-outer-thresh-low
+debug-attr    ad9361-phy (iio:device0)           adi,agc-outer-thresh-low-inc-steps
+debug-attr    ad9361-phy (iio:device0)           adi,agc-sync-for-gain-counter-enable
+debug-attr    ad9361-phy (iio:device0)           adi,aux-adc-decimation
+debug-attr    ad9361-phy (iio:device0)           adi,aux-adc-rate
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac-manual-mode-enable
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac1-active-in-alert-enable
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac1-active-in-rx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac1-active-in-tx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac1-default-value-mV
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac1-rx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac1-tx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac2-active-in-alert-enable
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac2-active-in-rx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac2-active-in-tx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac2-default-value-mV
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac2-rx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,aux-dac2-tx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,axi-half-dac-rate-enable
+debug-attr    ad9361-phy (iio:device0)           adi,bb-clk-change-dig-tune-enable
+debug-attr    ad9361-phy (iio:device0)           adi,clk-output-mode-select
+debug-attr    ad9361-phy (iio:device0)           adi,ctrl-outs-enable-mask
+debug-attr    ad9361-phy (iio:device0)           adi,ctrl-outs-index
+debug-attr    ad9361-phy (iio:device0)           adi,dc-offset-attenuation-high-range
+debug-attr    ad9361-phy (iio:device0)           adi,dc-offset-attenuation-low-range
+debug-attr    ad9361-phy (iio:device0)           adi,dc-offset-count-high-range
+debug-attr    ad9361-phy (iio:device0)           adi,dc-offset-count-low-range
+debug-attr    ad9361-phy (iio:device0)           adi,dc-offset-tracking-update-event-mask
+debug-attr    ad9361-phy (iio:device0)           adi,debug-mode-enable
+debug-attr    ad9361-phy (iio:device0)           adi,digital-interface-tune-fir-disable
+debug-attr    ad9361-phy (iio:device0)           adi,digital-interface-tune-skip-mode
+debug-attr    ad9361-phy (iio:device0)           adi,elna-bypass-loss-mdB
+debug-attr    ad9361-phy (iio:device0)           adi,elna-gain-mdB
+debug-attr    ad9361-phy (iio:device0)           adi,elna-gaintable-all-index-enable
+debug-attr    ad9361-phy (iio:device0)           adi,elna-rx1-gpo0-control-enable
+debug-attr    ad9361-phy (iio:device0)           adi,elna-rx2-gpo1-control-enable
+debug-attr    ad9361-phy (iio:device0)           adi,elna-settling-delay-ns
+debug-attr    ad9361-phy (iio:device0)           adi,ensm-enable-pin-pulse-mode-enable
+debug-attr    ad9361-phy (iio:device0)           adi,ensm-enable-txnrx-control-enable
+debug-attr    ad9361-phy (iio:device0)           adi,external-rx-lo-enable
+debug-attr    ad9361-phy (iio:device0)           adi,external-tx-lo-enable
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-adc-large-overload-inc-steps
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-allow-agc-gain-increase-enable
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-dec-pow-measurement-duration
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-energy-lost-stronger-sig-gain-lock-exit-cnt
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-final-overrange-count
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-gain-increase-after-gain-lock-enable
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-gain-index-type-after-exit-rx-mode
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-lmt-final-settling-steps
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-lock-level-gain-increase-upper-limit
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-lock-level-lmt-gain-increase-enable
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-lp-thresh-increment-steps
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-lp-thresh-increment-time
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-lpf-final-settling-steps
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-optimized-gain-offset
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-power-measurement-duration-in-state5
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-rst-gla-en-agc-pulled-high-enable
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-rst-gla-engergy-lost-goto-optim-gain-enable
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-rst-gla-engergy-lost-sig-thresh-below-ll
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-rst-gla-engergy-lost-sig-thresh-exceeded-enable
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-rst-gla-if-en-agc-pulled-high-mode
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-rst-gla-large-adc-overload-enable
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-rst-gla-large-lmt-overload-enable
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-rst-gla-stronger-sig-thresh-above-ll
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-rst-gla-stronger-sig-thresh-exceeded-enable
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-state-wait-time-ns
+debug-attr    ad9361-phy (iio:device0)           adi,fagc-use-last-lock-level-for-set-gain-enable
+debug-attr    ad9361-phy (iio:device0)           adi,frequency-division-duplex-independent-mode-enable
+debug-attr    ad9361-phy (iio:device0)           adi,frequency-division-duplex-mode-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gc-adc-large-overload-thresh
+debug-attr    ad9361-phy (iio:device0)           adi,gc-adc-ovr-sample-size
+debug-attr    ad9361-phy (iio:device0)           adi,gc-adc-small-overload-thresh
+debug-attr    ad9361-phy (iio:device0)           adi,gc-dec-pow-measurement-duration
+debug-attr    ad9361-phy (iio:device0)           adi,gc-dig-gain-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gc-lmt-overload-high-thresh
+debug-attr    ad9361-phy (iio:device0)           adi,gc-lmt-overload-low-thresh
+debug-attr    ad9361-phy (iio:device0)           adi,gc-low-power-thresh
+debug-attr    ad9361-phy (iio:device0)           adi,gc-max-dig-gain
+debug-attr    ad9361-phy (iio:device0)           adi,gc-rx1-mode
+debug-attr    ad9361-phy (iio:device0)           adi,gc-rx2-mode
+debug-attr    ad9361-phy (iio:device0)           adi,gc-use-rx-fir-out-for-dec-pwr-meas-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo-manual-mode-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo-manual-mode-enable-mask
+debug-attr    ad9361-phy (iio:device0)           adi,gpo0-inactive-state-high-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo0-rx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,gpo0-slave-rx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo0-slave-tx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo0-tx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,gpo1-inactive-state-high-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo1-rx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,gpo1-slave-rx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo1-slave-tx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo1-tx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,gpo2-inactive-state-high-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo2-rx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,gpo2-slave-rx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo2-slave-tx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo2-tx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,gpo3-inactive-state-high-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo3-rx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,gpo3-slave-rx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo3-slave-tx-enable
+debug-attr    ad9361-phy (iio:device0)           adi,gpo3-tx-delay-us
+debug-attr    ad9361-phy (iio:device0)           adi,mgc-dec-gain-step
+debug-attr    ad9361-phy (iio:device0)           adi,mgc-inc-gain-step
+debug-attr    ad9361-phy (iio:device0)           adi,mgc-rx1-ctrl-inp-enable
+debug-attr    ad9361-phy (iio:device0)           adi,mgc-rx2-ctrl-inp-enable
+debug-attr    ad9361-phy (iio:device0)           adi,mgc-split-table-ctrl-inp-gain-mode
+debug-attr    ad9361-phy (iio:device0)           adi,qec-tracking-slow-mode-enable
+debug-attr    ad9361-phy (iio:device0)           adi,rf-rx-bandwidth-hz
+debug-attr    ad9361-phy (iio:device0)           adi,rf-tx-bandwidth-hz
+debug-attr    ad9361-phy (iio:device0)           adi,rssi-delay
+debug-attr    ad9361-phy (iio:device0)           adi,rssi-duration
+debug-attr    ad9361-phy (iio:device0)           adi,rssi-restart-mode
+debug-attr    ad9361-phy (iio:device0)           adi,rssi-unit-is-rx-samples-enable
+debug-attr    ad9361-phy (iio:device0)           adi,rssi-wait
+debug-attr    ad9361-phy (iio:device0)           adi,rx-fastlock-delay-ns
+debug-attr    ad9361-phy (iio:device0)           adi,rx-fastlock-pincontrol-enable
+debug-attr    ad9361-phy (iio:device0)           adi,rx-rf-port-input-select
+debug-attr    ad9361-phy (iio:device0)           adi,rx-rf-port-input-select-lock-enable
+debug-attr    ad9361-phy (iio:device0)           adi,rx1-rx2-phase-inversion-enable
+debug-attr    ad9361-phy (iio:device0)           adi,split-gain-table-mode-enable
+debug-attr    ad9361-phy (iio:device0)           adi,tdd-skip-vco-cal-enable
+debug-attr    ad9361-phy (iio:device0)           adi,tdd-use-dual-synth-mode-enable
+debug-attr    ad9361-phy (iio:device0)           adi,temp-sense-decimation
+debug-attr    ad9361-phy (iio:device0)           adi,temp-sense-measurement-interval-ms
+debug-attr    ad9361-phy (iio:device0)           adi,temp-sense-offset-signed
+debug-attr    ad9361-phy (iio:device0)           adi,temp-sense-periodic-measurement-enable
+debug-attr    ad9361-phy (iio:device0)           adi,trx-synthesizer-target-fref-overwrite-hz
+debug-attr    ad9361-phy (iio:device0)           adi,tx-attenuation-mdB
+debug-attr    ad9361-phy (iio:device0)           adi,tx-fastlock-delay-ns
+debug-attr    ad9361-phy (iio:device0)           adi,tx-fastlock-pincontrol-enable
+debug-attr    ad9361-phy (iio:device0)           adi,tx-lo-powerdown-managed-enable
+debug-attr    ad9361-phy (iio:device0)           adi,tx-rf-port-input-select
+debug-attr    ad9361-phy (iio:device0)           adi,tx-rf-port-input-select-lock-enable
+debug-attr    ad9361-phy (iio:device0)           adi,txmon-1-front-end-gain
+debug-attr    ad9361-phy (iio:device0)           adi,txmon-1-lo-cm
+debug-attr    ad9361-phy (iio:device0)           adi,txmon-2-front-end-gain
+debug-attr    ad9361-phy (iio:device0)           adi,txmon-2-lo-cm
+debug-attr    ad9361-phy (iio:device0)           adi,txmon-dc-tracking-enable
+debug-attr    ad9361-phy (iio:device0)           adi,txmon-delay
+debug-attr    ad9361-phy (iio:device0)           adi,txmon-duration
+debug-attr    ad9361-phy (iio:device0)           adi,txmon-high-gain
+debug-attr    ad9361-phy (iio:device0)           adi,txmon-low-gain
+debug-attr    ad9361-phy (iio:device0)           adi,txmon-low-high-thresh
+debug-attr    ad9361-phy (iio:device0)           adi,txmon-one-shot-mode-enable
+debug-attr    ad9361-phy (iio:device0)           adi,update-tx-gain-in-alert-enable
+debug-attr    ad9361-phy (iio:device0)           adi,xo-disable-use-ext-refclk-enable
+debug-attr    ad9361-phy (iio:device0)           bist_prbs
+debug-attr    ad9361-phy (iio:device0)           bist_timing_analysis
+debug-attr    ad9361-phy (iio:device0)           bist_tone
+debug-attr    ad9361-phy (iio:device0)           calibration_switch_control
+debug-attr    ad9361-phy (iio:device0)           digital_tune
+debug-attr    ad9361-phy (iio:device0)           direct_reg_access
+debug-attr    ad9361-phy (iio:device0)           gaininfo_rx1
+debug-attr    ad9361-phy (iio:device0)           gaininfo_rx2
+debug-attr    ad9361-phy (iio:device0)           gpo_set
+debug-attr    ad9361-phy (iio:device0)           initialize
+debug-attr    ad9361-phy (iio:device0)           loopback
+debug-attr    ad9361-phy (iio:device0)           multichip_sync
+device-attr   cf-ad9361-dds-core-lpc (iio:device2) sync_start_enable
+device-attr   cf-ad9361-dds-core-lpc (iio:device2) sync_start_enable_available
+device-attr   cf-ad9361-dds-core-lpc (iio:device2) waiting_for_supplier
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage0 [out]  frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage0 [out]  label
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage0 [out]  phase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage0 [out]  raw
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage0 [out]  sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage0 [out]  scale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage1 [out]  frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage1 [out]  label
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage1 [out]  phase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage1 [out]  raw
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage1 [out]  sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage1 [out]  scale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage2 [out]  frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage2 [out]  label
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage2 [out]  phase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage2 [out]  raw
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage2 [out]  sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage2 [out]  scale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage3 [out]  frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage3 [out]  label
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage3 [out]  phase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage3 [out]  raw
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage3 [out]  sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage3 [out]  scale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage4 [out]  frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage4 [out]  label
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage4 [out]  phase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage4 [out]  raw
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage4 [out]  sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage4 [out]  scale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage5 [out]  frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage5 [out]  label
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage5 [out]  phase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage5 [out]  raw
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage5 [out]  sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage5 [out]  scale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage6 [out]  frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage6 [out]  label
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage6 [out]  phase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage6 [out]  raw
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage6 [out]  sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage6 [out]  scale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage7 [out]  frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage7 [out]  label
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage7 [out]  phase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage7 [out]  raw
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage7 [out]  sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) altvoltage7 [out]  scale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage0 [out]     calibphase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage0 [out]     calibscale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage0 [out]     sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage0 [out]     sampling_frequency_available
+scan-element  cf-ad9361-dds-core-lpc (iio:device2) voltage0 [out]
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage1 [out]     calibphase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage1 [out]     calibscale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage1 [out]     sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage1 [out]     sampling_frequency_available
+scan-element  cf-ad9361-dds-core-lpc (iio:device2) voltage1 [out]
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage2 [out]     calibphase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage2 [out]     calibscale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage2 [out]     sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage2 [out]     sampling_frequency_available
+scan-element  cf-ad9361-dds-core-lpc (iio:device2) voltage2 [out]
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage3 [out]     calibphase
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage3 [out]     calibscale
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage3 [out]     sampling_frequency
+chan-attr     cf-ad9361-dds-core-lpc (iio:device2) voltage3 [out]     sampling_frequency_available
+scan-element  cf-ad9361-dds-core-lpc (iio:device2) voltage3 [out]
+debug-attr    cf-ad9361-dds-core-lpc (iio:device2) direct_reg_access
+device-attr   cf-ad9361-lpc (iio:device3)        sync_start_enable
+device-attr   cf-ad9361-lpc (iio:device3)        sync_start_enable_available
+device-attr   cf-ad9361-lpc (iio:device3)        waiting_for_supplier
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage0           calibbias
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage0           calibphase
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage0           calibscale
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage0           samples_pps
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage0           sampling_frequency
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage0           sampling_frequency_available
+scan-element  cf-ad9361-lpc (iio:device3)        voltage0
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage1           calibbias
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage1           calibphase
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage1           calibscale
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage1           samples_pps
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage1           sampling_frequency
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage1           sampling_frequency_available
+scan-element  cf-ad9361-lpc (iio:device3)        voltage1
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage2           calibbias
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage2           calibphase
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage2           calibscale
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage2           samples_pps
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage2           sampling_frequency
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage2           sampling_frequency_available
+scan-element  cf-ad9361-lpc (iio:device3)        voltage2
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage3           calibbias
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage3           calibphase
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage3           calibscale
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage3           samples_pps
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage3           sampling_frequency
+chan-attr     cf-ad9361-lpc (iio:device3)        voltage3           sampling_frequency_available
+scan-element  cf-ad9361-lpc (iio:device3)        voltage3
+debug-attr    cf-ad9361-lpc (iio:device3)        direct_reg_access
+debug-attr    cf-ad9361-lpc (iio:device3)        pseudorandom_err_check
+device-attr   xadc (iio:device1)                 sampling_frequency
+device-attr   xadc (iio:device1)                 waiting_for_supplier
+chan-attr     xadc (iio:device1)                 temp0              offset
+chan-attr     xadc (iio:device1)                 temp0              raw
+chan-attr     xadc (iio:device1)                 temp0              scale
+chan-attr     xadc (iio:device1)                 voltage0           label
+chan-attr     xadc (iio:device1)                 voltage0           raw
+chan-attr     xadc (iio:device1)                 voltage0           scale
+chan-attr     xadc (iio:device1)                 voltage1           label
+chan-attr     xadc (iio:device1)                 voltage1           raw
+chan-attr     xadc (iio:device1)                 voltage1           scale
+chan-attr     xadc (iio:device1)                 voltage2           label
+chan-attr     xadc (iio:device1)                 voltage2           raw
+chan-attr     xadc (iio:device1)                 voltage2           scale
+chan-attr     xadc (iio:device1)                 voltage3           label
+chan-attr     xadc (iio:device1)                 voltage3           raw
+chan-attr     xadc (iio:device1)                 voltage3           scale
+chan-attr     xadc (iio:device1)                 voltage4           label
+chan-attr     xadc (iio:device1)                 voltage4           raw
+chan-attr     xadc (iio:device1)                 voltage4           scale
+chan-attr     xadc (iio:device1)                 voltage5           label
+chan-attr     xadc (iio:device1)                 voltage5           raw
+chan-attr     xadc (iio:device1)                 voltage5           scale
+chan-attr     xadc (iio:device1)                 voltage6           label
+chan-attr     xadc (iio:device1)                 voltage6           raw
+chan-attr     xadc (iio:device1)                 voltage6           scale
+chan-attr     xadc (iio:device1)                 voltage7           label
+chan-attr     xadc (iio:device1)                 voltage7           raw
+chan-attr     xadc (iio:device1)                 voltage7           scale
+chan-attr     xadc (iio:device1)                 voltage8           raw
+chan-attr     xadc (iio:device1)                 voltage8           scale

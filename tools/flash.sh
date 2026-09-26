@@ -28,7 +28,10 @@ set -euo pipefail
 BOARD="${BOARD:-$(python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/board_addr.py" 2>/dev/null || echo 192.168.2.1)}"
 PASS="${BOARD_PASS:-analog}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUT="$(dirname "$SCRIPT_DIR")/firmware/output"
+# Which build to flash. Defaults to firmware/output, so every existing
+# invocation is unchanged; the `modern` branch sets FW_OUTPUT to flash its own
+# target without disturbing main's outputs or `./devkit verify --board`.
+OUT="${FW_OUTPUT:-$(dirname "$SCRIPT_DIR")/firmware/output}"
 BACKUP_DIR="${BACKUP_DIR:-$(dirname "$SCRIPT_DIR")/firmware/.flash-backups}"
 
 FILES=(BOOT.bin uImage)

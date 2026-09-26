@@ -1,0 +1,57 @@
+--- /mnt/jffs2 ---
+total 16
+drwxr-xr-x    5 root     root             0 Jan  1 00:00 .
+drwxr-xr-x    4 root     root             0 Sep 13  2026 ..
+-rwx------    1 root     root          1616 Jan  1 00:42 autorun.sh
+-rwx------    1 root     root           594 Jan  1 00:08 autorun.sh.bak-prehostname
+-rwx------    1 root     root            38 Jan  1 00:03 autorun.sh.orig
+-rw-r--r--    1 root     root          2136 Jan  1 00:00 bandplan.json
+drwxr-xr-x    2 root     root             0 Sep 10  2026 classifier
+drwxr-xr-x    3 root     root             0 Jan  1 00:05 etc
+-rw-r--r--    1 root     root            33 Jan  1 00:00 hw_serial
+-rw-r--r--    1 root     root          3406 Jan  1 00:00 maia-httpd.crt
+-rw-------    1 root     root          1704 Jan  1 00:00 maia-httpd.key
+-rw-r--r--    1 root     root          1253 Jan  1 00:00 maia-sdr-ca.crt
+-rw-r--r--    1 root     root            17 Jan  1 00:00 serial.txt
+-rwxr-xr-x    1 root     root          1156 Jan  1 00:09 tx_watchdog.sh
+--- autorun.sh? ---
+#!/bin/sh
+# tx_watchdog.sh disabled 2026-09-14.
+#
+# It polled the TX buffer and applied a fixed -10 dB of attenuation a couple
+# of seconds after any stream started. That was a workaround for the kernel
+# unmute overwriting a gain set before streaming; firmware patches/0005 fixes
+# that properly, so the gain you set is now the gain you get, and starting a
+# stream having set nothing still restores your last one.
+#
+# Re-enable by uncommenting the line below. The original file is autorun.sh.orig
+# and the script itself is still at /mnt/jffs2/tx_watchdog.sh.
+#
+# /mnt/jffs2/tx_watchdog.sh &
+
+# --- until the rootfs carries firmware/patches/0013 --------------------------
+# Do here what the patched S40network will do natively. hwaddress goes on BOTH
+# branches: the macb driver finds no MAC in the device tree and randomises one
+# every boot whether the address is static or from DHCP. hostname goes only on
+# the dhcp branch, because DHCP option 12 is what a router lists you by and a
+# static address never sends one.
+ETHADDR=$(fw_printenv -n ethaddr 2>/dev/null)
+HN=$(hostname)
+if [ -n "$ETHADDR" ] && ! grep -q hwaddress /etc/network/interfaces; then
+    awk -v mac="$ETHADDR" -v hn="$HN" '
+        {print}
+        /^iface eth0 inet dhcp$/  {print "\thostname " hn; print "\thwaddress ether " mac}
+        /^iface eth0 inet static$/ {print "\thwaddress ether " mac}
+    ' /etc/network/interfaces > /tmp/if.new && cp /tmp/if.new /etc/network/interfaces
+    ifdown eth0 2>/dev/null
+    ifup eth0 2>/dev/null
+    sleep 6
+    ip -4 addr show eth0 | grep -q "inet " || udhcpc -i eth0 -n -q 2>/dev/null || true
+fi
+--- u-boot env (key vars) ---
+bootdelay=3
+devicetree_image=devicetree.dtb
+ethaddr=00:0a:35:00:01:22
+kernel_image=uImage
+mode=1r1t
+ramdisk_image=uramdisk.image.gz
