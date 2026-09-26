@@ -16,6 +16,7 @@ on:
       - "devkit"
       - "firmware/sim/**"
       - "firmware/patches/**"
+      - "examples/**"
       - ".github/workflows/host-tools.yml"
   pull_request:
     paths:
@@ -25,6 +26,7 @@ on:
       - "devkit"
       - "firmware/sim/**"
       - "firmware/patches/**"
+      - "examples/**"
   workflow_dispatch:
 
 jobs:
