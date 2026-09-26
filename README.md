@@ -316,6 +316,23 @@ That is most of what the converter produces. **What you will actually get is
 set by the link to your host**, not by the board — so a number measured on
 somebody else's desk will not be yours.
 
+**What each configuration demands.** One complex sample is 4 bytes, so this is
+just `4 × channels × sample rate` — the ceiling every real link is measured
+against:
+
+| Active channels | At the full 61.44 MS/s | A gigabit link allows |
+|---|---:|---:|
+| 1 RX *or* 1 TX | 245.8 MB/s | 31.25 MS/s |
+| 2 RX *or* 2 TX | 491.5 MB/s | 15.62 MS/s |
+| 1 RX + 1 TX | 491.5 MB/s | 31.25 MS/s |
+| 1 RX + 2 TX, or 2 RX + 1 TX | 737.3 MB/s | 15.62 MS/s |
+| 2 RX + 2 TX | 983.0 MB/s | 15.62 MS/s |
+
+Ethernet is full duplex, so transmit and receive each get their own 125 MB/s
+and do not compete *on the wire* — which is why `1 RX + 1 TX` allows the same
+rate as `1 RX` alone. They do compete for the board's CPU.
+[The full table, and the chip's own interface limit](docs/modulation-and-throughput.md#theoretical-rates-every-rxtx-combination).
+
 Three things are worth knowing whatever your setup:
 
 - **Raise the libiio buffer.** It is free and it matters more than anything

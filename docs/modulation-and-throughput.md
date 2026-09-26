@@ -66,6 +66,63 @@ Ethernet roughly doubles the usable rate, from about 2.5 to 5 MSPS. It does
 never the constraint — raw capture rises from roughly 10 MB/s over USB to about
 31 MB/s over Ethernet, and stops there.
 
+### Theoretical rates, every RX/TX combination
+
+What each configuration *demands*, before any real link is considered. One
+complex sample is 4 bytes on the host side — 12-bit I and Q, each in a 16-bit
+container — so the arithmetic is `4 × channels × sample rate`.
+
+| Active channels | At the full 61.44 MS/s | Busiest single direction | Sample rate a gigabit link allows |
+|---|---:|---:|---:|
+| 1 TX | 245.8 MB/s | 245.8 MB/s | 31.25 MS/s |
+| 2 TX | 491.5 MB/s | 491.5 MB/s | 15.62 MS/s |
+| 1 RX | 245.8 MB/s | 245.8 MB/s | 31.25 MS/s |
+| 2 RX | 491.5 MB/s | 491.5 MB/s | 15.62 MS/s |
+| 1 RX + 1 TX | 491.5 MB/s | 245.8 MB/s | 31.25 MS/s |
+| 1 RX + 2 TX | 737.3 MB/s | 491.5 MB/s | 15.62 MS/s |
+| 2 RX + 1 TX | 737.3 MB/s | 491.5 MB/s | 15.62 MS/s |
+| 2 RX + 2 TX | 983.0 MB/s | 491.5 MB/s | 15.62 MS/s |
+
+**Two directions, not one total.** Ethernet is full duplex, so transmit and
+receive each get their own 125 MB/s and do not compete *on the wire*. That is
+why `1 RX + 1 TX` allows the same 31.25 MS/s as `1 RX` alone, and why the
+column that matters for a link is the busiest single direction rather than the
+sum. They do still compete for the board's CPU, which is one machine.
+
+#### The chip's own interface
+
+The AD9361 reaches the FPGA over LVDS: **6 differential lanes each direction**
+(`RX_D0`–`RX_D5`, `TX_D0`–`TX_D5` in the data sheet's pin list), double data
+rate, with `DATA_CLK` specified to 245.76 MHz — a 4.069 ns period, Rev. G.
+
+```
+6 lanes × 2 (DDR) × 245.76 MHz = 2.949 Gbit/s in each direction
+one channel per sample         = 12-bit I + 12-bit Q = 24 bits
+
+  1 channel   2.949 Gbit/s ÷ 24 bits = 122.88 MS/s
+  2 channels  2.949 Gbit/s ÷ 48 bits =  61.44 MS/s
+```
+
+The second line is exactly the converter's maximum, which is not a
+coincidence: **the data port is dimensioned for two channels at full rate and
+nothing more.** With one channel the port could carry twice what the converter
+produces, so the converter is the limit; with two the port and the converter
+run out together.
+
+This board is configured `adi,2rx-2tx-mode-enable`, so both channels occupy
+the interface whether or not you read both. Enabling one channel halves the
+data reaching your *host*, not the traffic on the LVDS link.
+
+#### Which limit you actually meet
+
+In practice the order is almost always:
+
+1. **Your host link** — usually first, and the only one you can change cheaply.
+2. **The board's CPU** — the measurements below; a capture run on the board
+   sustains far more than any network figure here.
+3. **The LVDS port and the converter** — 61.44 MS/s on two channels, and you
+   only reach it by keeping the host out of the loop entirely.
+
 ### Throughput against buffer size
 
 The ceiling above is not a property of the board. `iio_readdev`'s `-b` moves it
