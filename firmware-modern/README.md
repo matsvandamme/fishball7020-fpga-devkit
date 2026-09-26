@@ -1,6 +1,16 @@
 # firmware-modern — a current Linux for this board
 
-**Status: kernel and device tree build. Nothing has been flashed yet.**
+**Status: running on the board. Selftest green. Driver patches not yet rebased.**
+
+| | |
+|---|---|
+| Linux 6.12.0 on the board | yes |
+| `./devkit selftest` | **23 passed, 0 warnings, 0 failed** |
+| cyclic transmit (`OPEN … CYCLIC`) | **works** — the loopback tone passes |
+| Ethernet, SD card, GPIO sysfs | yes |
+| transmitters at boot | **−89.75 dB**, from the device tree alone |
+| `tools/flash.sh` over the network | works again |
+| the eight driver patches | **not yet rebased** — their seven attributes are the only things missing from the IIO contract |
 
 This is the `modern` branch's firmware target, built for
 [issue #4](https://github.com/matsvandamme/fishball7020-fpga-devkit/issues/4).
@@ -70,17 +80,36 @@ make ARCH=arm CROSS_COMPILE=$CROSS DTC_FLAGS=-@ xilinx/zynq-pluto-sdr-fishball.d
 `CONFIG_CF_AXI_DDS`. The 2018-era Linaro GCC 7.3 from `main`'s Buildroot builds
 6.12 without complaint.
 
-## Next, and read this before the first boot
+## What the bring-up cost, and what it taught
 
-**Remove the TX antennas, or fit 50 Ω loads.** The whole point of the
-attenuation default above is that the transmitter comes up muted — but that is
-the thing being changed, and this kernel has never run. The first check after
-it boots is that `hardwaregain` reads −89.75 dB.
+Three boots, two card-reader trips. Every failure was the same shape: **ADI's
+`zynq_pluto_defconfig` and `zynq-pluto-sdr.dtsi` describe an ADALM-Pluto**, and
+this board is a Pluto-compatible with more hardware on it. Nothing was wrong
+with the kernel; things were simply absent.
 
-Then: `./devkit flash --kernel-only` and `--dtb-only` replace exactly those two
-files, so `main` is one flash away. The bitstream is **not** touched — the HDL
-patches are unaffected by a kernel swap, `BOOT.bin` stays as it is, and that
-keeps the iteration loop at minutes rather than a 45–90 minute Vivado build.
+| boot | what was missing | why |
+|---|---|---|
+| 1 | Ethernet, SD, GPIO sysfs | `CONFIG_MACB`, `CONFIG_REALTEK_PHY`, `CONFIG_MMC`, `CONFIG_GPIO_SYSFS` — a Pluto has no Ethernet and boots from QSPI |
+| 2 | SD only | driver built, but ADI's dtsi says `&sdhci0 { status = "disabled"; }` |
+| 3 | nothing | — |
 
-Still to do: rebase the eight driver patches (0004, 0005, 0007, 0012, 0015,
-0016, 0017, 0018), then Debian on a larger card.
+Two lessons worth keeping:
+
+- **Losing `/dev/mmcblk0` costs a card-reader trip**, because `tools/flash.sh`
+  works by mounting `/dev/mmcblk0p1` on the running board. It is the one
+  capability whose absence you cannot fix remotely.
+- **The USB gadget saved both rounds.** With Ethernet down the board was still
+  reachable at `192.168.2.1`, which is how every measurement above was taken.
+  Keep the USB cable connected while iterating on the kernel.
+
+After boot 2 the guessing stopped: comparing the `status` of every node in the
+built `.dtb` against the factory one found exactly one regression, and after
+the fix, none. That audit is cheap and worth re-running on any DTS change.
+
+## Next
+
+Rebase the eight driver patches — 0004, 0005, 0007, 0012, 0015, 0016, 0017,
+0018 — in dependency order, finishing with 0015 and 0017. Their seven
+attributes are the only things now missing from the IIO contract, so
+`dump_context.py` gives a precise definition of done. Then Debian, on a larger
+card.

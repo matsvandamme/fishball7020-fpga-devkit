@@ -1,6 +1,6 @@
 {
-  "ad9361_temp_c": 42.1,
-  "dc_offset_dbfs": -90.4,
+  "ad9361_temp_c": 34.2,
+  "dc_offset_dbfs": -86.4,
   "dig_eye_map": "CLK: 30720000 Hz 'o' = PASS\nDC0:1:2:3:4:5:6:7:8:9:a:b:c:d:e:f:\n0:o o o o . . . . . . . . . . . . \n1:o o o o o . . . . . . . . . . . \n2:o o o o o o . . . . . . . . . . \n3:o o o o o o o . . . . . . . . . \n4:o o o o o o o o . . . . . . . . \n5:o o o o o o o o o . . . . . . . \n6:o o o o o o o o o o . . . . . . \n7:o o o o o o o o o o o . . . . . \n8:o o o o o o o o o o o o . . . . \n9:o o o o o o o o o o o o o . . . \na:. o o o o o o o o o o o o o . . \nb:. . o o o o o o o o o o o o o . \nc:. . . o o o o o o o o o o o o o \nd:. . . . o o o o o o o o o o o o \ne:. . . . . o o o o o o o o o o o \nf:. . . . . . o o o o o o o o o o",
   "dig_eye_passes": 157,
   "digital_loopback_error_db": 0.0,
@@ -9,20 +9,20 @@
   "hw_model": "FISH Ball PlutoSDR Rev.A (Z7020-AD9361)",
   "hw_serial": "b8f4c99de8525565d3f4fe3c917ad834",
   "rails": {
-    "vccaux": 1.7834,
-    "vccbram": 0.999,
-    "vccint": 0.9983,
-    "vccoddr": 1.3455,
-    "vccpaux": 1.7834,
-    "vccpint": 0.9946
+    "vccaux": 1.782,
+    "vccbram": 0.9939,
+    "vccint": 0.9954,
+    "vccoddr": 1.3418,
+    "vccpaux": 1.782,
+    "vccpint": 0.9932
   },
-  "recorded_at": "2026-09-26 22:27:57",
+  "recorded_at": "2026-09-26 22:36:03",
   "rx_gain_floors_dbfs": [
-    -99.2,
+    -99.0,
     -96.9,
-    -96.4,
-    -86.2,
-    -79.9
+    -96.3,
+    -86.1,
+    -79.8
   ],
-  "zynq_temp_c": 63.6
+  "zynq_temp_c": 55.5
 }
