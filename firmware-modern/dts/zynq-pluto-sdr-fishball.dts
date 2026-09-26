@@ -1,0 +1,180 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Fishball7020 / PlutoSky - Zynq XC7Z020 + AD9361, two receive and two
+ * transmit chains.
+ *
+ * Sold under several names. It is NOT an ADALM-Pluto, though it runs Pluto
+ * firmware: XC7Z020-CLG400 rather than XC7Z010-CLG225, 1 GB of DDR3L rather
+ * than 512 MB, a real Ethernet PHY on an RJ45, an AD9361 in 2R2T rather than
+ * an AD9363 in 1R1T, and - on the common variant - a power amplifier on each
+ * transmit port.
+ *
+ * WHY THIS IS AN OVERLAY AND NOT A FLAT FILE. `main` carries a 986-line tree
+ * decompiled from the factory .dtb, kept flat and byte-identical because the
+ * point there was proving the rebuild matched a real unit. That was the right
+ * artefact for that job and it is the wrong one to maintain: numeric
+ * phandles, no includes, and every ADI improvement has to be merged in by
+ * hand. This file is a delta from ADI's own zynq-pluto-sdr.dtsi instead, and
+ * every delta below says why it exists.
+ *
+ * The board's AD9361 differs from a stock Pluto in exactly nine properties.
+ * That was established by parsing both trees and diffing them, not by eye.
+ *
+ * Copyright (C) 2026 Matthieu
+ */
+/dts-v1/;
+#include "zynq-pluto-sdr.dtsi"
+
+/ {
+	model = "FISH Ball PlutoSDR Rev.A (Z7020/AD9361)";
+
+	/*
+	 * 1 GB. The Pluto has 512 MB.
+	 *
+	 * The node is "memory" and NOT "memory@0", which matters: the dtsi
+	 * declares it without a unit address, so a differently-named node is
+	 * a SIBLING rather than an override. Getting that wrong produced a
+	 * tree with two memory nodes - 512 MB and 1 GB - and dtc reported it
+	 * only as an oblique "duplicate unit-address" warning against
+	 * fpga-axi@0. It built cleanly and would have booted wrong.
+	 */
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x40000000>;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led0 {
+			label = "led0:green";
+			/*
+			 * MIO 0, where the Pluto's is EMIO 68. Kept on
+			 * "heartbeat" deliberately: the transmitter-follows-LED
+			 * behaviour is selected from userspace at boot, so that
+			 * dropping it needs no device-tree change.
+			 */
+			gpios = <&gpio0 0 0>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
+};
+
+/*
+ * Ethernet. The Pluto has none at all - it is a USB gadget - so this is an
+ * addition rather than an override. RTL8211F behind an RJ45; the generic
+ * clause-22 binding is enough, the PHY needs no quirks here.
+ */
+&gem0 {
+	status = "okay";
+	phy-mode = "rgmii-id";
+	phy-handle = <&ethernet_phy>;
+
+	ethernet_phy: ethernet-phy@0 {
+		reg = <0>;
+		compatible = "ethernet-phy-ieee802.3-c22";
+	};
+};
+
+/* 16 MB of QSPI, not the Pluto's 32 MB, so the last partition is shorter. */
+&primary_flash {
+	partition@qspi-linux {
+		label = "qspi-linux";
+		reg = <0x200000 0xE00000>; /* 14M */
+	};
+};
+
+/*
+ * DMA channel descriptors, which ADI's dtsi no longer carries.
+ *
+ * Not cosmetic. dma-axi-dmac.c reads the core's version register and, only
+ * for cores >= 4.3.a, configures itself from hardware; anything older takes
+ * axi_dmac_parse_dt(), which returns -ENODEV when `adi,channels` is missing.
+ * This board's bitstream comes from ADI's 2018-era HDL and reports
+ * "adi,axi-dmac-1.00.a", so the old path is a real possibility and a failed
+ * DMA probe means nothing streams at all. The node is ignored by newer cores,
+ * so including it is free insurance. Values are the factory tree's.
+ */
+&rx_dma {
+	adi,channels {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		dma-channel@0 {
+			reg = <0>;
+			adi,source-bus-width = <32>;	/* from the AD9361 FIFO */
+			adi,source-bus-type = <2>;	/* FIFO */
+			adi,destination-bus-width = <64>;
+			adi,destination-bus-type = <0>;	/* memory */
+		};
+	};
+};
+
+&tx_dma {
+	adi,channels {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		dma-channel@0 {
+			reg = <0>;
+			adi,source-bus-width = <64>;
+			adi,source-bus-type = <0>;	/* memory */
+			adi,destination-bus-width = <32>;
+			adi,destination-bus-type = <2>;	/* FIFO */
+		};
+	};
+};
+
+/*
+ * The transmit DAC core is an AD9361 (2T), not the Pluto's AD9364 (1T).
+ */
+&cf_ad9364_dac_core_0 {
+	compatible = "adi,axi-ad9361-dds-6.00.a";
+};
+
+/*
+ * The radio itself. Nine deltas from the stock Pluto AD9363, and the first
+ * one is the only one that can hurt you.
+ */
+&adc0_ad9364 {
+	compatible = "adi,ad9361";
+
+	/*
+	 * ** SAFETY. Do not change this without reading the note. **
+	 *
+	 * 89.75 dB is the most attenuation the AD9361 offers - the muted
+	 * state. ADI's default is 10000 (10 dB), which on a board with a
+	 * power amplifier is roughly +9 dBm out of an SMA that nobody has
+	 * necessarily terminated, applied by ad9361_setup() before any
+	 * userspace has run. No init script can be early enough to prevent
+	 * it.
+	 *
+	 * On `main` this is patch 0011, written after the problem was found.
+	 * Here it is the default, which is strictly better: a patch can be
+	 * forgotten and a default cannot. CI asserts this value.
+	 */
+	adi,tx-attenuation-mdB = <89750>;
+
+	/* Two receivers and two transmitters. The whole reason for this board. */
+	adi,2rx-2tx-mode-enable;
+
+	/*
+	 * LVDS digital interface. The Pluto runs the AD9361 interface in CMOS
+	 * mode; this board wires it as LVDS, which is why the next three
+	 * properties exist and why the receive data delay differs.
+	 */
+	adi,lvds-mode-enable;
+	adi,lvds-rx-onchip-termination-enable;
+	adi,lvds-bias-mV = <150>;
+	adi,rx-data-delay = <4>;
+
+	/* Transmit feedback clock delay for this board's routing. */
+	adi,tx-fb-clock-delay = <7>;
+
+	/*
+	 * Synthesiser start frequencies, as 64-bit values. The factory tree
+	 * sets both to 2.4 GHz.
+	 */
+	adi,rx-synthesizer-frequency-hz = /bits/ 64 <2400000000>;
+	adi,tx-synthesizer-frequency-hz = /bits/ 64 <2400000000>;
+};

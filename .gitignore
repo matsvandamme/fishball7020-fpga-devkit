@@ -69,3 +69,6 @@ tools/wifi-scan/fishball_wifi_live.py
 # GRC regenerates these from the .grc every time it opens or runs one; the
 # .grc is the source. One per flowgraph, plus one module per embedded block.
 examples/*/fishball_*.py
+
+# --- Firmware 2 (modern): upstream source is cloned fresh, not committed ---
+firmware-modern/src/
