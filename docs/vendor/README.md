@@ -56,8 +56,23 @@ documentation site serves a JavaScript shell rather than the PDF.
 
 | Document | Wanted for |
 |---|---|
-| **DS187** — Zynq-7000 SoC (XC7Z010/XC7Z020) Data Sheet | The junction-temperature limits `./devkit temps` reports. The part is confirmed commercial grade from the hardware platform's `sysdef.xml`; the 0–85 °C figure that grade implies is not confirmed from anything here. |
-| **AD9361 Data Sheet** (Analog Devices) | Same: the operating range and absolute-maximum junction temperature are currently quoted from memory. |
+| **AD9361 Data Sheet** (Analog Devices) | The operating range and absolute-maximum junction temperature that `./devkit temps` reports are currently quoted from memory. `analog.com` is not reachable non-interactively from a build host. |
+| **DS187** — XC7Z010/XC7Z020 DC and AC Switching Characteristics | Absolute-maximum ratings. DS190 (the Overview) gives the *operating* junction ranges per temperature grade and is enough for `./devkit temps`; DS187 would add the absolute maxima. |
+
+### Settled by DS190, and the mislabel it corrected
+
+DS190 (v1.11.1, 2 July 2018) Table 7 gives Tj = 0…+85 °C for Commercial,
+0…+100 °C for Extended and −40…+100 °C for Industrial — **and lists which
+grades each device is sold in.** For the XC7Z020, Commercial exists only in
+speed grade `-1`; the `-2` this design targets is Extended or Industrial, both
++100 °C.
+
+So the 85 °C this repository used, described as "the commercial rating", was
+mislabelled. The fitted part's temperature grade is not recorded anywhere
+available — the schematic and the factory inspection report both mark it only
+as `XC7Z020-CLG400` — so the tooling now warns at 85 °C as the *lowest rating
+the part could have* and says 100 °C is the one it probably has. The grade
+letter is on the chip package; reading it off is the only way to settle it.
 
 Drop either in this directory and update `SENSORS` in
 [`tools/temps.py`](../../tools/temps.py) to cite it.

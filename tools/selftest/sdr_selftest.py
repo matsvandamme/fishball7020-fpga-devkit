@@ -507,9 +507,16 @@ def test_power(b, rep):
 
     zt, at = b.zynq_temp(), b.ad9361_temp()
     rep.data["zynq_temp_c"], rep.data["ad9361_temp_c"] = round(zt, 1), round(at, 1)
-    # Commercial-grade XC7Z020 is specified to 85 C junction.
-    rep.check(g, "Zynq die temperature", zt < 85, f"{zt:.1f} C (limit 85 C)",
-              warn=zt < 95)
+    # 85 C is the CONSERVATIVE bound, not this part's known rating. DS190
+    # (v1.11.1) Table 7: commercial is 0-85 C, but an XC7Z020 is not sold as
+    # commercial in the -2 speed grade this design targets - -2 is Extended or
+    # Industrial, both 0/-40 to +100 C. The fitted part's grade is marked
+    # nowhere available (schematic and factory inspection report both say only
+    # XC7Z020-CLG400), so warn at the lowest rating it could have. See
+    # tools/temps.py --help.
+    rep.check(g, "Zynq die temperature", zt < 85,
+              f"{zt:.1f} C (85 C if commercial, 100 C if -2; warning at the "
+              f"lower)", warn=zt < 95)
     rep.check(g, "AD9361 die temperature", -10 < at < 90, f"{at:.1f} C")
 
 
