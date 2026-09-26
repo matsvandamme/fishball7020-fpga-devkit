@@ -49,16 +49,27 @@ So this tool warns at 85 C - the lowest rating the part could have - and
 reports 100 C as the limit it probably has. Erring toward the cooler figure is
 the right direction for a thermal warning.
 
-AD9361 - NOT read from a datasheet. -40 to +85 C operating and 150 C absolute
-maximum junction are quoted from memory. There is no AD9361 datasheet in
-docs/vendor/ or in the vendor materials, and analog.com is not reachable
-non-interactively from here. Treat these as approximately right, not as
-citations.
+AD9361 - read from the datasheet. AD9361 Data Sheet, Rev. G, Table 11
+"Absolute Maximum Ratings":
 
-Both figures are at least the right SHAPE of limit: the XADC and the AuxADC
-each report junction temperature, which is what an operating-range figure
-constrains. Dropping the AD9361 datasheet into docs/vendor/ - or reading the
-grade letter off the Zynq - would let this tool cite both properly.
+    Maximum Junction Temperature (TJMAX)   110 C
+    Operating Temperature Range            -40 C to +85 C
+    Storage Temperature Range              -65 C to +150 C
+
+Worth flagging, because this tool got it wrong before the datasheet was to
+hand: the absolute maximum junction temperature is 110 C, NOT 150 C. 150 C is
+the STORAGE maximum - a different row of the same table, and not a temperature
+you may run the part at. The earlier figure overstated the headroom by 40 C.
+
+Table 12 of the same datasheet gives the thermal resistance for the 144-ball
+CSP_BGA as 32.3 C/W in still air, falling to 27.8 C/W at 2.5 m/s. That is the
+number for turning dissipation into a temperature rise if you need to.
+
+Both are the right SHAPE of limit: the XADC and the AuxADC each report
+junction temperature, which is what these figures constrain.
+
+The one thing still unresolved is the Zynq's temperature grade, and the answer
+is on the chip package rather than in any document.
 
 The transmitter is the only part here that heats itself appreciably, and the
 amplifier sits next to the AD9361. If you want the board to act on this rather
@@ -94,8 +105,8 @@ SENSORS = [
     ("Zynq XC7Z020", 85.0, 100.0,
      "85 C = worst case if commercial; -2 grade implies 100 C."
      " DS190 (v1.11.1) Table 7. --help explains."),
-    ("AD9361", 85.0, 150.0,
-     "85 / 150 C quoted from memory, NOT from a datasheet. --help explains."),
+    ("AD9361", 85.0, 110.0,
+     "85 C operating, 110 C max junction. AD9361 Rev. G Table 11."),
 ]
 
 # Fractions of the spec limit at which to start saying something. Warning well

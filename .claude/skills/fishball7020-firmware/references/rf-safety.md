@@ -1,7 +1,13 @@
 # Transmitting with this board without destroying it
 
-**The receiver is the fragile end.** The AD9361's RX input is rated to about
-**+2.5 dBm**. That is the number every decision here is measured against.
+**The receiver is the fragile end.** The AD9361's RX input is rated to
+**+2.5 dBm** — not "about": the AD9361 data sheet, Rev. G, Table 11 (Absolute
+Maximum Ratings) lists "RF Inputs (Peak Power) 2.5 dBm". That is the number
+every decision here is measured against.
+
+The same table gives the thermal limits `./devkit temps` reports: maximum
+junction temperature **110 °C**, operating range −40 to +85 °C. Note that the
+−65 to +150 °C row is *storage*, not a temperature you may run the part at.
 
 ## This board may have a power amplifier
 

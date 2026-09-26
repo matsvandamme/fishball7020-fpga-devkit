@@ -48,31 +48,53 @@ in this repository was read off **this** PDF.
 annotated crops of those three sheets straight from this file. The figures are
 in [the GPIO reference](../tx-gpio-bitmap.md#where-the-pin-numbers-come-from).
 
-## Missing, and worth adding
+## Datasheet figures this repository relies on
 
-Two datasheets would let the tooling cite its numbers instead of asserting
-them. Neither is here, and neither can be fetched non-interactively — AMD's
-documentation site serves a JavaScript shell rather than the PDF.
+Neither datasheet is vendored here — both are third-party copyright — so they
+are cited by document, revision and table. Both were read to settle numbers
+this repo had previously been asserting.
 
-| Document | Wanted for |
+### AD9361 Data Sheet, Rev. G, Table 11 (Absolute Maximum Ratings)
+
+| Parameter | Rating |
 |---|---|
-| **AD9361 Data Sheet** (Analog Devices) | The operating range and absolute-maximum junction temperature that `./devkit temps` reports are currently quoted from memory. `analog.com` is not reachable non-interactively from a build host. |
-| **DS187** — XC7Z010/XC7Z020 DC and AC Switching Characteristics | Absolute-maximum ratings. DS190 (the Overview) gives the *operating* junction ranges per temperature grade and is enough for `./devkit temps`; DS187 would add the absolute maxima. |
+| RF Inputs (Peak Power) | **2.5 dBm** |
+| Maximum Junction Temperature (TJMAX) | **110 °C** |
+| Operating Temperature Range | −40 °C to +85 °C |
+| Storage Temperature Range | −65 °C to +150 °C |
 
-### Settled by DS190, and the mislabel it corrected
+The first row is the number every transmit decision in this repository is
+measured against, and it is now a citation rather than "about +2.5 dBm".
 
-DS190 (v1.11.1, 2 July 2018) Table 7 gives Tj = 0…+85 °C for Commercial,
-0…+100 °C for Extended and −40…+100 °C for Industrial — **and lists which
-grades each device is sold in.** For the XC7Z020, Commercial exists only in
-speed grade `-1`; the `-2` this design targets is Extended or Industrial, both
-+100 °C.
+The second corrected an error: `./devkit temps` previously reported 150 °C as
+the absolute maximum junction temperature. **150 °C is the *storage* maximum**,
+a different row of the same table. The real junction limit is 110 °C, so the
+old figure overstated the headroom by 40 °C.
+
+Table 12 gives the 144-ball CSP_BGA thermal resistance as 32.3 °C/W in still
+air, 27.8 °C/W at 2.5 m/s.
+
+### DS190, Zynq-7000 SoC Data Sheet: Overview (v1.11.1, 2 July 2018), Table 7
+
+| Grade | Junction temperature range |
+|---|---|
+| Commercial (C) | 0 °C to +85 °C |
+| Extended (E) | 0 °C to +100 °C |
+| Industrial (I) | −40 °C to +100 °C |
+
+The same table lists which grades each device is sold in, and that is what
+mattered: for the **XC7Z020, Commercial exists only in speed grade `-1`**.
+The `-2` this design targets is Extended or Industrial — both +100 °C.
 
 So the 85 °C this repository used, described as "the commercial rating", was
 mislabelled. The fitted part's temperature grade is not recorded anywhere
 available — the schematic and the factory inspection report both mark it only
-as `XC7Z020-CLG400` — so the tooling now warns at 85 °C as the *lowest rating
-the part could have* and says 100 °C is the one it probably has. The grade
-letter is on the chip package; reading it off is the only way to settle it.
+as `XC7Z020-CLG400` — so the tooling warns at 85 °C as the *lowest rating the
+part could have* and reports 100 °C as the one it probably has. **The grade
+letter is on the chip package; reading it off is the only way to settle it.**
 
-Drop either in this directory and update `SENSORS` in
-[`tools/temps.py`](../../tools/temps.py) to cite it.
+### Still wanted
+
+**DS187** — XC7Z010/XC7Z020 DC and AC Switching Characteristics — would add
+the Zynq's absolute-maximum ratings. DS190 gives the operating ranges, which
+is what `./devkit temps` reports, so this is a nice-to-have rather than a gap.
