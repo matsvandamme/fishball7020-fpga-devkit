@@ -289,6 +289,52 @@ Full tables and how the numbers were checked:
 signals, and where the streaming ceiling comes from:
 **[modulation and throughput](docs/modulation-and-throughput.md)**.
 
+## How fast can you actually stream?
+
+The board has **gigabit Ethernet** (confirmed: the link negotiates
+`1000 Mb/s, full duplex`) and a radio that runs at **61.44 MS/s**. Both are
+true, and multiplying them together is the mistake everyone makes — including
+this repository, until it was measured properly.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/throughput-dark.svg">
+  <img src="docs/img/throughput-light.svg" alt="Two panels. Left: host streaming throughput against libiio buffer size, for one and two receive channels, rising from about 15 MB/s at a 16 Ksample buffer to a plateau near 44 MB/s above 1 Msample, with a shaded band showing the spread over three runs; a dashed line marks the 31 MB/s this repository used to quote, annotated as being the throughput at a 64 Ksample buffer rather than a limit of the board. Right: sustained sample rate per channel by configuration - 11.3 MS/s for one receive channel over Ethernet, 5.4 for two, 1.7 over the USB gadget, with derived figures of 5.0 for one transmit plus one receive and 2.0 for two of each shown hatched." width="900">
+</picture>
+
+**The ceiling is set by your buffer size, not by the board.** At a 64 Ksample
+buffer you get ~28 MB/s — which is where this repo's long-quoted "~31 MB/s
+ceiling" came from. Ask for a 1 Msample buffer and the same board gives
+**~44 MB/s**, and it plateaus there:
+
+```bash
+# run on your HOST — the -b matters more than anything else here
+iio_readdev -u ip:fishball.local -b 1048576 -s 33554432 cf-ad9361-lpc     voltage0 voltage1 > capture.iq
+```
+
+At four bytes per complex sample, that plateau means:
+
+| Configuration | Sustained | |
+|---|---|---|
+| 1 receive channel, Ethernet | **11.3 MS/s** | measured |
+| 2 receive channels, Ethernet | **5.4 MS/s each** | measured |
+| 1 receive channel, USB gadget | **1.7 MS/s** | measured |
+| 1 transmit + 1 receive | ~5 MS/s | derived, not re-measured |
+| 2 transmit + 2 receive | ~2 MS/s | derived, and at the AD9361's 2.083 MS/s floor |
+
+Two channels give *less each but more in total* (43 vs 45 MB/s) — the
+per-buffer overhead amortises while the cost per byte does not.
+
+**None of this is the wire or the radio.** The wire carries 125 MB/s each way;
+the fabric and DMA run at the full 61.44 MS/s. The limit is two 667 MHz ARM
+cores copying every sample three times: NIC → socket buffer → `iiod` →
+the DMA buffer.
+
+**To get the full 61.44 MS/s, take the host out of the loop.** A cyclic
+transmit hands the hardware one buffer and it repeats forever with no host
+involvement — which is how QPSK measures 2.17% EVM at the top of the range.
+Depth, the EVM tables and where the drops appear:
+**[modulation and throughput](docs/modulation-and-throughput.md)**.
+
 ## Repository layout
 
 ```

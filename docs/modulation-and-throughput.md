@@ -39,6 +39,12 @@ leans on it.
 - **Continuous streaming saturates near 30 MB/s** through the board's CPU and
   network stack. At four bytes per sample in each direction that lands at about
   5 MSPS — which is exactly where it breaks.
+  **Corrected 2026-09-26: that 30 MB/s is a property of the buffer size these
+  measurements used (64 Ksamples), not of the board.** Re-measured with a
+  1 Msample buffer, one receive channel sustains **~45 MB/s / 11.3 MS/s** and
+  two sustain ~43 MB/s. See [the buffer-size sweep](#throughput-against-buffer-size)
+  below; the EVM figures on this page were all taken at the smaller buffer and
+  have not been repeated at the larger one.
 - **Capture is bit-perfect at 5 MSPS.** Above that it picks up a handful of
   discrete sample drops: 2 to 4 per two million samples, even at 61.44 MSPS.
 - **OFDM measures far worse than QPSK** on the same link, and that is real, not a
@@ -59,6 +65,27 @@ Ethernet roughly doubles the usable rate, from about 2.5 to 5 MSPS. It does
 **not** give twelve times the throughput the wire suggests, because the wire was
 never the constraint — raw capture rises from roughly 10 MB/s over USB to about
 31 MB/s over Ethernet, and stops there.
+
+### Throughput against buffer size
+
+The ceiling above is not a property of the board. `iio_readdev`'s `-b` moves it
+by a factor of three, measured three times per point at 33.6 Msamples per run:
+
+| Buffer | 1 RX channel | 2 RX channels |
+|---|---|---|
+| 16 Ksamples | 14.9 MB/s | 16.6 MB/s |
+| 64 Ksamples | **28.3 MB/s** ← the figure above | 28.0 MB/s |
+| 256 Ksamples | 39.1 MB/s | 34.7 MB/s |
+| 1 Msample | 45.4 MB/s | 44.8 MB/s |
+| 2 Msamples | **46.2 MB/s** | 40.0 MB/s |
+| 4 Msamples | 44.4 MB/s | 44.9 MB/s |
+
+It plateaus near **44 MB/s** above about 1 Msample and does not improve after
+that. The spread between repeats reaches 13 MB/s at one point, so treat single
+runs with suspicion — these are means of three.
+
+Raw data and the figure: [`docs/img/data/throughput.json`](img/data/throughput.json),
+plotted by [`tools/plot_throughput.py`](../tools/plot_throughput.py).
 
 > **What is actually failing.** Above the ceiling this is not noise. The
 > transmitted waveform is *not the one you generated*: the transmit DMA starves,

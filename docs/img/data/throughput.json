@@ -1,0 +1,171 @@
+{
+ "measured": "2026-09-26, one board, iio_readdev over gigabit Ethernet, 33.6 Msamples per run, 3 runs per point",
+ "wire_mbs": 125.0,
+ "radio_msps": 61.44,
+ "plateau_mbs": 44.3,
+ "previously_quoted": {
+  "mbs": 31.0,
+  "buffer_samples": 65536,
+  "note": "docs/modulation-and-throughput.md quoted ~31 MB/s as the ceiling; it is the throughput at a 64 Ksample buffer"
+ },
+ "buffer_sweep": {
+  "1 receive channel": [
+   {
+    "buffer_samples": 16384,
+    "mean_mbs": 14.91,
+    "min_mbs": 14.04,
+    "max_mbs": 15.35,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 32768,
+    "mean_mbs": 19.04,
+    "min_mbs": 14.81,
+    "max_mbs": 21.61,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 65536,
+    "mean_mbs": 28.33,
+    "min_mbs": 27.8,
+    "max_mbs": 28.96,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 131072,
+    "mean_mbs": 34.49,
+    "min_mbs": 32.93,
+    "max_mbs": 35.91,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 262144,
+    "mean_mbs": 39.15,
+    "min_mbs": 38.24,
+    "max_mbs": 40.01,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 524288,
+    "mean_mbs": 34.79,
+    "min_mbs": 26.64,
+    "max_mbs": 40.04,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 1048576,
+    "mean_mbs": 45.35,
+    "min_mbs": 41.08,
+    "max_mbs": 48.51,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 2097152,
+    "mean_mbs": 46.18,
+    "min_mbs": 45.2,
+    "max_mbs": 47.53,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 4194304,
+    "mean_mbs": 44.41,
+    "min_mbs": 42.99,
+    "max_mbs": 47.08,
+    "reps": 3
+   }
+  ],
+  "2 receive channels": [
+   {
+    "buffer_samples": 16384,
+    "mean_mbs": 16.59,
+    "min_mbs": 14.35,
+    "max_mbs": 18.16,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 32768,
+    "mean_mbs": 20.27,
+    "min_mbs": 18.08,
+    "max_mbs": 21.37,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 65536,
+    "mean_mbs": 27.96,
+    "min_mbs": 22.76,
+    "max_mbs": 30.65,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 131072,
+    "mean_mbs": 33.18,
+    "min_mbs": 27.51,
+    "max_mbs": 36.19,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 262144,
+    "mean_mbs": 34.7,
+    "min_mbs": 31.35,
+    "max_mbs": 38.07,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 524288,
+    "mean_mbs": 33.42,
+    "min_mbs": 29.51,
+    "max_mbs": 35.58,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 1048576,
+    "mean_mbs": 44.78,
+    "min_mbs": 42.23,
+    "max_mbs": 46.7,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 2097152,
+    "mean_mbs": 39.96,
+    "min_mbs": 36.98,
+    "max_mbs": 44.66,
+    "reps": 3
+   },
+   {
+    "buffer_samples": 4194304,
+    "mean_mbs": 44.86,
+    "min_mbs": 40.57,
+    "max_mbs": 49.29,
+    "reps": 3
+   }
+  ]
+ },
+ "configurations": [
+  {
+   "name": "1 RX, Ethernet",
+   "msps_per_channel": 11.3,
+   "measured": true
+  },
+  {
+   "name": "2 RX, Ethernet",
+   "msps_per_channel": 5.4,
+   "measured": true
+  },
+  {
+   "name": "1 RX, USB gadget",
+   "msps_per_channel": 1.7,
+   "measured": true
+  },
+  {
+   "name": "1 TX + 1 RX",
+   "msps_per_channel": 5.0,
+   "measured": false
+  },
+  {
+   "name": "2 TX + 2 RX",
+   "msps_per_channel": 2.0,
+   "measured": false
+  }
+ ],
+ "footnote": "Measured with iio_readdev over gigabit Ethernet: 3 runs of 33.6 Msamples per point, band = full spread. 4 bytes per complex sample. TX rows are derived from the repo's earlier EVM measurements at a small buffer and have NOT been re-measured at these buffer sizes."
+}
