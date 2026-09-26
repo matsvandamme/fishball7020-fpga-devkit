@@ -76,6 +76,28 @@
 	};
 };
 
+/*
+ * The SD card. ADI's dtsi says `&sdhci0 { status = "disabled"; }` because an
+ * ADALM-Pluto boots from QSPI and never needs Linux to see a card - this board
+ * boots from SD.
+ *
+ * Building CONFIG_MMC is necessary and NOT sufficient: with the driver present
+ * but the node disabled, the board boots perfectly and simply has no
+ * /dev/mmcblk0. That takes tools/flash.sh with it, because it works by
+ * mounting /dev/mmcblk0p1 on the running board - so the mistake costs a trip
+ * to the card reader rather than a re-flash. dmesg shows the sdhci core and
+ * platform helper loading and then nothing binding, which is the tell.
+ *
+ * The three xlnx,has-* properties are the factory tree's: this board wires no
+ * card-detect, no write-protect and no power-enable line.
+ */
+&sdhci0 {
+	status = "okay";
+	xlnx,has-cd = <0>;
+	xlnx,has-power = <0>;
+	xlnx,has-wp = <0>;
+};
+
 /* 16 MB of QSPI, not the Pluto's 32 MB, so the last partition is shorter. */
 &primary_flash {
 	partition@qspi-linux {

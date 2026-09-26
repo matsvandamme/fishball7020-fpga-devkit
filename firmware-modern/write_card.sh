@@ -80,9 +80,18 @@ echo "   backup: $BK"
 echo
 echo "== 2. write, then verify by reading back =="
 for f in uImage devicetree.dtb; do
-    # Keep the previous copy on the card, exactly as flash.sh does, so a
-    # restore never depends on this host still having the backup.
-    [ -f "$CARD/$f" ] && cp "$CARD/$f" "$CARD/$f.prev"
+    # Keep a previous copy on the card so a restore never depends on this
+    # host still having the backup - but NEVER overwrite an existing .prev.
+    # flash.sh rolls .prev forward, which is right when every version booted.
+    # Here it is wrong: the copy already on the card may be a kernel that does
+    # not boot, and rolling forward would throw away the last one that did.
+    # The .prev on this card is main's 5.15, and that is what it must stay.
+    if [ -f "$CARD/$f" ] && [ ! -f "$CARD/$f.prev" ]; then
+        cp "$CARD/$f" "$CARD/$f.prev"
+        echo "   kept the existing $f as $f.prev"
+    elif [ -f "$CARD/$f.prev" ]; then
+        echo "   leaving $f.prev alone (it is the last known-good)"
+    fi
     cp "$SRC/$f" "$CARD/$f"
     sync
     want="$(md5sum "$SRC/$f" | cut -d' ' -f1)"
