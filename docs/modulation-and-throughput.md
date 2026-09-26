@@ -84,6 +84,27 @@ It plateaus near **44 MB/s** above about 1 Msample and does not improve after
 that. The spread between repeats reaches 13 MB/s at one point, so treat single
 runs with suspicion — these are means of three.
 
+### But that plateau is the path, not the board
+
+Run the identical capture **on the board**, with no network at all:
+
+| | 1 RX channel | 2 RX channels |
+|---|---|---|
+| On the board | **199 MB/s — 49.8 MS/s** | **369 MB/s — 46.2 MS/s each** |
+| Over the network above | 45 MB/s — 11.3 MS/s | 43 MB/s — 5.4 MS/s each |
+
+So the board moves four to eight times more than any network figure here, and
+lands close to what the converter produces. Note also that locally the buffer
+size barely matters (216 MB/s at 64 K against 200 MB/s at 1 M) — which is
+itself evidence that the buffer effect above is a round-trip property of the
+link rather than anything happening on the board.
+
+**The host used for every network measurement on this page has no wired
+interface.** Its only link is WiFi, negotiated at 540 Mbit/s (~68 MB/s at the
+PHY), so the ~44 MB/s plateau is close to what that path can carry once TCP
+overhead is paid. A wired gigabit host has not been measured. If you have one,
+the number would be worth having.
+
 Raw data and the figure: [`docs/img/data/throughput.json`](img/data/throughput.json),
 plotted by [`tools/plot_throughput.py`](../tools/plot_throughput.py).
 

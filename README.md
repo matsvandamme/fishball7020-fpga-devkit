@@ -301,33 +301,38 @@ this repository, until it was measured properly.
   <img src="docs/img/throughput-light.svg" alt="Two panels. Left: host streaming throughput against libiio buffer size, for one and two receive channels, rising from about 15 MB/s at a 16 Ksample buffer to a plateau near 44 MB/s above 1 Msample, with a shaded band showing the spread over three runs; a dashed line marks the 31 MB/s this repository used to quote, annotated as being the throughput at a 64 Ksample buffer rather than a limit of the board. Right: sustained sample rate per channel by configuration - 11.3 MS/s for one receive channel over Ethernet, 5.4 for two, 1.7 over the USB gadget, with derived figures of 5.0 for one transmit plus one receive and 2.0 for two of each shown hatched." width="900">
 </picture>
 
-**The ceiling is set by your buffer size, not by the board.** At a 64 Ksample
-buffer you get ~28 MB/s — which is where this repo's long-quoted "~31 MB/s
-ceiling" came from. Ask for a 1 Msample buffer and the same board gives
-**~44 MB/s**, and it plateaus there:
+**The board is not the bottleneck — your link is.** Run the same capture *on
+the board*, with no network at all, and it sustains **~199 MB/s (49.8 MS/s)**
+on one channel and **~369 MB/s (46.2 MS/s each)** on two. That is most of what
+the converter can produce. Everything below that is the path to your host.
+
+**Over a network, your buffer size moves the answer threefold.** At a
+64 Ksample buffer you get ~28 MB/s — which is where this repo's long-quoted
+"~31 MB/s ceiling" came from. Ask for a 1 Msample buffer and the same link
+gives **~44 MB/s**:
 
 ```bash
 # run on your HOST — the -b matters more than anything else here
 iio_readdev -u ip:fishball.local -b 1048576 -s 33554432 cf-ad9361-lpc     voltage0 voltage1 > capture.iq
 ```
 
-At four bytes per complex sample, that plateau means:
+At four bytes per complex sample:
 
-| Configuration | Sustained | |
+| Where the capture runs | 1 channel | 2 channels |
 |---|---|---|
-| 1 receive channel, Ethernet | **11.3 MS/s** | measured |
-| 2 receive channels, Ethernet | **5.4 MS/s each** | measured |
-| 1 receive channel, USB gadget | **1.7 MS/s** | measured |
-| 1 transmit + 1 receive | ~5 MS/s | derived, not re-measured |
-| 2 transmit + 2 receive | ~2 MS/s | derived, and at the AD9361's 2.083 MS/s floor |
+| **On the board** (no network) | **49.8 MS/s** | **46.2 MS/s each** |
+| Over this host's link | 11.3 MS/s | 5.4 MS/s each |
+| Over the USB gadget | 1.7 MS/s | — |
 
-Two channels give *less each but more in total* (43 vs 45 MB/s) — the
-per-buffer overhead amortises while the cost per byte does not.
+> **Read the middle row as a property of the path, not of the board.** The host
+> used here has no wired interface: every byte crossed WiFi (a 540 Mbit/s link,
+> ~68 MB/s at the PHY) before reaching the board's Ethernet. A wired gigabit
+> host should do better, and if you measure one I would like the number. What
+> the board *can* do is the top row, and that was measured with the network
+> entirely out of the way.
 
-**None of this is the wire or the radio.** The wire carries 125 MB/s each way;
-the fabric and DMA run at the full 61.44 MS/s. The limit is two 667 MHz ARM
-cores copying every sample three times: NIC → socket buffer → `iiod` →
-the DMA buffer.
+So if you are hitting a ceiling, look at your link before blaming the board —
+and raise `-b` first, since it is free.
 
 **To get the full 61.44 MS/s, take the host out of the loop.** A cyclic
 transmit hands the hardware one buffer and it repeats forever with no host

@@ -88,14 +88,15 @@ def draw(data, theme_name, path):
                 xytext=(0, 9), textcoords="offset points", ha="center",
                 fontsize=8, color=t["fg"], fontweight="bold")
 
-    wire = data["wire_mbs"]
-    ax.annotate(f"the gigabit wire carries {wire:.0f} MB/s each way —\n"
-                f"it was never the constraint",
-                xy=(0.5, 0.94), xycoords="axes fraction", ha="center",
-                va="top", fontsize=8, color=t["muted"])
+    hp = data["host_path"]
+    ax.annotate(f"measured from a host whose only link is WiFi\n"
+                f"({hp['wifi_phy_mbit']} Mbit/s ≈ {hp['wifi_phy_mbs']:.0f} MB/s) —\n"
+                f"this plateau is the PATH, not the board",
+                xy=(0.5, 0.97), xycoords="axes fraction", ha="center",
+                va="top", fontsize=8, color=t["muted"], linespacing=1.4)
 
     ax.legend(loc="lower right", frameon=False, fontsize=8.5)
-    ax.set_title("Throughput is set by the buffer, not by the link",
+    ax.set_title("Over a network, the buffer size moves it threefold",
                  loc="left", fontsize=10.5, color=t["fg"], pad=8)
 
     # ---- right: what that means in samples per second -------------------
@@ -123,19 +124,20 @@ def draw(data, theme_name, path):
     bx.invert_yaxis()
     bx.set_xlabel("sustained sample rate per channel, MS/s")
     bx.grid(axis="x")
-    bx.set_xlim(0, max(vals) * 1.30)
-    bx.set_title("Solid = measured · hatched = derived",
-                 loc="left", fontsize=8.5, color=t["muted"], pad=8)
+    bx.set_xlim(0, max(max(vals), data["radio_msps"]) * 1.16)
+    bx.set_title("What the board can do, and what the link allows",
+                 loc="left", fontsize=10.5, color=t["fg"], pad=8)
 
     # Inside the axes, in the empty space the short bars leave, rather than
     # floating in the margin below the figure.
     radio = data["radio_msps"]
-    bx.annotate(f"The radio itself runs at {radio:.2f} MS/s.\n"
-                f"Reachable only with cyclic transmit,\n"
-                f"which takes the host out of the loop.",
-                xy=(0.97, 0.62), xycoords="axes fraction", ha="right",
-                va="top", fontsize=8, color=t["muted"],
-                linespacing=1.45)
+    bx.axvline(radio, color=t["muted"], linewidth=1.1, linestyle=(0, (4, 3)))
+    bx.annotate(f"converter\n{radio:.2f} MS/s", xy=(radio, len(names) - 0.4),
+                xytext=(-4, 0), textcoords="offset points", ha="right",
+                va="bottom", fontsize=7.5, color=t["muted"], linespacing=1.3)
+    bx.annotate("run on the board, the network\nis simply not in the way",
+                xy=(0.97, 0.55), xycoords="axes fraction", ha="right",
+                va="top", fontsize=8, color=t["muted"], linespacing=1.45)
 
     fig.text(0.012, -0.02, "\n".join(textwrap.wrap(data["footnote"], 118)),
              fontsize=7.2, color=t["muted"], va="top")

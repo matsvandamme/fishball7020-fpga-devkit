@@ -142,12 +142,22 @@
  },
  "configurations": [
   {
-   "name": "1 RX, Ethernet",
+   "name": "1 RX, on the board",
+   "msps_per_channel": 49.8,
+   "measured": true
+  },
+  {
+   "name": "2 RX, on the board",
+   "msps_per_channel": 46.2,
+   "measured": true
+  },
+  {
+   "name": "1 RX, over this WiFi path",
    "msps_per_channel": 11.3,
    "measured": true
   },
   {
-   "name": "2 RX, Ethernet",
+   "name": "2 RX, over this WiFi path",
    "msps_per_channel": 5.4,
    "measured": true
   },
@@ -155,17 +165,23 @@
    "name": "1 RX, USB gadget",
    "msps_per_channel": 1.7,
    "measured": true
-  },
-  {
-   "name": "1 TX + 1 RX",
-   "msps_per_channel": 5.0,
-   "measured": false
-  },
-  {
-   "name": "2 TX + 2 RX",
-   "msps_per_channel": 2.0,
-   "measured": false
   }
  ],
- "footnote": "Measured with iio_readdev over gigabit Ethernet: 3 runs of 33.6 Msamples per point, band = full spread. 4 bytes per complex sample. TX rows are derived from the repo's earlier EVM measurements at a small buffer and have NOT been re-measured at these buffer sizes."
+ "footnote": "Left: iio_readdev from a host whose only interface is WiFi (540 Mbit/s link), 3 runs of 33.6 Msamples per point, band = full spread. Right: the same capture run ON the board removes the network entirely. 4 bytes per complex sample.",
+ "local": {
+  "note": "iio_readdev run ON THE BOARD, no network involved. 33.6 Msamples, -b 1048576, 3 repeats.",
+  "1 receive channel": {
+   "mbs": 199.3,
+   "msps_per_channel": 49.8
+  },
+  "2 receive channels": {
+   "mbs": 369.4,
+   "msps_per_channel": 46.2
+  }
+ },
+ "host_path": {
+  "note": "The host used for the network measurements has NO wired interface - every byte crossed WiFi to the router and only then the board's Ethernet. So the network figures are a property of THIS path, not of the board.",
+  "wifi_phy_mbit": 540,
+  "wifi_phy_mbs": 67.5
+ }
 }
