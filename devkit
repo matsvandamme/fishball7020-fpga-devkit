@@ -84,6 +84,18 @@
 #     ./devkit build --xsa ~/system_top.xsa                   # no Vivado needed
 #     ./devkit selftest --ssh                                 # "is it broken?"
 #
+# ---- Tab completion ---------------------------------------------------------
+#
+#     source tools/devkit-completion.bash          # this shell only
+#
+#     mkdir -p ~/.local/share/bash-completion/completions   # every shell
+#     cp tools/devkit-completion.bash \
+#        ~/.local/share/bash-completion/completions/devkit
+#
+# Completes subcommands, then that subcommand's own flags, so you do not have
+# to remember that --dtb-only is on flash and not on build. --xsa completes
+# .xsa files. zsh works too, after: autoload -U bashcompinit && bashcompinit
+#
 # Extra arguments pass straight through, so anything the underlying script
 # accepts works here too. Each subcommand's own --help has the full list.
 set -euo pipefail

@@ -128,7 +128,15 @@ cd fishball7020-fpga-devkit
 ```
 
 `./devkit --help` describes every subcommand and flag, grouped by what you are
-trying to do.
+trying to do. For tab completion:
+
+```bash
+# run from: the repo root
+source tools/devkit-completion.bash      # this shell
+# or, for every shell:
+mkdir -p ~/.local/share/bash-completion/completions
+cp tools/devkit-completion.bash ~/.local/share/bash-completion/completions/devkit
+```
 
 **Three routes to a toolchain**, in the order most people should try them:
 
