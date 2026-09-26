@@ -154,9 +154,32 @@ per-patch detail; the short version:
 Throughput and signal parity against `docs/measured-performance.md`,
 interleaved A/B, then Debian on a larger card.
 
-Two loose ends worth writing down:
+## The IIO contract, 5.15 against patched 6.12
 
-- `cf-ad9361-lpc` is missing four channel `label` attributes that 5.15 had.
-  Metadata only — nothing reads them — but it is an unexplained difference and
-  unexplained differences are how regressions hide.
-- the `setup_ops` finding should go upstream to ADI.
+`dump_context.py` dumps every device, channel and attribute as a sorted,
+diffable list, so "the contract holds" is a `diff` rather than a judgement. The
+whole residual delta is nine lines:
+
+| | |
+|---|---|
+| **added** | `waiting_for_supplier` on all four devices — IIO driver core, not ours |
+| **added** | `adi,agc-dig-sat-ovrg-enable`, a new AD9361 debug attribute |
+| **removed** | four `label` channel attributes on `cf-ad9361-lpc` |
+
+All seven transmitter-safety attributes are present and read their 5.15 values.
+
+The four missing labels looked like the one thing left unexplained, and the
+explanation turns out to be that **5.15 was the broken one**. Up to 5.15,
+`axiadc_read_label()` used the converter's `read_label` if it had one and
+otherwise fell back to `chan->extend_name`; `ad9361_conv.c` supplies no
+`read_label` and the ADC's voltage channels have no `extend_name`, so the
+fallback returned `-ENOSYS`. The files existed and could not be read. ADI's 6.12
+replaced the wrapper with `axiadc_info.read_label = conv->read_label`, so with a
+NULL callback the attribute is simply never created. Nothing to fix: an attribute
+that always fails is worse than one that is absent.
+
+## Still owed upstream
+
+The `setup_ops` finding in `patches/0004`. Same shape as the label change — a
+refactor that dropped a fallback — but this one has teeth, because the hooks it
+silently disabled are where transmit muting lives.
