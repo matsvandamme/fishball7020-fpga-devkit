@@ -7,17 +7,31 @@ over, and shows RX1 receiving it through the bench loop, live. It is the
 quickest way to see a cyclic buffer at work, to get a feel for different
 sweeps, and to measure how flat the loop between TX1 and RX1 is.
 
+!!! abstract "Key facts"
+    | | |
+    |---|---|
+    | needs | TX1 → **20 dB attenuator** → RX1, the Debian root, and `zc-stream` on the board for 20 MS/s |
+    | default sweep | 7 MHz up-sweep, 864.5 to 871.5 MHz, every 0.8 s, at 20 MS/s |
+    | sweep limit | one 64 MB DMA block: 0.83 s at 20 MS/s, 3.4 s at 4.8 MS/s |
+    | after auto level | the sweep stands 73 dB above the noise |
+    | pulse compression | 123 ns peak (theory 127 ns) for 7 MHz × 100 µs pulses |
+    | `--reference` | ranging timed against RX2, so lost samples cannot move it; at most 5.5 MS/s |
+    | safety | attenuation set after the buffer starts and read back; muted before every teardown |
+
 ![chirp-view running: on the left the live spectrum, a waterfall with one slanted line per sweep from 864.5 to 871.5 MHz, the response curve and the transmitted sweep; on the right the control panel.](img/chirp-view.jpg)
 
 ![A three-second clip of the spectrum and waterfall: the sweep runs from 864.5 to 871.5 MHz every 0.8 s, drawing a new slanted line each time.](img/chirp-view-waterfall.gif)
 
 ## What you need
 
-- **TX1 cabled to RX1 through a 20 dB attenuator.** Never without one: the
-  board puts out about +19 dBm and RX1 survives +2.5 dBm
-  ([transmitter safety](transmitter-safety.md)). The program refuses a TX1
-  attenuation above −10 dB, so even at that setting RX1 sees at most about
-  −11 dBm.
+- **TX1 cabled to RX1 through a 20 dB attenuator.**
+
+    !!! danger "Never without one"
+        The board puts out about +19 dBm and RX1 survives +2.5 dBm
+        ([transmitter safety](transmitter-safety.md)). The program refuses a TX1
+        attenuation above −10 dB, so even at that setting RX1 sees at most about
+        −11 dBm.
+
 - **The board on Ethernet,** running the modern firmware (the Debian root).
 - **[`zc-stream`](../tools/stream-paths/zc-stream/README.md) installed on the
   board** for the default 20 MS/s: libiio carries about 10 MS/s at most
@@ -189,6 +203,11 @@ the reading stayed at −0.56 ns.
 
 ## How it works
 
+```mermaid
+flowchart LR
+    P["PC: one period<br/>of the sweep"] -->|"upload once"| C["cyclic buffer, replayed<br/>by the FPGA"] --> L["TX1 → 20 dB pad → RX1"] --> Z["zc-stream<br/><small>8-bit, 20 MS/s</small>"] --> W["receiver process on the PC:<br/>window and sound"]
+```
+
 **One period in the board's memory.** The program computes one full period
 of the sweep, uploads it as a cyclic buffer, and the FPGA replays it with
 nothing more from the PC. One DMA block holds 64 MB at 4 bytes a sample, so
@@ -253,9 +272,10 @@ correction for the frequency it is at in that instant.
 - A calibration belongs to one tuning, sample rate and span. It is saved in
   `~/.cache/fishball7020/chirp_view_mirror.json` and used again
   automatically; after **Apply** with new values, calibrate once more.
-- Leave RX1's quadrature tracking on: switched off, the chip drops its
-  correction instead of holding it, and the receiver's own mirror rose to
-  −32 dBc.
+!!! warning "Leave RX1's quadrature tracking on"
+    Switched off, the chip drops its correction instead of holding it, and the
+    receiver's own mirror rose to −32 dBc.
+
 - The *mirror* figure in the status line cannot go below about −70 dBc at
   20 MS/s: the 8-bit samples' noise sits there. The calibration's own numbers
   are the measure.

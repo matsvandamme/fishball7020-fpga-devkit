@@ -16,9 +16,9 @@ iio_writedev -u ip:192.168.129.200 -c -b 262144 -s 262144 \
   cf-ad9361-dds-core-lpc voltage2 voltage3 < waveform.bin
 ```
 
-**Set transmit attenuation only after the DMA buffer is open, then read it
-back.** Writing it before a stream starts guarantees nothing. Every measurement
-here checked that both channels returned to the −89.75 dB floor afterwards.
+!!! danger "Set transmit attenuation only after the DMA buffer is open, then read it back"
+    Writing it before a stream starts guarantees nothing. Every measurement here
+    checked that both channels returned to the −89.75 dB floor afterwards.
 
 ## Reproducing it
 
@@ -60,17 +60,14 @@ a specification.
 
 ## The short version
 
-- **The radio runs clean at 61.44 MSPS:** QPSK **2.17%** and 16-QAM **2.24%** EVM
-  across 18 MHz of occupied bandwidth.
-- **Continuous streaming in both directions breaks above about 5 MSPS.** That is
-  a host-streaming limit; it disappears with cyclic transmit.
-- **Streaming throughput depends on buffer size:** ~30 MB/s at 64 Ksamples,
-  ~45 MB/s / 11.3 MS/s (one channel) at 1 Msample.
-- **On the board, with no network, capture reaches 183–220 MB/s on one channel**,
-  close to what the converter produces.
-- **Capture is bit-perfect at 5 MSPS**; above it, 2 to 4 discrete drops per two
-  million samples, even at 61.44 MSPS.
-- **OFDM measures far worse than QPSK**, because of its peak-to-average ratio.
+| | |
+|---|---|
+| **The radio at 61.44 MSPS** | runs clean: QPSK **2.17%** and 16-QAM **2.24%** EVM across 18 MHz of occupied bandwidth |
+| **Continuous streaming, both directions** | breaks above about **5 MSPS**: a host-streaming limit that disappears with cyclic transmit |
+| **Streaming throughput** | depends on buffer size: ~30 MB/s at 64 Ksamples, ~45 MB/s / 11.3 MS/s (one channel) at 1 Msample |
+| **On the board, no network** | capture reaches **183–220 MB/s** on one channel, close to what the converter produces |
+| **Capture integrity** | bit-perfect at 5 MSPS; above it, 2 to 4 discrete drops per two million samples, even at 61.44 MSPS |
+| **OFDM** | measures far worse than QPSK, because of its peak-to-average ratio |
 
 ## Where the 5 MSPS ceiling comes from
 
@@ -108,9 +105,12 @@ The AD9361's LVDS port has 6 lanes each way, double data rate, `DATA_CLK` up to
 converter's maximum. The board runs `adi,2rx-2tx-mode-enable`, so both channels
 occupy the interface whether or not you read both.
 
-Limits in the order you meet them: **your host link** (the only cheap one to
-change), **the board's CPU**, then **the LVDS port and converter** (61.44 MS/s on
-two channels, reachable only with the host out of the loop).
+Limits in the order you meet them:
+
+```mermaid
+flowchart LR
+    H["your host link<br/><small>the only cheap one to change</small>"] --> C["the board's CPU"] --> L["the LVDS port and converter<br/><small>61.44 MS/s on two channels,<br/>only with the host out of the loop</small>"]
+```
 
 ### Throughput against buffer size
 
@@ -126,9 +126,10 @@ the WiFi path (~68 MB/s at the PHY):
 | 2 Msamples | **46.2 MB/s** | 40.0 MB/s |
 | 4 Msamples | 44.4 MB/s | 44.9 MB/s |
 
-It plateaus near **44 MB/s** above ~1 Msample. Repeats spread by up to 13 MB/s,
-so do not trust single runs. Plotted by
+It plateaus near **44 MB/s** above ~1 Msample. Plotted by
 [`tools/plot_throughput.py`](../tools/plot_throughput.py).
+
+!!! warning "Repeats spread by up to 13 MB/s, so do not trust single runs"
 
 ### On the board, with no network
 
@@ -224,10 +225,11 @@ It is not band-edge roll-off, cyclic-prefix length, or the AD9361's tracking
 loops. OFDM varies 13% to 51% run to run, matching this board's
 [spread in transmit quadrature calibration](measured-performance.md#transmit-chain).
 
-**Pitfalls when measuring EVM:** estimating QPSK carrier phase with the
-fourth-power method lands the constellation 45° off the reference lattice and
-reads about 76%, which looks like a broken radio. Always run the analysis
-against the clean transmit file first; it should read ~0%.
+!!! warning "Pitfall when measuring EVM"
+    Estimating QPSK carrier phase with the fourth-power method lands the
+    constellation 45° off the reference lattice and reads about 76%, which looks like
+    a broken radio. Always run the analysis against the clean transmit file first;
+    it should read ~0%.
 
 ## A WiFi hop in the path
 
@@ -244,13 +246,15 @@ The board is not the bottleneck: a gigabit sender fills buffers faster than the
 WiFi hop drains them, and TCP does not recover within thirty seconds. It is not
 thermal, not the supply rails, and logs no kernel error.
 
-- **`iio_readdev` returns the byte count you asked for whether or not the DMA
-  overflowed**, so a capture across a stall looks perfect and is not. With WiFi
-  in the path, use the USB gadget (`192.168.2.1`) or a wired route.
-- **There is no Ethernet flow control.** Link-up logs `flow control off` and
-  `ethtool -a eth0` answers *"Operation not supported"*: this `macb` driver has
-  no `get_pauseparam`/`set_pauseparam`. An overwhelmed board drops frames. On a
-  wired gigabit path that does not matter; with something slower between, it does.
+!!! warning "`iio_readdev` returns the byte count you asked for whether or not the DMA overflowed"
+    So a capture across a stall looks perfect and is not. With WiFi in the path, use
+    the USB gadget (`192.168.2.1`) or a wired route.
+
+!!! note "There is no Ethernet flow control"
+    Link-up logs `flow control off` and `ethtool -a eth0` answers *"Operation not
+    supported"*: this `macb` driver has no `get_pauseparam`/`set_pauseparam`. An
+    overwhelmed board drops frames. On a wired gigabit path that does not matter;
+    with something slower between, it does.
 
 ## Further reading
 

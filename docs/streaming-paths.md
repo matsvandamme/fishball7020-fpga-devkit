@@ -10,9 +10,19 @@ on two cores, reaches 20 MS/s, and 19 MS/s with margin. The patched SDR++ uses i
 [Fast TCP transport](sdrpp.md#faster-the-fast-tcp-transport). This page
 records what was measured, so nobody has to repeat it.
 
-`iiod` is the board's IIO server: the program SDR++, pyadi-iio, GNU Radio and
-MATLAB talk to over the network. **DMA** is the FPGA hardware that moves
-samples from the radio into the board's memory.
+!!! abstract "Key facts"
+    | | |
+    |---|---|
+    | 16-bit paths | at most **11–12 MS/s**: one ARM core at 100% copying samples into the network |
+    | 8-bit `zc-stream -8`, two cores | **19–20 MS/s**; 19 MS/s when every sample counts |
+    | ceiling | the kernel's network send path, about **42.7 MB/s** |
+    | cost of 8 bits | about **48 dB** visible dynamic range instead of 72 dB |
+    | every number | crossed Wi-Fi; a wired PC was not tried |
+
+| Term | Meaning |
+|---|---|
+| `iiod` | the board's IIO server: the program SDR++, pyadi-iio, GNU Radio and MATLAB talk to over the network |
+| **DMA** | the FPGA hardware that moves samples from the radio into the board's memory |
 
 ## The result
 
@@ -39,18 +49,21 @@ The 8-bit path was built up in steps, each measured the same way:
 | two threads, the sender pinned to CPU1 | **20 MS/s** (99.7% over 60 s) |
 | the same, sending with `MSG_ZEROCOPY` from the converted buffer | no gain (~42 MB/s) |
 
-At 20 MS/s the margin is thin, and Wi-Fi decides the rest. Later runs at
-20 MS/s gave 99.7% over 45 s into SDR++, 99.8% over 33 s, and 98.8% and 95.1%
-over two 60 s runs. In the 98.8% run `zc-stream` used 120% of the 200%
-available, so the board was keeping up. A sweep straight after gave 99.9% at
-19 MS/s, 99.1% at 20 and 97.6% at 21. So 20 MS/s works, and 19 MS/s is the rate
-to choose when every sample counts.
+!!! note "At 20 MS/s the margin is thin, and Wi-Fi decides the rest"
+    Later runs at 20 MS/s gave 99.7% over 45 s into SDR++, 99.8% over 33 s, and
+    98.8% and 95.1% over two 60 s runs. In the 98.8% run `zc-stream` used 120% of
+    the 200% available, so the board was keeping up. A sweep straight after gave
+    99.9% at 19 MS/s, 99.1% at 20 and 97.6% at 21. So 20 MS/s works, and **19 MS/s
+    is the rate to choose when every sample counts**.
 
 **Block size matters for libiio.** The 16-bit rows were measured with blocks
 of 1 M samples. Each block is a request to `iiod` and back, so small blocks
-cost rate: SDR++'s stock PlutoSDR source asks for 1/200 s blocks, and those
-delivered 96.5% at 5 MS/s and 83% at 7.68 MS/s; 1/20 s blocks delivered 99.9%
-at both and 10 MS/s in full. The patched SDR++ uses 1/20 s.
+cost rate:
+
+| libiio block | 5 MS/s | 7.68 MS/s | 10 MS/s |
+|---|---|---|---|
+| 1/200 s (SDR++'s stock PlutoSDR source) | 96.5% | 83% | |
+| 1/20 s (the patched SDR++) | 99.9% | 99.9% | in full |
 
 For comparison, on the same board and network:
 
@@ -65,6 +78,12 @@ For comparison, on the same board and network:
 **The limit is the board's CPU copying samples into the network**, not the
 network and not the radio. Every 16-bit path ends with one ARM Cortex-A9 core
 at 100% while the second core has little to do.
+
+```mermaid
+flowchart LR
+    D["DMA buffer"] -->|"copy 1"| I["iiod's memory"] -->|"copy 2"| S["socket"]
+    D -->|"mapped, no copy"| Z["zc-stream"] -->|"one copy"| S2["socket"]
+```
 
 - **`iiod` copies each sample twice**: from the DMA buffer into its own
   memory, then into the socket. One thread does both.
@@ -90,6 +109,11 @@ sends the converted block, from a ring of four, while the first converts the
 next. The sender is pinned to CPU1, because every interrupt, the network's
 included, lands on CPU0. That last step was worth 1 MS/s.
 
+```mermaid
+flowchart LR
+    D["DMA block"] --> C["CPU0 thread:<br/>wait, convert to 8 bits"] --> R["ring of four<br/>converted blocks"] --> T["CPU1 thread:<br/>send"] --> N["network"]
+```
+
 **The ceiling is the kernel's network send path**, at about 42.7 MB/s:
 
 - Reading the DMA memory is not it. Read on its own, a DMA block streams at
@@ -100,10 +124,11 @@ included, lands on CPU0. That last step was worth 1 MS/s.
 - `MSG_ZEROCOPY` from the converted buffer, which is normal memory, works, but
   gains nothing: the copy was not the cost.
 
-**Open point:** the plain-TCP test from Python above reached 75 MB/s on the
-same link, while the synthetic C sender stops at 42. Neither the block size,
-the Wi-Fi on the day nor the reader (`nc` here) has been ruled out. Rerun both
-back to back before quoting either as the link's limit.
+!!! warning "Open point"
+    The plain-TCP test from Python above reached 75 MB/s on the same link, while the
+    synthetic C sender stops at 42. Neither the block size, the Wi-Fi on the day nor
+    the reader (`nc` here) has been ruled out. Rerun both back to back before quoting
+    either as the link's limit.
 
 **The cost** is dynamic range: about 48 dB between the strongest and weakest
 signal visible at once, against 72 dB for 12 bits. Strong signals are
@@ -134,12 +159,13 @@ Fast TCP** in the patched SDR++'s PlutoSDR source
 ([how](sdrpp.md#faster-the-fast-tcp-transport)). Tuning, gain, rate and the
 receiver stay in SDR++, which sets them through libiio.
 
-**One program receives at a time.** The board has one receive buffer. libiio
-switches it off before opening it, so a second program's attempt to stream
-used to stop the first one's stream even though the attempt itself failed.
-`zc-stream` now refuses a client while someone else streams, and rebuilds its
-buffer if a libiio program stops it. Measured both ways with `iio_readdev`: the
-running stream carried on and the newcomer got "Device or resource busy".
+!!! note "One program receives at a time"
+    The board has one receive buffer. libiio switches it off before opening it, so a
+    second program's attempt to stream used to stop the first one's stream even
+    though the attempt itself failed. `zc-stream` now refuses a client while someone
+    else streams, and rebuilds its buffer if a libiio program stops it. Measured both
+    ways with `iio_readdev`: the running stream carried on and the newcomer got
+    "Device or resource busy".
 
 ## Not tried
 

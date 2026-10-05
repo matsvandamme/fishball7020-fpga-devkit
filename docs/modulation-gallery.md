@@ -6,12 +6,21 @@ constellations, EVM, PAPR, and which spurs belong to the board. Use it to see
 what the transmitter can do, and as a method for attributing spurs between two
 radios; the code is in [`tools/modulation-gallery/`](../tools/modulation-gallery/).
 
+!!! abstract "Key facts"
+    | | |
+    |---|---|
+    | linear modulations, after equalisation | **5.9–6.1 % EVM**, BPSK to 64-QAM alike: the floor belongs to the link, not the board |
+    | the board's I/Q balance | image rejection **55.0–64.9 dB** |
+    | the board's own CW spurs | carrier feedthrough about **−47 dBc**, I/Q image **−58 dBc**, third-order product **−41 dBc** |
+    | LoRa-style chirp | **128 of 128 symbols decoded** |
+    | not established | absolute transmit power, the board's true EVM, behaviour at full power |
+
 ## Repeating it
 
-This transmits. 866.5 MHz is inside the European ISM band and the levels are low,
-but the band has duty-cycle and power limits that differ by country; what leaves
-the antenna port is the operator's responsibility (see
-[transmitter safety](transmitter-safety.md)).
+!!! danger "This transmits"
+    866.5 MHz is inside the European ISM band and the levels are low, but the band
+    has duty-cycle and power limits that differ by country; what leaves the antenna
+    port is the operator's responsibility (see [transmitter safety](transmitter-safety.md)).
 
 ```bash
 # run from: tools/modulation-gallery/
@@ -95,11 +104,11 @@ Every linear modulation lands at **5.9–6.1 % EVM after equalisation**, BPSK as
 much as 64-QAM. A transmitter out of linearity punishes dense constellations far
 harder, so an impairment identical across four orders comes from the link:
 
-- **An unmodulated carrier already shows 8.7 % equivalent EVM** (7.4 % on another
-  run), mostly 4.97° RMS phase error, only 0.78 % amplitude.
-- **In-band SNR is 42–45 dB**, enough for 0.6–0.8 % EVM; noise is not the limit.
-- **Image rejection is 55.0–64.9 dB** (a widely linear fit to `a·s + b·conj(s)`),
-  so the board's I/Q balance is fine.
+| Evidence | Measured | So |
+|---|---|---|
+| an unmodulated carrier | **8.7 % equivalent EVM** (7.4 % on another run), mostly 4.97° RMS phase error, only 0.78 % amplitude | the floor is there before any modulation |
+| in-band SNR | **42–45 dB**, enough for 0.6–0.8 % EVM | noise is not the limit |
+| image rejection | **55.0–64.9 dB** (a widely linear fit to `a·s + b·conj(s)`) | the board's I/Q balance is fine |
 
 What remains is phase noise between two independent oscillators, a property of
 the setup; the OFDM clouds are stretched tangentially, as phase error does.
@@ -145,15 +154,11 @@ With the receiver tuned below the transmitter, every spectrum showed a sharp pea
 signal stays put when the receiver retunes; this one appeared at only one tuning
 (26.7 dB above the floor at 863.0 MHz, under 5 dB elsewhere).
 
-**Cause: second-order distortion in the HackRF's mixer.** A strong carrier at
-**864.0 MHz** produces a product at `2 × carrier − LO`, which moves at twice the
-rate of the carrier as the receiver retunes, as measured at five tunings.
-
-**Fix: tune the receiver above the transmitter.** At 4.8 MHz above, the product
-lands at 856.7 MHz, deep in the stopband, and the peak drops from 21.5 dB to
-3.8 dB above the floor. Every spectrum on this page uses that tuning.
-`spurhunt.py`, `band.py`, `ip2.py` and `pickLO.py` reproduce this without
-transmitting.
+| | |
+|---|---|
+| **cause** | second-order distortion in the HackRF's mixer. A strong carrier at **864.0 MHz** produces a product at `2 × carrier − LO`, which moves at twice the rate of the carrier as the receiver retunes, as measured at five tunings |
+| **fix** | tune the receiver above the transmitter. At 4.8 MHz above, the product lands at 856.7 MHz, deep in the stopband, and the peak drops from 21.5 dB to 3.8 dB above the floor. Every spectrum on this page uses that tuning |
+| reproduce | `spurhunt.py`, `band.py`, `ip2.py` and `pickLO.py`, without transmitting |
 
 ## What this page does not establish
 

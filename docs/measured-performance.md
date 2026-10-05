@@ -15,11 +15,12 @@ Every figure comes from the self-test, `tools/selftest/sdr_selftest.py`
     --sweep-points 60 --sweep-start 70e6 --sweep-stop 6e9 --json run1.json
 ```
 
-`--loopback` transmits. Cable a transmit port to a receive port through **at
-least 20 dB of attenuation** first, and use **a single 20 dB pad**: it is the
-safety minimum (the board puts out about +19 dBm; its receive port is rated to
-+2.5 dBm) and the largest pad that keeps the board's own leak out of the result.
-Details in [`tools/selftest/README.md`](../tools/selftest/README.md).
+!!! danger "`--loopback` transmits"
+    Cable a transmit port to a receive port through **at least 20 dB of
+    attenuation** first, and use **a single 20 dB pad**: it is the safety minimum
+    (the board puts out about +19 dBm; its receive port is rated to +2.5 dBm) and
+    the largest pad that keeps the board's own leak out of the result. Details in
+    [`tools/selftest/README.md`](../tools/selftest/README.md).
 
 ## Conditions
 
@@ -37,13 +38,13 @@ Plus one setup with **no cable**, to measure [the leak](#the-boards-own-tx-to-rx
 Raw results: [`img/data/measured-performance.json`](img/data/measured-performance.json);
 the figures are drawn by `img/make_*.py`.
 
-**Units.** **dBFS** is level relative to the converter's full scale (0 dBFS is
-the maximum, everything real is negative). **dBc** is how far an unwanted
-product sits below the wanted tone; bigger is better. **dB per dB** is how well
-a gain control does what it says (1.000 is perfect). **Image rejection** is how
-far down the mirror of a signal sits on the other side of the centre frequency,
-caused by I/Q imbalance. **Loop gain** is what a tone gains going TX → pad → RX,
-with the pad's value added back so it describes the board.
+| Unit | Meaning |
+|---|---|
+| **dBFS** | level relative to the converter's full scale (0 dBFS is the maximum, everything real is negative) |
+| **dBc** | how far an unwanted product sits below the wanted tone; bigger is better |
+| **dB per dB** | how well a gain control does what it says (1.000 is perfect) |
+| **Image rejection** | how far down the mirror of a signal sits on the other side of the centre frequency, caused by I/Q imbalance |
+| **Loop gain** | what a tone gains going TX → pad → RX, with the pad's value added back so it describes the board |
 
 ## The short version
 
@@ -60,10 +61,10 @@ with the pad's value added back so it describes the board.
 | **FPGA** | 94 of 220 DSP48s used, timing met with **+0.215 ns** to spare (default build, with patches `0009` and `0021`; `STOCK_RX_FILTER=1` gives 72 DSP48s and +0.205 ns) |
 | **Streaming to a host** | the USB link carries about **20 MB/s: 5 MS/s** arrives complete, 6 MS/s 84%, 10 MS/s 50% ([SDR++ page](sdrpp.md#best-performance-over-usb)); the network figures in [modulation-and-throughput.md](modulation-and-throughput.md) were all measured from a host on WiFi |
 
-**Transmit power at full drive is not measured.** The self-test scales up from a
-quiet measurement and caps the estimate at +19 dBm (the amplifier's +17.5 dBm
-compression point plus 1.5 dB). Use +19 dBm as a safe upper figure for planning,
-not as an output power.
+!!! warning "Transmit power at full drive is not measured"
+    The self-test scales up from a quiet measurement and caps the estimate at
+    +19 dBm (the amplifier's +17.5 dBm compression point plus 1.5 dB). Use +19 dBm
+    as a safe upper figure for planning, not as an output power.
 
 Modulation quality is on [the modulation gallery](modulation-gallery.md);
 throughput and EVM at high sample rates on
@@ -104,10 +105,10 @@ The worst of all 56 slopes is 1.7% from ideal; the largest wobble around a
 straight line is **0.18 dB**. Ask for 6 dB less and you get 6.0, so link budgets
 and calibrations hold across gain settings.
 
-**The receive slope is fitted over 38–51 dB of gain only.** The AD9361's gain
-table switches amplifier stages at several points, where real gain jumps by up
-to 10 dB for a 1 dB step; a fit across the whole range reports 0.65 dB per dB on
-a healthy receiver.
+!!! note "The receive slope is fitted over 38–51 dB of gain only"
+    The AD9361's gain table switches amplifier stages at several points, where real
+    gain jumps by up to 10 dB for a 1 dB step; a fit across the whole range reports
+    0.65 dB per dB on a healthy receiver.
 
 ## Transmit chain
 
@@ -130,10 +131,11 @@ Ranges over all the runs in each setup:
   for −64 dBc.
 - **Mute depth is a lower limit**: the tone always dropped into the noise, so the
   figure is how far above the noise it started.
-- **What remains after the mute**, at 900 MHz (receiver tuned 1 MHz away): with the attenuators at maximum a
-  residual carrier stays 26 dB above the noise; powering down the TX synthesiser
-  removes a further 19.9 dB, to about −89 dBm at the port. Both steps are needed.
-  See [Transmitter safety](transmitter-safety.md).
+!!! warning "What remains after the mute: both steps are needed"
+    At 900 MHz (receiver tuned 1 MHz away): with the attenuators at maximum a
+    residual carrier stays 26 dB above the noise; powering down the TX synthesiser
+    removes a further 19.9 dB, to about −89 dBm at the port. See
+    [Transmitter safety](transmitter-safety.md).
 
 ## Frequency response
 
@@ -170,8 +172,10 @@ Both channels through one 20 dB pad, 60 frequencies, three passes each (median):
   and [the crossed runs](#which-chain-is-it-separating-transmit-from-receive) show
   that this is the receiver.
 - **The step at 4 GHz is the AD9361 switching receive gain table** (manual range
-  −3…71 dB below, −10…62 dB above). **A gain calibration made below 4 GHz is
-  wrong above it**, by about 5 dB on channel 0 and 7 dB on channel 1.
+  −3…71 dB below, −10…62 dB above).
+
+!!! warning "A gain calibration made below 4 GHz is wrong above it"
+    By about 5 dB on channel 0 and 7 dB on channel 1.
 
 ### How repeatable it is
 
@@ -190,9 +194,16 @@ leak.
 </picture>
 
 Some transmit signal reaches the receiver **inside the board**: with the cable
-removed, the tone is still 35–59 dB above the noise on channel 0. The table gives
-it as an **equivalent pad** (the attenuator a cable loop would need to be as
-strong); higher means a weaker leak.
+removed, the tone is still 35–59 dB above the noise on channel 0.
+
+```mermaid
+flowchart LR
+    T[TX port] -->|"cable + pad"| R[RX port]
+    T -.->|"leak inside the board"| R
+```
+
+The table gives it as an **equivalent pad** (the attenuator a cable loop would
+need to be as strong); higher means a weaker leak.
 
 | Leak path | 70 MHz – 1 GHz | 1 – 3 GHz | 3 – 6 GHz |
 |---|---|---|---|
@@ -214,11 +225,11 @@ or cancel by frequency, the same way every run, so re-running does not reveal it
 - **Crossed paths leak 10–35 dB less**; a crossed loop is the cleanest way to
   measure above 3 GHz.
 
-**The rule:** fit a pad at least 20 dB below the leak figure for a clean
-measurement, and at least 20 dB in every loopback for safety: **20 dB for
-measurement**. For the same reason the self-test's frequency-response check
-compares against a **baseline you record yourself** (`--save-baseline`, then
-`--baseline`).
+!!! tip "The rule: 20 dB for measurement"
+    Fit a pad at least 20 dB below the leak figure for a clean measurement, and at
+    least 20 dB in every loopback for safety. For the same reason the self-test's
+    frequency-response check compares against a **baseline you record yourself**
+    (`--save-baseline`, then `--baseline`).
 
 ## Which chain is it? Separating transmit from receive
 
