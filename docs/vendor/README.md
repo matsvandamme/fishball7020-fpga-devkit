@@ -1,9 +1,9 @@
 # Vendor documents
 
 The board maker's own documents (not this project's work), kept here so that
-claims in this repository can be checked against their source without relying
-on a download link that may not outlive the board. The second half of the page
-cites the datasheet figures this repository relies on.
+claims in this repository can be checked against their source, and the
+datasheet figures this repository relies on. To look a part up, start at
+[find a part on the schematic](../hw/find-a-part.md).
 
 ## `7020_936x_SDR-schematic.pdf`
 
@@ -21,8 +21,8 @@ The hardware schematic for this board.
 fd8da2caf829608d2afa75fe9863c44dba90eda61d9adfa91133287632a32780  7020_936x_SDR-schematic.pdf
 ```
 
-Copyright remains the vendor's. It is included unmodified, for reference. The
-GPL-2.0 in this repository's `LICENSE` covers this project's own work, not
+Copyright remains the vendor's; the file is included unmodified, for reference.
+The GPL-2.0 in this repository's `LICENSE` covers this project's own work, not
 this file. If you are the vendor and would rather it were a link, open an issue
 and it will be removed.
 
@@ -35,8 +35,7 @@ The vendor also publishes a schematic on their own GitHub, as
 none of the header nets this repository's sample-locked GPIO feature depends
 on — its connectors are numbered `J1`–`J12` instead.
 
-If you are checking the pin assignment, use the copy here. Every pin claim in
-this repository comes from **this** PDF.
+Every pin claim in this repository comes from the copy here: use it.
 
 ### Which sheets matter here
 

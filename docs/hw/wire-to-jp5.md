@@ -8,7 +8,8 @@ description: Four free 3.3 V pins on JP5, where ground is, and what not to touch
 Four pins on `JP5` are free for you: **7, 9, 11 and 13**, 3.3 V, pulled down.
 **Ground is pins 2 and 20.**
 
-![JP5 pinout: a 2x10 header, with pins 7, 9, 11, 13 carrying sample_gpio[0..3] and grounds on pins 2 and 20](../img/jp5-pinout-light.svg)
+![JP5 pinout: a 2x10 header, with pins 7, 9, 11, 13 carrying sample_gpio[0..3] and grounds on pins 2 and 20](../img/jp5-pinout-light.svg#only-light)
+![JP5 pinout: a 2x10 header, with pins 7, 9, 11, 13 carrying sample_gpio[0..3] and grounds on pins 2 and 20](../img/jp5-pinout-dark.svg#only-dark)
 
 | JP5 pin | Silkscreen | Signal | FPGA ball | Linux line |
 |---|---|---|---|---|

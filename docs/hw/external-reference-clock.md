@@ -12,6 +12,9 @@ There is no software switch: the resistors are the switch.
 
 ![The reference clock section of the vendor schematic: Y3, a 40 MHz oscillator with pins OE (net XTAL_VTC), GND, OUT and VDD, feeds AD936X_CLK through R107, 33 ohm. R109, 33R/NC, joins AD936X_CLK to EXT_CLK, and R110, 33R/NC, joins EXT_CLK to FPGA_CLK. EXT_CLK is the signal pin of the U.FL connector RF1.](../img/ref-clock-schematic.png)
 
+![Three rows, each showing Y3, the 40 MHz oscillator, joined through R107 to the AD9361's XTALN pin, and that pin joined through R109 to the EXT_CLK socket. As shipped, R107 is fitted and R109 empty: the radio runs from Y3 and EXT_CLK is connected to nothing. For a reference in, R107 is empty and R109 fitted: the radio runs from whatever is on EXT_CLK, at most 1.3 V p-p and AC-coupled. With both fitted, Y3's 40 MHz appears on EXT_CLK: never connect a source there.](../img/hw-refclock-light.svg#only-light)
+![Three rows, each showing Y3, the 40 MHz oscillator, joined through R107 to the AD9361's XTALN pin, and that pin joined through R109 to the EXT_CLK socket. As shipped, R107 is fitted and R109 empty: the radio runs from Y3 and EXT_CLK is connected to nothing. For a reference in, R107 is empty and R109 fitted: the radio runs from whatever is on EXT_CLK, at most 1.3 V p-p and AC-coupled. With both fitted, Y3's 40 MHz appears on EXT_CLK: never connect a source there.](../img/hw-refclock-dark.svg#only-dark)
+
 | `R107` | `R109` | The radio's reference | `EXT_CLK` |
 |---|---|---|---|
 | fitted | empty | `Y3`, 40 MHz (stock) | nothing |

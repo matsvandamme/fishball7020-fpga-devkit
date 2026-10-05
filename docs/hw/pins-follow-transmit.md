@@ -10,6 +10,9 @@ four bits of every transmitted I sample** on channel 0. The AD9361's DAC takes
 only the top 12 of your 16 bits, so those four bits cost no analog
 performance. The pattern you put in them is the clock, trigger or marker.
 
+![The transmit path as boxes. Your program's 16-bit I/Q words go through the TX DMA to util_upack2. Bits 15 to 4 carry on to the AD9361's 12-bit DAC and the RF output. Bits 3 to 0, the tap, go to tx_gpio_bitmap, which chooses between them and EMIO GPIO 21 to 18 according to the enable flag, then out to JP5 pins 7, 9, 11 and 13. The pins lead the RF by a fixed offset.](../img/nibble-path-light.svg#only-light){ width="620" }
+![The transmit path as boxes. Your program's 16-bit I/Q words go through the TX DMA to util_upack2. Bits 15 to 4 carry on to the AD9361's 12-bit DAC and the RF output. Bits 3 to 0, the tap, go to tx_gpio_bitmap, which chooses between them and EMIO GPIO 21 to 18 according to the enable flag, then out to JP5 pins 7, 9, 11 and 13. The pins lead the RF by a fixed offset.](../img/nibble-path-dark.svg#only-dark){ width="620" }
+
 ```sh
 # run from: the board. Resolve the device by name; the iio:deviceN index is not stable
 D=$(for d in /sys/bus/iio/devices/iio:device*; do
@@ -34,9 +37,10 @@ at power-on.
 | **Fastest toggle** | half the sample rate: 30.72 MHz at 61.44 MSPS |
 | **GNU Radio** | a `complex float` flowgraph destroys the low bits; work at `short` end to end |
 
-[`tools/sample_gpio_clock.py`](../../tools/sample_gpio_clock.py) is a complete
-program with teardown on Ctrl-C; the full annotated example is in the
-[reference](../tx-gpio-bitmap.md#authoring-the-pattern).
+The complete program, step by step:
+[write a pin pattern in Python](write-a-pin-pattern.md).
+[`tools/sample_gpio_clock.py`](../../tools/sample_gpio_clock.py) is the same
+program with arguments and teardown on Ctrl-C.
 
 !!! danger "It works with the transmitter muted, but opening a buffer can unmute it"
     Opening a TX buffer can itself raise the attenuator (seen at −61.5 dB on a

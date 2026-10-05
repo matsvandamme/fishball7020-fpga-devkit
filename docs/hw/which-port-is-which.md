@@ -6,8 +6,13 @@ description: The four SMAs, the U.FL sockets and the two USB-C sockets. Trust th
 # Which port is which
 
 **Read the board, not the box.** On some PlutoSky R1 units the case's SMA
-labels are in the wrong order. Each SMA has its name on the silkscreen beside
-it: `TX1A`, `RX1A`, `TX2A` or `RX2A`.
+labels are in the wrong order: what is printed on the case does not match the
+ports on the board behind it. With the lid off, each SMA has its name on the
+silkscreen beside it: `TX1A`, `RX1A`, `TX2A` or `RX2A`.
+
+![The cased board from its antenna end: four SMA connectors with yellow caps in a row. Labels say they are TX1A, RX1A, TX2A and RX2A, that which is which is read from the board's silkscreen with the lid off, and that the case's own labels are in the wrong order on some units.](../img/hw-sma-ports.svg)
+
+*The case's antenna end. The photo cannot tell you the order: the silkscreen can.*
 
 | Connector | What it is |
 |---|---|
@@ -23,13 +28,13 @@ it: `TX1A`, `RX1A`, `TX2A` or `RX2A`.
 
 ## Check a receive port without opening the case
 
-Put an antenna on one port and watch the FM band in [SDR++](../sdrpp.md),
-with nothing transmitting, switching **RX Port** between RX1 and RX2.
+**Receive, with nothing transmitting.** Put an antenna on one port and watch
+the FM band in [SDR++](../sdrpp.md), switching **RX Port** between RX1 and RX2.
 
-**You should see:** stations only when the antenna is on that receiver. A
-transmit port shows nothing on either.
+**You should see:** stations appear only when the antenna is on that receiver.
+A transmit port shows nothing on either.
 
-!!! danger "It matters most in a loopback"
+!!! danger "Mixing them up matters most when you loop a transmitter into a receiver"
     The attenuator has to sit between a real TX and a real RX
     ([before you transmit](../start/before-you-transmit.md)).
 

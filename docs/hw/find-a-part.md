@@ -21,6 +21,12 @@ from it.
 | **10** | the AD9361 and its 40 MHz reference, `Y3` |
 | **13** | connector `JP5`: which header pin carries which net; GND on pins 2 and 20 |
 
+![Sheet 13 of the vendor schematic, connector JP5, with each 3V3_IO net boxed together with its pin number and the two GND symbols marked](../img/schematic-sheet13-jp5-pins.png)
+
+*Sheet 13, annotated: the kind of evidence each pin claim rests on. The crops
+of sheets 1, 5 and 13 are in
+[the GPIO reference](../tx-gpio-bitmap.md#where-the-pin-numbers-come-from).*
+
 ## The main parts
 
 | Ref | Part | Sheet |

@@ -1,10 +1,11 @@
 # What is on the board
 
-A reference to the board's main parts, clocks, connectors and supply rails, for
-anyone wiring to it, choosing a frequency range, or constraining a pin. Everything
-is read off the vendor schematic in
-[`docs/vendor/`](vendor/7020_936x_SDR-schematic.pdf) (sheet numbers given) and
-cross-checked against a running board where possible.
+The board's main parts, clocks, connectors and supply rails, read off the
+vendor schematic in [`docs/vendor/`](vendor/7020_936x_SDR-schematic.pdf) (sheet
+numbers given) and cross-checked against a running board where possible. For
+the tasks, see [which port is which](hw/which-port-is-which.md),
+[use an external reference clock](hw/external-reference-clock.md) and
+[find a part on the schematic](hw/find-a-part.md).
 
 ## What it looks like
 
@@ -21,21 +22,12 @@ header reachable through a slot beside the fan.
 Case photos: OpenSourceSDRLab's product pages. The board photo below is the
 vendor's too.
 
-> [!WARNING]
-> **On some PlutoSky R1 units the case's SMA labels are in the wrong order**:
-> what is printed on the case does not match the ports on the board behind
-> it. Trust the board, not the box. Two ways to check a unit:
->
-> - **Read the board.** With the lid off, each SMA has its name, `TX1A`,
->   `RX1A`, `TX2A` or `RX2A`, on the silkscreen beside it.
-> - **Receive, with nothing transmitting.** Put an antenna on one port and
->   watch the FM band in [SDR++](sdrpp.md), switching **RX Port** between RX1
->   and RX2: stations appear only when the antenna is on that receiver. A
->   transmit port shows nothing on either.
->
-> Mixing them up matters most when you loop a transmitter into a receiver:
-> the attenuator has to sit between a real TX and a real RX
-> ([transmitter safety](transmitter-safety.md)).
+!!! warning "On some PlutoSky R1 units the case's SMA labels are in the wrong order"
+    What is printed on the case does not match the ports on the board behind
+    it. Trust the board, not the box: with the lid off, each SMA has its name,
+    `TX1A`, `RX1A`, `TX2A` or `RX2A`, on the silkscreen beside it. To check a
+    unit without opening it, and why it matters most in a loopback, see
+    [which port is which](hw/which-port-is-which.md).
 
 ## What is where
 
@@ -129,6 +121,9 @@ vendor's, enlarged: confirm with a continuity check before fitting anything.*
 
 ### The configurations
 
+![Three rows, each showing Y3, the 40 MHz oscillator, joined through R107 to the AD9361's XTALN pin, and that pin joined through R109 to the EXT_CLK socket. As shipped, R107 is fitted and R109 empty: the radio runs from Y3 and EXT_CLK is connected to nothing. For a reference in, R107 is empty and R109 fitted: the radio runs from whatever is on EXT_CLK, at most 1.3 V p-p and AC-coupled. With both fitted, Y3's 40 MHz appears on EXT_CLK: never connect a source there.](img/hw-refclock-light.svg#only-light)
+![Three rows, each showing Y3, the 40 MHz oscillator, joined through R107 to the AD9361's XTALN pin, and that pin joined through R109 to the EXT_CLK socket. As shipped, R107 is fitted and R109 empty: the radio runs from Y3 and EXT_CLK is connected to nothing. For a reference in, R107 is empty and R109 fitted: the radio runs from whatever is on EXT_CLK, at most 1.3 V p-p and AC-coupled. With both fitted, Y3's 40 MHz appears on EXT_CLK: never connect a source there.](img/hw-refclock-dark.svg#only-dark)
+
 | `R107` | `R109` | The radio's reference | `EXT_CLK` | Measured on this board |
 |---|---|---|---|---|
 | fitted | empty | `Y3`, 40 MHz | nothing | stock: 40.0001 MHz, every lock held under stress |
@@ -190,7 +185,8 @@ drive it the other way.
 ### Which reference is the radio really using
 
 The settings alone do not tell you: a board whose reference was not what its
-device tree said still reported every PLL locked. Two checks:
+device tree said still reported every PLL locked. Two checks
+([step by step](hw/check-the-reference.md)):
 
 ```bash
 # run from: the board

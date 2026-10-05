@@ -29,6 +29,11 @@ What is on the board and how to wire to it, one question per page.
 
     Clocks, triggers and markers locked to the transmitted waveform.
 
+-   :material-code-braces:{ .lg } **[Write a pin pattern in Python](write-a-pin-pattern.md)**
+
+
+    A complete program: a clock, a frame pulse and a sync marker on the four pins.
+
 -   :material-led-outline:{ .lg } **[Control the USER LED](control-the-user-led.md)**
 
 

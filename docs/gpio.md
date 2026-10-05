@@ -1,10 +1,12 @@
 # GPIO: where the pins come from, and how to drive them
 
 GPIO (general-purpose input/output) pins are digital lines software can read or
-drive. This page covers which pins on this board are free and the three ways to
-drive them: from your host, from Linux on the board, or from your own logic in
-the fabric (the FPGA's programmable logic). The feature that uses the fabric
-route has its own page: [the sample-locked GPIO outputs](tx-gpio-bitmap.md).
+drive. This page lists the pins that are free on this board, the three routes
+to them (your host, Linux on the board, your own logic in the FPGA fabric) and
+the full line map. For the tasks, see
+[wire something to JP5](hw/wire-to-jp5.md) and
+[toggle a GPIO pin from Linux](hw/toggle-a-gpio.md); the feature that uses the
+fabric route is [the sample-locked GPIO outputs](tx-gpio-bitmap.md).
 
 ## The four free pins
 
@@ -39,42 +41,20 @@ iio_attr -u ip:192.168.2.1 -d cf-ad9361-dds-core-lpc tx_sample_gpio_en 1 # write
 `iio_attr: Error : could not find channel (tx_sample_gpio_en)`, which reads like
 the feature is missing.
 
-**The GPIO lines themselves** have no libiio equivalent; use the board's tools
-over ssh, in single quotes so `$(...)` runs on the board:
-
-```bash
-# run from: your HOST, anywhere
-ssh root@192.168.2.1 'gpiofind sample_gpio0'            # -> gpiochip0 72
-ssh root@192.168.2.1 'gpioget $(gpiofind sample_gpio0)'
-ssh root@192.168.2.1 'gpioset $(gpiofind sample_gpio0)=1'
-```
+**The GPIO lines themselves** have no libiio equivalent: use the board's tools
+over ssh, in single quotes so `$(...)` runs on the board
+([the commands](hw/toggle-a-gpio.md)).
 
 ## Route two: from Linux on the board
 
-```bash
-# run from: the board
-gpiofind sample_gpio0                 # resolve by NAME, never hard-code the number
-gpioget  $(gpiofind sample_gpio0)     # read
-gpioset  $(gpiofind sample_gpio0)=1   # drive high
-```
-
-**`gpioset` lets go the instant it exits**, and the pull-down takes over, so a
-following `gpioget` reads `0`. To hold a level, use `gpioset --mode=wait ...` and
-leave it running, or sysfs, which persists:
-
-```bash
-# run from: the board
-BASE=$(cat /sys/class/gpio/gpiochip*/base | head -1)   # 906 on 5.15, 512 on 6.12
-N=$((BASE + 54 + 18))                                  # 978, or 584 on 6.12
-                                                       # 54 MIO first, then EMIO 18
-echo $N  > /sys/class/gpio/export
-echo out > /sys/class/gpio/gpio$N/direction
-echo 1   > /sys/class/gpio/gpio$N/value
-echo $N  > /sys/class/gpio/unexport                    # release when done
-```
+| Interface | Holds a level? | Needs |
+|---|---|---|
+| libgpiod: `gpiofind`, `gpioget`, `gpioset` | **no**: `gpioset` lets go the instant it exits, and the pull-down takes over, so a following `gpioget` reads `0`. To hold a level, use `gpioset --mode=wait ...` and leave it running | libgpiod-tools |
+| sysfs: `/sys/class/gpio` | **yes**, until you unexport | nothing |
 
 The two interfaces will not share a line: while it is exported through sysfs,
-libgpiod reports `Device or resource busy`. Unexport first.
+libgpiod reports `Device or resource busy`. Unexport first. The commands for
+both: [toggle a GPIO pin from Linux](hw/toggle-a-gpio.md).
 
 ## Route three: from the fabric
 
@@ -101,10 +81,8 @@ iio_attr -u ip:192.168.2.1 -d cf-ad9361-dds-core-lpc tx_sample_gpio_en 0  # Linu
 Measured with a Saleae Logic 8 on JP5 pins 7, 9, 11 and 13, transmitter muted,
 streaming a counter:
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="img/saleae-timing-dark.svg">
-  <img src="img/saleae-timing-light.svg" alt="Logic-analyser capture of the four sample-locked GPIO pins carrying a 4-bit counter at 5 MSPS, with the decoded value D, E, F, 0, 1 and so on under each 200 ns sample" width="760">
-</picture>
+![Logic-analyser capture of the four sample-locked GPIO pins carrying a 4-bit counter at 5 MSPS, with the decoded value D, E, F, 0, 1 and so on under each 200 ns sample](img/saleae-timing-light.svg#only-light)
+![Logic-analyser capture of the four sample-locked GPIO pins carrying a 4-bit counter at 5 MSPS, with the decoded value D, E, F, 0, 1 and so on under each 200 ns sample](img/saleae-timing-dark.svg#only-dark)
 
 | Property | Result |
 |---|---|

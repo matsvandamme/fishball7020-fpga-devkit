@@ -2,12 +2,13 @@
 
 The base firmware can drive four digital output pins on header JP5 whose every
 edge is locked to a specific transmitted RF sample, at a fixed offset rather
-than a software-dependent delay. This page is for anyone who needs triggers,
-clocks or markers tied to the transmit waveform (radar, multi-receiver setups):
-how to use the feature, the pinout, its limits, how it is built and what has
-been measured. The idea of routing the transmit samples' low bits to GPIO came
-from **Akil0515** ([Telegram](https://t.me/Akil0515), see
-[CONTRIBUTORS.md](../CONTRIBUTORS.md)).
+than a software-dependent delay: triggers, clocks and markers for radar or
+multi-receiver setups. This page is the reference: the control, the pinout, the
+limits, how it is built and what has been measured. To use it, follow
+[make pins follow the transmit samples](hw/pins-follow-transmit.md) and
+[write a pin pattern in Python](hw/write-a-pin-pattern.md). The idea of routing
+the transmit samples' low bits to GPIO came from **Akil0515**
+([Telegram](https://t.me/Akil0515), see [CONTRIBUTORS.md](../CONTRIBUTORS.md)).
 
 ## The idea
 
@@ -75,83 +76,18 @@ Changing the sample rate does not clear the flag
 ### Authoring the pattern
 
 There is no "clock mode" register: **the pattern is data**. A pin is a clock
-because its bit alternates. **OR the nibble in last**, after every scaling,
-gain or format conversion, or those steps overwrite it. A complete program:
+because its bit alternates. The complete program, step by step:
+[write a pin pattern in Python](hw/write-a-pin-pattern.md);
+[`tools/sample_gpio_clock.py`](../tools/sample_gpio_clock.py) is the same
+program with arguments, teardown on Ctrl-C and an attenuator check.
 
-```python
-# run from: your host (not the board), in a venv: .venv/bin/pip install pyadi-iio numpy; .venv/bin/python example.py
-import adi, iio, numpy as np
-
-URI = "ip:192.168.2.1"
-N   = 4096                     # buffer length in samples
-
-# 1. Turn the bit-map on. It is an attribute of the DAC core rather than of
-#    the radio, so pyadi-iio does not expose it - reach it through libiio.
-dac = iio.Context(URI).find_device("cf-ad9361-dds-core-lpc")
-dac.attrs["tx_sample_gpio_en"].value = "1"
-
-# 2. The radio. The transmitter is muted AFTER the buffer starts (step 6):
-#    starting a buffer restores a cached attenuation, so a mute written here
-#    would be overwritten. Muted, the pins still work: the nibble never
-#    reaches the DAC.
-sdr = adi.ad9361(uri=URI)
-sdr.tx_enabled_channels = [0]
-sdr.sample_rate = int(30.72e6)
-sdr.tx_lo = int(2.4e9)
-sdr.tx_cyclic_buffer = True    # repeat the buffer forever -> a steady clock
-fs = sdr.sample_rate
-
-# 3. The RF you actually want to transmit, as int16.
-n   = np.arange(N)
-sig = 0.5 * 2**15 * np.exp(2j * np.pi * 1e6 * n / fs)
-i16 = sig.real.astype(np.int16)
-q16 = sig.imag.astype(np.int16)
-
-# 4. The digital side-channel: one bit per pin, as a function of sample index.
-bit0 = (n % 2  == 0)                   # master clock: square wave at fs/2
-bit1 = (n % 64 == 0)                   # frame clock: one sample high per 64
-bit2 = (n == 0)                        # sync: one pulse at the top of the buffer
-bit3 = np.zeros(N, dtype=bool)         # spare
-nibble = (bit0 | (bit1 << 1) | (bit2 << 2) | (bit3 << 3)).astype(np.int16)
-
-# 5. LAST: clear the low nibble of I and drop the pattern in.
-i16 = (i16 & ~np.int16(0x000F)) | nibble
-
-# pyadi-iio casts real and imaginary straight to int16, so integer-valued
-# complex input reaches the DAC bit for bit.
-sdr.tx(i16.astype(np.complex128) + 1j * q16.astype(np.complex128))
-
-# 6. NOW mute, and prove it took.
-sdr.tx_hardwaregain_chan0 = -89.75
-assert sdr.tx_hardwaregain_chan0 <= -89.0
-print(f"streaming at {fs/1e6:g} MSPS; sample_gpio[0] is a {fs/2e6:g} MHz square wave")
-```
-
-To stop and hand the pins back to Linux:
-
-```python
-# run from: your host, in the same session
-sdr.tx_hardwaregain_chan0 = -89.75     # mute before stopping, never after
-sdr.tx_destroy_buffer()
-dac.attrs["tx_sample_gpio_en"].value = "0"
-```
-
-[`tools/sample_gpio_clock.py`](../tools/sample_gpio_clock.py) is this program
-with arguments, teardown on Ctrl-C and an attenuator check.
-
-- **`tx_cyclic_buffer = True` gives a continuous clock.** Make the buffer
-  length an exact multiple of the pattern period, or there is a glitch at the
-  wrap.
-- **Only channel 0's I samples carry the nibble.**
-- **Everything works with the transmitter muted** (−89.75 dB, no antenna
-  needed). But setting the gain before streaming is not enough: opening a TX
-  buffer can itself raise the attenuator, because the kernel restores a cached
-  gain on unmute (seen at −61.5 dB on a board reading −89.75). **Read both
-  attenuators back after the buffer opens** and stop if either moved, as
-  `tools/sample_gpio_clock.py` and `tools/tx-gpio-bitmap-check.py` do.
-- **GNU Radio:** an ordinary `complex float` flowgraph does not work, because
-  float sinks rescale to int16 and destroy the low bits. Work at `short` level
-  end to end with an unscaled sink, or render the buffer with numpy as above.
+| Rule | Why |
+|---|---|
+| **OR the nibble in last** | after every scaling, gain or format conversion, or those steps overwrite it |
+| **`tx_cyclic_buffer = True` gives a continuous clock** | make the buffer length an exact multiple of the pattern period, or there is a glitch at the wrap |
+| **Only channel 0's I samples carry the nibble** | the tap is channel 0's I ([how it is built](#how-it-is-built)) |
+| **Read both attenuators back after the buffer opens**, and stop if either moved | everything works with the transmitter muted (−89.75 dB, no antenna needed), but setting the gain before streaming is not enough: opening a TX buffer can itself raise the attenuator, because the kernel restores a cached gain on unmute (seen at −61.5 dB on a board reading −89.75). `tools/sample_gpio_clock.py` and `tools/tx-gpio-bitmap-check.py` do this |
+| **GNU Radio: work at `short` level end to end** with an unscaled sink, or render the buffer with numpy | an ordinary `complex float` flowgraph does not work, because float sinks rescale to int16 and destroy the low bits |
 
 ### The pins as ordinary GPIO
 
@@ -168,17 +104,9 @@ gpioset  $(gpiofind sample_gpio0)=1   # drive, with the feature off
 ```
 
 The legacy sysfs numbers depend on the kernel's controller base: **906 on
-5.15** (pins 978–981), **512 on 6.12** (pins 584–587). This works on both root
-filesystems with no packages:
-
-```sh
-# run from: the board
-BASE=$(cat /sys/class/gpio/gpiochip*/base | head -1)   # 906 on 5.15, 512 on 6.12
-N=$((BASE + 54 + 18))                                  # 978, or 584 on 6.12
-echo $N > /sys/class/gpio/export
-echo out > /sys/class/gpio/gpio$N/direction
-echo 1   > /sys/class/gpio/gpio$N/value
-```
+5.15** (pins 978–981), **512 on 6.12** (pins 584–587). The sysfs commands, which
+work on both root filesystems with no packages:
+[toggle a GPIO pin from Linux](hw/toggle-a-gpio.md).
 
 **Reading the pins without fooling yourself.** A low pin does not tell you who
 drives it: with the flag clear the pull-down holds it low, which is also a zero
@@ -199,10 +127,8 @@ the header label, so `sample_gpio[0]` is the pin silkscreened `3V3_IO1`.
 | `sample_gpio[2]` | `3V3_IO3` | 11 | **U10** | IO_L12N |
 | `sample_gpio[3]` | `3V3_IO4` | 13 | **T9** | IO_L12P |
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="img/jp5-pinout-dark.svg">
-  <img src="img/jp5-pinout-light.svg" alt="JP5 pinout: a 2x10 header, with pins 7, 9, 11, 13 carrying sample_gpio[0..3] and grounds on pins 2 and 20" width="760">
-</picture>
+![JP5 pinout: a 2x10 header, with pins 7, 9, 11, 13 carrying sample_gpio[0..3] and grounds on pins 2 and 20](img/jp5-pinout-light.svg#only-light)
+![JP5 pinout: a 2x10 header, with pins 7, 9, 11, 13 carrying sample_gpio[0..3] and grounds on pins 2 and 20](img/jp5-pinout-dark.svg#only-dark)
 
 - **Ground a probe on pin 2 or 20.** JP5 also carries VCC1V8, VCC3V3 and VCC5V
   (pins 1, 3, 5) and four 1.8 V differential pairs.
@@ -263,10 +189,8 @@ frees pins 2 and 20 for GND and puts the rails on 1, 3 and 5.
   on `interpolator valid OR dac_valid_i1`, and in 2R2T (both transmit channels)
   channel 1 keeps emptying the shared FIFO at full rate.
 
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="img/saleae-interp-dark.svg">
-    <img src="img/saleae-interp-light.svg" alt="Two spectra of the same 1 MSPS tone buffer: sent the normal way the tone arrives cleanly; through the FPGA divide-by-8 interpolator no tone arrives at all" width="760">
-  </picture>
+  ![Two spectra of the same 1 MSPS tone buffer: sent the normal way the tone arrives cleanly; through the FPGA divide-by-8 interpolator no tone arrives at all](img/saleae-interp-light.svg#only-light)
+  ![Two spectra of the same 1 MSPS tone buffer: sent the normal way the tone arrives cleanly; through the FPGA divide-by-8 interpolator no tone arrives at all](img/saleae-interp-dark.svg#only-dark)
 
 - **The pins move only while a TX buffer streams**; between streams the last
   nibble is held. The firmware also mutes the transmitter between streams
@@ -285,16 +209,8 @@ frees pins 2 and 20 for GND and puts the rails on 1, 3 and 5.
 The FPGA transports the nibble, it generates nothing. The four bits branch off
 right after the DMA unpacker, while the sample is still the word you wrote:
 
-```
-# the transmit datapath and the nibble tap
-  DDR buffer ──DMA──> tx_upack ──┬── [15:4] ──> interpolator ──> AD9361 ──> RF
-  (16-bit samples)   (unpacker)  │                                DAC
-                                 │
-                                 └── [3:0] ──> tx_gpio_bitmap ──> 4 header pins
-                                                     ▲   ▲
-                              up_dac_gpio_out[1] ────┘   └──── EMIO GPIO 18-21
-                              (the enable flag)                (when flag = 0)
-```
+![The transmit path as boxes. Your program's 16-bit I/Q words go through the TX DMA to util_upack2, where the sample stands at its output. Bits 15 to 4 carry on through the FIR interpolator and axi_ad9361 to the AD9361's 12-bit DAC and the RF output. Bits 3 to 0, the tap, go to tx_gpio_bitmap, which captures once per sample and chooses between them and EMIO GPIO 21 to 18 according to GP_CONTROL bit 1 (AXI 0xBC, the enable flag), then through one ad_iobuf per pin to JP5 pins 7, 9, 11 and 13 on balls V10, U9, U10 and T9. The pins lead the RF by a fixed offset.](img/nibble-path-light.svg#only-light)
+![The transmit path as boxes. Your program's 16-bit I/Q words go through the TX DMA to util_upack2, where the sample stands at its output. Bits 15 to 4 carry on through the FIR interpolator and axi_ad9361 to the AD9361's 12-bit DAC and the RF output. Bits 3 to 0, the tap, go to tx_gpio_bitmap, which captures once per sample and chooses between them and EMIO GPIO 21 to 18 according to GP_CONTROL bit 1 (AXI 0xBC, the enable flag), then through one ad_iobuf per pin to JP5 pins 7, 9, 11 and 13 on balls V10, U9, U10 and T9. The pins lead the RF by a fixed offset.](img/nibble-path-dark.svg#only-dark)
 
 | File (under `firmware/src/`, created by `setup.sh`, unless `firmware/`) | What it is |
 |---|---|
@@ -416,10 +332,8 @@ rate to the AD9361's minimum so sysfs can follow and checks the period equals
 those came from a Saleae Logic 8 with a counter pattern (`nibble = n & 0xF`),
 averaging about 500,000 edges for sub-nanosecond skew:
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="img/saleae-timing-dark.svg">
-  <img src="img/saleae-timing-light.svg" alt="Logic-analyser capture of the four sample-locked GPIO pins carrying a 4-bit counter at 5 MSPS, with the decoded value D, E, F, 0, 1 and so on under each 200 ns sample" width="760">
-</picture>
+![Logic-analyser capture of the four sample-locked GPIO pins carrying a 4-bit counter at 5 MSPS, with the decoded value D, E, F, 0, 1 and so on under each 200 ns sample](img/saleae-timing-light.svg#only-light)
+![Logic-analyser capture of the four sample-locked GPIO pins carrying a 4-bit counter at 5 MSPS, with the decoded value D, E, F, 0, 1 and so on under each 200 ns sample](img/saleae-timing-dark.svg#only-dark)
 
 | Property | Result |
 |---|---|

@@ -8,6 +8,9 @@ description: Read or drive the four free JP5 pins from the board or from your PC
 Resolve the line **by name**, then read or drive it. The four free pins are
 `sample_gpio0` to `sample_gpio3` (JP5 pins 7, 9, 11, 13).
 
+![Two sources can drive the four free pins: Linux, through EMIO GPIO 18 to 21 (gpiochip0 lines 72 to 75), and the transmit samples' low four bits. The setting tx_sample_gpio_en chooses: 0, Linux drives the pins; 1, the samples do. The pins are JP5 pins 7, 9, 11 and 13, at 3.3 V, pulled down, and the setting is 0 at power-on.](../img/hw-pin-owner-light.svg#only-light)
+![Two sources can drive the four free pins: Linux, through EMIO GPIO 18 to 21 (gpiochip0 lines 72 to 75), and the transmit samples' low four bits. The setting tx_sample_gpio_en chooses: 0, Linux drives the pins; 1, the samples do. The pins are JP5 pins 7, 9, 11 and 13, at 3.3 V, pulled down, and the setting is 0 at power-on.](../img/hw-pin-owner-dark.svg#only-dark)
+
 === "libgpiod"
 
     Needs libgpiod-tools: Buildroot has them; on Debian, `apt install gpiod`.
@@ -19,8 +22,9 @@ Resolve the line **by name**, then read or drive it. The four free pins are
     gpioset  $(gpiofind sample_gpio0)=1   # drive high
     ```
 
-    **`gpioset` lets go the instant it exits**, and the pull-down takes over. To
-    hold a level, use `gpioset --mode=wait ...` and leave it running.
+    **`gpioset` lets go the instant it exits**, and the pull-down takes over, so
+    a following `gpioget` reads `0`. To hold a level, use `gpioset --mode=wait ...`
+    and leave it running.
 
 === "sysfs (no packages)"
 
@@ -30,6 +34,7 @@ Resolve the line **by name**, then read or drive it. The four free pins are
     # run from: the board
     BASE=$(cat /sys/class/gpio/gpiochip*/base | head -1)   # 906 on 5.15, 512 on 6.12
     N=$((BASE + 54 + 18))                                  # 978, or 584 on 6.12
+                                                           # 54 MIO first, then EMIO 18
     echo $N  > /sys/class/gpio/export
     echo out > /sys/class/gpio/gpio$N/direction
     echo 1   > /sys/class/gpio/gpio$N/value
