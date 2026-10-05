@@ -74,7 +74,7 @@ Buildroot has none of those. See
 |---|---|
 | [`rf-safety.md`](references/rf-safety.md) | **Read before anything transmits.** Power budget, mute layers, the buffer-restore trap, stopping, the affirmation gate, board-side scripts |
 | [`build-and-flash.md`](references/build-and-flash.md) | Command sequences for both targets, the Vivado trap, kernel-only builds, device trees, the patch catalogue, flashing, containers |
-| [`talking-to-the-board.md`](references/talking-to-the-board.md) | libiio/IIOD, sysfs, debugfs, networking, refused attributes, the GPIO pins, MATLAB, what each shell lacks |
+| [`talking-to-the-board.md`](references/talking-to-the-board.md) | libiio/IIOD, sysfs, debugfs, networking, refused attributes, the GPIO pins, MATLAB, what each shell lacks, the read-only Claude Code pane |
 | [`measuring.md`](references/measuring.md) | The self-test, baselines, board versus cable, what a healthy board looks like |
 | [`ad9361-gain-tables.md`](references/ad9361-gain-tables.md) | Why gain in dB is not gain in dB, and where the discontinuities are |
 | [`debugging.md`](references/debugging.md) | Traps that are slow to diagnose: symptom, cause, fix |

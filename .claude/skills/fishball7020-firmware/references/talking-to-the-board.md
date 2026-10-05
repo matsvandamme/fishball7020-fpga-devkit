@@ -604,3 +604,27 @@ attenuator rose, `Mute` is always allowed. Waveforms are uploaded once
   live stream delivers 2-3 MS/s; reference 40.00030 MHz (+7.5 ppm) in 30 s.
 - Captures go to `/dev/shm` (tmpfs, half of RAM); `/run` is too small (a
   320 MB capture stopped at 209 MB there).
+
+## The Claude Code pane (tools/claude-pane, docs/claude-code-pane.md)
+
+A Claude Code plugin: `/fishball` opens a side pane with the board's links,
+both die temperatures, the radio's settings, CI on `main` and the firmware the
+board runs against the checkout. `./devkit claude-pane install|uninstall|test`;
+install adds the folder to `CLAUDE_CODE_PLUGIN_DIRS` in
+`~/.claude/settings.json`, so it loads in sessions started afterwards.
+
+- **It only reads.** IIO attribute reads over iiod (or `iio_attr` over libiio
+  USB) and one ssh command, `cat /proc/uptime /proc/loadavg`. It never opens a
+  buffer, so it is never the holder behind EBUSY, and `tools/board-busy.sh`
+  rightly does not list it. Open, it polls the board every 10 s and GitHub
+  every 3 min; closed, a board-only read every 60 s keeps the status line.
+- **One JSON snapshot without Claude Code:**
+  `python3 tools/claude-pane/bin/collect.py --sections board,radio` (also
+  `repo`, `build`). Each section is `{"ok": ...}`; a failing one never blanks
+  the others, and it prints within 20 s even with no board.
+- **Links are told apart by the route, not the address:** USB when the route
+  to an address that answers leaves on the board's own USB interface (vendor
+  `0456`), Ethernet otherwise, libiio when `iio_info -s` lists a `usb:`
+  context. `$BOARD` or `$SDR_URI` limits the network probe to that address;
+  the libiio USB probe still runs, so a board on the USB cable still reads as
+  online.
