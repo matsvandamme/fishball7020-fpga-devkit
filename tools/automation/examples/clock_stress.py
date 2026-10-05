@@ -15,7 +15,8 @@ no libiio in it: every step is a call to the server on the board.
      433.92, 868 and 2400 MHz: within 1 Hz, worst spur below -55 dBc
   D  the reference, timed for 30 s against the board's own crystal: within 20 ppm
 
-Prints PASS when all four hold and both transmitters end at -89.75 dB.
+Prints PASS when all four hold and both transmitters end at -89.75 dB, and
+draws the three tones' spectra in clock_stress.svg, where you run it.
 Bench: TX1 -> 20 dB -> RX1. Needs numpy (in the client's venv).
 """
 import argparse
@@ -27,6 +28,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from fishball_automation.client import Fishball, FishballError   # noqa: E402
+from svgplot import Panel, write                                  # noqa: E402  (beside this script)
 
 RATES = [2.5e6, 5e6, 7.68e6, 10e6, 15.36e6, 20e6, 30.72e6, 61.44e6]
 TONE_RATE, TONE_HZ, TONE_N = 4_800_000, 1_000_000, 76_800     # 76 800 samples: 16 000 whole cycles
@@ -66,7 +68,14 @@ def retunes(board, fails):
     note(fails, bad == 0, f"{len(steps)} retunes, RX and TX synthesizers locked after {len(steps) - bad}")
 
 
-def tones(board, fails, attenuation, pad):
+def thin(f, s, points=1500):
+    """A spectrum cut to about `points` points, keeping each group's peak, so no tone or spur is lost."""
+    n = len(s) // points
+    k = np.arange(points) * n + np.argmax(s[:points * n].reshape(points, n), axis=1)
+    return f[k], s[k]
+
+
+def tones(board, fails, attenuation, pad, spectra):
     print(f"C. TX1 -> {pad:g} dB -> RX1 tone, {TONE_RATE / 1e6:g} MS/s, tone 1 MHz above the LO")
     board.configure(sample_rate_hz=TONE_RATE, rx_rf_bandwidth_hz=TONE_RATE, tx_rf_bandwidth_hz=TONE_RATE,
                     rx1_gain_mode="manual", rx1_gain_db=20)
@@ -98,6 +107,7 @@ def tones(board, fails, attenuation, pad):
             print(f"  {lo / 1e6:8.2f} MHz: tone {peak - TONE_HZ:+.2f} Hz off, floor {np.median(s):.1f} dBc, "
                   f"worst spur {spur:.1f} dBc at {at / 1e6:+.3f} MHz, image {image:.1f} dBc")
             note(fails, abs(peak - TONE_HZ) < 1 and spur < -55, f"{lo / 1e6:g} MHz: tone exact and clean")
+            spectra.append((lo, *thin(f, s), peak - TONE_HZ, spur))
     finally:
         board.delete_waveform(wave)
 
@@ -109,6 +119,21 @@ def reference(board, fails):
     print(f"  reference {c.measured_reference_hz / 1e6:.5f} MHz, {c.measured_ppm:+.1f} ppm over "
           f"{c.measured_seconds:.0f} s; BBPLL {c.bbpll_locked}, RX {c.rx_synth_locked}, TX {c.tx_synth_locked}")
     note(fails, abs(c.measured_ppm) <= 20 and c.bbpll_locked, "reference within 20 ppm of 40 MHz")
+    return c.measured_ppm
+
+
+def plot(spectra, ppm, path, theme="auto"):
+    """Each loopback tone's spectrum, relative to the tone, with the -55 dBc spur limit."""
+    panels = []
+    for lo, f, s, off, spur in spectra:
+        p = Panel(f"{lo / 1e6:g} MHz: tone {off:+.2f} Hz from where it was sent, worst spur {spur:.1f} dBc",
+                  "offset from the LO (MHz)", "dBc", xlim=(-2.4, 2.4), ylim=(-110, 5), height=150)
+        p.line(f / 1e6, s, None, 1)
+        p.hline(-55, "spur limit, -55 dBc")
+        panels.append(p)
+    if ppm is not None:
+        panels[-1].note(f"reference measured {ppm:+.1f} ppm from 40 MHz over 30 s")
+    return write(path, panels, theme, title="Clock stress: the loopback tones")
 
 
 def main():
@@ -116,16 +141,18 @@ def main():
     ap.add_argument("--host", default=os.environ.get("BOARD", "fishball.local"))
     ap.add_argument("--attenuation", type=float, default=-40.0, help="TX1 attenuation for the tones (default -40)")
     ap.add_argument("--pad", type=float, default=20.0, help="the attenuator between TX1 and RX1, in dB (default 20)")
+    ap.add_argument("--plot", default="clock_stress.svg",
+                    help="where to draw the tones' spectra; open it in a browser (default: here; '' for none)")
     a = ap.parse_args()
-    fails = []
+    fails, spectra, ppm = [], [], None
     with Fishball(a.host, timeout=60) as board:
         s = board.status()
         print(f"{s.model}, firmware {s.firmware}, server {s.server_version}")
         try:
             rates(board, fails)
             retunes(board, fails)
-            tones(board, fails, a.attenuation, a.pad)
-            reference(board, fails)
+            tones(board, fails, a.attenuation, a.pad, spectra)
+            ppm = reference(board, fails)
         except FishballError as e:
             fails.append(str(e))
             print(f"  FAIL  {e.code}: {e}")
@@ -138,6 +165,8 @@ def main():
         print(f"die {s.ad9361_temp_c:.1f} C; TX1 {tx[0]} dB, TX2 {tx[1]} dB")
         if any(t > -89.5 for t in tx):
             fails.append("a transmitter is not muted at the end")
+    if a.plot and spectra:
+        print(f"spectra drawn in {os.path.abspath(plot(spectra, ppm, a.plot))}")
     print("RESULT:", "PASS" if not fails else f"{len(fails)} FAILURE(S)")
     return 1 if fails else 0
 

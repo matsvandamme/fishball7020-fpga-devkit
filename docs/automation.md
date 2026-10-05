@@ -3,8 +3,9 @@
 A gRPC server on the board, on port 7020, and a Python client for your PC:
 status, settings, the reference clock, receive captures, transmit, and
 transmit plus capture in one call, for measurement scripts. To use it, see
-[automate a measurement](radio/automate-measurements.md); for a complete
-script to copy, [sweep both loopbacks](radio/sweep-a-loopback.md).
+[automate a measurement](radio/automate-measurements.md); for complete
+scripts to copy, [sweep both loopbacks](radio/sweep-a-loopback.md) and
+[beamform across two boards](radio/beamform-two-boards.md).
 
 !!! danger "No authentication, like `iiod`"
     Anyone who can reach port 7020 can retune the radio and read what it
@@ -138,7 +139,8 @@ Over Wi-Fi, board on gigabit Ethernet, 2026-10-05.
 | The client killed with `kill -9` while TX1 and TX2 played at −40 dB | both read −89.75 dB **46 ms** later, transmit buffer released |
 | Pulsed chirp on TX1 and TX2, `TransmitCapture` on RX1 and RX2, three calls at 15.36 MS/s | the pulse landed at samples 4295, 7372 and 4439; RX1 − RX2 was −0.002 samples each time |
 | [`examples/loopback_sweep.py`](../tools/automation/examples/loopback_sweep.py), TX1 → 20 dB → RX1 and TX2 → 30 dB → RX2 | 14 frequencies, 100 MHz to 5.8 GHz, in 15 s; between two runs the tone level moved at most 1.2 dB, the image up to 14.5 dB ([the result](radio/sweep-a-loopback.md#reading-the-result)) |
-| [`examples/clock_stress.py`](../tools/automation/examples/clock_stress.py) | PASS in 66 s: 48 rate changes, 200 retunes, tones within 0.12 Hz at 433.92, 868 and 2400 MHz with the worst spur at −58.3 dBc, reference +5.5 ppm |
+| [`examples/beamformer.py`](../tools/automation/examples/beamformer.py) `--emulate`, one board, TX1 → 20 dB → RX1 and TX2 → 30 dB → RX2 | five emulated directions from −60° to +60° found within 0.3°; lock check: coherence 1.000, phase spread 0.1° ([the page](radio/beamform-two-boards.md)) |
+| [`examples/clock_stress.py`](../tools/automation/examples/clock_stress.py) | PASS in 66 s: 48 rate changes, 200 retunes, tones within 0.12 Hz at 433.92, 868 and 2400 MHz with the worst spur at −58.3 dBc, reference +5.5 ppm. A later run failed at 2400 MHz: [the spectra](#the-examples-figures) |
 
 - **A capture is the way to get every sample.** It is recorded into RAM on the
   board at the radio's full rate, then fetched; its size is bounded by free RAM.
@@ -150,6 +152,37 @@ Over Wi-Fi, board on gigabit Ethernet, 2026-10-05.
   `CLOCK_MONOTONIC_RAW`, the Zynq's own 33.333 MHz crystal. It tells a 40 MHz
   reference from a wrong one; over 30 s it resolves a few ppm.
 
+## The examples' figures
+
+Each example in [`tools/automation/examples/`](../tools/automation/examples/)
+draws what it measured in an SVG beside its results, in the directory you run
+it from: `loopback_sweep.svg`, `clock_stress.svg`, `beamformer-check.svg` and the beamformer's scans. Open
+it in a browser; it follows your system's light or dark theme. The drawing
+code, [`svgplot.py`](../tools/automation/examples/svgplot.py), needs nothing
+installed.
+
+`clock_stress.svg` from a run on 2026-10-05, unedited:
+
+![Three spectra, 4.8 MS/s, of a tone 1 MHz above the LO looped TX1 to 20 dB to RX1, at 433.92, 868 and 2400 MHz. Each tone landed 0.12 Hz from where it was sent. At 433.92 and 868 MHz the worst spurs are -57.5 and -59.1 dBc, under the -55 dBc limit drawn as a dashed line. At 2400 MHz two lines stand 0.19 MHz either side of the tone, at -46.2 and -46.9 dBc, above the limit, so this run failed.](img/automation-clock-stress-light.svg#only-light)
+![Three spectra, 4.8 MS/s, of a tone 1 MHz above the LO looped TX1 to 20 dB to RX1, at 433.92, 868 and 2400 MHz. Each tone landed 0.12 Hz from where it was sent. At 433.92 and 868 MHz the worst spurs are -57.5 and -59.1 dBc, under the -55 dBc limit drawn as a dashed line. At 2400 MHz two lines stand 0.19 MHz either side of the tone, at -46.2 and -46.9 dBc, above the limit, so this run failed.](img/automation-clock-stress-dark.svg#only-dark)
+
+**At exactly 2400.000 MHz the tone can carry sidebands 0.19 MHz either side.**
+Measured the same afternoon, TX1 → 20 dB → RX1:
+
+| LO | Sideband at +0.813 MHz |
+|---|---|
+| 2400 MHz, five calls in a row, one tune | −46.1 to −46.3 dBc |
+| 2390 MHz and 2410 MHz | −79.3 and −78.3 dBc: gone |
+| 2400 MHz again, after retuning | −50.9 dBc |
+| 2400 MHz, two runs earlier that day | worst spur −58.3 and −59.4 dBc: under the limit |
+
+It holds still within one tune, changed after a retune to the same frequency,
+and stands symmetric about the tone, which points at the radio's frequency
+synthesis: 2400 MHz is exactly 60 times the 40 MHz reference. An outside
+signal near 2400.8 MHz is not ruled out; at 2390 and 2410 MHz it would fall
+outside the captured band. Not investigated further: repeat a measurement at
+exactly 2400 MHz across retunes.
+
 ## How it is built
 
 | | |
@@ -160,4 +193,4 @@ Over Wi-Fi, board on gigabit Ethernet, 2026-10-05.
 | Message types | loaded at run time from `fishball.desc`, the compiled `.proto`: generated code is tied to one protobuf version, and the board (3.21) and a PC differ |
 | Service | `fishball-automation.service`; like `iiod`, it `Requires=fishball-rf-quiesce`, so it starts only if the boot-time transmitter mute was confirmed. `ExecStopPost` writes −89.75 dB to both attenuators after the server exits, however it exited |
 | Captures and waveforms | in `/dev/shm/fishball-automation` (RAM); captures removed when fetched, and all of it when the server stops |
-| Tests | 67, with the real server and client over localhost and only the board faked. The fake board copies the kernel's cached-gain restore, so a test fails if any transmit starts with both attenuators at the floor or is torn down before the mute. Run by the Host tools workflow; the Hardware workflow runs `smoke` on the board, which does not transmit |
+| Tests | 67 for the server, with the real server and client over localhost and only the board faked. The fake board copies the kernel's cached-gain restore, so a test fails if any transmit starts with both attenuators at the floor or is torn down before the mute. Run by the Host tools workflow, with 11 more for the beamformer's signal processing on synthetic arrays; the Hardware workflow runs `smoke` on the board, which does not transmit |

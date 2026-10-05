@@ -543,6 +543,20 @@ attenuator rose, `Mute` is always allowed. Waveforms are uploaded once
   both loopbacks, 14 LOs 100 MHz-5.8 GHz, level/image/LO/spur per receiver, CSV,
   15 s. Between two runs the level moved <= 1.2 dB but image up to 14.5 dB:
   image rejection does not repeat run to run, so never quote one run of it.
+- `examples/beamformer.py` (docs/radio/beamform-two-boards.md): receive
+  beamformer over N boards (2 elements each) on ONE reference (LBE-1421 GPSDO,
+  both outputs 40 MHz, DC block + ~20 dB into each EXT_CLK, R107 out/R109 in).
+  A shared reference locks frequency only: LO phase is new at every retune and
+  captures on two boards start ms apart, so it reads each element's phase at the
+  matched-filter peak of a chirp symmetric about the LO, calibrates phase-only
+  at 0 deg, and runs a lock check first (coherence < 0.9 = not locked).
+  Measured on ONE board only (--emulate, TX2 phase as the angle): 5 angles
+  within 0.3 deg; no array gain (shared-LO phase noise floor at -40 dB; 10 dB
+  loop imbalance at -80 dB). Two-board runs: not yet done.
+- `examples/svgplot.py` draws every example's SVG (stdlib only; `retheme()`
+  makes the docs' light/dark copies). clock_stress at exactly 2400.000 MHz can
+  show sidebands at +-0.19 MHz from the tone, -46 dBc, tune-dependent: it failed
+  once on 2026-10-05; 2390/2410 MHz were clean.
 
 - **Use `python3-grpclib` on the board, never `python3-grpcio`.** Debian
   trixie's armhf grpcio 1.51 aborts on any use (`time_posix.cc: assertion

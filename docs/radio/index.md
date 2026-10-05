@@ -90,6 +90,11 @@ pages with every measurement are under [Reference](#reference).
 
     A complete script: 14 frequencies, both channels, a CSV, in 15 seconds.
 
+-   :material-radar:{ .lg } **[Beamform across two boards](beamform-two-boards.md)**
+
+
+    Two boards on one GPSDO as a four-antenna array: calibrate, find a direction.
+
 -   :material-stethoscope:{ .lg } **[Check the radio is healthy](check-the-radio.md)**
 
 

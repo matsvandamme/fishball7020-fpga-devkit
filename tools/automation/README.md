@@ -35,6 +35,7 @@ on first use. To make it yourself:
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python tests/test_automation.py     # 67 tests against a fake board; no board needed
+.venv/bin/python tests/test_beamformer.py      # the beamformer's maths on synthetic arrays
 ```
 
 | File | |
@@ -46,8 +47,10 @@ python3 -m venv .venv
 | `fishball_automation/proto.py`, `fishball.desc` | the message types, loaded from the compiled `.proto` at run time |
 | `fishball-automation.service` | the systemd unit; like `iiod`, it starts only if the boot-time transmitter mute was confirmed |
 | `fishball-automation-mute.sh` | run by the unit after the server exits, however it exited: both transmitters to −89.75 dB |
+| `examples/beamformer.py` | a receive beamformer across one or more boards on one reference clock: lock check, calibration, direction finding ([docs](../../docs/radio/beamform-two-boards.md)); `--emulate` tries it on one board |
+| `examples/svgplot.py` | the examples' figures: SVG, standard library only, light or dark with your system |
 | `examples/loopback_sweep.py` | both loopbacks swept from 100 MHz to 5.8 GHz: level, image, LO leakage and worst spur per receiver, to a CSV ([docs](../../docs/radio/sweep-a-loopback.md)) |
-| `examples/clock_stress.py` | the clock stress test as a client script: rate changes, LO retunes, loopback tones, the reference in ppm; prints PASS |
+| `examples/clock_stress.py` | the clock stress test as a client script: rate changes, LO retunes, loopback tones, the reference in ppm; prints PASS and draws the tones' spectra |
 | `automation.sh` | what `./devkit automation` runs |
 
 After editing `fishball.proto`, rebuild the descriptor:

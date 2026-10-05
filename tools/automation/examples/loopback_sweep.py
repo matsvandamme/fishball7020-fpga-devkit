@@ -15,8 +15,8 @@ receiver's spectrum the script reads:
   LO      what sits on the LO itself, relative to the tone: carrier leakage
   spur    the largest other component in the band, relative to the tone
 
-It prints a row per frequency, then writes them all to a CSV file in the
-directory you run it from. Both transmitters end muted; if they do not, it
+It prints a row per frequency, then writes them all to a CSV file and draws
+them in an SVG figure, both in the directory you run it from. Both transmitters end muted; if they do not, it
 says so and exits non-zero.
 
 Bench: TX1 -> 20 dB -> RX1 and TX2 -> 30 dB -> RX2, so RX2 reads about 10 dB
@@ -33,6 +33,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from fishball_automation.client import Fishball, FishballError   # noqa: E402
+from svgplot import Panel, write                                  # noqa: E402  (beside this script)
 
 RATE = 4_800_000                    # samples per second, shared by TX and RX
 TONE_HZ = 1_000_000                 # the tone's offset from the LO
@@ -64,6 +65,20 @@ def measure(x):
     return level, peak(-TONE_HZ) - level, peak(0) - level, s[band & ~near].max() - level
 
 
+def plot(rows, path, theme="auto"):
+    """Level, image and LO leakage against frequency, one line per receiver."""
+    f = [r[0] for r in rows]
+    level = Panel("Tone level", "LO frequency (MHz, log scale)", "dBFS", logx=True, height=200)
+    image = Panel("Image: the tone's mirror, below the tone", "LO frequency (MHz, log scale)", "dBc",
+                  logx=True, height=170)
+    lo = Panel("LO leakage, below the tone", "LO frequency (MHz, log scale)", "dBc", logx=True, height=170)
+    for ch, col, slot in (("RX1", 1, 1), ("RX2", 5, 2)):
+        level.line(f, [r[col] for r in rows], ch, slot, markers=True)
+        image.line(f, [r[col + 1] for r in rows], ch, slot, markers=True)
+        lo.line(f, [r[col + 2] for r in rows], ch, slot, markers=True)
+    return write(path, [level, image, lo], theme, title="Both loopbacks, swept")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--host", default=os.environ.get("BOARD", "fishball.local"))
@@ -73,6 +88,8 @@ def main():
                     help="the smaller of the two attenuators fitted between TX and RX, in dB (default 20)")
     ap.add_argument("--rx-gain", type=float, default=20.0, help="both receivers, manual gain in dB (default 20)")
     ap.add_argument("--csv", default="loopback_sweep.csv", help="where to write the results (default: here)")
+    ap.add_argument("--plot", default="loopback_sweep.svg",
+                    help="where to draw them; open it in a browser (default: here; '' for none)")
     a = ap.parse_args()
     lo_list = [float(m) * 1e6 for m in a.mhz.split(",")]
 
@@ -130,6 +147,8 @@ def main():
                   f"(a {np.ptp(r[:, col]):.1f} dB spread), image at worst {r[:, col + 1].max():.1f} dBc "
                   f"at {r[np.argmax(r[:, col + 1]), 0]:g} MHz")
         print(f"written to {os.path.abspath(a.csv)}")
+        if a.plot:
+            print(f"drawn in {os.path.abspath(plot(rows, a.plot))}")
     return 1 if failed else 0
 
 

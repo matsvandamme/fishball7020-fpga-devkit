@@ -60,5 +60,13 @@ hackrf_clock -r 2      # on HackRF One r9, CLKOUT is Si5351 clock 2: "Up" means 
     fails and `iiod` is held back, so nothing can transmit. Start the reference
     before the board, or refit `R107`.
 
+## Two boards on one reference
+
+One source, one output per board: a two-output GPSDO such as the Leo Bodnar
+LBE-1421 with both outputs set to 40 MHz, each through its own DC block and
+about 20 dB, keeps the device tree at 40 MHz. Not yet run on two boards; the
+set-up and the check that they really share it:
+[beamform across two boards](../radio/beamform-two-boards.md#2-put-both-boards-on-one-reference).
+
 **Reference:** [locking the board to an external reference](../hardware.md#locking-the-board-to-an-external-reference),
 with the photo of the pads, `R110` (the FPGA's clock pin) and the `Y3` pin 1 question.

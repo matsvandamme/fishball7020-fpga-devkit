@@ -17,7 +17,7 @@ spectrum:
 | **LO** | what sits on the LO frequency itself, in dBc: carrier leakage |
 | **spur** | the largest other component in the band, in dBc |
 
-It takes 15 seconds, and writes a CSV you can plot. The script is
+It takes 15 seconds, and writes a CSV and an SVG figure of it (`loopback_sweep.svg`, open it in a browser). The script is
 [`tools/automation/examples/loopback_sweep.py`](../../tools/automation/examples/loopback_sweep.py),
 about 150 lines; copy it as the starting point for your own measurements.
 
@@ -158,7 +158,7 @@ with Fishball(a.host, timeout=60) as board:
 | measure one channel | `tx_channels=[1]` and `rx_channels=[1]`; the other transmitter is held at −89.75 dB |
 | drive harder | `--attenuation -30`. Louder than −10 dB is refused unless `--pad` states at least 20 |
 | measure something new | add it to `measure()`, which gets one receiver's samples |
-| plot the result | read the CSV; [`docs/img/make_automation_sweep_svg.py`](../img/make_automation_sweep_svg.py) drew the figure above from two runs |
+| plot the result | `loopback_sweep.svg` is drawn for you (`--plot ''` turns it off); [`docs/img/make_automation_sweep_svg.py`](../img/make_automation_sweep_svg.py) drew the figure above from two runs' CSVs |
 
 ??? question "It says TX2 has no affirmation on record"
     Step 1 is missing for that channel, or the board rebooted since. Look at

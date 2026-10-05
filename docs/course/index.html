@@ -6179,6 +6179,22 @@ transmit (steering a beam)    apply that same phase difference deliberately,
     </ul>
   </div>
 
+  <h3>Four elements from two boards</h3>
+  <p>Two boards whose <code>EXT_CLK</code> inputs share one reference (a GPS-disciplined oscillator with
+    one output per board) make a four-element line. The shared reference makes their LOs run at exactly
+    the same frequency, and that is all it does. Each board's LO still lands at an unknown
+    <em>phase</em> after every retune, and the two boards' captures start milliseconds apart, because
+    nothing starts them together. So a calibration with a source straight ahead comes first, and each
+    element's phase is read where it does not depend on when its capture started: at the peak of a
+    matched filter, against a chirp that sweeps symmetrically across the LO.</p>
+  <p>The devkit's <a href="../radio/beamform-two-boards.md">beamformer example</a> does that through the
+    automation server, and starts with a <em>lock check</em>: an element whose phase rotates against the
+    beacon within one capture is on a different reference. Tried on one board, with TX2's phase standing
+    in for the arrival angle, it found five directions from &minus;60&deg; to +60&deg; within 0.3&deg;. It
+    gained nothing in SNR, though, and the reason is the first bullet above turned round: noise the two
+    chains <em>share</em> cancels in their difference, and for the same reason adds up in step in their
+    sum, where averaging cannot remove it. Array gain needs noise that differs from element to element.</p>
+
   <details class="check">
     <summary>Check yourself: you want diversity <em>and</em> direction finding from one pair of antennas. Can you?</summary>
     <div class="ans">
