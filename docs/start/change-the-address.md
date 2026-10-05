@@ -5,6 +5,12 @@ description: Pin the board to a fixed address, go back to DHCP, or change the na
 
 # Change the IP address or name
 
+Pin the board to a fixed address, go back to DHCP, or change the name it
+answers to. Only the Ethernet side changes.
+
+![The board has two network interfaces. The USB cable is fixed at 192.168.2.1 and is always the way back in. Ethernet takes its address from the router, or a static one; devkit net changes that side only. The board answers to fishball.local.](../img/start-network-light.svg#only-light)
+![The board has two network interfaces. The USB cable is fixed at 192.168.2.1 and is always the way back in. Ethernet takes its address from the router, or a static one; devkit net changes that side only. The board answers to fishball.local.](../img/start-network-dark.svg#only-dark)
+
 ```bash
 # run from: the repo root
 ./devkit net                          # what is it doing now?

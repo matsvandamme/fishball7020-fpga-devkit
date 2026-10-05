@@ -1,7 +1,11 @@
 # Flashing the board, and checking what it runs
 
-How to get a build onto the board and confirm afterwards that the board is
-running it. Build first: [Building your own firmware](building.md).
+Every way to get a build onto the board, how to confirm the board runs it,
+the USB ports and the BOOT switch. For the tasks, see
+[put the firmware on a card](start/write-the-card.md),
+[put your build on the board](build/flash-your-build.md) and
+[check what it runs](start/check-the-firmware.md). Build first:
+[Building your own firmware](building.md).
 
 !!! danger "Never flash with DFU on this board"
     It has bricked units, and it cannot replace `BOOT.bin` at all.
@@ -13,15 +17,6 @@ running it. Build first: [Building your own firmware](building.md).
     - The **BOOT switch must be in SD mode** (`0 0`): a board in QSPI mode ignores the card, which looks exactly like a failed build.
 
 ## Which way to flash
-
-```mermaid
-flowchart TD
-    Q1{"Does the board boot?"} -->|yes| Q2{"Unsure the new BOOT.bin boots?"}
-    Q1 -->|no| A["A: write the SD card"]
-    Q2 -->|yes| C2["C2: a second card"]
-    Q2 -->|"no, and it should persist"| C["C: ./devkit flash"]
-    Q2 -->|"no, trying FPGA changes in seconds"| D["D: JTAG, gone at power-off"]
-```
 
 | | When | Updates `BOOT.bin` (the bitstream)? |
 |---|---|---|
@@ -313,13 +308,11 @@ marking.
 | **QSPI flash** | `1` (VCC3V3) | `0` (GND) | Boots from the onboard 16 MiB flash instead |
 | **JTAG** | `1` (VCC3V3) | `1` (VCC3V3) | Debugging and flashing over JTAG |
 
-<table>
-<tr>
-<td align="center"><img src="img/boot-sd-00.jpg" alt="BOOT switch set to 0 0 for SD card boot" width="250"><br><b>SD card — <code>0 0</code></b></td>
-<td align="center"><img src="img/boot-qspi-10.jpg" alt="BOOT switch set to 1 0 for QSPI flash boot" width="250"><br><b>QSPI flash — <code>1 0</code></b></td>
-<td align="center"><img src="img/boot-jtag-11.jpg" alt="BOOT switch set to 1 1 for JTAG mode" width="250"><br><b>JTAG — <code>1 1</code></b></td>
-</tr>
-</table>
+<div class="photo-row">
+<figure><img src="img/boot-sd-00.jpg" alt="BOOT switch set to 0 0 for SD card boot"><figcaption><b>SD card — <code>0 0</code></b></figcaption></figure>
+<figure><img src="img/boot-qspi-10.jpg" alt="BOOT switch set to 1 0 for QSPI flash boot"><figcaption><b>QSPI flash — <code>1 0</code></b></figcaption></figure>
+<figure><img src="img/boot-jtag-11.jpg" alt="BOOT switch set to 1 1 for JTAG mode"><figcaption><b>JTAG — <code>1 1</code></b></figcaption></figure>
+</div>
 
 <sub>Photographs from the distributor's
 <a href="https://blog.opensourcesdrlab.com/archives/PlutoSky-R1">PlutoSky R1 write-up</a>.</sub>

@@ -6,14 +6,6 @@ first. On a Windows PC with no tools installed, double-click `tools\board-info.c
 prints what the board is, what it runs and every setting it reports, read-only.
 `board-info.cmd -OutFile board.txt` saves the report for a bug report.
 
-| You see | Section |
-|---|---|
-| ssh, libiio and ping stop after a while; `Calibration TIMEOUT` in the log | [The board stops responding after a while](#the-board-stops-responding-after-a-while) |
-| ssh works, SDR software finds no device | [ssh works, but nothing can open the radio](#ssh-works-but-nothing-can-open-the-radio-debian-root) |
-| SDRangel shows `PlutoSDR0 TBD` | [SDRangel](#sdrangel-lists-the-board-as-plutosdr0-tbd-and-will-not-open-it) |
-| a build error | [Building](#building) |
-| a fresh card does nothing, or the old firmware still runs | [Flashing](#a-freshly-flashed-card-seems-to-do-nothing-or-the-old-firmware-still-runs) |
-
 ## The board
 
 ### The board stops responding after a while

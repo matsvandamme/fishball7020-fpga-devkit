@@ -25,7 +25,7 @@ XC7Z020 and an AD9361 radio, rebuilt from source.
 
     First-time setup: the card, the cables, finding the board, the safety rules.
 
-    <span class="count">8 articles</span>
+    <span class="count">9 articles</span>
 
 -   :material-radio-tower:{ .lg }
 

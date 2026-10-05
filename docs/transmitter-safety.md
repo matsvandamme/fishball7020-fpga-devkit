@@ -1,10 +1,11 @@
 # Transmitter safety
 
-What to do before transmitting with this board, what the firmware does to keep
-the transmitter quiet, and what it cannot protect against. Read it before you
-cable a transmit port to anything. The short version is in the
-[README](../README.md); the evidence is in [`IDLE-CASES.md`](../IDLE-CASES.md)
-and [`tools/IDLE-CASES.md`](../tools/IDLE-CASES.md).
+What the firmware does to keep the transmitter quiet, what it cannot protect
+against, and the rules a transmitting program must follow. For the four rules
+to follow before you cable anything, see
+[before you transmit](start/before-you-transmit.md). The evidence is in
+[`IDLE-CASES.md`](../IDLE-CASES.md) and [`tools/IDLE-CASES.md`](../tools/IDLE-CASES.md);
+the short version is in the [README](../README.md).
 
 !!! danger "The numbers that matter"
     - **Transmit output, flat out:** **about +19 dBm** (an estimate capped at the PA's compression point; never metered)
@@ -24,26 +25,21 @@ and [`tools/IDLE-CASES.md`](../tools/IDLE-CASES.md).
 
 ## Before you transmit
 
-1. **Terminate every transmit port**, and never transmit at power into an open
-   one (see [the power budget](#a-txrx-loopback-without-an-attenuator-will-destroy-your-receiver)).
-2. **Fit at least 20 dB of attenuation in any TX→RX loopback.** The receiver's
-   absolute maximum input is +2.5 dBm; the transmitter reaches about +19 dBm.
-3. **Take the antenna off any transmit port you do not want radiating when the
-   board powers up.** Every power-on emits a few milliseconds at the TX LO on both
-   ports, and no software can prevent it
-   ([details](#every-power-on-transmits-and-no-software-here-can-stop-it)).
-4. **Affirm the channel you will raise, after looking at that port:**
-   `./devkit tx-guard affirm 0` for TX1A, `1` for TX2A
-   ([details](#raising-output-needs-a-human-on-record)).
-5. **Know which target the board runs.** `grep ^ID= /etc/os-release` on the board:
-   Debian is the modern target, Buildroot the factory one. The protections differ.
-6. **On the factory kernel, re-mute after any debugfs `initialize`** and read
-   both attenuations back ([why](#debugfs-initialize-on-the-factory-kernel)).
-7. **Set TX attenuation after the buffer starts, and read it back; mute before
-   tearing the buffer down** ([why](#opening-a-transmit-buffer-is-not-a-neutral-act)).
-8. **Never flash with DFU**; see [flashing](flashing.md).
+| Rule | Why, and where it is explained |
+|---|---|
+| **Terminate every transmit port** | never transmit at power into an open one: [the power budget](#a-txrx-loopback-without-an-attenuator-will-destroy-your-receiver) |
+| **Fit at least 20 dB of attenuation in any TX→RX loopback** | the receiver's absolute maximum input is +2.5 dBm; the transmitter reaches about +19 dBm |
+| **Take the antenna off any transmit port you do not want radiating when the board powers up** | every power-on emits a few milliseconds at the TX LO on both ports, and no software can prevent it: [details](#every-power-on-transmits-and-no-software-here-can-stop-it) |
+| **Affirm the channel you will raise, after looking at that port** | `./devkit tx-guard affirm 0` for TX1A, `1` for TX2A: [details](#raising-output-needs-a-human-on-record) |
+| **Know which target the board runs** | `grep ^ID= /etc/os-release` on the board: Debian is the modern target, Buildroot the factory one. The protections differ |
+| **On the factory kernel, re-mute after any debugfs `initialize`** | and read both attenuations back: [why](#debugfs-initialize-on-the-factory-kernel) |
+| **Set TX attenuation after the buffer starts, and read it back; mute before tearing the buffer down** | [why](#opening-a-transmit-buffer-is-not-a-neutral-act) |
+| **Never flash with DFU** | see [flashing](flashing.md) |
 
 ## A TX→RX loopback without an attenuator will destroy your receiver
+
+![Two rows. With the attenuator: TX1A at about +19 dBm, through a 20 dB attenuator, reaches RX1A at about -1 dBm, under its +2.5 dBm limit. Without it: +19 dBm goes straight into RX1A, about 16 dB over the limit, and destroys it.](img/start-loopback-light.svg#only-light)
+![Two rows. With the attenuator: TX1A at about +19 dBm, through a 20 dB attenuator, reaches RX1A at about -1 dBm, under its +2.5 dBm limit. Without it: +19 dBm goes straight into RX1A, about 16 dB over the limit, and destroys it.](img/start-loopback-dark.svg#only-dark)
 
 !!! danger "+2.5 dBm is the AD9361's absolute-maximum RF input"
     This board is sold in a variant with a Mini-Circuits
@@ -244,14 +240,16 @@ to raise that channel without it.
 
 === "Python (Windows, any shell)"
 
-    The same gate, with the same commands and exit codes. It needs
-    `pip install paramiko`, and logs in with the board key from `./devkit ssh-key`
-    if there is one, else the root password:
+    The same gate, with the same commands and exit codes. It needs `paramiko`,
+    in a venv, and logs in with the board key from `./devkit ssh-key` if there
+    is one, else the root password:
 
     ```bash
-    # run from: the repo root, in any shell (cmd, PowerShell, bash)
-    python tools/tx_gate.py affirm 0
-    python tools/tx_gate.py status
+    # run from: the repo root, in cmd or PowerShell (on Linux or macOS: .venv/bin/ in place of .venv\Scripts\)
+    python -m venv .venv
+    .venv\Scripts\pip install paramiko
+    .venv\Scripts\python tools/tx_gate.py affirm 0
+    .venv\Scripts\python tools/tx_gate.py status
     ```
 
     `tools/tx_gate.py` picks this route by itself on Windows, so a script that

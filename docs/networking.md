@@ -1,7 +1,13 @@
 # Reaching the board and changing its IP address
 
-Finding the board, changing either of its addresses, and where those settings
-are stored, which decides what survives a reboot or a reflash.
+Every route to the board, every address setting, and where the settings are
+stored, which decides what survives a reboot or a reflash. For the tasks, see
+[connect and find the board](start/connect.md),
+[change the IP address or name](start/change-the-address.md) and
+[log in with a key](start/log-in-with-a-key.md).
+
+![The board has two network interfaces. The USB cable is fixed at 192.168.2.1 and is always the way back in. Ethernet takes its address from the router, or a static one; devkit net changes that side only. The board answers to fishball.local.](img/start-network-light.svg#only-light)
+![The board has two network interfaces. The USB cable is fixed at 192.168.2.1 and is always the way back in. Ethernet takes its address from the router, or a static one; devkit net changes that side only. The board answers to fishball.local.](img/start-network-dark.svg#only-dark)
 
 - **USB cable:** **192.168.2.1**, always: the way back in
 - **Ethernet:** asks your router (DHCP) by default
@@ -159,13 +165,8 @@ ip route add default via 192.168.1.1     # give it a gateway too
 
 On Buildroot the addresses are **not in any file on the SD card**:
 
-```mermaid
-flowchart LR
-    Q["U-Boot environment<br/><small>128 KB in QSPI flash<br/>/dev/mtd1, qspi-uboot-env</small>"] -->|"fw_printenv, every boot"| S["/etc/init.d/S40network"]
-    S -->|generates| I["/etc/network/interfaces"]
-    S -->|generates| U["/etc/udhcpd.conf"]
-    S -->|generates| C["/opt/config.txt"]
-```
+![On Buildroot, the U-Boot environment (128 KB in QSPI flash, /dev/mtd1) is read by S40network with fw_printenv at every boot, and S40network generates /etc/network/interfaces, /etc/udhcpd.conf and /opt/config.txt. Edits to those three files are lost at reboot.](img/start-netconfig-light.svg#only-light)
+![On Buildroot, the U-Boot environment (128 KB in QSPI flash, /dev/mtd1) is read by S40network with fw_printenv at every boot, and S40network generates /etc/network/interfaces, /etc/udhcpd.conf and /opt/config.txt. Edits to those three files are lost at reboot.](img/start-netconfig-dark.svg#only-dark)
 
 (`/dev/mtd1`, `"qspi-uboot-env"`, per `/etc/fw_env.config`.) So:
 
@@ -300,12 +301,12 @@ systemctl restart ssh
 
 ## If you have locked yourself out
 
-In order of effort (Buildroot):
+On Buildroot, in order of effort:
 
-1. the USB cable and `fw_setenv` (unless you changed `ipaddr` too);
-2. `config.txt` (Route 2);
-3. the serial console at 115200 baud and `fw_setenv`;
-4. the U-Boot console (Route 3).
+- the USB cable and `fw_setenv` (unless you changed `ipaddr` too);
+- `config.txt` (Route 2);
+- the serial console at 115200 baud and `fw_setenv`;
+- the U-Boot console (Route 3).
 
 Reflashing the SD card does *not* help: the addresses are in QSPI flash.
 
@@ -316,9 +317,3 @@ Reflashing the SD card does *not* help: the addresses are in QSPI flash.
     console as the only notice. MIO 10 reads high on this board, but nothing
     guarantees it. **Symptom:** a board that has forgotten its settings and takes a
     random MAC every boot.
-
-## Further reading
-
-- [Flashing the board](flashing.md): which does *not* change these settings
-- [Troubleshooting](troubleshooting.md): `/mnt/jffs2` and other invisible state
-- [Capturing IQ](capturing-iq.md): using `ip:fishball.local` instead of an address

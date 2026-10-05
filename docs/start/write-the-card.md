@@ -9,6 +9,10 @@ Download the [latest release](https://github.com/matsvandamme/fishball7020-fpga-
 and write it to the card. The modern firmware needs **two partitions**
 (boot files, then Debian), so copying files is not enough: use the writer.
 
+
+![The two partitions of the card: a 128 MB FAT boot partition holding BOOT.bin, uImage, devicetree.dtb and uEnv.txt, and a Debian root partition on the rest of the card, which Windows cannot create by itself.](../img/start-card-light.svg#only-light)
+![The two partitions of the card: a 128 MB FAT boot partition holding BOOT.bin, uImage, devicetree.dtb and uEnv.txt, and a Debian root partition on the rest of the card, which Windows cannot create by itself.](../img/start-card-dark.svg#only-dark)
+
 **Back up every file on the board's current card first.** That is your way back.
 
 === "Linux"
@@ -27,7 +31,7 @@ and write it to the card. The modern firmware needs **two partitions**
 
     Put `write-card.cmd` from the release next to its other six files and
     double-click it. Nothing to install. Step by step, with every prompt:
-    [writing the card on Windows](../windows-sd-card.md).
+    [write the card on Windows](write-the-card-windows.md).
 
 === "Factory firmware"
 

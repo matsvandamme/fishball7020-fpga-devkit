@@ -15,10 +15,13 @@ a table is not a loss.
     # run from: the repo root
     python3 docs-site/fact_check.py HEAD docs/flashing.md
     python3 docs-site/fact_check.py 15be984 docs/*.md      # several pages
+    python3 docs-site/fact_check.py HEAD docs/a.md --moved-to docs/start/b.md docs/c.md
+
+--moved-to names pages that took over part of the page's content: a fact found
+in any of them counts as kept, and is reported as moved, with where.
 
 Exit status: 0 when nothing was lost, 1 when something was, 2 on a usage error.
-A fact that moved to another page shows here as lost: say where it went in
-the commit message.
+Without --moved-to, a fact that moved to another page shows as lost.
 """
 import re
 import subprocess
@@ -77,7 +80,13 @@ def main(argv):
     if len(argv) < 3:
         print(__doc__.strip().split("\n\n")[2], file=sys.stderr)
         return 2
-    ref, paths, lost_any = argv[1], argv[2:], False
+    args = argv[2:]
+    moved_to = []
+    if "--moved-to" in args:
+        i = args.index("--moved-to")
+        args, moved_to = args[:i], args[i + 1:]
+    dest = {m: norm(open(m).read()).replace(" ", "") for m in moved_to}
+    ref, paths, lost_any = argv[1], args, False
     for path in paths:
         old = at_ref(ref, path)
         if old is None:
@@ -85,13 +94,20 @@ def main(argv):
             continue
         new = open(path).read()
         new_all = norm(new).replace(" ", "")
-        lost = []
+        lost, moved = [], {}
         for kind, f in sorted(facts(old) - facts(new)):
             # still present somewhere in the page (a number moved into a table
             # cell, code reformatted into a span): not lost
-            if f.replace(" ", "") in new_all:
+            key = f.replace(" ", "")
+            if key in new_all:
                 continue
-            lost.append((kind, f))
+            where = next((m for m, text in dest.items() if key in text), None)
+            if where:
+                moved[where] = moved.get(where, 0) + 1
+            else:
+                lost.append((kind, f))
+        for where, n in moved.items():
+            print(f"{path}: {n} fact(s) moved to {where}")
         if lost:
             lost_any = True
             print(f"{path}: {len(lost)} fact(s) lost since {ref}")

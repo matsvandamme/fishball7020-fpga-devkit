@@ -14,6 +14,11 @@ description: A card, a card reader, a mains USB charger, and an attenuator befor
 | **A 20 dB attenuator**, before any transmit port is cabled to a receive port | the transmitter reaches about +19 dBm; the receiver survives +2.5 dBm |
 | **A PC** | Linux for the devkit; Windows 10 or 11 can write the card with nothing installed |
 
+
+![The cased board from the front, labelled: the ETH socket for Ethernet to your router, the DEBUG USB-C socket for console, JTAG and power, the microSD slot under the DEBUG socket, the USB USB-C socket to your PC at 192.168.2.1, and the 2 by 10 pin GPIO header (JP5) on top.](../img/start-ports.svg)
+
+*Where the card and the cables go.*
+
 !!! danger "Before anything transmits"
     Read [before you transmit](before-you-transmit.md). Four rules, one page.
 

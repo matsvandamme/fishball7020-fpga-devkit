@@ -110,6 +110,7 @@ nav:
       - Check you have the right board: start/right-board.md
       - Gather what you need: start/what-you-need.md
       - Put the firmware on a card: start/write-the-card.md
+      - Write the card on Windows: start/write-the-card-windows.md
       - Connect and find the board: start/connect.md
       - Check what it runs: start/check-the-firmware.md
       - Before you transmit: start/before-you-transmit.md

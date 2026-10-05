@@ -271,3 +271,21 @@ html .md-footer-meta.md-typeset a:hover { color: var(--md-primary-fg-color); }
   padding: .5rem .8rem;
 }
 .md-dialog__inner.md-typeset, .md-dialog__inner { color: var(--md-default-bg-color); font-weight: 500; }
+
+/* A row of photographs that wraps on a narrow screen. */
+.md-typeset .photo-row { display: flex; flex-wrap: wrap; gap: .8rem; margin: 1em 0; }
+.md-typeset .photo-row figure { flex: 1 1 9rem; max-width: 16rem; margin: 0; }
+.md-typeset .photo-row img { width: 100%; height: auto; border: 1px solid var(--fb-line); border-radius: var(--fb-radius); }
+.md-typeset .photo-row figcaption { margin: .3rem 0 0; font-size: .7rem; max-width: none; }
+
+/* Figures: a hairline frame for photographs, and a quiet caption (the
+   emphasised line straight under an image). */
+.md-typeset p > img[src$=".jpg"], .md-typeset p > img[src$=".png"] { border: 1px solid var(--fb-line); border-radius: var(--fb-radius); }
+.md-typeset img + em, .md-typeset p:has(> img) + p > em:only-child { color: var(--fb-muted); font-size: .72rem; font-style: normal; }
+
+/* Diagrams on a phone: keep the labels readable and let the figure scroll
+   sideways, rather than shrink it until they are not. */
+@media screen and (max-width: 44.9em) {
+  .md-typeset p:has(> img[src*=".svg"]) { overflow-x: auto; }
+  .md-typeset p > img[src*=".svg"] { min-width: 32rem; max-width: none; }
+}

@@ -8,6 +8,9 @@ description: Four rules that keep the receiver and the bench intact.
 This board has a power amplifier: about **+19 dBm** out, against a receiver
 that survives **+2.5 dBm**.
 
+![Two rows. With the attenuator: TX1A at about +19 dBm, through a 20 dB attenuator, reaches RX1A at about -1 dBm, under its +2.5 dBm limit. Without it: +19 dBm goes straight into RX1A, about 16 dB over the limit, and destroys it.](../img/start-loopback-light.svg#only-light)
+![Two rows. With the attenuator: TX1A at about +19 dBm, through a 20 dB attenuator, reaches RX1A at about -1 dBm, under its +2.5 dBm limit. Without it: +19 dBm goes straight into RX1A, about 16 dB over the limit, and destroys it.](../img/start-loopback-dark.svg#only-dark)
+
 | Rule | |
 |---|---|
 | **1. Put at least 20 dB of attenuation in any TX→RX loop** | without it, the transmitter destroys its own receiver |

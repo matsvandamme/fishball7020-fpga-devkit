@@ -1,0 +1,43 @@
+
+[38;2;64;105;255m    ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄▄▄
+    ▜██████████ ▀██████████
+     ▝▜████████   ▀████████
+       ▝▜██████     ▀██████
+         ▝▜████       ▀████
+           ▝▜██         ▀██
+    ▄▄▄▄▄▄▄▄▄▄▖ ▗▄▄▄▄▄▄▄▄▄▄
+    ▜██████████ ▜██████████
+     ▝▜████████  ▝▜████████
+       ▝▜██████    ▝▜██████
+         ▝▜████      ▝▜████
+           ▝▜██        ▝▜██
+[0m[1m ▜▙  ▗█▌ █▙   ▟█   ▟█▖  ▐█████
+ ▝█▙ ▟▛  ██▙▄███  ▐█▜█▖   ▐█
+  ▝█▟█   █▌▀█▘▐█ ▗█████   ▐█
+   ▝▀▘   ▀▘   ▝▀ ▀▀   ▀▘  ▝▀
+[0m
+ [1mFishball7020 FPGA devkit[0m  https://github.com/matsvandamme/fishball7020-fpga-devkit
+ [2mfor PlutoSky R1, 7020-SDR, Fishball7020 and Fish-Wan: Zynq XC7Z020 + AD9361[0m
+
+ [2mFirmware  [0m Debian root v2.0-9-g5ae29d94-dirty; boot files unstamped
+ [2mRelease   [0m Debian root: none, 9 commits after v2.0 (5ae29d94, uncommitted changes)
+ [2m          [0m https://github.com/matsvandamme/fishball7020-fpga-devkit/releases/tag/v2.0
+ [2mKernel    [0m 6.12.0-g61ef303acadc-dirty, built Fri Oct  2 23:39:15 CEST 2026
+ [2mFPGA      [0m the v1.7 factory design (the FPGA of releases v1.7 and v2.x)
+ [2m          [0m bitstream sha256 01e6f3063e780a20
+
+ [2mEthernet  [0m ssh root@192.168.129.165  SDR apps: ip:192.168.129.165
+ [2mUSB cable [0m ssh root@192.168.2.1      SDR apps: ip:192.168.2.1
+ [2mRadio     [0m TX1 muted, TX2 muted;  RX 863 MHz, 20000 kS/s
+ [2mHealth    [0m AD9361 48 C, FPGA 70 C, up 5 hours, 51 minutes
+
+ [2mTip       [0m Set TX attenuation AFTER a transmit buffer starts, then read it
+ [2m          [0m back: starting a buffer restores a cached gain.
+
+ [2mTune RX   [0m iio_attr -u local: -c ad9361-phy altvoltage0 frequency 100000000
+ [2mRecord RX2[0m iio_readdev -u local: -s 1000000 cf-ad9361-lpc voltage2 voltage3 >rx2.iq
+ [2mSettings  [0m fw_printenv   fw_setenv tx_cyclic_bound 0   (they survive a reboot)
+ [2mTrouble   [0m journalctl -b -u iiod -u fishball-rf-quiesce   journalctl -k -b
+ [2mCommands  [0m fishball-help (all of them)   fishball-rf-quiesce (mute TX)
+ [2mDocs      [0m https://matsvandamme.github.io/fishball7020-fpga-devkit/
+

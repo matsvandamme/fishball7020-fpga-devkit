@@ -30,14 +30,8 @@ configuration data that makes the blank fabric become that circuit.
 
 ## The chain
 
-```mermaid
-flowchart LR
-    A["BootROM<br/><small>in silicon</small>"] --> B["FSBL<br/><small>on-chip RAM</small>"]
-    B --> C["bitstream<br/><small>into the FPGA</small>"]
-    C --> D["U-Boot<br/><small>in DDR</small>"]
-    D --> E["kernel + DTB<br/><small>in DDR</small>"]
-    E --> F["root filesystem<br/><small>in RAM, or on ext4</small>"]
-```
+![The boot chain as six boxes joined by arrows: BootROM, in silicon; FSBL, in on-chip RAM; the bitstream, loaded into the FPGA; U-Boot, in DDR; the kernel and device tree, in DDR; the root filesystem, in RAM or on ext4.](img/start-bootchain-light.svg#only-light)
+![The boot chain as six boxes joined by arrows: BootROM, in silicon; FSBL, in on-chip RAM; the bitstream, loaded into the FPGA; U-Boot, in DDR; the kernel and device tree, in DDR; the root filesystem, in RAM or on ext4.](img/start-bootchain-dark.svg#only-dark)
 
 | # | Stage | Where it runs | What it does | Why the stage before cannot |
 |---|---|---|---|---|
@@ -120,10 +114,8 @@ cat /proc/version
 
 `build_all.sh`'s seven stages are the chain in dependency order:
 
-```mermaid
-flowchart LR
-    H[HDL] --> BS[bitstream] --> FS["FSBL<br/><small>needs the bitstream</small>"] --> UB[U-Boot] --> K[kernel] --> RF[root filesystem] --> P["package into BOOT.bin"]
-```
+![The seven build stages in order: HDL, bitstream, FSBL (which needs the bitstream), U-Boot, kernel, root filesystem, and the package, BOOT.bin.](img/start-buildstages-light.svg#only-light)
+![The seven build stages in order: HDL, bitstream, FSBL (which needs the bitstream), U-Boot, kernel, root filesystem, and the package, BOOT.bin.](img/start-buildstages-dark.svg#only-dark)
 
 ## Watching it happen
 
