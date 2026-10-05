@@ -169,26 +169,35 @@ The steps, from simulation to the flashed bitstream:
 | Every block, clock domain and what is safe to change | [the stock block design](block-design.md) |
 | Worked examples | [isolating one FM channel in the FPGA](wbfm-channelizer.md) (a custom RX block and new FIR coefficients), and the thirty-line [sample-locked GPIO outputs](tx-gpio-bitmap.md) (module, block-design tap, pin constraint and driver attribute) |
 
-Upstream's datapath, and where custom logic goes: between `axi_ad9361` and
-`cpack`/`tx_upack` (channel 1), or before/after the FIR blocks (channel 0).
+The default build's datapath, and where custom logic goes: before or after
+the FIR blocks, or on transmit channel 1's direct connection between
+`tx_upack` and `axi_ad9361`.
 
-![Upstream's datapath in two columns under axi_ad9361, which holds the AD9361's LVDS pins. Receive: channel 0 (adc_data_i0/q0) goes through rx_fir_decimator, divide by 8, into cpack (util_cpack2), while channel 1 (adc_data_i1/q1) connects directly with no filter; cpack feeds adc_dma (axi_dmac). Transmit is the mirror: dac_dma, tx_upack (util_upack2), tx_fir_interpolator times 8 on channel 0 (dac_data_i0/q0), channel 1 (dac_data_i1/q1) direct. Green circles mark where your logic goes: on each channel-1 connection, and before and after each FIR block.](img/build-insert-points-light.svg#only-light)
-![Upstream's datapath in two columns under axi_ad9361, which holds the AD9361's LVDS pins. Receive: channel 0 (adc_data_i0/q0) goes through rx_fir_decimator, divide by 8, into cpack (util_cpack2), while channel 1 (adc_data_i1/q1) connects directly with no filter; cpack feeds adc_dma (axi_dmac). Transmit is the mirror: dac_dma, tx_upack (util_upack2), tx_fir_interpolator times 8 on channel 0 (dac_data_i0/q0), channel 1 (dac_data_i1/q1) direct. Green circles mark where your logic goes: on each channel-1 connection, and before and after each FIR block.](img/build-insert-points-dark.svg#only-dark)
+![This devkit's default datapath in two columns under axi_ad9361, which holds the AD9361's LVDS pins. Receive: both channels (adc_data_i0/q0 and adc_data_i1/q1) go through rx_fir_decimator, divide by 8 with four FIRs, into cpack (util_cpack2), which feeds adc_dma (axi_dmac). Transmit: dac_dma, tx_upack (util_upack2), then tx_fir_interpolator times 8 on channel 0 only (dac_data_i0/q0); channel 1 (dac_data_i1/q1) connects directly. Green circles mark where your logic goes: before and after rx_fir_decimator, before and after tx_fir_interpolator, and on transmit channel 1's direct connection.](img/build-insert-points-light.svg#only-light)
+![This devkit's default datapath in two columns under axi_ad9361, which holds the AD9361's LVDS pins. Receive: both channels (adc_data_i0/q0 and adc_data_i1/q1) go through rx_fir_decimator, divide by 8 with four FIRs, into cpack (util_cpack2), which feeds adc_dma (axi_dmac). Transmit: dac_dma, tx_upack (util_upack2), then tx_fir_interpolator times 8 on channel 0 only (dac_data_i0/q0); channel 1 (dac_data_i1/q1) connects directly. Green circles mark where your logic goes: before and after rx_fir_decimator, before and after tx_fir_interpolator, and on transmit channel 1's direct connection.](img/build-insert-points-dark.svg#only-dark)
 
-The default build also feeds RX channel 1 through the decimator (patch `0021`);
-`STOCK_RX_FILTER=1` builds the design shown.
+Both receive channels go through `rx_fir_decimator` on the default build
+(patch `0021`); `STOCK_RX_FILTER=1` builds upstream's wiring, where receive
+channel 1 skips it.
 
-- **Channel 1** (in the design shown) is wired straight from `axi_ad9361` to
-  `cpack`/`tx_upack`. Break that connection, insert your block (mirroring the
-  `ad_connect axi_ad9361/adc_data_i1 …` calls in `system_bd.tcl`) and reconnect
-  to `cpack`'s `enable_2`/`fifo_wr_data_2` (and `_3` for Q).
-- **Channel 0** runs through 129-tap FIRs (finite impulse response filters)
-  that decimate and interpolate by 8, built by
+- **Receive, default build.** Channel 1 enters the filter on
+  `rx_fir_decimator/data_in_2` (and `_3` for Q) and reaches `cpack` from
+  `rx_fir_decimator/data_out_2`/`_3`: insert your block on either side,
+  mirroring the `ad_connect` calls patch `0021` adds to `system_bd.tcl`.
+- **Receive, `STOCK_RX_FILTER=1`.** Channel 1 is wired straight from
+  `axi_ad9361` to `cpack`. Break that connection, insert your block (mirroring
+  the `ad_connect axi_ad9361/adc_data_i1 …` calls in `system_bd.tcl`) and
+  reconnect to `cpack`'s `enable_2`/`fifo_wr_data_2` (and `_3` for Q).
+- **Transmit channel 1** is wired straight from `tx_upack` to `axi_ad9361` on
+  either build.
+- **The FIR blocks** (both receive channels, and transmit channel 0) are
+  129-tap FIRs (finite impulse response filters) that decimate and interpolate
+  by 8, built by
   `ad_add_decimation_filter`/`ad_add_interpolation_filter` from Xilinx's
   `fir_compiler`, with taps from `library/util_fir_int/coefile_int.coe`. The RX
   and TX filters share that one file. The `.v` files in `util_fir_int/` and
   `util_fir_dec/` are dead code (never packaged).
-- Both channel-0 groups run on `axi_ad9361/l_clk`; match that clock domain.
+- Both FIR groups run on `axi_ad9361/l_clk`; match that clock domain.
 - **GUI edits live in the regenerated `src/`**: to keep one, port it into
   `system_bd.tcl` and add it to `patches/`.
 

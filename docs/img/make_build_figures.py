@@ -157,40 +157,39 @@ def container(t):
 # --- upstream's datapath, and where your logic goes -----------------------------
 
 def insert_points(t):
-    f = Fig(790, 420, t)
+    """This devkit's default build: both receive channels go through
+    rx_fir_decimator (patch 0021); on transmit only channel 0 has a filter."""
+    f = Fig(790, 440, t)
     f.text(210, 24, "Receive", 13, "muted", 600)
     f.text(580, 24, "Transmit", 13, "muted", 600)
     f.box(245, 36, 300, 46, "axi_ad9361", ("the AD9361's LVDS pins",))
-    # receive, left
-    f.box(40, 136, 150, 62, "rx_fir_decimator", ("channel 0: ÷8",), fill="accent_soft", stroke="accent")
-    f.box(110, 250, 200, 56, "cpack", ("util_cpack2",), mono_sub=True)
-    f.box(110, 344, 200, 56, "adc_dma", ("axi_dmac",), mono_sub=True)
-    f.arrow(290, 82, 120, 134, colour="accent")
-    f.text(128, 100, "adc_data_i0/q0", 12, "accent", mono=True)
-    f.arrow(115, 198, 170, 248, colour="accent")
-    f.arrow(330, 82, 262, 248, colour="muted")
-    f.text(316, 124, "adc_data_i1/q1", 12, "muted", mono=True, anchor="start")
-    f.text(316, 141, "channel 1: direct,", 12, "muted", anchor="start")
-    f.text(316, 158, "no filter", 12, "muted", anchor="start")
-    f.arrow(210, 306, 210, 342, colour="muted")
+    # receive, left: one column, both channels
+    f.box(110, 146, 200, 62, "rx_fir_decimator", ("RX1 and RX2: ÷8, four FIRs",), fill="accent_soft", stroke="accent")
+    f.box(110, 268, 200, 56, "cpack", ("util_cpack2",), mono_sub=True)
+    f.box(110, 362, 200, 56, "adc_dma", ("axi_dmac",), mono_sub=True)
+    f.arrow(300, 82, 222, 144, colour="accent")
+    f.text(150, 104, "adc_data_i0/q0", 12, "accent", mono=True)
+    f.text(150, 121, "adc_data_i1/q1", 12, "accent", mono=True)
+    f.arrow(210, 208, 210, 266, colour="accent")
+    f.arrow(210, 324, 210, 360, colour="muted")
     # transmit, right
-    f.box(600, 136, 170, 62, "tx_fir_interpolator", ("channel 0: ×8",), fill="accent_soft", stroke="accent")
-    f.box(480, 250, 200, 56, "tx_upack", ("util_upack2",), mono_sub=True)
-    f.box(480, 344, 200, 56, "dac_dma", ("axi_dmac",), mono_sub=True)
-    f.arrow(580, 342, 580, 308, colour="muted")
-    f.arrow(628, 248, 676, 200, colour="accent")
-    f.arrow(672, 134, 512, 84, colour="accent")
-    f.text(672, 100, "dac_data_i0/q0", 12, "accent", mono=True)
-    f.arrow(530, 248, 462, 84, colour="muted")
-    f.text(500, 216, "dac_data_i1/q1", 12, "muted", mono=True, anchor="end")
-    f.text(500, 233, "channel 1: direct", 12, "muted", anchor="end")
+    f.box(600, 146, 170, 62, "tx_fir_interpolator", ("channel 0 only: ×8",), fill="accent_soft", stroke="accent")
+    f.box(480, 268, 200, 56, "tx_upack", ("util_upack2",), mono_sub=True)
+    f.box(480, 362, 200, 56, "dac_dma", ("axi_dmac",), mono_sub=True)
+    f.arrow(580, 360, 580, 326, colour="muted")
+    f.arrow(628, 266, 676, 210, colour="accent")
+    f.arrow(672, 144, 512, 84, colour="accent")
+    f.text(672, 104, "dac_data_i0/q0", 12, "accent", mono=True)
+    f.arrow(530, 266, 462, 84, colour="muted")
+    f.text(486, 196, "dac_data_i1/q1", 12, "muted", mono=True, anchor="end")
+    f.text(486, 213, "channel 1: direct", 12, "muted", anchor="end")
     # the insertion points
     ok = t["ok"]
-    for cx, cy in ((290, 180), (201, 108), (144, 224), (489, 150), (598, 108), (654, 224)):
+    for cx, cy in ((261, 113), (210, 237), (496, 175), (592, 114), (652, 238)):
         f.raw(f'<circle cx="{cx}" cy="{cy}" r="7" fill="{t["ok_soft"]}" stroke="{ok}" stroke-width="2"/>')
-    f.raw(f'<circle cx="352" cy="330" r="7" fill="{t["ok_soft"]}" stroke="{ok}" stroke-width="2"/>')
-    f.text(366, 335, "your logic", 12.5, "ok", 600, "start")
-    f.text(366, 353, "goes here", 12.5, "ok", 600, "start")
+    f.raw(f'<circle cx="352" cy="346" r="7" fill="{t["ok_soft"]}" stroke="{ok}" stroke-width="2"/>')
+    f.text(366, 351, "your logic", 12.5, "ok", 600, "start")
+    f.text(366, 369, "goes here", 12.5, "ok", 600, "start")
     return f
 
 

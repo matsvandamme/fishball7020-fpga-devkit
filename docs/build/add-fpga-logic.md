@@ -47,11 +47,12 @@ Linux) and a previous full factory build.
 **You should see:** the DSP and LUT counts in `verify`'s FPGA section change
 the way your design should.
 
-![Upstream's datapath in two columns under axi_ad9361. Receive: channel 0 goes through rx_fir_decimator, divide by 8, into cpack, while channel 1 connects directly with no filter; cpack feeds adc_dma. Transmit is the mirror: dac_dma, tx_upack, tx_fir_interpolator times 8 on channel 0, channel 1 direct. Green circles mark where your logic goes: on each channel-1 connection, and before and after each FIR block.](../img/build-insert-points-light.svg#only-light)
-![Upstream's datapath in two columns under axi_ad9361. Receive: channel 0 goes through rx_fir_decimator, divide by 8, into cpack, while channel 1 connects directly with no filter; cpack feeds adc_dma. Transmit is the mirror: dac_dma, tx_upack, tx_fir_interpolator times 8 on channel 0, channel 1 direct. Green circles mark where your logic goes: on each channel-1 connection, and before and after each FIR block.](../img/build-insert-points-dark.svg#only-dark)
+![This devkit's default datapath in two columns under axi_ad9361. Receive: both channels, RX1 and RX2, go through rx_fir_decimator, divide by 8, into cpack, which feeds adc_dma. Transmit: dac_dma, tx_upack, then tx_fir_interpolator times 8 on channel 0 only; channel 1 connects directly. Green circles mark where your logic goes: before and after rx_fir_decimator, before and after tx_fir_interpolator, and on transmit channel 1's direct connection.](../img/build-insert-points-light.svg#only-light)
+![This devkit's default datapath in two columns under axi_ad9361. Receive: both channels, RX1 and RX2, go through rx_fir_decimator, divide by 8, into cpack, which feeds adc_dma. Transmit: dac_dma, tx_upack, then tx_fir_interpolator times 8 on channel 0 only; channel 1 connects directly. Green circles mark where your logic goes: before and after rx_fir_decimator, before and after tx_fir_interpolator, and on transmit channel 1's direct connection.](../img/build-insert-points-dark.svg#only-dark)
 
-*Where a block can go, on upstream's wiring. The default build also sends
-receive channel 1 through the decimator
+*Where a block can go on the default build, which filters both receive
+channels (patch `0021`). Upstream's wiring, built with `STOCK_RX_FILTER=1`,
+sends receive channel 1 straight to `cpack` instead
 ([the design as built](../block-design.md#a-samples-journey)).*
 
 ## Editing in the Vivado GUI
