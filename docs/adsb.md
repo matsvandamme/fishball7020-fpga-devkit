@@ -6,17 +6,24 @@ Broadcast). `./devkit adsb` receives those messages with the board, decodes
 them on your PC and shows them live: one row per aircraft, with its callsign,
 altitude, speed and position, above a log of every message received.
 
-It **only receives**. It sets up one receiver and reads samples from it, and
-never opens a transmit buffer, so there is no transmit gate to pass and no
-licence question.
+!!! abstract "Key facts"
+    | | |
+    |---|---|
+    | antenna | a **1090 MHz antenna** on RX1A (or RX2A with `--channel 2`), with a view of the sky |
+    | power | a **mains charger**: on laptop bus power the board hangs under a sustained 4 MSPS stream |
+    | gain | **25 dB manual** by default; more is not better without a filter in front |
+    | rate | **4 MSPS**, 16 MB/s on the cable |
+    | transmits | **never**: it only receives, so there is no transmit gate to pass and no licence question |
 
 ## Quick start
 
 1. Put a **1090 MHz antenna** on **RX1A** (or RX2A, then add `--channel 2`).
    Outdoors, or at a window with a view of the sky. Aircraft are line of sight:
    walls and hills cost more range than anything else.
-2. Power the board from a **mains charger**, not a laptop's USB port. On bus
-   power it hangs under a sustained 4 MSPS stream, which is all this tool does.
+2. Power the board from a **mains charger**, not a laptop's USB port.
+
+    !!! warning "On bus power it hangs under a sustained 4 MSPS stream, which is all this tool does"
+
 3. Run:
 
 ```bash
@@ -26,8 +33,8 @@ licence question.
 ```
 
 The first run fetches PyQt6, the window toolkit, into uv's cache (about
-100 MB, once). If you don't have [uv](https://docs.astral.sh/uv/), either
-`pip install PyQt6 numpy` or use the terminal version, which needs only numpy:
+100 MB, once). Without [uv](https://docs.astral.sh/uv/): `pip install PyQt6 numpy`,
+or the terminal version, which needs only numpy:
 
 ```bash
 # run from: the repo root
@@ -75,16 +82,21 @@ aircraft that don't exist:
 | `AP ok ` | a reply to a ground radar (DF0/4/5/16/20/21). Its checksum is mixed with the aircraft's address, so it proves nothing by itself; it is shown only when that address was already heard in a `CRC ok` message in the last minute |
 
 Everything else is dropped and only counted, as *rejected* in the status bar.
-Some rejects are normal: noise sometimes looks like the start of a message.
+
+!!! note "Some rejects are normal"
+    Noise sometimes looks like the start of a message.
 
 ## Positions
 
 To save bits, a position message carries only part of the latitude and
 longitude. Aircraft alternate between two encodings, called *even* and *odd*
-(the scheme is CPR, Compact Position Reporting). One of each, received within
-10 s of each other, gives the position anywhere on Earth. After that, each new
-message decodes alone, relative to the last position. So an aircraft's
-position appears a second or two after its first position message.
+(the scheme is CPR, Compact Position Reporting).
+
+| | |
+|---|---|
+| first position | one *even* and one *odd* message, received within 10 s of each other, give the position anywhere on Earth: it appears a second or two after the first position message |
+| after that | each new message decodes alone, relative to the last position |
+| with `--lat`/`--lon` | every position message decodes on its own, from the first (valid for aircraft within about 300 km) |
 
 Give your own location and every position message decodes on its own, from the
 first one (valid for aircraft within about 300 km):
@@ -106,19 +118,25 @@ first one (valid for aircraft within about 300 km):
 | `--replay FILE` | decode a recording instead of the board; `--fast`, `--loop` | — |
 
 **Gain.** Manual is the default because ADS-B arrives in 120 µs bursts with
-silence between, and the AD9361's automatic gain hunts between them. **More gain
-is not better here.** Nothing in front of the AD9361 filters out other bands,
-so a strong signal elsewhere (mobile networks near 900 and 1800 MHz) reaches
-the receiver along with the aircraft. On one outdoor test with a 1090 MHz
-antenna on RX2A, the noise floor rose about 8× between 30 and 40 dB of gain,
-where 3× would be normal: the receiver was overloading. Aircraft decoded at
-20–25 dB and at no higher gain. Start at the default 25 dB, step down if the
-`rejected` count climbs while nothing passes the checksum, and step up only
-while the noise floor rises by no more than the gain does.
+silence between, and the AD9361's automatic gain hunts between them.
 
-**For real range, add a 1090 MHz filter and amplifier** in front of the board
-(a filtered ADS-B amplifier, sold for exactly this). The filter removes the
-strong out-of-band signal, so the gain can go up without burying the aircraft.
+!!! warning "More gain is not better here"
+    Nothing in front of the AD9361 filters out other bands, so a strong signal
+    elsewhere (mobile networks near 900 and 1800 MHz) reaches the receiver along
+    with the aircraft. On one outdoor test with a 1090 MHz antenna on RX2A, the
+    noise floor rose about 8× between 30 and 40 dB of gain, where 3× would be
+    normal: the receiver was overloading. Aircraft decoded at 20–25 dB and at no
+    higher gain.
+
+| Gain | When |
+|---|---|
+| start at the default 25 dB | always |
+| step down | if the `rejected` count climbs while nothing passes the checksum |
+| step up | only while the noise floor rises by no more than the gain does |
+
+!!! tip "For real range, add a 1090 MHz filter and amplifier in front of the board"
+    A filtered ADS-B amplifier, sold for exactly this. The filter removes the strong
+    out-of-band signal, so the gain can go up without burying the aircraft.
 
 **The sample rate is 4 MSPS** (million samples per second). Each half-bit of a
 message then lasts exactly two samples, so the demodulator never has to guess.
@@ -134,31 +152,23 @@ carries](sdrpp.md#best-performance-over-usb).
 ./devkit adsb --replay flight.sigmf-meta --text --fast
 ```
 
-At 4 MSPS a recording grows by 16 MB per second, about 1 GB a minute. If the disk fills, the recording stops, the status bar says `RECORDING STOPPED`, and reception carries on. A replay is the way to tell
-"the antenna hears nothing" apart from "the decoder misses it": if a recording
-of a busy minute decodes nothing, the problem is in the samples.
+- At 4 MSPS a recording grows by 16 MB per second, about 1 GB a minute.
+- If the disk fills, the recording stops, the status bar says `RECORDING STOPPED`,
+  and reception carries on.
+
+!!! tip "A replay tells \"the antenna hears nothing\" from \"the decoder misses it\""
+    If a recording of a busy minute decodes nothing, the problem is in the samples.
 
 ## When the table stays empty
 
-- **The status bar says `LINK TOO SLOW`.** Fewer samples arrive than the
-  receiver produces, and whole messages are lost. On one bench, `fishball.local`
-  resolved to an IPv6 link-local address that delivered 1.3–2.5 MS/s, while
-  the USB address delivered the full 4. Use `--uri ip:192.168.2.1`, or
-  `export BOARD=192.168.2.1`.
-- **The status bar says `NO SAMPLES for N s`.** The board stopped delivering.
-  Usually power: on a laptop's USB port the board hangs under this load. Power
-  it from a mains charger, then check `./devkit status`.
-- **`rejected` keeps rising but nothing is `CRC ok`.** The receiver hears
-  something shaped like a message, but nothing intact. Usually it is noise:
-  check the antenna and its cable first, then try a few dB less or more gain.
-- **Nothing at all, and the signal never moves.** Check the antenna is on the
-  port `--channel` names. Check with `./devkit adsb --record test` for 10 s,
-  then look at the recording in any SigMF viewer: aircraft show as short
-  spikes well above the noise.
-- **"something else holds the receiver".** SDR++, a capture, or the hardware CI
-  has the receive buffer. Close it; only one program can stream at a time.
-- **Late at night** there are far fewer aircraft. Daytime near any airway
-  usually gives several within a minute, with an outdoor antenna.
+| Symptom | Cause | Fix |
+|---|---|---|
+| status bar: **`LINK TOO SLOW`** | fewer samples arrive than the receiver produces, and whole messages are lost. On one bench, `fishball.local` resolved to an IPv6 link-local address that delivered 1.3–2.5 MS/s, while the USB address delivered the full 4 | `--uri ip:192.168.2.1`, or `export BOARD=192.168.2.1` |
+| status bar: **`NO SAMPLES for N s`** | the board stopped delivering. Usually power: on a laptop's USB port the board hangs under this load | power it from a mains charger, then check `./devkit status` |
+| **`rejected` keeps rising but nothing is `CRC ok`** | the receiver hears something shaped like a message, but nothing intact. Usually noise | check the antenna and its cable first, then try a few dB less or more gain |
+| **nothing at all, and the signal never moves** | the antenna is not on the port `--channel` names | check it; then `./devkit adsb --record test` for 10 s and look at the recording in any SigMF viewer: aircraft show as short spikes well above the noise |
+| **"something else holds the receiver"** | SDR++, a capture, or the hardware CI has the receive buffer | close it; only one program can stream at a time |
+| few aircraft **late at night** | there are far fewer aircraft | daytime near any airway usually gives several within a minute, with an outdoor antenna |
 
 ## How the decoder works
 
@@ -171,6 +181,11 @@ The code is in `tools/adsb/`, in plain Python and numpy:
 | `modes.py` | checksums, fields, positions, and the aircraft table |
 | `engine.py` | runs the two in threads, so a slow screen never stalls the stream |
 | `gui.py`, `adsb.py` | the window, and the command line |
+
+```mermaid
+flowchart LR
+    S["source.py<br/><small>iio_attr setup, iio_readdev stream,<br/>or a recording</small>"] --> D["demod.py<br/><small>finds messages</small>"] --> M["modes.py<br/><small>checksums, fields,<br/>positions, table</small>"] --> G["gui.py / adsb.py<br/><small>window or terminal</small>"]
+```
 
 The receiver is tuned to 1090 MHz exactly, so a message arrives as a pattern
 of on/off pulses, and only each sample's magnitude matters. Each message

@@ -1,10 +1,17 @@
 # Capturing IQ with metadata and an integrity check
 
 How to record IQ samples so the file describes itself and says whether samples
-were lost, using `tools/sigmf-capture.py`. A bare `iio_readdev` capture has no
-sample rate, frequency or gain in it, and returns the byte count you asked for
-whether or not the hardware kept up. Read this before recording anything you
-intend to keep, analyse or share.
+were lost, using `tools/sigmf-capture.py`. Read this before recording anything
+you intend to keep, analyse or share.
+
+!!! abstract "Key facts"
+    | | |
+    |---|---|
+    | why not `iio_readdev` | a bare capture has no sample rate, frequency or gain in it, and returns the byte count you asked for whether or not the hardware kept up |
+    | full scale | **±2047** (12-bit), not 32768: dividing by 32768 reads every level **24 dB** low |
+    | receive alone sustains | about **40 MB/s**: 1 channel at 10 MSPS clean, 2 channels at 10 MSPS drop samples |
+    | lost samples | the capture still completes; only `--verify` tells you |
+    | two channels | sample-aligned, but the analogue phase between them is **not calibrated** |
 
 ```bash
 # run from: the repo root
@@ -55,11 +62,15 @@ sample.
 
 Receive alone sustains about 40 MB/s (the ~31 MB/s in
 [modulation-and-throughput.md](modulation-and-throughput.md) is with transmit
-running too). Above that the DMA (the FPGA block that moves samples to memory)
-overflows, samples are discarded, and the capture still completes; only
-`--verify` tells you. `sigmf-capture.py` warns above about 30 MB/s and uses
-`-b 1048576` by default (`--buffer`); smaller buffers fail sooner. Find your own
-threshold:
+running too).
+
+!!! warning "Above that, samples are lost silently"
+    The DMA (the FPGA block that moves samples to memory) overflows, samples are
+    discarded, and the capture still completes; only `--verify` tells you.
+    `sigmf-capture.py` warns above about 30 MB/s and uses `-b 1048576` by default
+    (`--buffer`); smaller buffers fail sooner.
+
+Find your own threshold:
 
 ```bash
 # run from: the repo root
@@ -68,16 +79,21 @@ for r in 3e6 5e6 10e6; do
 done
 ```
 
-With the transmitter muted, a looped channel reads about 13 dB hotter than an
-open one (RSSI 110.5 against 123.75 dB below full scale): the cable carries the
-transmit chain's residual noise. One board and bench, not a specification.
+!!! note "A looped channel is noisier than an open one"
+    With the transmitter muted, a looped channel reads about 13 dB hotter than an
+    open one (RSSI 110.5 against 123.75 dB below full scale): the cable carries the
+    transmit chain's residual noise. One board and bench, not a specification.
 
 ## `--verify`: does the capture have holes in it?
 
-A dropped chunk leaves a **step in phase**. The check blanks bins within about
-±5 kHz of DC, finds the strongest tone, de-rotates by it (multiplies by a complex
-exponential at minus its frequency, so the tone stands still), averages the phase
-over 1000-sample blocks, and flags any step above 0.5 radian between blocks.
+A dropped chunk leaves a **step in phase**. The check:
+
+```mermaid
+flowchart LR
+    A["blank bins within<br/>about ±5 kHz of DC"] --> B["find the<br/>strongest tone"] --> C["de-rotate by it<br/><small>the tone stands still</small>"] --> D["average the phase over<br/>1000-sample blocks"] --> E["flag any step above<br/>0.5 radian between blocks"]
+```
+
+De-rotating multiplies by a complex exponential at minus the tone's frequency.
 
 If the air is quiet, inject a tone with the AD9361's built-in self-test (BIST),
 inside the chip with no RF:
@@ -108,12 +124,15 @@ A broken one records `"verdict": "DISCONTINUOUS - samples were dropped"`,
 `phase_jumps`, `worst_jump_rad` and `jump_at_samples`, and every discontinuity
 also becomes a standard SigMF annotation labelled `dropped samples (RX1)`.
 
-There are three verdicts: `continuous`, `DISCONTINUOUS`, and **`inconclusive`**
-with a reason, returned when no tone away from DC stands **30 dB** above the noise
-floor, or when more than a fifth of the blocks trip (the de-rotation never
-locked). Skipping `--verify` records `"checked": false` with a reason. It finds
-discontinuities only: a drop of an exact multiple of the tone's period slips
-through.
+| Verdict | When |
+|---|---|
+| `continuous` | no step found |
+| `DISCONTINUOUS` | steps found: also `phase_jumps`, `worst_jump_rad`, `jump_at_samples`, and an annotation per step |
+| **`inconclusive`**, with a reason | no tone away from DC stands **30 dB** above the noise floor, or more than a fifth of the blocks trip (the de-rotation never locked) |
+| `"checked": false`, with a reason | `--verify` was skipped |
+
+!!! note "It finds discontinuities only"
+    A drop of an exact multiple of the tone's period slips through.
 
 ## `--annotate`: what is in the capture
 
@@ -141,16 +160,19 @@ ad9361-phy      input voltage0 = RX1,        voltage1 = RX2
 cf-ad9361-lpc   input voltage0/1 = RX1 I/Q,  voltage2/3 = RX2 I/Q
 ```
 
-Gain, rate and bandwidth live on `ad9361-phy`; the sample stream is
-`cf-ad9361-lpc`. `voltage2` on the phy has no `hardwaregain`, so using it for
-RX2's gain fails silently. `RX_LO` is an **output** channel and needs `-o`.
+- Gain, rate and bandwidth live on `ad9361-phy`; the sample stream is `cf-ad9361-lpc`.
+- `RX_LO` is an **output** channel and needs `-o`.
 
-**Coherent, but not calibrated.** Both receivers share one `RX_LO`, so their
-phase relationship is stable (0.000° mean, 0.0000° standard deviation across 15
-million samples with the BIST tone). BIST is injected digitally, so that shows
-only sample alignment. The analogue phase offset through baluns and traces is
-real, tens of degrees and frequency-dependent: measure it with a splitter and
-matched cables before trusting any angle. The sidecar carries this warning.
+!!! warning "`voltage2` on the phy has no `hardwaregain`"
+    Using it for RX2's gain fails silently.
+
+!!! warning "Coherent, but not calibrated"
+    Both receivers share one `RX_LO`, so their phase relationship is stable (0.000°
+    mean, 0.0000° standard deviation across 15 million samples with the BIST tone).
+    BIST is injected digitally, so that shows only sample alignment. The analogue
+    phase offset through baluns and traces is real, tens of degrees and
+    frequency-dependent: measure it with a splitter and matched cables before
+    trusting any angle. The sidecar carries this warning.
 
 ## Reading one back
 

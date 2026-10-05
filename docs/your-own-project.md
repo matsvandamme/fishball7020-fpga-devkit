@@ -14,6 +14,16 @@ come back when `./devkit selftest --ssh` passes.
 | **3. In the kernel** | the board's Linux | a kernel build and a patch to maintain | **2m46s** from clean, **6 s** to flash | you need a new sysfs knob, or per-sample timing |
 | **4. In the FPGA** | the PL fabric | Vivado, and HDL | **20 min** with `--hdl-only`, **70** from cold | the data rate is too high for anything above |
 
+```mermaid
+flowchart TD
+    Q1{"Can my PC keep up?<br/><small>streaming plateaus near 44 MB/s</small>"} -->|yes| P1["1. On your PC"]
+    Q1 -->|no| Q2{"Must it run with no PC,<br/>or is the data too big to ship?"}
+    Q2 -->|yes| P2["2. On the board"]
+    Q2 -->|no| Q3{"A new sysfs file, or act<br/>between samples?"}
+    Q3 -->|yes| P3["3. In the kernel"]
+    Q3 -->|no| P4["4. In the FPGA<br/><small>high input rate, small output</small>"]
+```
+
 Ask in order and stop at the first yes:
 
 1. **Can my PC keep up?** One channel at the full 61.44 MS/s is 245.8 MB/s;
@@ -30,12 +40,14 @@ Ask in order and stop at the first yes:
 4. **Is the input rate higher than the bus can carry, with a small output?**
    **Place 4**.
 
-Before any of them: rule out a damaged board with `./devkit selftest --ssh`
-(rails, die temperatures, the digital interface eye, the receiver). If the
-project transmits, read [transmitter safety](transmitter-safety.md) first: the
-board reaches about **+19 dBm**, its receive input is rated **+2.5 dBm** absolute
-maximum, and a loopback without **at least 20 dB** of attenuation destroys the
-receiver.
+!!! tip "Before any of them"
+    Rule out a damaged board with `./devkit selftest --ssh` (rails, die
+    temperatures, the digital interface eye, the receiver).
+
+!!! danger "If the project transmits"
+    Read [transmitter safety](transmitter-safety.md) first: the board reaches about
+    **+19 dBm**, its receive input is rated **+2.5 dBm** absolute maximum, and a
+    loopback without **at least 20 dB** of attenuation destroys the receiver.
 
 ## 1. On your PC — start here
 
@@ -59,19 +71,19 @@ x = sdr.rx()                              # 65536 complex samples
 sdr.rx_destroy_buffer()                   # not optional - see below
 ```
 
-**Call `rx_destroy_buffer()` (or `tx_destroy_buffer()`) before the script ends.**
-Without it the script segfaults on exit (code 139) inside `iio_buffer_destroy()`:
-the data is fine, but the crash fails tests and CI. Python frees objects in no
-guaranteed order at shutdown, and the buffer (the memory libiio streams into) can
-outlive its connection. Both pip `pylibiio` 0.25 and Debian's `python3-libiio`
-0.23 do this; calling it with no buffer is harmless.
+!!! warning "Call `rx_destroy_buffer()` (or `tx_destroy_buffer()`) before the script ends"
+    | | |
+    |---|---|
+    | symptom | the script segfaults on exit (code 139) inside `iio_buffer_destroy()`: the data is fine, but the crash fails tests and CI |
+    | cause | Python frees objects in no guaranteed order at shutdown, and the buffer (the memory libiio streams into) can outlive its connection. Both pip `pylibiio` 0.25 and Debian's `python3-libiio` 0.23 do this |
+    | fix | call it; calling it with no buffer is harmless |
 
-**Transmit: never write the −89.75 dB floor before a stream.** Both channels at
-exactly maximum attenuation is how the driver recognises "muted", so starting a
-buffer then restores the *cached* gain and you come out **louder than asked**. A
-non-floor gain set before the buffer is kept (patch `0005`). To be silent during a
-stream, mute **after** it starts and read the value back; the tools here set gain
-after `tx()` and assert the read-back.
+!!! danger "Transmit: never write the −89.75 dB floor before a stream"
+    Both channels at exactly maximum attenuation is how the driver recognises
+    "muted", so starting a buffer then restores the *cached* gain and you come out
+    **louder than asked**. A non-floor gain set before the buffer is kept (patch
+    `0005`). To be silent during a stream, mute **after** it starts and read the
+    value back; the tools here set gain after `tx()` and assert the read-back.
 
 ## 2. On the board — when it has to be standalone
 
@@ -99,14 +111,17 @@ EOF
 chmod +x /usr/local/bin/my-thing
 ```
 
-Use `local:` rather than `ip:` on the board: it skips the network stack, which
-is the difference between ~430 MB/s and ~44 MB/s.
+!!! tip "Use `local:` rather than `ip:` on the board"
+    It skips the network stack, which is the difference between ~430 MB/s and ~44 MB/s.
 
-To start at boot, write a systemd unit and commit it to
+**To start at boot**, write a systemd unit and commit it to
 `firmware-modern/debian/overlay/etc/systemd/system/` (copy a `fishball-*.service`
-there). An ordering cycle makes systemd *delete* the unit, so `systemctl status`
-says it does not exist; `systemd-analyze verify` finds it. `After=` is not
-"ready": wait for the actual file your unit needs.
+there).
+
+| Trap | |
+|---|---|
+| an ordering cycle | makes systemd *delete* the unit, so `systemctl status` says it does not exist; `systemd-analyze verify` finds it |
+| `After=` | is not "ready": wait for the actual file your unit needs |
 
 ## 3. In the kernel — a new knob, or per-sample timing
 
@@ -132,12 +147,16 @@ cp arch/arm/boot/uImage ../../output/
 ```
 
 Flashing takes about six seconds, and the previous kernel stays on the card as
-`uImage.prev` for rollback. **Then fold the change into a numbered patch** in
-`firmware-modern/patches/`, or the next clean `setup.sh` loses it, and add a CI
-assertion so it cannot silently stop applying. Never keep safety state in
-`struct ad9361_rf_phy_state`: `ad9361_clear_state()` memsets it on a debugfs
-`initialize`. Use `struct ad9361_rf_phy`. See [the kernel page](kernel.md) and
-[`firmware/patches/README.md`](../firmware/patches/README.md).
+`uImage.prev` for rollback.
+
+- **Then fold the change into a numbered patch** in `firmware-modern/patches/`,
+  or the next clean `setup.sh` loses it, and add a CI assertion so it cannot
+  silently stop applying.
+- See [the kernel page](kernel.md) and
+  [`firmware/patches/README.md`](../firmware/patches/README.md).
+
+!!! warning "Never keep safety state in `struct ad9361_rf_phy_state`"
+    `ad9361_clear_state()` memsets it on a debugfs `initialize`. Use `struct ad9361_rf_phy`.
 
 ## 4. In the FPGA — when the rate is too high for anything else
 

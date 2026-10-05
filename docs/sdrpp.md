@@ -6,6 +6,16 @@ board on any OS, then covers the settings that decide how well it works and
 the extra controls a patched build adds. Every number here was measured on one
 board over the USB cable, with SDR++ receiving the Paris FM band.
 
+!!! abstract "Key facts"
+    | | |
+    |---|---|
+    | USB | carries about **20 MB/s = 5 MS/s**; above that whole blocks are lost, with no error anywhere |
+    | network, libiio | about **10 MS/s** for one receiver |
+    | network, Fast TCP (patched SDR++ + `zc-stream`) | **20 MS/s**, 8-bit samples: about 48 dB visible dynamic range instead of 72 dB |
+    | one station | use the FPGA /8 decimator at 500 kHz: 2 MB/s on the link |
+    | one program at a time | the board has one receive buffer |
+    | stock SDR++ | RX1 only, and never transmits |
+
 ![SDR++ receiving 99.5 to 103.5 MHz from this board: eleven FM stations in the spectrum and waterfall, tuned to Radio Nova on 101.5 MHz with its RDS text decoded. The source panel on the left shows the PlutoSDR source with the FPGA /8 decimator on at 4.0 MHz.](img/sdrpp-overview.jpg)
 
 ## Quick start: stock SDR++, any OS
@@ -20,8 +30,8 @@ board over the USB cable, with SDR++ receiving the Paris FM band.
 5. Under **Radio**, choose **WFM**. Type a station's frequency in the box at the
    top (101.5 MHz in the picture) and press play.
 
-Stock SDR++ receives on RX1 only. Nothing here transmits: SDR++'s PlutoSDR
-source powers the transmitter's local oscillator down.
+!!! note "Stock SDR++ receives on RX1 only, and nothing here transmits"
+    SDR++'s PlutoSDR source powers the transmitter's local oscillator down.
 
 ## Settings that decide the result
 
@@ -48,8 +58,9 @@ The USB link carries about **20 MB/s**, which is **5 MS/s**. Measured with
 | 10 MS/s | off | 50% |
 
 98–99% is all of it: the rest is the stream starting inside the 12 s window.
-Above 5 MS/s whole blocks are lost, which shows as streaks across the waterfall
-and clicks in the audio, with no error anywhere.
+
+!!! warning "Above 5 MS/s whole blocks are lost, with no error anywhere"
+    It shows as streaks across the waterfall and clicks in the audio.
 
 - **Stay at or below 5 MHz over USB.** For more, use Ethernet.
 - **For one station, use the FPGA /8 decimator at 500 kHz** (patched SDR++,
@@ -82,26 +93,36 @@ them to the same source panel:
 | **Board / Firmware / Temp** | what you are connected to, and both chips' temperatures, once a second | read only |
 | **Transport** | where the samples come from: **libiio** (as every SDR program does), or **Fast TCP, 8-bit (zc-stream)**, a small server on the board. Every setting above still goes through libiio either way | you want more than about 10 MS/s over the network: [below](#faster-the-fast-tcp-transport) |
 
-These are the AD9361's own correction loops. SDR++'s **IQ Correction** further
-down the same menu is a different thing: a DC blocker running on your PC.
+- The tracking controls are the AD9361's own correction loops. SDR++'s **IQ
+  Correction** further down the same menu is a different thing: a DC blocker
+  running on your PC.
+- **Frequency correction** shows the board's own value until you move it. Once
+  moved, SDR++ writes your value at every start, because the board forgets it at
+  reboot. Ctrl+click the slider to type a value.
+- Every setting is saved per device.
 
-**RX Port**, the sample rate and the decimator change only while stopped, like
-the device menu: stop, change, play. Every setting is saved per device.
-
-**Frequency correction** shows the board's own value until you move it. Once
-moved, SDR++ writes your value at every start, because the board forgets it at
-reboot. Ctrl+click the slider to type a value.
+!!! note "Stop, change, play"
+    **RX Port**, the sample rate and the decimator change only while stopped, like the device menu.
 
 ### Faster: the Fast TCP transport
 
-Through libiio the board sends one receiver at about **10 MS/s** at most over
-the network: this build fetches it in 50 ms blocks, because each block is a
-round trip to the board, and SDR++'s usual 5 ms blocks lost samples from
-5 MS/s up (83% arrived at 7.68 MS/s, enough to stop a DAB+ decode). **Fast TCP** reaches **20 MS/s**, a live 20 MHz-wide view, by
-sending 8-bit samples instead of 16-bit ones, from
-[`zc-stream`](../tools/stream-paths/zc-stream/README.md) on the board. Tuning,
-gain, rate, RX port and the rest still go through libiio, so the panel works
-exactly as before. [Faster streaming](streaming-paths.md) has the
+| Transport | Most for one receiver | Why |
+|---|---|---|
+| libiio | about **10 MS/s** over the network | each block is a round trip to the board. This build fetches 50 ms blocks; SDR++'s usual 5 ms blocks lost samples from 5 MS/s up (83% arrived at 7.68 MS/s, enough to stop a DAB+ decode) |
+| **Fast TCP** | **20 MS/s**, a live 20 MHz-wide view | 8-bit samples instead of 16-bit ones, from [`zc-stream`](../tools/stream-paths/zc-stream/README.md) on the board |
+
+```mermaid
+flowchart LR
+    subgraph board["the board"]
+        R[AD9361] --> Z["zc-stream<br/><small>ports 5555 (RX1), 5556 (RX2)</small>"]
+        I["iiod<br/><small>port 30431</small>"] --> R
+    end
+    Z -->|"8-bit samples"| S[SDR++]
+    S -->|"tuning, gain, rate, RX port"| I
+```
+
+Tuning, gain, rate, RX port and the rest still go through libiio, so the panel
+works exactly as before. [Faster streaming](streaming-paths.md) has the
 measurements.
 
 1. Once: build and install `zc-stream` on the board as a service. It then
@@ -126,51 +147,42 @@ measurements.
 
 What it costs and where it stops:
 
-- **Dynamic range.** 8 bits keep the top 8 of the radio's 12: about 48 dB
-  between the strongest and weakest signal you can see at once, instead of
-  72 dB. Levels on screen are the same as with libiio. Set the gain so the
-  strongest signal is near the top; a weak signal next to a strong one fades
-  sooner than with libiio.
-- **The network only.** It needs the board's address (an `ip:` device); over
-  USB, use libiio.
-- **One program receives at a time.** The board has one receive buffer. While
-  SDR++ streams with Fast TCP, another program that tries to stream (pyadi-iio,
-  `iio_readdev`, GNU Radio, a Hardware CI run) is refused with "Device or
-  resource busy", and the reverse: SDR++ shows "zc-stream closed the stream: is
-  another program receiving?". Settings from other programs still apply, to
-  the same receiver. Idle, `zc-stream` holds nothing.
-- **Up to 20 MS/s.** Above that, samples go missing: the board cannot send
-  more than about 42 MB/s. At 20 MS/s over Wi-Fi, up to 5% went missing in a
-  bad minute; at 19 MS/s, 0.1%. Pick 19 MS/s when every sample counts.
+| | |
+|---|---|
+| **Dynamic range** | 8 bits keep the top 8 of the radio's 12: about 48 dB between the strongest and weakest signal you can see at once, instead of 72 dB. Levels on screen are the same as with libiio. Set the gain so the strongest signal is near the top; a weak signal next to a strong one fades sooner than with libiio |
+| **The network only** | it needs the board's address (an `ip:` device); over USB, use libiio |
+| **One program receives at a time** | the board has one receive buffer. While SDR++ streams with Fast TCP, another program that tries to stream (pyadi-iio, `iio_readdev`, GNU Radio, a Hardware CI run) is refused with "Device or resource busy", and the reverse: SDR++ shows "zc-stream closed the stream: is another program receiving?". Settings from other programs still apply, to the same receiver. Idle, `zc-stream` holds nothing |
+| **Up to 20 MS/s** | above that, samples go missing: the board cannot send more than about 42 MB/s. At 20 MS/s over Wi-Fi, up to 5% went missing in a bad minute; at 19 MS/s, 0.1%. **Pick 19 MS/s when every sample counts** |
 
 The DAB+ decoder works the same on either transport.
 
 ### Installing it
 
-On Arch:
+=== "Arch"
 
-```bash
-# run from: tools/sdrpp/
-makepkg -f
-sudo pacman -U sdrpp-git-*-x86_64.pkg.tar.zst
-```
+    ```bash
+    # run from: tools/sdrpp/
+    makepkg -f
+    sudo pacman -U sdrpp-git-*-x86_64.pkg.tar.zst
+    ```
 
-On another Linux, build SDR++ from source at the same commit with the patch
-applied:
+=== "Another Linux"
 
-```bash
-# run from: wherever you build software
-git clone https://github.com/AlexandreRouma/SDRPlusPlus.git && cd SDRPlusPlus
-git checkout 8c9f5ee8fe405775bfcd62c8c8f8c0fc928a64af
-patch -p1 < /path/to/fishball7020-fpga-devkit/tools/sdrpp/plutosdr-fishball.patch
-cmake -B build -DCMAKE_BUILD_TYPE=Release && make -C build -j"$(nproc)"
-sudo make -C build install
-```
+    Build SDR++ from source at the same commit with the patch applied:
 
-Its dependencies are SDR++'s own (`fftw`, `glfw`, `glew`, `volk`, `libiio`,
-`libad9361`, an audio library); its
-[build instructions](https://github.com/AlexandreRouma/SDRPlusPlus#building-on-linux--bsd)
-list them per distribution.
+    ```bash
+    # run from: wherever you build software
+    git clone https://github.com/AlexandreRouma/SDRPlusPlus.git && cd SDRPlusPlus
+    git checkout 8c9f5ee8fe405775bfcd62c8c8f8c0fc928a64af
+    patch -p1 < /path/to/fishball7020-fpga-devkit/tools/sdrpp/plutosdr-fishball.patch
+    cmake -B build -DCMAKE_BUILD_TYPE=Release && make -C build -j"$(nproc)"
+    sudo make -C build install
+    ```
+
+    Its dependencies are SDR++'s own (`fftw`, `glfw`, `glew`, `volk`, `libiio`,
+    `libad9361`, an audio library); its
+    [build instructions](https://github.com/AlexandreRouma/SDRPlusPlus#building-on-linux--bsd)
+    list them per distribution.
 
 ## DAB+ radio
 
@@ -190,8 +202,10 @@ stations at once.
    a few seconds; click a station to hear it.
 
 In Paris, block 8C carries "Métropolitain 2": France Inter, FIP, RMC and ten
-more. A good antenna matters more than gain here: a block at 25 dB above the
-noise decoded cleanly.
+more.
+
+!!! tip "A good antenna matters more than gain"
+    A block at 25 dB above the noise decoded cleanly.
 
 ## How the decimator and the sample rate fit together
 
@@ -199,6 +213,11 @@ With **FPGA /8 decimator** off, the rate you pick is the AD9361's: the link
 carries all of it. With it on, the rate you pick is still what reaches SDR++,
 but the AD9361 runs eight times faster and the FPGA's filter removes everything
 outside the view before discarding seven samples in eight:
+
+```mermaid
+flowchart LR
+    A["AD9361<br/><small>8 × the rate you pick</small>"] --> F["FPGA filter<br/><small>removes all outside the view</small>"] --> D["keep 1 sample in 8"] --> L["the link<br/><small>the rate you pick</small>"] --> S[SDR++]
+```
 
 | you pick | AD9361 samples at | on the cable |
 |---|---|---|
