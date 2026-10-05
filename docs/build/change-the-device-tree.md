@@ -20,7 +20,7 @@ cp arch/arm/boot/dts/xilinx/zynq-pluto-sdr-fishball.dtb ../../output/devicetree.
 
 ```bash
 # run from: the repo root
-python3 firmware-modern/verify_dtb.py firmware-modern/output/devicetree.dtb
+python3 firmware-modern/verify_dtb.py firmware-modern/output/devicetree.dtb   # stdlib only
 ./devkit flash --dtb-only
 ```
 

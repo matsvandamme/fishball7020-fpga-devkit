@@ -18,7 +18,7 @@ pages with every measurement are under [Reference](#reference).
 -   :material-language-python:{ .lg } **[Talk to the board from Python](talk-from-python.md)**
 
 
-    `pip install pyadi-iio`, then tune and receive in six lines.
+    Install `pyadi-iio` in a venv, then tune and receive in six lines.
 
 -   :material-file-download-outline:{ .lg } **[Capture IQ to a file](capture-iq.md)**
 

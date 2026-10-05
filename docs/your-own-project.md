@@ -9,7 +9,7 @@ come back when `./devkit selftest --ssh` passes.
 
 | | Where it runs | What it costs you | Rebuild loop | Reach for it when |
 |---|---|---|---|---|
-| **1. Host** | your PC, over Ethernet or USB | nothing — pip install and go | seconds | almost always |
+| **1. Host** | your PC, over Ethernet or USB | nothing — a venv, `pip install`, and go | seconds | almost always |
 | **2. On the board** | the board's two ARM cores | an ssh session | seconds | you need the board standalone, or the data is too big to ship |
 | **3. In the kernel** | the board's Linux | a kernel build and a patch to maintain | **2m46s** from clean, **6 s** to flash | you need a new sysfs knob, or per-sample timing |
 | **4. In the FPGA** | the PL fabric | Vivado, and HDL | **20 min** with `--hdl-only`, **70** from cold | the data rate is too high for anything above |
@@ -55,12 +55,13 @@ The board's `iiod` daemon serves the radio over the network; anything speaking
 **libiio** can drive it, from any language.
 
 ```bash
-# run from: anywhere on your PC
-pip install pyadi-iio                     # this is the whole install
+# run from: your project's folder, on your PC
+python3 -m venv .venv                     # a venv: Python packages for this project only
+.venv/bin/pip install pyadi-iio           # this is the whole install
 ```
 
 ```python
-# run from: anywhere on your PC
+# run from: your project's folder, as: .venv/bin/python example.py
 import adi
 sdr = adi.ad9361("ip:fishball.local")     # or ip:192.168.2.1 over USB
 sdr.rx_lo             = 2_400_000_000     # tune to 2.4 GHz

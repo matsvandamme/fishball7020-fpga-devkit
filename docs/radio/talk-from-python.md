@@ -1,6 +1,6 @@
 ---
 icon: material/language-python
-description: pip install pyadi-iio, then tune and receive in six lines.
+description: A venv, pyadi-iio, then tune and receive in six lines.
 ---
 
 # Talk to the board from Python
@@ -9,12 +9,13 @@ The board's `iiod` daemon serves the radio over the network; anything speaking
 **libiio** can drive it, from any language. From Python:
 
 ```bash
-# run from: anywhere on your PC
-pip install pyadi-iio                     # this is the whole install
+# run from: your project's folder, on your PC
+python3 -m venv .venv                     # a venv: Python packages for this project only
+.venv/bin/pip install pyadi-iio           # this is the whole install
 ```
 
 ```python
-# run from: anywhere on your PC
+# run from: your project's folder, as: .venv/bin/python example.py
 import adi
 sdr = adi.ad9361("ip:fishball.local")     # or ip:192.168.2.1 over USB
 sdr.rx_lo             = 2_400_000_000     # tune to 2.4 GHz

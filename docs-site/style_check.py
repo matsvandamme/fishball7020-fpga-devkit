@@ -94,9 +94,8 @@ def check(path):
             callout_indent = None  # one report per callout
 
         # --- prose: inline `pip install ...` outside a venv
-        for span in re.findall(r"`([^`\n]+)`", line):
-            if BARE_PIP.search(span) and not VENV.search(span):
-                add(n, "python-venv", f"bare pip install in text: `{span[:60]}`")
+        if BARE_PIP.search(line) and not VENV.search(line) and "venv" not in line:
+            add(n, "python-venv", f"bare pip install in text: {stripped[:70]}")
     return problems
 
 

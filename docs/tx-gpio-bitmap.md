@@ -79,7 +79,7 @@ because its bit alternates. **OR the nibble in last**, after every scaling,
 gain or format conversion, or those steps overwrite it. A complete program:
 
 ```python
-# run from: your host (not the board).  pip install pyadi-iio numpy
+# run from: your host (not the board), in a venv: .venv/bin/pip install pyadi-iio numpy; .venv/bin/python example.py
 import adi, iio, numpy as np
 
 URI = "ip:192.168.2.1"

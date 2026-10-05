@@ -32,13 +32,9 @@ jobs:
       - name: Links, anchors and "run from" lines
         run: python docs/check_links.py
       # House rules a build cannot see: no table inside a callout, Python on
-      # the PC in a venv, every Python block saying where it runs. Checked on
-      # the sections already brought up to them; widen the list as more are.
+      # the PC in a venv, every Python block saying where it runs.
       - name: Style rules
-        run: >
-          python docs-site/style_check.py docs/start/ docs/transmitter-safety.md
-          docs/networking.md docs/flashing.md docs/windows-sd-card.md
-          docs/how-it-works.md docs/troubleshooting.md
+        run: python docs-site/style_check.py docs/
 
   # --strict turns every MkDocs warning into a failure: a page missing from the
   # nav, a link or #anchor the site cannot resolve.

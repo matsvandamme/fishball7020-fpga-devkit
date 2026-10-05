@@ -30,7 +30,7 @@ altitude, speed and position, above a log of every message received.
 ```
 
 The first run fetches PyQt6, the window toolkit, into uv's cache (about
-100 MB, once). Without [uv](https://docs.astral.sh/uv/): `pip install PyQt6 numpy`,
+100 MB, once). Without [uv](https://docs.astral.sh/uv/): a venv with `.venv/bin/pip install PyQt6 numpy`,
 or the terminal version, which needs only numpy:
 
 ```bash
@@ -201,6 +201,6 @@ messages with random carrier phase, a 50 kHz frequency offset, noise, and
 arbitrary block cuts.
 
 ```bash
-# run from: the repo root
-python3 tools/adsb/test_adsb.py
+# run from: the repo root, with numpy in a venv (python3 -m venv .venv; .venv/bin/pip install numpy)
+.venv/bin/python tools/adsb/test_adsb.py
 ```

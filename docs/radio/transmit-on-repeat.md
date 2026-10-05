@@ -15,7 +15,7 @@ it plays.
     where you are allowed to.
 
 ```python
-# run from: your PC.  pip install pyadi-iio numpy
+# run from: your PC, in a venv: .venv/bin/pip install pyadi-iio numpy; .venv/bin/python example.py
 import adi, numpy as np
 
 sdr = adi.ad9361("ip:192.168.2.1")      # or ip:fishball.local over Ethernet

@@ -193,7 +193,7 @@ quantisation.
 
 ```bash
 # run from: firmware/scripts
-python3 gen_fir_coe.py
+python3 gen_fir_coe.py          # stdlib only: no venv needed
 ```
 
 Standard library only. It prints the response at the passband edge, stopband

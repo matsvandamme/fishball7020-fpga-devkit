@@ -16,7 +16,7 @@ description: Your PC, the board, the kernel or the FPGA - four questions decide 
 
 | | What it costs you | Rebuild loop |
 |---|---|---|
-| **Your PC** | nothing: pip install and go | seconds |
+| **Your PC** | nothing: a venv, `.venv/bin/pip install`, and go | seconds |
 | **The board** | an ssh session | seconds |
 | **The kernel** | a kernel build and a patch to maintain | **2m46s** from clean, **6 s** to flash |
 | **The FPGA** | Vivado, and HDL | **20 min** with `--hdl-only`, **70** from cold |

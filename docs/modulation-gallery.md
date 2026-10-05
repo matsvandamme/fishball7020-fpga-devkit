@@ -21,8 +21,10 @@ radios; the code is in [`tools/modulation-gallery/`](../tools/modulation-gallery
 
 ```bash
 # run from: tools/modulation-gallery/
-python3 campaign.py            # transmit each signal, capture it, measure it
-python3 fig1.py                # ... through fig5.py, redraw the figures
+python3 -m venv --system-site-packages .venv   # a venv that still sees the system's GNU Radio
+.venv/bin/pip install numpy scipy matplotlib
+.venv/bin/python campaign.py   # transmit each signal, capture it, measure it
+.venv/bin/python fig1.py       # ... through fig5.py, redraw the figures
 ```
 
 You need a HackRF (or any SoapySDR receiver, by editing `hackrf_cap.py`), GNU
@@ -33,10 +35,10 @@ transmitting again. The measurement chain is checked against known answers:
 
 ```bash
 # run from: tools/modulation-gallery/
-python3 dsp.py          # spectrum calibration against known answers
-python3 waveforms.py    # every waveform normalised and cyclic-seamless
-python3 rx.py           # the demodulator, against a known synthetic channel
-python3 chain.py        # anti-alias filter, and what it does to an interferer
+.venv/bin/python dsp.py          # spectrum calibration against known answers
+.venv/bin/python waveforms.py    # every waveform normalised and cyclic-seamless
+.venv/bin/python rx.py           # the demodulator, against a known synthetic channel
+.venv/bin/python chain.py        # anti-alias filter, and what it does to an interferer
 ```
 
 ## The setup
