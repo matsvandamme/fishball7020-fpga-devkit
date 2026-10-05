@@ -15,7 +15,7 @@ records what was measured, so nobody has to repeat it. To use it, see
 - **8-bit `zc-stream -8`, two cores:** **19–20 MS/s**; 19 MS/s when every sample counts
 - **ceiling:** the kernel's network send path, about **42.7 MB/s**
 - **cost of 8 bits:** about **48 dB** visible dynamic range instead of 72 dB
-- **every number:** crossed Wi-Fi; a wired PC was not tried
+- **every number:** measured over Wi-Fi, then again on a direct gigabit cable: the same limits ([on a cable](#on-a-direct-cable))
 
 | Term | Meaning |
 |---|---|
@@ -70,6 +70,34 @@ For comparison, on the same board and network:
 | Plain TCP from the board to the PC, no radio, from Python | 75 MB/s ≈ 19 MS/s at 16 bits |
 | Capture on the board itself (`local:`), no network | 30.72 MS/s with no loss |
 | Gigabit Ethernet's own limit for one receiver | about 29 MS/s at 16 bits |
+
+## On a direct cable
+
+The PC on the board's own Ethernet cable (an AX88179B USB 3 adapter on the
+`cdc_ncm` driver, both ends linked at 1000 Mb/s full duplex), RX2 only,
+2026-10-05. Same tool and method as above.
+
+| Path | Sustained RX2, wired | Over Wi-Fi (above) |
+|---|---|---|
+| Stock `iiod` 0.26, 16-bit | **12 MS/s** (99.9% over 60 s; 13 MS/s gave 99.4%, 14 gave 93.3%) | 11 MS/s |
+| `zc-stream -8`, 8-bit | **20 MS/s** (99.7% over 60 s; 21 MS/s gave 98.8%) | 19–20 MS/s |
+
+Asked for more, `zc-stream -8` levels off at **42–43 MB/s** (about 21 MS/s),
+exactly where it stopped over Wi-Fi, with `zc-stream` at 165% of the two
+cores: **Wi-Fi was never the limit, the board's CPU is.** A wire buys `iiod`
+one MS/s and steadier runs, not a higher ceiling.
+
+The bare link, with no radio (iperf3, one TCP stream, 10–12 s):
+
+| Direction | Rate | The board's CPU |
+|---|---|---|
+| board → PC | 577–679 Mb/s | core 0 at 86–87% |
+| PC → board | 664–680 Mb/s | core 0 at **100%, all of it network interrupt work**; the Ethernet controller counted 1680 receive overruns |
+| PC → board, receive work spread over both cores (`rps_cpus` = 3) | 702 Mb/s, retransmits 532 → 44 | core 0 still 100% |
+
+Neither end takes jumbo frames: the board's `macb` driver stops at 1518 bytes
+and the adapter under `cdc_ncm` at 1500. Setting up the cable itself:
+[a direct cable to your PC](networking.md#a-direct-cable-to-your-pc).
 
 ## Why the 16-bit paths stop at 11–12 MS/s
 

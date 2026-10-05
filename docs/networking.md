@@ -79,6 +79,35 @@ iio_info -s                         # address, model and serial, [ip:fishball.lo
 avahi-browse -tpr _iio._tcp         # the iiod service on port 30431
 ```
 
+## A direct cable to your PC
+
+The board's Ethernet port straight into the PC (or a USB Ethernet adapter on
+it), with no router: the PC hands out the address. NetworkManager does it
+itself in **shared** mode, with a small DHCP and DNS server, and the board
+needs no change: it asks for DHCP as it always does.
+
+```bash
+# run from: your PC; IFACE is the PC's port the cable is in (ip -br link)
+nmcli con add type ethernet con-name fishball-eth ifname IFACE \
+      ipv4.method shared ipv4.addresses 10.42.0.1/24 ipv6.method link-local
+nmcli con up fishball-eth
+```
+
+| If | Then |
+|---|---|
+| **a firewall (ufw) denies incoming** | the board's DHCP request never arrives. Allow it on that port only: `sudo ufw allow in on IFACE to any port 67 proto udp` and `sudo ufw allow in on IFACE to any port 53` |
+| **you want the same address every time** | a file in `/etc/NetworkManager/dnsmasq-shared.d/` with `dhcp-host=<board MAC>,10.42.0.2,fishball`, then `nmcli con up fishball-eth` again |
+| **IFACE is a USB adapter** | its name encodes the USB port, so it changes with the port, and the firewall rule with it. Pin a name by MAC: `/etc/systemd/network/10-fishball0.link` with `[Match] MACAddress=…` and `[Link] Name=fishball0` |
+| **the board is also on USB** | `fishball.local` then answers on both. To keep everything on the cable, take the PC's USB network profile down and set it not to autoconnect; `nmcli con up` it again for recovery |
+
+**You should see:** the board at 10.42.0.2 (or the next free address from
+10.42.0.10), `fishball.local` resolving to it, and the board reaching the
+internet through the PC, since shared mode also routes for it.
+
+What a cable is worth in speed, measured:
+[on a direct cable](streaming-paths.md#on-a-direct-cable). Gigabit is not
+the limit; the board's CPU is, at about 600–700 Mb/s.
+
 ## Four ways to change the address (Buildroot)
 
 All four end in the U-Boot environment in QSPI flash
@@ -160,6 +189,12 @@ boot
 ip addr add 192.168.1.50/24 dev eth0     # add a second address, keep the old one
 ip route add default via 192.168.1.1     # give it a gateway too
 ```
+
+!!! warning "On Debian with no DHCP server, the address vanishes within a minute"
+    `eth0` is set to DHCP, and `dhclient` keeps retrying. Each time it gives up
+    it clears every IPv4 address on `eth0`, including one added by hand. For a
+    temporary address on a cable with no DHCP server, stop it first:
+    `kill $(cat /run/dhclient.eth0.pid)`; a reboot starts it again.
 
 ## Where the address lives
 

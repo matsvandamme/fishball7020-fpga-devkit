@@ -53,7 +53,7 @@ and [`img/data/throughput.json`](img/data/throughput.json).
 
 Unless stated otherwise: one board, v1.4 firmware, on **gigabit Ethernet**; the
 host has **no wired interface**, so every network figure crossed WiFi (540 Mbit/s)
-and a router. A wired gigabit host has not been measured. `TX2A` → **20 dB
+and a router. A wired gigabit host was measured later, for streaming only: [on a direct cable](streaming-paths.md#on-a-direct-cable). `TX2A` → **20 dB
 attenuator** → `RX2A`, 900 MHz, −30 dB transmit attenuation, 20 dB manual receive
 gain, `iio_readdev` buffer 64 Ksamples. Only channel 1 (`TX2A`/`RX2A`) is cabled;
 nothing here characterises `TX1A`/`RX1A`. One board, one cable, one session: not

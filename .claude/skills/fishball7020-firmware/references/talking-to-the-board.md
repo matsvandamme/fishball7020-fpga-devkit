@@ -451,6 +451,15 @@ restarts iiod with it.
 
 ## Streaming ceiling over the network (docs/streaming-paths.md)
 
+**On a direct gigabit cable (2026-10-05) the ceilings barely move**: iiod 12 MS/s
+(Wi-Fi 11), `zc-stream -8` 20 MS/s and a 42-43 MB/s plateau, identical to Wi-Fi.
+The board's CPU is the limit, not the network: bare TCP reaches only
+580-700 Mb/s with CPU0 at 100% softirq on receive (macb rx overruns), and no
+jumbo frames (macb max 1518, cdc_ncm 1500). On Debian, an `ip addr add` on eth0
+with no DHCP server is erased within a minute by dhclient's failure path: stop
+dhclient via /run/dhclient.eth0.pid (never `pkill -f`) or serve DHCP from the PC
+(NetworkManager `ipv4.method shared`; docs/networking.md#a-direct-cable-to-your-pc).
+
 RX2 to a PC sustains **11 MS/s through iiod 0.26** (44-46 MB/s), **11 through
 libiio 1.0's iiod**, **12 through tools/stream-paths/zc-stream** int16 (raw TCP,
 one copy), and **20 MS/s through `zc-stream -8`** (int8, convert and send on
