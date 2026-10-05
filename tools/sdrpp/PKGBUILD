@@ -9,7 +9,7 @@ _pkgname=sdrpp
 pkgname="$_pkgname-git"
 _commit=8c9f5ee8fe405775bfcd62c8c8f8c0fc928a64af
 pkgver=1.0.4.r886.8c9f5ee8
-pkgrel=9
+pkgrel=10
 pkgdesc="The bloat-free SDR receiver (PlutoSDR source with the Fishball7020's controls, DAB+ decoder)"
 arch=(x86_64)
 url="https://www.sdrpp.org/"
@@ -29,7 +29,7 @@ source=("$_pkgname::git+https://github.com/AlexandreRouma/SDRPlusPlus.git#commit
 b2sums=('SKIP'
         'SKIP'
         'SKIP'
-        'af5444d34928a076663f048071b7cf0602d40b189d1b2521503da43a7e3ee268917f5ec1ae08f2505764f1ddcf7e968855c942a54837f856dab4a4483977e67e')
+        '6b92103c86a14a79bae2621c864ec43bdc8a4f1efcf6cbfdad15a1dba3e8db1e5fedb1d0c55b3318cf458700ebfcb99a98a61cf0eded10706ebb257082fcd29a')
 
 prepare() {
 	patch -d $_pkgname -p1 < plutosdr-fishball.patch

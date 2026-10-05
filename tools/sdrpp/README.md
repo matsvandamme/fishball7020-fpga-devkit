@@ -18,6 +18,9 @@ with a patch that adds, to that source:
 - **Transport**: libiio, or **Fast TCP, 8-bit** from
   [`zc-stream`](../stream-paths/zc-stream/README.md) on the board, for up to
   20 MS/s over the network. Every control above still goes through libiio.
+- **A stuck radio is put back**: if a rate or filter change leaves the AD9361
+  in `alert` (receivers off, every sample frozen), starting puts it back in `fdd`
+  and says so in the log.
 
 How to use them, with screenshots and measured settings:
 [Using SDR++ with this board](../../docs/sdrpp.md).
@@ -26,7 +29,7 @@ How to use them, with screenshots and measured settings:
 
 ```bash
 # run from: tools/sdrpp/
-makepkg -f                                   # builds sdrpp-git-…-9-x86_64.pkg.tar.zst
+makepkg -f                                   # builds sdrpp-git-…-10-x86_64.pkg.tar.zst
 sudo pacman -U sdrpp-git-*-x86_64.pkg.tar.zst
 ```
 
@@ -46,6 +49,7 @@ the middle of its log.
 | status line | context attributes `hw_model`, `fw_build` (or `fw_version`); `ad9361-phy` `temp0`, `xadc` `temp0`, once a second |
 | libiio blocks | 1/20 s of samples per refill (at most 1 M, SDR++'s stream size), 8 queued on the board; SDR++'s own 1/200 s blocks delivered 83% of 7.68 MS/s over Wi-Fi, these 99.9%, and 10 MS/s in full |
 | Gain | `hardwaregain` on the selected receiver, live; in an automatic mode, moving the slider writes `gain_control_mode` `manual` first, and the slider shows the chip's `hardwaregain` once a second |
+| AD9361 state (ENSM) | after the rate and filter at start, and after a bandwidth change while streaming: `ensm_mode` read; `alert`, `wait` or `sleep` is set back to `fdd` and read back, and a chip that stays out of `fdd` stops the start with an error. Pin-control modes are left alone. The rate and `ad9361_set_bb_rate` errors are logged with their codes |
 | Transport: Fast TCP | nothing: it reads samples from `zc-stream -D -8` over TCP, RX1 on the zc-stream port (5555) and RX2 on the next, int8 ÷ 2048 so levels match libiio's int16 ÷ 32768. Only for an `ip:` device |
 
 Sample rate, filter, RF bandwidth and port selection are shared by both

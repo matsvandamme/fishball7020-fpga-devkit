@@ -1,13 +1,14 @@
 diff --git a/source_modules/plutosdr_source/src/main.cpp b/source_modules/plutosdr_source/src/main.cpp
-index 7a7db0c3..5fa05b0c 100644
+index 7a7db0c3..401ed1aa 100644
 --- a/source_modules/plutosdr_source/src/main.cpp
 +++ b/source_modules/plutosdr_source/src/main.cpp
-@@ -9,7 +9,14 @@
+@@ -9,7 +9,15 @@
  #include <ad9361.h>
  #include <utils/optionlist.h>
  #include <algorithm>
 +#include <chrono>
 +#include <cmath>
++#include <cstring>
  #include <regex>
 +#include <netdb.h>
 +#include <netinet/in.h>
@@ -17,7 +18,7 @@ index 7a7db0c3..5fa05b0c 100644
  
  #define CONCAT(a, b) ((std::string(a) + b).c_str())
  
-@@ -23,6 +30,9 @@ SDRPP_MOD_INFO{
+@@ -23,6 +31,9 @@ SDRPP_MOD_INFO{
  
  ConfigManager config;
  
@@ -27,7 +28,7 @@ index 7a7db0c3..5fa05b0c 100644
  const std::vector<const char*> deviceWhiteList = {
      "PlutoSDR",
      "ANTSDR",
-@@ -35,10 +45,7 @@ public:
+@@ -35,10 +46,7 @@ public:
          this->name = name;
  
          // Define valid samplerates
@@ -39,7 +40,7 @@ index 7a7db0c3..5fa05b0c 100644
  
          // Define valid bandwidths
          bandwidths.define(0, "Auto", 0);
-@@ -52,6 +59,11 @@ public:
+@@ -52,6 +60,11 @@ public:
          gainModes.define("slow_attack", "Slow Attack", "slow_attack");
          gainModes.define("hybrid", "Hybrid", "hybrid");
  
@@ -51,7 +52,7 @@ index 7a7db0c3..5fa05b0c 100644
          // Enumerate devices
          refresh();
  
-@@ -80,6 +92,9 @@ public:
+@@ -80,6 +93,9 @@ public:
  
      void postInit() {}
  
@@ -61,7 +62,7 @@ index 7a7db0c3..5fa05b0c 100644
      void enable() {
          enabled = true;
      }
-@@ -93,6 +108,73 @@ public:
+@@ -93,6 +109,73 @@ public:
      }
  
  private:
@@ -135,7 +136,7 @@ index 7a7db0c3..5fa05b0c 100644
      std::string getBandwdithScaled(double bw) {
          char buf[1024];
          if (bw >= 1000000.0) {
-@@ -218,6 +300,13 @@ private:
+@@ -218,6 +301,13 @@ private:
          bandwidth = 0;
          gmId = 0;
          gain = -1.0f;
@@ -149,7 +150,7 @@ index 7a7db0c3..5fa05b0c 100644
  
          // Load device config
          config.acquire();
-@@ -241,7 +330,29 @@ private:
+@@ -241,7 +331,29 @@ private:
              gain = config.conf["devices"][devDesc]["gain"];
              gain = std::clamp<int>(gain, -1.0f, 73.0f);
          }
@@ -179,7 +180,7 @@ index 7a7db0c3..5fa05b0c 100644
  
          // Update samplerate ID
          if (samplerates.keyExists(samplerate)) {
-@@ -301,30 +412,96 @@ private:
+@@ -301,30 +413,109 @@ private:
              return;
          }
  
@@ -213,7 +214,10 @@ index 7a7db0c3..5fa05b0c 100644
 -        iio_channel_attr_write_longlong(_this->rxChan, "sampling_frequency", round(_this->samplerate));             // Sample rate
 -        iio_channel_attr_write_double(_this->rxChan, "hardwaregain", _this->gain);                                  // Gain
 +        iio_channel_attr_write_bool(_this->rxChan0, "filter_fir_en", true);                                         // Digital filter
-+        iio_channel_attr_write_longlong(_this->rxChan0, "sampling_frequency", adRate);                              // Sample rate
++        int rateErr = iio_channel_attr_write_longlong(_this->rxChan0, "sampling_frequency", adRate);                // Sample rate
++        if (rateErr < 0) {
++            flog::error("The AD9361 refused a sample rate of {} S/s (error {})", std::to_string(adRate), std::to_string(rateErr));
++        }
 +        // Gain mode before gain: in an automatic mode the chip refuses a gain
 +        // write, and switching to manual afterwards keeps the automatic value.
          iio_channel_attr_write(_this->rxChan, "gain_control_mode", _this->gainModes.value(_this->gmId).c_str());    // Gain mode
@@ -223,7 +227,10 @@ index 7a7db0c3..5fa05b0c 100644
 +
          // Configure the ADC filters
 -        ad9361_set_bb_rate(_this->phy, round(_this->samplerate));
-+        ad9361_set_bb_rate(_this->phy, adRate);
++        int bbErr = ad9361_set_bb_rate(_this->phy, adRate);
++        if (bbErr < 0) {
++            flog::error("ad9361_set_bb_rate({}) failed (error {}): the chip's FIR filter may not match the rate", std::to_string(adRate), std::to_string(bbErr));
++        }
 +
 +        // The FPGA decimator is chosen by the capture device's own rate: the AD
 +        // rate bypasses it, an eighth of it engages it. Read it back: a design
@@ -251,6 +258,13 @@ index 7a7db0c3..5fa05b0c 100644
 +            return;
 +        }
 +        _this->decimFailed = false;
++
++        // A rate or filter change that fails part-way can leave the chip out of fdd
++        if (!_this->ensureFdd("setting the sample rate and filter")) {
++            iio_context_destroy(_this->ctx);
++            _this->ctx = NULL;
++            return;
++        }
 +
 +        // DC and IQ correction, shared by both receivers
 +        _this->writeTracking();
@@ -286,7 +300,7 @@ index 7a7db0c3..5fa05b0c 100644
      }
  
      static void stop(void* ctx) {
-@@ -334,8 +511,21 @@ private:
+@@ -334,8 +525,21 @@ private:
          // Stop worker thread
          _this->running = false;
          _this->stream.stopWriter();
@@ -308,7 +322,7 @@ index 7a7db0c3..5fa05b0c 100644
  
          // Close device
          if (_this->ctx != NULL) {
-@@ -389,7 +579,78 @@ private:
+@@ -389,7 +593,78 @@ private:
              _this->select(_this->devDesc);
              core::setInputSampleRate(_this->samplerate);
          }
@@ -387,7 +401,15 @@ index 7a7db0c3..5fa05b0c 100644
  
          SmGui::LeftLabel("Bandwidth");
          SmGui::FillWidth();
-@@ -419,40 +680,190 @@ private:
+@@ -397,6 +672,7 @@ private:
+             _this->bandwidth = _this->bandwidths.value(_this->bwId);
+             if (_this->running) {
+                 _this->setBandwidth(_this->bandwidth);
++                _this->ensureFdd("changing the bandwidth");
+             }
+             if (!_this->devDesc.empty()) {
+                 config.acquire();
+@@ -419,40 +695,211 @@ private:
              }
          }
  
@@ -494,6 +516,27 @@ index 7a7db0c3..5fa05b0c 100644
 +        if (std::isnan(ad) && std::isnan(zynq)) { statusTemps.clear(); return; }
 +        snprintf(buf, sizeof(buf), "Temp: AD9361 %.1f C, Zynq %.1f C", ad, zynq);
 +        statusTemps = buf;
++    }
++
++    // The AD9361's state machine passes through "alert" (synthesizers on,
++    // receivers off) while the driver reconfigures it, and a change that fails
++    // part-way can leave it there: every sample then holds one value and the
++    // audio is silent. Seen on 2026-10-05 beside ad9361_validate_enable_fir
++    // errors in the board's kernel log. Put it back in fdd; leave pin-control
++    // modes alone, someone chose those. False only if fdd cannot be restored.
++    bool ensureFdd(const char* during) {
++        char mode[32] = {0};
++        if (iio_device_attr_read(phy, "ensm_mode", mode, sizeof(mode)) <= 0) { return true; }   // cannot tell
++        if (strcmp(mode, "alert") && strcmp(mode, "wait") && strcmp(mode, "sleep")) { return true; }
++        flog::warn("The AD9361 was left in '{}' after {}: its receivers were off. Restoring fdd", mode, during);
++        iio_device_attr_write(phy, "ensm_mode", "fdd");
++        memset(mode, 0, sizeof(mode));
++        iio_device_attr_read(phy, "ensm_mode", mode, sizeof(mode));
++        if (strcmp(mode, "fdd")) {
++            flog::error("Could not put the AD9361 back in fdd (it reads '{}'): not starting", mode);
++            return false;
++        }
++        return true;
      }
  
      void setBandwidth(int bw) {
@@ -591,7 +634,7 @@ index 7a7db0c3..5fa05b0c 100644
              return;
          }
  
-@@ -461,6 +872,9 @@ private:
+@@ -461,6 +908,9 @@ private:
          iio_channel_enable(rx0_q);
  
          // Allocate buffer
@@ -601,7 +644,7 @@ index 7a7db0c3..5fa05b0c 100644
          iio_buffer* rxbuf = iio_device_create_buffer(_this->dev, blockSize, false);
          if (!rxbuf) {
              flog::error("Could not create RX buffer");
-@@ -500,9 +914,26 @@ private:
+@@ -500,9 +950,26 @@ private:
      iio_device* phy = NULL;
      iio_device* dev = NULL;
      iio_channel* rxLO = NULL;
@@ -629,7 +672,7 @@ index 7a7db0c3..5fa05b0c 100644
      std::string devDesc = "";
      std::string uri = "";
  
-@@ -515,11 +946,18 @@ private:
+@@ -515,11 +982,18 @@ private:
      int srId = 0;
      int bwId = 0;
      int gmId = 0;
@@ -648,7 +691,7 @@ index 7a7db0c3..5fa05b0c 100644
  };
  
  MOD_EXPORT void _INIT_() {
-@@ -542,14 +980,20 @@ MOD_EXPORT void _INIT_() {
+@@ -542,14 +1016,20 @@ MOD_EXPORT void _INIT_() {
  }
  
  MOD_EXPORT ModuleManager::Instance* _CREATE_INSTANCE_(std::string name) {

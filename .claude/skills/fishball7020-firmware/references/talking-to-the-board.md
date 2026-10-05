@@ -449,6 +449,18 @@ no `/var/log/syslog`; use `journalctl -b`, `-k`, `-u iiod`, `-b -1`. Note that
 oneshot with RemainAfterExit); `systemctl restart fishball-rf-quiesce` mutes and
 restarts iiod with it.
 
+## Frozen samples: the AD9361 left in ensm_mode "alert"
+
+Every sample one constant value on both receivers, decimator or not, SDR++
+silent, board otherwise healthy: `ensm_mode` reads `alert` (synthesizers on,
+receivers and transmitters off). A rate/FIR change that failed part-way left it
+there (dmesg: `ad9361_validate_enable_fir` / `Failed RX max rate check`); the
+exact trigger was not reproduced. Fix: `iio_attr -d ad9361-phy ensm_mode fdd`.
+The devkit's SDR++ (pkgrel 10) restores fdd at every start and logs it. A plain
+impossible rate write is refused with EINVAL and leaves fdd untouched.
+SDR++ audio stutter is a separate PC-side problem: RtAudio sink; use the
+PortAudio ("New Audio") sink for the Radio stream (docs/sdrpp.md).
+
 ## Streaming ceiling over the network (docs/streaming-paths.md)
 
 **On a direct gigabit cable (2026-10-05) the ceilings barely move**: iiod 12 MS/s
