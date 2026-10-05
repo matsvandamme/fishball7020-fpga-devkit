@@ -677,6 +677,15 @@ class _Handlers:
 
     def __init__(self, service, workers=8):
         self.service, self.pool = service, futures.ThreadPoolExecutor(max_workers=workers)
+        self.open_calls = set()             # each streaming call's "gone" event
+        self.closing = threading.Event()
+
+    def close(self):
+        """End every open streaming call, as if its client had left: a
+        transmit mutes and releases the buffer, a stream frees the receiver."""
+        self.closing.set()
+        for gone in list(self.open_calls):
+            gone.set()
 
     def __mapping__(self):
         mapping = {}
@@ -719,23 +728,38 @@ class _Handlers:
         async def handler(stream):
             request = await stream.recv_message()
             loop, q, gone = asyncio.get_running_loop(), asyncio.Queue(4), threading.Event()
+            self.open_calls.add(gone)
+            if self.closing.is_set():
+                gone.set()
 
             def put(item):
-                asyncio.run_coroutine_threadsafe(q.put(item), loop).result()
+                # Bounded: once the call has ended nobody may be reading, and
+                # a worker blocked here would outlive the server.
+                try:
+                    fut = asyncio.run_coroutine_threadsafe(q.put(item), loop)
+                except RuntimeError:            # the loop is closed
+                    return False
+                while True:
+                    try:
+                        fut.result(0.1)
+                        return True
+                    except futures.TimeoutError:
+                        if gone.is_set():
+                            fut.cancel()
+                            return False
 
             def pump():
                 # the calls that hold something open learn when the client leaves
                 gen = method(request, gone.is_set) if name in ("Stream", "Transmit") else method(request)
                 try:
                     for reply in gen:
-                        put(("reply", reply))
-                        if gone.is_set():
+                        if not put(("reply", reply)) or gone.is_set():
                             break
                     put(("end", None))
                 except Exception as e:          # noqa: BLE001
                     put(("error", e))
                 finally:
-                    gen.close()                 # runs the method's own cleanup: frees the receiver
+                    gen.close()                 # runs the method's own cleanup: mutes, frees the receiver
 
             task = loop.run_in_executor(self.pool, pump)
             try:
@@ -749,6 +773,7 @@ class _Handlers:
                         raise _status(value) from None
             finally:
                 gone.set()                      # the client left, or we are done: let the pump finish
+                self.open_calls.discard(gone)
                 while not task.done():
                     try:
                         q.get_nowait()
@@ -762,11 +787,12 @@ class Running:
 
     def __init__(self, service, host, port):
         self._loop = asyncio.new_event_loop()
+        self.handlers = _Handlers(service)
         started = threading.Event()
 
         def run():
             asyncio.set_event_loop(self._loop)      # grpclib's Server picks up the thread's loop
-            self._server = Server([_Handlers(service)])
+            self._server = Server([self.handlers])
             self._loop.run_until_complete(self._server.start(host, port))
             started.set()
             self._loop.run_forever()
@@ -776,12 +802,26 @@ class Running:
         self.port = self._server._server.sockets[0].getsockname()[1]
 
     def stop(self):
+        """End every open call (a transmit mutes), close the port, and wait
+        for the worker threads: one left running would keep a transmitter up
+        and the process from exiting."""
+        if self._loop.is_closed():
+            return
+        self.handlers.close()
+
         async def close():
             self._server.close()
-            await self._server.wait_closed()
+            try:
+                # grpclib waits for each client to drop its connection; one
+                # that never does (a crashed script) must not hold the stop
+                await asyncio.wait_for(self._server.wait_closed(), 2)
+            except asyncio.TimeoutError:
+                pass
         asyncio.run_coroutine_threadsafe(close(), self._loop).result(5)
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join(5)
+        self.handlers.pool.shutdown(wait=True)
+        self._loop.close()
 
 
 def serve(service, host="::", port=proto.PORT):

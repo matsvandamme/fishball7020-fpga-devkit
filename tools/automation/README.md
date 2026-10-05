@@ -34,7 +34,7 @@ on first use. To make it yourself:
 # run from: tools/automation
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python tests/test_automation.py     # 64 tests against a fake board; no board needed
+.venv/bin/python tests/test_automation.py     # 67 tests against a fake board; no board needed
 ```
 
 | File | |

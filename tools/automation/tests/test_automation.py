@@ -513,6 +513,45 @@ class Transmit(Case):
         self.assertFalse(self.service.tx_running)
 
 
+class ServerStop(Case):
+    """Stopping the server must end every call it is running: a worker left
+    behind keeps a transmitter up, and keeps the process from exiting."""
+
+    def workers(self):
+        return [t for t in self.server.handlers.pool._threads if t.is_alive()]
+
+    def ends_cleanly(self, within=3.0):
+        t0 = time.monotonic()
+        while time.monotonic() - t0 < within:
+            if not self.workers():
+                return
+            time.sleep(0.02)
+        self.fail(f"{len(self.workers())} worker thread(s) still running {within} s after the server stopped")
+
+    def test_stopping_mid_transmit_mutes_and_ends_the_call(self):
+        self.b.affirmations = {0, 1}
+        wave = self.c.upload_waveform(tone())
+        self.c.transmit(wave, [1, 2], -40)
+        self.assertTrue(self.b.enabled[TX_DEV])
+        self.server.stop()
+        self.ends_cleanly()
+        self.assertFalse(self.b.enabled[TX_DEV])
+        self.assertEqual(self.b.tx_attenuation(), [MUTED_DB, MUTED_DB])
+        self.assertEqual(self.b.teardown_attenuation, [[MUTED_DB, MUTED_DB]])
+
+    def test_stopping_mid_stream_ends_the_call(self):
+        self.b.stream_blocks = 10 ** 6
+        it = self.c.stream(channels=[1], block_samples=1024)
+        next(it)
+        self.server.stop()
+        self.ends_cleanly()
+        self.assertFalse(self.b.enabled[RX_DEV])
+
+    def test_stop_twice(self):
+        self.server.stop()
+        self.server.stop()
+
+
 class Protocol(unittest.TestCase):
     def test_every_method_has_a_handler_and_a_client_call(self):
         self.assertEqual(sorted(proto.METHODS), ["Capture", "Configure", "DeleteCapture", "DeleteWaveform", "Fetch",
