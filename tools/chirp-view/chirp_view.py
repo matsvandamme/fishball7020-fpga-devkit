@@ -44,6 +44,13 @@ Board rules it follows (docs/cyclic-buffers.md, rf-safety.md in the devkit):
 
 --channel 2 runs the same on the second pair, TX2 -> pad -> RX2, with TX1
 muted instead: the samples come from zc-stream's RX2 port (5556).
+
+--reference makes the other receiver a timing reference for pulse
+compression: both receivers are read from one libiio buffer, so their samples
+are taken at the same instants, and a lost block shifts both alike. The range
+is then RX1's peak minus RX2's, which no lost sample can move. 'loops' plays
+the pulse on TX1 and TX2 at once, one per bench loop; 'split' plays it on TX1
+only, for a splitter feeding both receivers.
 """
 import argparse
 import csv
@@ -67,6 +74,7 @@ POOL = 4                            # FFT bins per waterfall column
 BLOCK = 1 << 18                     # samples per processing block
 ZC_PORT = 5555                      # zc-stream -D: RX1 here, RX2 on the next port
 COMP_MAX_PERIOD = 0.01              # pulse compression for pulse periods up to 10 ms
+REF_MAX = 5.5e6                     # --reference: two receivers through libiio, 44 MB/s
 
 
 def log(msg):
@@ -101,11 +109,19 @@ def plan(args):
     transport = args.transport
     if transport == "auto":
         transport = "zc" if rate > 6e6 else "libiio"
+    if args.reference:
+        # both receivers in one buffer: libiio, at 16 bits, 8 bytes a sample
+        if args.shape != "pulsed":
+            raise ValueError("the reference is for pulse compression: pick the pulsed mode")
+        if rate > REF_MAX:
+            raise ValueError(f"the reference reads both receivers through libiio: at most "
+                             f"{REF_MAX/1e6:g} MS/s (4.8 MS/s in the window)")
+        transport = "libiio"
     offset = span / 2 + guard                       # chirp centre, above the RX LO
     return dict(rate=rate, span=span, period=period, guard=guard, offset=offset,
                 rx_lo=args.freq - offset, transport=transport, shape=args.shape, taper=args.taper,
                 steps=args.steps, duty=args.duty,
-                comp=args.shape == "pulsed" and period <= COMP_MAX_PERIOD,
+                comp=args.shape == "pulsed" and period <= COMP_MAX_PERIOD, ref=args.reference,
                 max_span=usable - guard, max_period=max_period)
 
 
@@ -254,6 +270,8 @@ def cal_points(p):
 
 def cal_load(p, args):
     import json
+    if args.reference:
+        return None                     # one pulse for both transmitters: no per-transmitter correction
     try:
         e = json.load(open(CAL_FILE))[cal_key(p, args)]
         return np.array(e["f"]), np.array(e["re"]) + 1j * np.array(e["im"])
@@ -286,7 +304,9 @@ class Board:
         self.args, self.p = args, p
         self.dev = adi.ad9361(uri=args.uri)
         self.i = args.channel - 1                     # 0 or 1: the pair in use
-        self.o = 1 - self.i                           # the other transmitter, kept muted
+        self.o = 1 - self.i                           # the other transmitter, muted unless --reference loops
+        # the transmitters that play: both for --reference loops, else this pair's
+        self.tx_on = [0, 1] if args.reference == "loops" else [self.i]
         self.tx_running = self.closed = self.bound_off = False
         self.bound_was = None
         self.armed_at = 0.0
@@ -338,8 +358,9 @@ class Board:
         bw = int(min(0.9 * p["rate"], 56e6))
         d.rx_rf_bandwidth = bw
         d.tx_rf_bandwidth = bw
-        setattr(d, f"gain_control_mode_chan{self.i}", "manual")
-        setattr(d, f"rx_hardwaregain_chan{self.i}", a.rx_gain)
+        for ch in ([0, 1] if a.reference else [self.i]):  # the reference receiver gets the same gain
+            setattr(d, f"gain_control_mode_chan{ch}", "manual")
+            setattr(d, f"rx_hardwaregain_chan{ch}", a.rx_gain)
         log(f"radio: {p['rate']/1e6:g} MS/s, TX and RX LO {p['rx_lo']/1e6:.3f} MHz "
             f"(chirp {p['guard']/1e6:.2f}-{(p['guard']+p['span'])/1e6:.2f} MHz above both), "
             f"RF bandwidth {bw/1e6:.1f} MHz, RX{a.channel} manual {a.rx_gain:g} dB")
@@ -356,23 +377,23 @@ class Board:
         """Start the cyclic chirp, then set the attenuation and make the chip agree."""
         d, want = self.dev, self.args.tx_atten
         c = self.args.channel
-        d.tx_enabled_channels = [self.i]            # this pair's transmitter only
+        d.tx_enabled_channels = self.tx_on
         d.tx_cyclic_buffer = True
         t0 = time.time()
-        d.tx(iq)
+        d.tx(iq if len(self.tx_on) == 1 else [iq, iq])
         self.tx_running = True
         self.armed_at = time.time()
         for _ in range(10):                         # AFTER the start: write, read back
-            got = self.gain(self.i, want)
-            other = self.gain(self.o, MUTED)
-            if abs(got - want) <= 0.5 and other <= MUTED + 0.26:
+            g = [self.gain(ch, want if ch in self.tx_on else MUTED) for ch in (0, 1)]
+            if all(abs(g[ch] - want) <= 0.5 if ch in self.tx_on else g[ch] <= MUTED + 0.26 for ch in (0, 1)):
                 break
             time.sleep(0.05)
         else:
             self.stop_tx()
-            raise RuntimeError(f"TX{c} attenuation did not apply: asked {want}, chip reads {got}")
-        log(f"TX{c} cyclic chirp started ({time.time() - t0:.1f} s upload), "
-            f"attenuation {got:.2f} dB (asked {want:g}), TX{3 - c} {other:.2f} dB")
+            raise RuntimeError(f"TX attenuation did not apply: asked {want}, chip reads TX1 {g[0]}, TX2 {g[1]}")
+        log(f"{' and '.join(f'TX{ch + 1}' for ch in self.tx_on)} cyclic {'pulse' if self.args.reference else 'chirp'} "
+            f"started ({time.time() - t0:.1f} s upload), attenuation TX1 {g[0]:.2f} dB, TX2 {g[1]:.2f} dB "
+            f"(asked {want:g} on TX{c}{' and TX' + str(3 - c) if len(self.tx_on) == 2 else ''})")
 
     def set_tx_atten(self, want):
         """Live: write and read back until the chip agrees (only while running)."""
@@ -380,9 +401,9 @@ class Board:
         if not self.tx_running:
             return None
         for _ in range(10):
-            got = self.gain(self.i, want)
-            if abs(got - want) <= 0.5:
-                return got
+            got = [self.gain(ch, want) for ch in self.tx_on]
+            if all(abs(x - want) <= 0.5 for x in got):
+                return got[0]
             time.sleep(0.05)
         self.stop_tx()
         raise RuntimeError(f"TX{self.args.channel} attenuation did not apply: asked {want}, "
@@ -390,7 +411,8 @@ class Board:
 
     def set_rx_gain(self, gain):
         self.args.rx_gain = gain
-        setattr(self.dev, f"rx_hardwaregain_chan{self.i}", gain)
+        for ch in ([0, 1] if self.args.reference else [self.i]):
+            setattr(self.dev, f"rx_hardwaregain_chan{ch}", gain)
         return getattr(self.dev, f"rx_hardwaregain_chan{self.i}")
 
     CAL_SHIFT = 300_000                               # TX LO above RX LO while calibrating
@@ -451,6 +473,8 @@ class Board:
         alpha0 +- jd) give K and c; a second, finer round refines c.
         """
         d = self.dev
+        if self.args.reference:
+            raise RuntimeError("no mirror calibration with --reference: both transmitters play one pulse")
         d.rx_enabled_channels = [self.i]
         d.rx_buffer_size = 1 << 16
         d.tx_lo = int(self.p["rx_lo"] + self.CAL_SHIFT)
@@ -533,7 +557,10 @@ class Source:
         else:
             import adi
             self.dev = adi.ad9361(uri=args.uri)
-            self.dev.rx_enabled_channels = [args.channel - 1]
+            # --reference: both receivers in one buffer, sampled at the same instants
+            self.ref = bool(args.reference)
+            self.i = args.channel - 1
+            self.dev.rx_enabled_channels = [0, 1] if self.ref else [self.i]
             self.dev.rx_buffer_size = BLOCK
             try:
                 self.dev._rxadc.set_kernel_buffers_count(8)
@@ -550,6 +577,9 @@ class Source:
                 got += n
             x = np.frombuffer(self.buf, np.int8).astype(np.float32) * 16    # back to 12-bit counts
             return x[0::2] + 1j * x[1::2]
+        if self.ref:                                # (measured, reference)
+            x = self.dev.rx()
+            return x[self.i].astype(np.complex64), x[1 - self.i].astype(np.complex64)
         return self.dev.rx().astype(np.complex64)
 
     def close(self):
@@ -609,6 +639,7 @@ def rx_process(args, p, out, ctl, stop, parent):
         Lp = len(pulse)
         tail = np.zeros(Lp - 1, np.complex64)
         prof, prof_have, pos, R, R_ham, comp_n = np.zeros(N), False, 0, None, None, 0
+        refd, tail_r, prof_r, ref_ph = p.get("ref"), tail.copy(), np.zeros(N), None
     try:
         src = Source(args, p)
     except Exception as e:
@@ -627,6 +658,8 @@ def rx_process(args, p, out, ctl, stop, parent):
             x = src.read()
         except Exception as e:
             out.put(("error", f"RX stopped: {e}")); break
+        if p.get("ref"):
+            x, xr = x                               # (measured, reference)
         stats["samples"] += len(x)
         if comp:
             if R is None or R_ham != ctl.get("hamming"):  # the matched filter, weighted or not
@@ -645,18 +678,35 @@ def rx_process(args, p, out, ctl, stop, parent):
                 fold = lambda v: np.concatenate([np.zeros(start), v, np.zeros(rows * N - start - len(v))]
                                                 ).reshape(rows, N).sum(axis=0)
                 new = fold(pw_c) / np.maximum(fold(np.ones(len(pw_c))), 1)   # mean per position
-                # The fold counts samples since the start: if RX1 lost samples
-                # meanwhile, the peak lands elsewhere. Never average across that:
-                # start afresh, and count it (a zero set before no longer holds).
-                d = (int(np.argmax(new)) - int(np.argmax(prof))) % N
-                if prof_have and min(d, N - d) > 3:
-                    prof[:] = new
-                    stats["realign"] = stats.get("realign", 0) + 1
-                else:
+                if refd:
+                    # The reference receiver, compressed the same way, sets time
+                    # zero: both folds are rolled so its peak sits mid-period. A
+                    # lost block moves both peaks alike, so the roll absorbs it.
+                    zr = np.concatenate([tail_r, xr])
+                    cr = sfft.ifft(sfft.fft(zr, M) * R, workers=2)[:len(xr)]
+                    new_r = fold(cr.real ** 2 + cr.imag ** 2) / np.maximum(fold(np.ones(len(cr))), 1)
+                    ph = int(np.argmax(new_r))
+                    if ref_ph is not None and min((ph - ref_ph) % N, (ref_ph - ph) % N) > 3:
+                        stats["realign"] = stats.get("realign", 0) + 1     # counted, and absorbed
+                    ref_ph = ph
+                    new, new_r = np.roll(new, N // 2 - ph), np.roll(new_r, N // 2 - ph)
                     prof[:] = 0.7 * prof + 0.3 * new if prof_have else new
+                    prof_r[:] = 0.7 * prof_r + 0.3 * new_r if prof_have else new_r
+                else:
+                    # The fold counts samples since the start: if RX1 lost samples
+                    # meanwhile, the peak lands elsewhere. Never average across that:
+                    # start afresh, and count it (a zero set before no longer holds).
+                    d = (int(np.argmax(new)) - int(np.argmax(prof))) % N
+                    if prof_have and min(d, N - d) > 3:
+                        prof[:] = new
+                        stats["realign"] = stats.get("realign", 0) + 1
+                    else:
+                        prof[:] = 0.7 * prof + 0.3 * new if prof_have else new
                 prof_have = True
             comp_n += 1
             tail = z[-(Lp - 1):] if Lp > 1 else tail
+            if refd:
+                tail_r = np.concatenate([tail_r, xr])[-(Lp - 1):] if Lp > 1 else tail_r
             pos += len(x)
         m = len(x) // NFFT
         X = sfft.fft(x[: m * NFFT].reshape(m, NFFT) * win, axis=1, workers=2)
@@ -714,7 +764,8 @@ def rx_process(args, p, out, ctl, stop, parent):
             if time.time() - last_resp > 0.3:
                 out.put_nowait(("resp", resp_sum.copy(), resp_n.copy()))
                 if comp and prof_have:
-                    out.put_nowait(("comp", prof.astype(np.float32), stats.get("realign", 0)))
+                    out.put_nowait(("comp", prof.astype(np.float32), stats.get("realign", 0),
+                                    prof_r.astype(np.float32) if refd else None))
                 out.put_nowait(("stats", dict(stats)))
                 last_resp = time.time()
         except queue.Full:
@@ -945,9 +996,11 @@ def run_window(args, st):
     p_resp = win.addPlot(row=3, col=0, title="Response: chirp level vs frequency")
     p_resp.setLabel("left", "dBFS"); p_resp.setLabel("bottom", "MHz"); p_resp.showGrid(x=True, y=True, alpha=0.3)
     c_resp = p_resp.plot(pen=pg.mkPen("#81c784", width=2), connect="finite")
-    p_comp = pg.PlotItem(title=f"Pulse compression: RX{CH} matched to the sent pulse, one pulse period")
+    p_comp = pg.PlotItem(title=f"Pulse compression: RX{CH} matched to the sent pulse, one pulse period"
+                         + (f", timed against RX{3 - CH} (grey, mid-period)" if args.reference else ""))
     p_comp.setLabel("left", "dB from the peak"); p_comp.setLabel("bottom", "delay within the period (µs)")
     p_comp.showGrid(x=True, y=True, alpha=0.3); p_comp.setYRange(-60, 3, padding=0)
+    c_ref = p_comp.plot(pen=pg.mkPen("#9e9e9e", width=1))         # --reference: the reference receiver
     c_comp = p_comp.plot(pen=pg.mkPen("#ce93d8", width=2))
     comp_zero = pg.InfiniteLine(angle=90, pen=pg.mkPen("#e0e0e0", width=1, style=QtCore.Qt.PenStyle.DashLine),
                                 label="zero", labelOpts={"position": 0.9, "color": "#e0e0e0"})
@@ -1055,6 +1108,8 @@ def run_window(args, st):
     w_fix = QtWidgets.QCheckBox("Cancel the mirror"); w_fix.setChecked(args.mirror_fix)
     l_cal = QtWidgets.QLabel(); l_cal.setWordWrap(True); l_cal.setStyleSheet("color: #999; font-size: 10pt;")
     fm.addWidget(b_cal); fm.addWidget(w_fix); fm.addWidget(l_cal); pv.addWidget(g_mir)
+    if args.reference:                                 # one pulse on both transmitters: no per-TX correction
+        g_mir.setEnabled(False); g_mir.setToolTip("not with --reference")
 
     g_comp = QtWidgets.QGroupBox("Pulse compression"); fc = QtWidgets.QVBoxLayout(g_comp)
     w_ham = QtWidgets.QCheckBox("Hamming weighting")
@@ -1120,7 +1175,7 @@ def run_window(args, st):
         g_comp.setVisible(bool(p.get("comp")))
         CP.update(prof=None, zero=None)
         p_comp.removeItem(comp_zero) if comp_zero in p_comp.items else None
-        c_comp.setData([], [])
+        c_comp.setData([], []); c_ref.setData([], [])
         st["session"].ctl["hamming"] = w_ham.isChecked()
         hold["a"] = np.full(NFFT, -200.0)
         resp.update(sum=None, n=None)
@@ -1197,6 +1252,8 @@ def run_window(args, st):
 
     def show_cal():
         import json
+        if args.reference:
+            l_cal.setText("off with --reference: one pulse plays on both transmitters"); return
         try:
             e = json.load(open(CAL_FILE))[cal_key(st["p"], args)]
             l_cal.setText(f"calibrated {e['when']}: mirror {max(e['before_dbc']):.0f} -> "
@@ -1219,6 +1276,8 @@ def run_window(args, st):
         return info
 
     def calibrate():
+        if args.reference:
+            say("no mirror calibration with --reference: both transmitters play one pulse", "#ffca28"); return
         was_on = board.tx_running
         if sound:
             sound.silence()
@@ -1358,7 +1417,7 @@ def run_window(args, st):
             elif kind == "pitch" and sound:
                 sound.push(m[1], m[2])
             elif kind == "comp":
-                CP["prof"], CP["realign"] = m[1], m[2]
+                CP["prof"], CP["realign"], CP["ref"] = m[1], m[2], m[3]
             elif kind == "resp":
                 resp["sum"], resp["n"] = m[1], m[2]
             elif kind == "stats":
@@ -1391,7 +1450,8 @@ def run_window(args, st):
         x = S["stats"]
         real = x.get("samples", 0) / p["rate"] / max(1e-9, time.time() - x.get("t0", time.time()))
         clip = "  <span style='color:#ef5350'>CLIPPING - lower RX gain</span>" if S["peak"] > -3 else ""
-        tx = (f"TX{CH} on, {args.tx_atten:g} dB" if board.tx_running else f"<span style='color:#ffca28'>TX{CH} off</span>")
+        tx_names = "+".join(f"TX{ch + 1}" for ch in board.tx_on)
+        tx = (f"{tx_names} on, {args.tx_atten:g} dB" if board.tx_running else f"<span style='color:#ffca28'>{tx_names} off</span>")
         left = max(0, args.rearm - (time.time() - board.armed_at))
         rearm = ("" if not board.tx_running else
                  f" &nbsp;|&nbsp; bound 1 h, re-arm in {left/60:.0f} min" if board.bound_off else
@@ -1449,23 +1509,42 @@ def run_window(args, st):
         B, Tp = p["span"], p["period"] * p["duty"]
         # draw only what is visible: a 20 000-point antialiased curve 25 times
         # a second was heavy enough to slow the receiver down
+        refp = CP.get("ref")
+        if refp is not None:
+            # both peaks are drawn against the same scale: dB from the stronger one
+            rpeak, _, _, _ = comp_metrics(refp, rate)
+            top = max(CP["prof"].max(), refp.max())
+            db = 10 * np.log10(CP["prof"] / top + 1e-15)
+            db_r = 10 * np.log10(refp / top + 1e-15)
+        curves = [(c_comp, db)] + ([(c_ref, db_r)] if refp is not None else [])
         if w_zoom.isChecked():
             half = max(40 / B * 1e6, 3 * width / rate * 1e6)   # +-40 resolution cells
+            if refp is not None:                               # keep the reference in view too
+                half = max(half, abs(peak - rpeak) / rate * 1e6 + 10 / B * 1e6)
+            mid = pk_us if refp is None else (peak + rpeak) / 2 / rate * 1e6
             hs = int(half * 1e-6 * rate) + 2
-            k = np.arange(int(peak) - hs, int(peak) + hs + 1)
-            c_comp.setData(k / rate * 1e6, db[k % len(db)])
-            p_comp.setXRange(pk_us - half, pk_us + half, padding=0)
+            k = np.arange(int(mid * 1e-6 * rate) - hs, int(mid * 1e-6 * rate) + hs + 1)
+            for cv, d in curves:
+                cv.setData(k / rate * 1e6, d[k % len(d)])
+            p_comp.setXRange(mid - half, mid + half, padding=0)
         else:
             step = max(1, len(db) // 4000)
             m = len(db) // step * step
-            c_comp.setData(np.arange(0, m, step) / rate * 1e6, db[:m].reshape(-1, step).max(axis=1))
+            for cv, d in curves:
+                cv.setData(np.arange(0, m, step) / rate * 1e6, d[:m].reshape(-1, step).max(axis=1))
             p_comp.setXRange(0, len(db) / rate * 1e6, padding=0)
         lines = [f"peak at {pk_us:.4f} µs in the period",
                  f"width (-3 dB) {width / rate * 1e9:.0f} ns; theory {0.886 / B * 1e9 * (1.47 if w_ham.isChecked() else 1):.0f} ns",
                  f"highest sidelobe {side:.1f} dB",
                  f"compression gain B·T = {10 * math.log10(B * Tp):.1f} dB ({B / 1e6:g} MHz x {Tp * 1e6:g} µs)"]
-        lines.append(f"re-aligned {CP.get('realign', 0)} times (RX{CH} lost samples)")
-        if CP["zero"] is not None and CP.get("realign", 0) != CP.get("zero_realign"):
+        if refp is not None:
+            P = len(db)
+            dd = (peak - rpeak + P / 2) % P - P / 2
+            lines.insert(0, f"RX{CH} - RX{3 - CH}: {dd / rate * 1e9:+.2f} ns")
+            lines.append(f"lost samples {CP.get('realign', 0)} times, absorbed by the RX{3 - CH} reference")
+        else:
+            lines.append(f"re-aligned {CP.get('realign', 0)} times (RX{CH} lost samples)")
+        if refp is None and CP["zero"] is not None and CP.get("realign", 0) != CP.get("zero_realign"):
             lines.append("zero no longer holds: samples were lost since. Set zero again")
         elif CP["zero"] is not None:
             d_ns = (pk_us - CP["zero"]) * 1e3
@@ -1569,6 +1648,11 @@ def main():
     g_sweep.add_argument("--taper", type=float, default=0.05,
                     help="against splatter: fade sawtooth and log sweeps at the wrap, smooth the jumps of "
                          "steps and hops, soften the pulse edges, over this fraction (default: 0.05)")
+    g_radio.add_argument("--reference", choices=("loops", "split"),
+                    help="time pulse compression against the other receiver, so lost samples cannot move "
+                         "the range: 'loops' plays the pulse on both transmitters (one per bench loop), "
+                         "'split' on this pair's only (a splitter feeds both receivers). Pulsed mode, "
+                         "libiio, at most 5.5 MS/s; defaults to 4.8 MS/s and a 1.6 MHz chirp")
     g_radio.add_argument("--calibrate-mirror", action="store_true",
                     help="measure the mirror correction for these settings, save it, and exit (~10 s)")
     g_radio.add_argument("--no-mirror-fix", dest="mirror_fix", action="store_false",
@@ -1608,6 +1692,15 @@ def main():
         ap.error("--taper must be 0 to 0.5")
     if not 2.1e6 <= args.rate <= 61.44e6:
         ap.error("--rate must be 2.1 to 61.44 MS/s")
+    if args.reference:
+        if "--rate" not in " ".join(sys.argv):
+            args.rate = 4.8e6
+        if not args.span:
+            args.span = 1.6e6
+        if "--shape" not in " ".join(sys.argv):
+            args.shape = "pulsed"
+        if args.calibrate_mirror:
+            ap.error("--calibrate-mirror does not apply with --reference")
     try:
         p = plan(args)
     except ValueError as e:

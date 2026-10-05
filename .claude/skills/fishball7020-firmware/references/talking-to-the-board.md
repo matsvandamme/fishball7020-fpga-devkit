@@ -486,6 +486,14 @@ CI cannot stream; stop SDR++ (or `systemctl stop zc-stream`) first.
 mirror calibration cached under its own `ch=2` key). TX2's raw image measured
 -51 dBc, worse than TX1's; calibrated to -64..-69 dBc through a 30 dB loop.
 
+`--reference loops|split` times pulse compression against the other receiver:
+both RX read from ONE libiio buffer (sample-simultaneous; zc-stream cannot, its
+two ports each open the single RX buffer), each block rolled so the reference
+peak sits mid-period, readout RX1 - RX2. `loops` plays one pulse on TX1 and TX2
+together. libiio 2ch x 16 bit caps it at 5.5 MS/s (default 4.8, 1.6 MHz). With
+every PC core loaded (42-77% of samples arriving, 138 losses) RX1 - RX2 held at
+-0.44..-0.49 ns; without the reference the peak jumped across the whole period.
+
 A PC program: cyclic sweep on TX1 (8 modes), live spectrum/waterfall/response
 of RX1 through the 20 dB loop, at 20 MS/s via `zc-stream` (8-bit) in its own
 process. TX and RX LOs both sit below the sweep (offset tuning), so TX LO

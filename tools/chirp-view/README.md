@@ -21,6 +21,7 @@ python3 -m venv .venv
 .venv/bin/python chirp_view.py --fullscreen     # Esc or Q quits, muting TX1 first
 .venv/bin/python chirp_view.py --check          # build the sweep and check it, no board needed
 .venv/bin/python chirp_view.py --channel 2      # the second pair: TX2 -> pad -> RX2, TX1 muted
+.venv/bin/python chirp_view.py --reference loops   # pulse ranging timed against RX2: lost samples cannot move it
 ```
 
 **Fit at least 20 dB of attenuation between TX1 and RX1** before you start: the

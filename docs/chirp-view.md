@@ -142,16 +142,50 @@ pulses, 1 ms apart):
 - **Where the peak sits is not a distance by itself.** It includes the
   arbitrary offset between when TX1's buffer and RX1's stream started, which
   changes at every Apply. Only shifts from a zero mean anything.
-- **Lost samples move the peak.** The view counts samples to know where each
+- **Lost samples move the peak** (without `--reference`, below). The view counts samples to know where each
   pulse belongs. When RX1 loses some, the peak lands elsewhere: the view then
   starts its average afresh instead of smearing two positions together,
   counts the event (*re-aligned N times*), and says when a zero set earlier
   no longer holds. At 20 MS/s over Wi-Fi this happened about once a second,
   so set the zero and add the cable promptly.
 
-Ranging that no lost sample can upset needs a reference: split TX1 to both
-receivers, the cable under test in front of RX1 only, and compare the two
-channels, which the board samples together.
+### A reference receiver: ranging that lost samples cannot move
+
+`--reference` times RX1's compressed pulse against RX2's instead of against
+a sample count. Both receivers come from **one libiio buffer**, so the board
+samples them at the same instants and a lost block removes the same samples
+from both. Each block, the RX2 peak is put at mid-period and RX1 is moved by
+the same amount; the readout is **RX1 − RX2** in nanoseconds.
+
+```bash
+# run from: tools/chirp-view on your PC
+.venv/bin/python chirp_view.py --reference loops    # TX1 and TX2 play the same pulse, one per bench loop
+.venv/bin/python chirp_view.py --reference split    # TX1 only, through a splitter to RX1 and RX2
+```
+
+| | |
+|---|---|
+| `loops` | the pulse on **TX1 and TX2 at once**, the same samples from one buffer. RX1 hears the TX1 loop, RX2 the TX2 loop, so RX1 − RX2 is the difference between the two loops. Add a cable to the TX1 loop and the readout grows by its delay. Works with the bench's two loops as they are |
+| `split` | the pulse on **TX1 only**, through a splitter to both receivers, the cable under test in front of RX1. TX2 stays muted |
+| rate | both receivers at 16 bits through libiio: **at most 5.5 MS/s**; it starts at 4.8 MS/s with a 1.6 MHz chirp (572 ns peak, theory 554 ns) |
+| not with it | mirror calibration (one pulse plays on both transmitters), and `zc-stream`, whose two ports open the receive buffer separately |
+
+![chirp-view with --reference loops: the pulse-compression chart shows RX1's compressed pulse in purple and RX2's in grey, both peaking at 500 µs, mid-period, with the readout "RX1 - RX2: -0.56 ns" and a count of lost samples absorbed by the RX2 reference.](img/chirp-view-reference.jpg)
+
+**Measured with lost samples**, 5.5 MS/s and a 1.8 MHz chirp on the bench's
+two loops, with every core of the PC loaded for 40 s so the receiver fell
+behind:
+
+| | Without `--reference` | With `--reference loops` |
+|---|---|---|
+| samples that arrived | (same load; not logged) | 42–77 % |
+| what the losses did | peak jumped across the 1 ms period: 342, 64, 138, 192, 916 µs; 97 re-alignments | 138 losses absorbed |
+| the reading | none that holds | **RX1 − RX2 = −0.44 to −0.49 ns** throughout |
+
+The two loops' difference here is about half a nanosecond: the same cable
+lengths, and the 20 dB and 30 dB pads. Even unloaded, two receivers through
+libiio over Wi-Fi lost samples two or three times a second at 4.8 MS/s, and
+the reading stayed at −0.56 ns.
 
 ## How it works
 
