@@ -115,6 +115,19 @@ jobs:
       - name: Board self-test (no cable, never transmits)
         run: ./devkit selftest --ssh
 
+      - name: Automation server (receive only)
+        # Status, a two-channel capture, a live stream, and both transmitters
+        # still muted. Skipped, with a notice, on a board that does not have
+        # the service: ./devkit automation install puts it there.
+        run: |
+          if ! out=$(./devkit automation status 2>&1); then
+            case "$out" in
+              *UNAVAILABLE*) echo "::notice::the automation server is not installed on this board - skipped (./devkit automation install)"; exit 0 ;;
+              *) echo "$out"; exit 1 ;;
+            esac
+          fi
+          ./devkit automation smoke
+
       - name: Sample-locked GPIO outputs
         # Verifies the feature end to end on the pads, with TX attenuation
         # pinned at maximum and read back during every stream.

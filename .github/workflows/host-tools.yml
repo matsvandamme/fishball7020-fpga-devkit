@@ -84,6 +84,15 @@ jobs:
       - name: devkit help, typos and the no-board path
         run: python tools/selftest/test_devkit_cli.py
 
+      # The automation server's rules (request checks, busy refusals, capture,
+      # stream accounting, never touching a transmitter): the real server and
+      # client over localhost, with only the board faked.
+      - name: Automation server, against a fake board
+        if: matrix.python == '3.12'
+        run: |
+          python -m pip install --quiet -r tools/automation/requirements.txt
+          python tools/automation/tests/test_automation.py
+
       - name: Measurement maths, with numpy
         run: |
           python -m pip install --quiet numpy

@@ -80,6 +80,11 @@ pages with every measurement are under [Reference](#reference).
 
     One command checks MATLAB; three rules keep levels and settings right.
 
+-   :material-robot-outline:{ .lg } **[Automate a measurement](automate-measurements.md)**
+
+
+    A server on the board and a Python client: set, capture, fetch.
+
 -   :material-stethoscope:{ .lg } **[Check the radio is healthy](check-the-radio.md)**
 
 
@@ -92,6 +97,7 @@ pages with every measurement are under [Reference](#reference).
 The full pages, with every measurement and caveat:
 [your own project](../your-own-project.md) ·
 [capturing IQ](../capturing-iq.md) ·
+[the automation server](../automation.md) ·
 [SDR++](../sdrpp.md) ·
 [ADS-B](../adsb.md) ·
 [other SDR tools](../other-sdr-tools.md) ·

@@ -20,7 +20,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 DEVKIT = str(ROOT / "devkit")
 NOBOARD = {"BOARD": "203.0.113.1"}
 COMMANDS = ("doctor setup sim build verify flash write-card status selftest gpio-check net "
-            "ssh-key tx-guard matlab clock completion uboot-contract temps loopback container adsb").split()
+            "ssh-key tx-guard matlab clock completion uboot-contract temps loopback container adsb "
+            "automation").split()
 FAILURES = []
 CHECKS = 0
 

@@ -511,3 +511,33 @@ sample count, so RX losses move the peak (counted as re-alignments, ~1/s at
 20 MS/s over Wi-Fi). Drawing a 20k-point antialiased curve at 25 fps slowed the
 receive process enough that zc-stream delivered 90% instead of 98%: draw only
 the visible span.
+
+## The automation server (tools/automation, docs/automation.md)
+
+A gRPC server on the board, port 7020, for measurement scripts; `./devkit
+automation install|status|clock|capture|smoke|mute|test`. Python client:
+`fishball_automation.client.Fishball` (venv in `tools/automation/.venv`).
+Version 0.1 never transmits: no call takes a TX attenuation, `Configure` mutes
+and fails if an attenuator rose, `Mute` is always allowed.
+
+- **Use `python3-grpclib` on the board, never `python3-grpcio`.** Debian
+  trixie's armhf grpcio 1.51 aborts on any use (`time_posix.cc: assertion
+  failed: ts.tv_nsec`), even creating a channel. grpclib is pure Python.
+- **Message classes come from `fishball.desc` at run time** (no `_pb2.py`):
+  the board has protobuf 3.21, a PC has whatever pip gives. On old protobuf,
+  cache one class per message, or grpclib rejects a reply as "Status, not Status".
+- **gRPC does not resolve `.local` names.** The client resolves with
+  `socket.getaddrinfo` first.
+- **Never SIGKILL `iio_readdev -u local:`.** It leaves `buffer/enable` at 1 with
+  no process holding the device, and everything after reads as busy. SIGTERM
+  it; a flag with no holder is stale and may be cleared.
+- **Read the sample pipe in big pieces** (`F_SETPIPE_SZ` 1 MB, `readv` into a
+  preallocated buffer). With 64 kB reads under a busy Python thread the reader
+  fell to ~13 MB/s, samples were lost in the kernel unreported, and a clock
+  measurement read 25.4 MHz for a 40 MHz reference.
+- **Count stream losses against the radio's clock** (rate x time), not only
+  against the server's own queue.
+- Measured: capture 2 x 40 M samples at 20 MS/s with 0 lost, fetch 16.4 MB/s;
+  live stream delivers 2-3 MS/s; reference 40.00030 MHz (+7.5 ppm) in 30 s.
+- Captures go to `/dev/shm` (tmpfs, half of RAM); `/run` is too small (a
+  320 MB capture stopped at 209 MB there).

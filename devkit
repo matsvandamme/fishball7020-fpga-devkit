@@ -200,6 +200,18 @@
 #       --record NAME      Also save the samples, as SigMF.
 #       --replay FILE      Play a recording back. No board needed.
 #                          -> docs/adsb.md
+#     ./devkit automation  The automation server: a gRPC service on the board
+#                          (port 7020) that scripts on your PC call to read the
+#                          radio's state, set it, measure the reference clock and
+#                          record gap-free captures. It never transmits.
+#       install            Put it on the board as a service (Debian root).
+#       status             The board, the radio, the clock, who holds the buffers.
+#       clock --measure    Time the reference against the board's own crystal.
+#       capture NAME --samples N [--channels 1,2]   Record, fetch as SigMF.
+#       smoke              An end-to-end check; receive only.
+#       mute               Both transmitters to the floor, read back.
+#       test               Its unit tests, against a fake board. No board needed.
+#                          -> docs/automation.md
 #
 # ---- If your host OS is too new for Vivado ----------------------------------
 #
@@ -238,7 +250,8 @@ FW="$HERE/firmware"
 usage_all() { sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; }
 
 COMMANDS="doctor setup sim build verify flash write-card status selftest gpio-check net
-          ssh-key tx-guard matlab clock completion uboot-contract temps loopback container adsb"
+          ssh-key tx-guard matlab clock completion uboot-contract temps loopback container adsb
+          automation"
 
 # One screen: what each command is for, and the runs people actually do. The
 # full text above is `./devkit help --all`; one command's part of it is
@@ -267,6 +280,7 @@ Once it runs
   net             the board's address: DHCP, static, hostname, or find it
   temps           live die temperatures
   adsb            aircraft overhead, live, from 1090 MHz ADS-B (receive only)
+  automation      a server on the board for your measurement scripts (never transmits)
   tx-guard        the transmit gate: affirm a port is terminated first
   also: gpio-check  clock  loopback  matlab  uboot-contract  container  completion
 
@@ -496,7 +510,7 @@ case "$cmd" in
             exec python3 "$HERE/tools/adsb/adsb.py" "$@"
         fi
         command -v uv >/dev/null || {
-            echo "ERROR: the window needs PyQt6. Either: pip install PyQt6 numpy" >&2
+            echo "ERROR: the window needs PyQt6. Either, in a venv: .venv/bin/pip install PyQt6 numpy" >&2
             echo "       or install uv (https://docs.astral.sh/uv/), which fetches it" >&2
             echo "       or: ./devkit adsb --text    (the terminal; needs only numpy)" >&2
             exit 1; }
@@ -531,6 +545,7 @@ case "$cmd" in
         # 10 reaped a stale buffer / 11 found an owner.
         exec "${_ssh[@]}" "$_tgt" "sh /tmp/tx-guard.sh $*" ;;
     clock)      need_board 1 iiod "$@"; exec python3 "$HERE/tools/clock-cal.py" "$@" ;;
+    automation) exec "$HERE/tools/automation/automation.sh" "$@" ;;
     completion)
         # No argument: print the script, so one command sets this shell up
         #     source <(./devkit completion)

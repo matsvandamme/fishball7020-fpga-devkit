@@ -1,0 +1,142 @@
+// The Fishball7020 automation API: status, configuration, the reference clock
+// and receive captures, for bench-measurement scripts.
+//
+// The server (fishball_automation/server.py) runs on the board, on TCP port
+// 7020. This version never transmits: no call can raise a transmitter, and
+// Mute is always allowed.
+//
+// After editing this file, rebuild fishball.desc:
+//     # run from: tools/automation
+//     protoc --descriptor_set_out=fishball_automation/fishball.desc --include_imports fishball.proto
+syntax = "proto3";
+package fishball.v1;
+
+service Fishball {
+  // What the board is and how the radio is set, in one call.
+  rpc GetStatus(StatusRequest) returns (Status);
+  // Set any of the radio settings; unset fields are left alone. Every value
+  // written is read back and returned. Never changes a transmit attenuator.
+  rpc Configure(ConfigureRequest) returns (Status);
+  // The reference clock: correction, PLL locks and, on request, a measurement.
+  rpc GetClock(ClockRequest) returns (ClockState);
+  // Tell the driver what the 40 MHz reference really runs at (xo_correction).
+  rpc SetXoCorrection(XoCorrectionRequest) returns (ClockState);
+  // Record samples on the board, gap-free, into a capture that Fetch returns.
+  rpc Capture(CaptureRequest) returns (CaptureInfo);
+  // Download a capture's samples, in order.
+  rpc Fetch(FetchRequest) returns (stream Chunk);
+  // Remove a capture from the board.
+  rpc DeleteCapture(FetchRequest) returns (Empty);
+  // Samples as they are received. The network limits the rate; samples the
+  // board had to drop are counted in every block, never hidden.
+  rpc Stream(StreamRequest) returns (stream SampleBlock);
+  // Both transmitters to maximum attenuation, read back. Always allowed.
+  rpc Mute(Empty) returns (TxState);
+}
+
+message Empty {}
+message StatusRequest {}
+
+message Channel {
+  double rx_gain_db = 1;
+  string rx_gain_mode = 2;       // manual, slow_attack, fast_attack, hybrid
+  double tx_attenuation_db = 3;  // 0 is full power, -89.75 is muted
+  double rssi_db = 4;
+}
+
+message Holder {                 // a process holding one of the radio's buffers
+  int32 pid = 1;
+  string command = 2;
+  string buffer = 3;             // "rx" or "tx"
+}
+
+message Status {
+  string model = 1;              // the device tree's model string
+  string firmware = 2;           // device-fw from /opt/VERSIONS
+  string kernel = 3;
+  string server_version = 4;
+  int64 rx_lo_hz = 5;
+  int64 tx_lo_hz = 6;
+  int64 sample_rate_hz = 7;      // shared by receive and transmit
+  int64 rx_rf_bandwidth_hz = 8;
+  int64 tx_rf_bandwidth_hz = 9;
+  repeated Channel channels = 10;   // [0] is RX1/TX1, [1] is RX2/TX2
+  double ad9361_temp_c = 11;
+  double fpga_temp_c = 12;
+  bool rx_buffer_busy = 13;
+  bool tx_buffer_busy = 14;
+  repeated Holder holders = 15;
+  ClockState clock = 16;         // without a measurement
+}
+
+message ConfigureRequest {
+  optional int64 rx_lo_hz = 1;
+  optional int64 tx_lo_hz = 2;
+  optional int64 sample_rate_hz = 3;
+  optional int64 rx_rf_bandwidth_hz = 4;
+  optional int64 tx_rf_bandwidth_hz = 5;
+  optional string rx1_gain_mode = 6;
+  optional string rx2_gain_mode = 7;
+  optional double rx1_gain_db = 8;   // applies in manual gain mode
+  optional double rx2_gain_db = 9;
+}
+
+message ClockRequest {
+  bool measure = 1;              // time the sample clock against the board's own crystal
+  double seconds = 2;            // how long to measure; 0 means 30 s
+}
+
+message ClockState {
+  int64 xo_correction_hz = 1;    // what the driver believes the reference runs at
+  int64 xo_correction_min_hz = 2;
+  int64 xo_correction_max_hz = 3;
+  int64 xo_correction_step_hz = 4;
+  bool bbpll_locked = 5;         // register 0x05E bit 7
+  bool rx_synth_locked = 6;      // register 0x247 bit 1
+  bool tx_synth_locked = 7;      // register 0x287 bit 1
+  bool measured = 8;
+  double measured_reference_hz = 9;   // the reference implied by the measured sample rate
+  double measured_ppm = 10;           // against the configured sample rate
+  double measured_seconds = 11;
+}
+
+message XoCorrectionRequest { int64 hz = 1; }
+
+message CaptureRequest {
+  repeated int32 channels = 1;   // 1, 2 or both; both are sample-aligned
+  int64 samples = 2;             // per channel
+}
+
+message CaptureInfo {
+  string id = 1;
+  repeated int32 channels = 2;
+  int64 samples = 3;             // per channel, as recorded
+  int64 sample_rate_hz = 4;
+  int64 rx_lo_hz = 5;
+  int64 bytes = 6;
+  string datatype = 7;           // SigMF: ci16_le; channels interleaved I, Q, I, Q
+  string sigmf_meta = 8;         // the SigMF sidecar, as JSON text
+  int64 lost_samples = 9;        // 0 for a capture: it is recorded gap-free or it fails
+}
+
+message FetchRequest { string id = 1; }
+message Chunk { bytes data = 1; }
+
+message StreamRequest {
+  repeated int32 channels = 1;
+  int64 samples = 2;             // per channel; 0 means until the client cancels
+  int32 block_samples = 3;       // per block; 0 means about 50 ms worth
+}
+
+message SampleBlock {
+  int64 sequence = 1;            // counts blocks from 0
+  bytes data = 2;                // ci16_le, channels interleaved
+  int64 first_sample = 3;        // index of this block's first sample, per channel
+  int64 dropped_samples = 4;     // lost before this block, in total, per channel
+}
+
+message TxState {
+  double tx1_attenuation_db = 1;
+  double tx2_attenuation_db = 2;
+  bool muted = 3;                // both read back at the floor
+}

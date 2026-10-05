@@ -33,7 +33,7 @@ XC7Z020 and an AD9361 radio, rebuilt from source.
 
     Capture IQ, SDR++, aircraft, a live sweep, MATLAB, your own code.
 
-    <span class="count">15 articles</span>
+    <span class="count">16 articles</span>
 
 -   :material-alert-octagon-outline:{ .lg }
 

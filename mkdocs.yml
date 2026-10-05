@@ -139,6 +139,7 @@ nav:
       - Watch a sweep live: radio/watch-a-sweep.md
       - Measure ten modulations: radio/measure-modulations.md
       - Use MATLAB: radio/use-matlab.md
+      - Automate a measurement: radio/automate-measurements.md
       - Check the radio is healthy: radio/check-the-radio.md
       - Reference:
           - Your own project: your-own-project.md
@@ -154,6 +155,7 @@ nav:
           - Measured performance: measured-performance.md
           - Throughput and modulation: modulation-and-throughput.md
           - Faster streaming, what was tried: streaming-paths.md
+          - The automation server: automation.md
   - Hardware and I/O:
       - hw/index.md
       - Which port is which: hw/which-port-is-which.md

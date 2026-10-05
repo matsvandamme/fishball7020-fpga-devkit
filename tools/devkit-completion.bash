@@ -21,7 +21,7 @@ _devkit_complete() {
     cmd="${COMP_WORDS[1]}"
 
     local subcommands="doctor setup sim build verify flash write-card selftest gpio-check
-                       net temps loopback adsb status container uboot-contract matlab clock completion ssh-key tx-guard help"
+                       net temps loopback adsb automation status container uboot-contract matlab clock completion ssh-key tx-guard help"
 
     # The first word after ./devkit
     if [ "$COMP_CWORD" -eq 1 ]; then
@@ -117,6 +117,8 @@ _devkit_complete() {
             else
                 COMPREPLY=($(compgen -W "--json --uri --help" -- "$cur"))
             fi ;;
+        automation)
+            COMPREPLY=($(compgen -W "install status clock capture smoke mute test uninstall help --measure --seconds --samples --channels" -- "$cur")) ;;
         adsb)
             case "$prev" in
                 --replay) COMPREPLY=($(compgen -f -X '!*.sigmf-meta' -- "$cur")); compopt -o plusdirs 2>/dev/null ;;
