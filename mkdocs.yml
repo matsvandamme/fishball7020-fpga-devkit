@@ -82,8 +82,16 @@ markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.highlight
-  - pymdownx.superfences
+  # ```mermaid blocks render as diagrams
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.details
+  # === "fish" / === "bash" content tabs
+  - pymdownx.tabbed:
+      alternate_style: true
 
 nav:
   - Home: index.md
