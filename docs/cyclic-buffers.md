@@ -26,20 +26,19 @@ a trigger **out**, locked to the exact sample. A trigger **in** is
 software-timed, because the FPGA design this board ships has no hardware
 trigger input.
 
-> [!CAUTION]
-> **Read [transmitter safety](transmitter-safety.md) first.** The board puts out
-> about +19 dBm and its receivers survive only +2.5 dBm: never loop TX into RX
-> without at least 20 dB of attenuation, and transmit only where you are
-> allowed to. Three rules apply to every example below:
->
-> - **Set the TX attenuation after the buffer starts, and read it back.**
->   Starting a buffer restores a cached attenuation, which can be louder than
->   what you set before it.
-> - **Mute before you stop the buffer, never after.** Stopping caches whatever
->   attenuation it finds, for the next buffer to restore.
-> - **The devkit's own transmitting tools** refuse to raise the output until you
->   run `./devkit tx-guard affirm 0` (or `1`) on your PC. Your own code is not
->   checked, so the rules are yours to follow.
+!!! danger "Read [transmitter safety](transmitter-safety.md) first"
+    The board puts out about +19 dBm and its receivers survive only +2.5 dBm: never
+    loop TX into RX without at least 20 dB of attenuation, and transmit only where
+    you are allowed to. Three rules apply to every example below:
+
+    - **Set the TX attenuation after the buffer starts, and read it back.**
+      Starting a buffer restores a cached attenuation, which can be louder than
+      what you set before it.
+    - **Mute before you stop the buffer, never after.** Stopping caches whatever
+      attenuation it finds, for the next buffer to restore.
+    - **The devkit's own transmitting tools** refuse to raise the output until you
+      run `./devkit tx-guard affirm 0` (or `1`) on your PC. Your own code is not
+      checked, so the rules are yours to follow.
 
 ## Designing a waveform for a cyclic buffer
 
@@ -106,10 +105,12 @@ sdr.tx([iq_tx1, iq_tx2])                # two arrays of the same length
 ```
 
 **To change the waveform**, mute, `tx_destroy_buffer()`, then `tx()` the new one
-and set the attenuation again. The output stops for the moment in between: a
-running cyclic buffer cannot be swapped seamlessly. To switch between waveforms
-without a gap, put them all in one long buffer and select between them with
-the sample-locked pins on the receiving side, or use one-shot bursts (below).
+and set the attenuation again.
+
+!!! note "A running cyclic buffer cannot be swapped seamlessly"
+    The output stops for the moment in between. To switch between waveforms without
+    a gap, put them all in one long buffer and select between them with the
+    sample-locked pins on the receiving side, or use one-shot bursts (below).
 
 ## Cyclic buffers from the command line
 
@@ -144,8 +145,9 @@ with the file interleaving I1, Q1, I2, Q2.
 | **Length** | the DMA rounds some lengths | use a multiple of 16 samples |
 
 Details and the reasoning behind each: [transmitter safety](transmitter-safety.md#cyclic-transmits-and-the-60-s-bound).
-And **never engage the FPGA's ÷8 transmit interpolator** (setting the DDS
-core's rate to an eighth of the chip's): on this board TX1 then emits nothing.
+
+!!! danger "Never engage the FPGA's ÷8 transmit interpolator"
+    (Setting the DDS core's rate to an eighth of the chip's.) On this board TX1 then emits nothing.
 
 ## One-shot bursts on a trigger
 
@@ -163,8 +165,13 @@ burst once, prepares the transmit buffer, and then waits for a trigger:
 - **a network packet:** any UDP datagram to the port you choose;
 - **a GPIO edge:** a rising edge on one of the JP5 pins, used as an input.
 
-Each trigger costs one memory copy and one push. Running on the board, with no
-network between the program and the radio, keeps that short.
+```mermaid
+flowchart LR
+    T["trigger<br/><small>UDP datagram, or<br/>GPIO rising edge</small>"] --> B["tx-burst on the board<br/><small>one memory copy, one push</small>"] --> D["DMA plays the<br/>buffer once"] --> Z["DAC outputs zeros<br/>until the next trigger"]
+```
+
+Running on the board, with no network between the program and the radio, keeps
+the copy-and-push short.
 
 ```bash
 # run from: the board. Build once (apt install gcc make libiio-dev), or copy a binary built elsewhere.
@@ -193,43 +200,33 @@ print(s.recv(64).decode())             # "fired 1 139": burst number, microsecon
 **What was measured** (8192-sample burst, TX1 muted, markers on, a Saleae logic
 analyser on JP5):
 
-- **Each trigger plays the burst exactly once**, at its exact length: five UDP
-  triggers gave five bursts of 266.67 µs at 30.72 MS/s, and five of 2730.66 µs
-  at 3 MS/s, both 8192 samples, with every sample present (a counter in bits
-  0 and 1 shows no gap) and nothing between bursts. The start-of-burst pulse
-  on pin 11 coincides with the burst to the analyser's 20 ns resolution.
-- **When a burst ends, the pins can glitch for under 20 ns** as they drop to
-  zero (one logic-analyser sample, against 333 ns per sample at 3 MS/s): seen
-  as a brief high on pin 11 or pin 7 at the end of some bursts. To trigger
-  other equipment on a burst, use **pin 13's rising edge**, which is clean,
-  rather than pin 11.
-- **The board's DMA underflow counter** went up by exactly one per burst (21 to
-  26 for five), and not at all while armed and waiting.
-- **The program queues a burst 90 to 200 µs after the trigger arrives**, on the
-  board's own clock. The time from that to the first sample at the antenna
-  (the DMA start plus the AD9361's own delay) has not been measured, nor has
-  its jitter.
-- A UDP round trip from a PC on Wi-Fi took 2 to 3 ms, so over a network the
-  network decides the timing, not the board.
+| | Measured |
+|---|---|
+| **Each trigger plays the burst exactly once**, at its exact length | five UDP triggers gave five bursts of 266.67 µs at 30.72 MS/s, and five of 2730.66 µs at 3 MS/s, both 8192 samples, with every sample present (a counter in bits 0 and 1 shows no gap) and nothing between bursts. The start-of-burst pulse on pin 11 coincides with the burst to the analyser's 20 ns resolution |
+| **The board's DMA underflow counter** | went up by exactly one per burst (21 to 26 for five), and not at all while armed and waiting |
+| **Trigger to burst queued** | **90 to 200 µs**, on the board's own clock. The time from that to the first sample at the antenna (the DMA start plus the AD9361's own delay) has not been measured, nor has its jitter |
+| UDP round trip from a PC on Wi-Fi | 2 to 3 ms: over a network the network decides the timing, not the board |
+
+!!! warning "When a burst ends, the pins can glitch for under 20 ns"
+    As they drop to zero (one logic-analyser sample, against 333 ns per sample at
+    3 MS/s): seen as a brief high on pin 11 or pin 7 at the end of some bursts. To
+    trigger other equipment on a burst, use **pin 13's rising edge**, which is
+    clean, rather than pin 11.
 
 Things to know:
 
-- **The starve watchdog is off while `tx-burst` runs.** Between bursts the DAC
-  is starved on purpose, and the watchdog would otherwise mute the transmitter
-  and switch it to its built-in tone generator. `tx-burst` restores it when it exits.
-- **The attenuation stays at `-a` while armed.** Between bursts the DAC outputs
-  zeros, so only the LO's leakage leaves the port, at that attenuation.
-- **A GPIO trigger and the markers cannot share the pins.** The four free 3.3 V
-  pins are the sample-locked marker pins, and with markers on the FPGA drives
-  all four. Use `-m` with a UDP trigger, or `-g` without `-m`.
-- **Triggers faster than the bursts play queue up** in the four kernel blocks
-  it asks for, and then the next trigger waits. That follows from how it is
-  built; it has not been measured.
-- **From your own PC code instead**, pyadi-iio's `tx_cyclic_buffer = False`
-  plays each `tx()` once. Each call then crosses the network, and you must
-  turn the starve watchdog off yourself (`fw_setenv tx_starve_ms 0`, or
-  `echo 0 > .../tx_starve_timeout_ms` for this boot), or the first gap
-  longer than 250 ms mutes the transmitter.
+| | |
+|---|---|
+| **The starve watchdog is off while `tx-burst` runs** | between bursts the DAC is starved on purpose, and the watchdog would otherwise mute the transmitter and switch it to its built-in tone generator. `tx-burst` restores it when it exits |
+| **The attenuation stays at `-a` while armed** | between bursts the DAC outputs zeros, so only the LO's leakage leaves the port, at that attenuation |
+| **A GPIO trigger and the markers cannot share the pins** | the four free 3.3 V pins are the sample-locked marker pins, and with markers on the FPGA drives all four. Use `-m` with a UDP trigger, or `-g` without `-m` |
+| **Triggers faster than the bursts play queue up** | in the four kernel blocks it asks for, and then the next trigger waits. That follows from how it is built; it has not been measured |
+
+!!! warning "From your own PC code instead"
+    pyadi-iio's `tx_cyclic_buffer = False` plays each `tx()` once. Each call then
+    crosses the network, and you must turn the starve watchdog off yourself
+    (`fw_setenv tx_starve_ms 0`, or `echo 0 > .../tx_starve_timeout_ms` for this
+    boot), or the first gap longer than 250 ms mutes the transmitter.
 
 ## Triggering other equipment: a pulse locked to the samples
 
@@ -257,11 +254,13 @@ iio.Context("ip:192.168.2.1").find_device("cf-ad9361-dds-core-lpc").attrs["tx_sa
   40 and 60 MS/s, from the very first block on
   ([measured results](tx-gpio-bitmap.md#measured-results)), and on every
   one-shot burst above.
-- **The pin leads the RF** by a constant delay of roughly a microsecond, the
-  time the samples take through the AD9361. That delay has not been measured;
-  calibrate it once in your setup if it matters.
 - **OR the marker in last**, after any scaling or conversion, or those steps
   overwrite it.
+
+!!! warning "The pin leads the RF"
+    By a constant delay of roughly a microsecond, the time the samples take through
+    the AD9361. That delay has not been measured; calibrate it once in your setup if
+    it matters.
 
 Everything else about the pins (levels, all four bits, clocks and frame
 signals) is on [sample-locked GPIO](tx-gpio-bitmap.md).

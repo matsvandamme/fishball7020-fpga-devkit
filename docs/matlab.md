@@ -17,15 +17,26 @@ channel or setting that does not match the board.
 prompt the same check is `fishball.doctor`. If MATLAB is not on `PATH`, set
 `MATLAB_BIN` to the binary.
 
+!!! abstract "Key facts"
+    | | |
+    |---|---|
+    | firmware update offer | **never accept**: that image is for a different board, and there is no undo |
+    | full scale | `int16`: **±2047**; `double`/`single`: **±1.0**; transmit: **±32767** |
+    | channels | `sdrrx`/`sdrtx` see **only RX1/TX1**; RX2 and TX2 through the `fishball` package |
+    | changing a setting | release and re-create: a property set on a running object does nothing |
+    | Simulink blocks | must run with **Simulate using = Interpreted execution** |
+    | listening | engage the FPGA ÷8 decimator, or the sound card starves |
+
 ## Never let MATLAB update your firmware
 
-The ADALM-Pluto support package is tested against Pluto firmware `v0.39`, sees
-this board's version, and offers to **"switch the firmware version"** through the
-Hardware Setup App. **Never accept.** That image is for an ADALM-Pluto (Zynq-7010,
-AD9363); this board is a Zynq-7020 with an AD9361 and, on the common variant, a
-power amplifier. There is no undo. `fishball.connect` suppresses that offer and
-prints the safe half of the warning once per session; `sdrrx` used directly
-shows MathWorks' original, offer and all.
+!!! danger "Never accept MATLAB's offer to \"switch the firmware version\""
+    The ADALM-Pluto support package is tested against Pluto firmware `v0.39`, sees
+    this board's version, and makes the offer through the Hardware Setup App. That
+    image is for an ADALM-Pluto (Zynq-7010, AD9363); this board is a Zynq-7020 with
+    an AD9361 and, on the common variant, a power amplifier. **There is no undo.**
+
+`fishball.connect` suppresses that offer and prints the safe half of the warning
+once per session; `sdrrx` used directly shows MathWorks' original, offer and all.
 
 ## What you need
 
@@ -53,9 +64,9 @@ every dBFS level is relative to it.
 | `OutputDataType` `double` or `single` | counts ÷ **2048** | **±1.0** |
 | transmit | MSB-aligned into a 12-bit DAC | **±32767** |
 
-Dividing receive counts by 32768 makes every absolute level **24.09 dB** low, and
-uniformly, so nothing looks wrong and every ratio (SNR, EVM) is unchanged.
-`fishball.spectrum` takes a `FullScale` argument and defaults to 2047.
+!!! warning "Dividing receive counts by 32768 makes every absolute level 24.09 dB low"
+    Uniformly, so nothing looks wrong and every ratio (SNR, EVM) is unchanged.
+    `fishball.spectrum` takes a `FullScale` argument and defaults to 2047.
 
 **2. Setting a property on a running object does nothing**, without an error.
 Changing `.Gain` on a locked System object is ignored; release and re-create:
@@ -101,11 +112,15 @@ included, and matches numpy on the same file.
 
 ## Streaming, and letting the fabric help
 
-At 2.4 MS/s with 0.2 s frames, MATLAB spends 179.7 ms reading (real-time limited)
-and 11.3 ms on DSP, so each 200 ms of audio costs ~212 ms and the sound card
-starves indefinitely. The fix is the **÷8 decimating filter in the FPGA fabric**
-(the programmable logic in front of the ARM cores): the host then reads 288 kHz
-instead of 2.304 MHz.
+| At 2.4 MS/s, 0.2 s frames | |
+|---|---|
+| reading (real-time limited) | 179.7 ms |
+| DSP | 11.3 ms |
+| each 200 ms of audio costs | ~212 ms: **the sound card starves indefinitely** |
+
+The fix is the **÷8 decimating filter in the FPGA fabric** (the programmable
+logic in front of the ARM cores): the host then reads 288 kHz instead of
+2.304 MHz.
 
 ```
 3.2 s of audio    3.39 s of wall clock  ->  2.64 s
@@ -114,26 +129,27 @@ instead of 2.304 MHz.
 
 There is no "filter on" attribute: writing the ADC device's `sampling_frequency`
 to one eighth of the converter rate engages it (`GP_CONTROL` bit 0, the bypass
-mux). **It is only safe on both receivers because of patch `0021`**; on a
-`STOCK_RX_FILTER=1` build it aliases RX2 by about 70 dB. See
-[both-receive-channels.md](both-receive-channels.md).
+mux).
+
+!!! warning "It is only safe on both receivers because of patch `0021`"
+    On a `STOCK_RX_FILTER=1` build it aliases RX2 by about 70 dB. See
+    [both-receive-channels.md](both-receive-channels.md).
 
 ## Transmitting
 
 Three examples transmit: **03** (the modulated link), **04** with `TxChannel`
 (`PadDb` then required), and **06**'s `fishball_qam16.slx` (`PadDb` defaults to
-20). Read [transmitter-safety.md](transmitter-safety.md) before anything radiates.
+20).
 
-- `fishball.safeTransmit` will not start without `PadDb`. The board reaches about
-  **+19 dBm** and its receive input is rated **+2.5 dBm** absolute maximum, so a
-  loopback needs **at least 20 dB** of attenuation. Nothing on the board senses
-  the transmit port, so the number has to come from you.
-- It reads the attenuation back **off the chip** after the buffer starts, and
-  stops the transmitter if it disagrees by more than 0.5 dB, because patch `0005`
-  restores a cached attenuation when a buffer opens.
-- Releasing a transmitter waits for its `iio_writedev` to exit. Without the wait
-  the kernel's close hook mutes the transmitter *after* the next object has set
-  its gain, and every second transmitter comes up silent at −89.75 dB.
+!!! danger "Read [transmitter-safety.md](transmitter-safety.md) before anything radiates"
+    The board reaches about **+19 dBm** and its receive input is rated **+2.5 dBm**
+    absolute maximum, so a loopback needs **at least 20 dB** of attenuation.
+
+| `fishball.safeTransmit` | Why |
+|---|---|
+| will not start without `PadDb` | nothing on the board senses the transmit port, so the number has to come from you |
+| reads the attenuation back **off the chip** after the buffer starts, and stops the transmitter if it disagrees by more than 0.5 dB | patch `0005` restores a cached attenuation when a buffer opens |
+| releasing a transmitter waits for its `iio_writedev` to exit | without the wait the kernel's close hook mutes the transmitter *after* the next object has set its gain, and every second transmitter comes up silent at −89.75 dB |
 
 ## Simulink
 
@@ -152,12 +168,14 @@ Parameters use the usual SDR names (`BasebandSampleRate`, `RFBandwidth`,
 
 ### Set "Simulate using" to Interpreted execution
 
-Required: these blocks reach the radio through `system()`, which has no
-generated equivalent. With the default, **Code generation**, the model fails to
-compile with `An error occurred in the block '...' during compile`. In the Block
-Parameters dialog, set the **Simulate using** dropdown at the bottom to
-`Interpreted execution`; it saves with the model. The generators in example 06 set
-it for you. From the command line, with the block selected (`gcb` is "get
+!!! warning "Required"
+    These blocks reach the radio through `system()`, which has no generated
+    equivalent. With the default, **Code generation**, the model fails to compile
+    with `An error occurred in the block '...' during compile`.
+
+In the Block Parameters dialog, set the **Simulate using** dropdown at the bottom
+to `Interpreted execution`; it saves with the model. The generators in example 06
+set it for you. From the command line, with the block selected (`gcb` is "get
 current block"):
 
 ```matlab

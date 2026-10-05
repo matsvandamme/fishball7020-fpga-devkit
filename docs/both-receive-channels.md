@@ -7,6 +7,15 @@ channels through the filter for about six lines of Tcl and 22 DSP slices; it is
 **applied by every build**. Read this if you use both receivers at a decimated
 rate, or build upstream's wiring.
 
+!!! abstract "Key facts"
+    | | |
+    |---|---|
+    | the defect (upstream) | with the ÷8 decimator engaged, channel 1 is sampled at one eighth rate **with no anti-alias filter**: a 10 MHz tone's alias lands at 2.32 MHz at full strength |
+    | the fix | patch `0021`, applied by every build: both channels through the filter |
+    | result | at least **69.7 dB** of alias suppression on channel 1 |
+    | cost | 22 DSP slices (94 / 220 instead of 72 / 220); timing still met |
+    | not fixed | the transmit interpolator: **do not engage it**, TX1 then emits nothing |
+
 ## Using it
 
 Nothing to do: `./devkit setup --target factory` applies it with the rest of the patch series.
@@ -40,6 +49,13 @@ STOCK_RX_FILTER=1 ./devkit build --target factory --hdl-only && ./devkit verify 
 `-> decimator on BOTH RX channels (default)`.
 
 ## The defect
+
+```mermaid
+flowchart LR
+    A0["channel 0<br/><small>adc_*_i0/q0</small>"] --> F["rx_fir_decimator<br/><small>filter, ÷8</small>"] -->|"data, valid_out_0"| C["cpack"]
+    A1["channel 1<br/><small>adc_*_i1/q1</small>"] -->|"stock: straight through,<br/>no filter"| C
+    F -.->|"fifo_wr_en = valid_out_0<br/><small>strobes once per 8 samples</small>"| C
+```
 
 Three facts in the stock block design combine badly:
 
@@ -134,10 +150,11 @@ slightly more margin than stock, and 126 DSP slices remain free.
 
 ## What this does not fix
 
-- **The transmit interpolator.** `tx_upack/fifo_rd_en` is the OR of the
-  interpolator's valid and channel 1's DAC valid, so on a 2R2T board channel 1
-  drags the packer at full rate and TX1 emits nothing. Do not engage it; see
-  [block-design.md](block-design.md#the-transmit-path).
+!!! danger "The transmit interpolator: do not engage it"
+    `tx_upack/fifo_rd_en` is the OR of the interpolator's valid and channel 1's DAC
+    valid, so on a 2R2T board channel 1 drags the packer at full rate and TX1 emits
+    nothing. See [block-design.md](block-design.md#the-transmit-path).
+
 - **The shared coefficient file.** Receive and transmit both use
   `library/util_fir_int/coefile_int.coe`; editing it changes both.
 - **The ÷8 factor.** The driver offers exactly `{1, 8}`; another rate would build

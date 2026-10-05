@@ -20,23 +20,27 @@ Radio, best for building a signal chain from parts; other jobs suit other tools.
 ## Maia SDR: a waterfall computed on the FPGA
 
 [Maia SDR](https://maia-sdr.org/) puts the FFT **on the FPGA** and a web server
-on the ARM cores, so a browser gets a real-time waterfall of a few hundred kB/s
-instead of 245 MB/s of IQ, avoiding the streaming ceiling in
-[modulation-and-throughput.md](modulation-and-throughput.md). It can also record
-raw IQ to the board's memory; recordings open in
+on the ARM cores, avoiding the streaming ceiling in
+[modulation-and-throughput.md](modulation-and-throughput.md):
+
+```mermaid
+flowchart LR
+    A["AD9361<br/><small>245 MB/s of IQ</small>"] --> F["FFT on the FPGA"] --> W["web server<br/><small>ARM cores</small>"] -->|"a few hundred kB/s"| B["browser:<br/>real-time waterfall"]
+```
+
+It can also record raw IQ to the board's memory; recordings open in
 [IQEngine](https://www.iqengine.org/) in a browser.
 
-Two large caveats:
+!!! warning "It is a different firmware, not an application"
+    Installing it replaces this devkit's bitstream, kernel and root filesystem, and
+    with them the sample-locked GPIO outputs, the transmit-mute patches, the thermal
+    limit and the `tx_disable` latch. `sudo ./devkit write-card /dev/sdX` brings them
+    back (the factory firmware: `./devkit flash --target factory --all`).
 
-- **It is a different firmware, not an application.** Installing it replaces
-  this devkit's bitstream, kernel and root filesystem, and with them the
-  sample-locked GPIO outputs, the transmit-mute patches, the thermal limit and
-  the `tx_disable` latch. `sudo ./devkit write-card /dev/sdX` brings them back
-  (the factory firmware: `./devkit flash --target factory --all`).
-- **Its FPGA design targets the ADALM-Pluto** (XC7Z010, one receiver, one
-  transmitter). This board is an XC7Z020 running 2R2T, often with a power
-  amplifier: expect to rebuild Maia's bitstream for `xc7z020clg400-2` and work
-  out the second channel yourself.
+!!! warning "Its FPGA design targets the ADALM-Pluto"
+    XC7Z010, one receiver, one transmitter. This board is an XC7Z020 running 2R2T,
+    often with a power amplifier: expect to rebuild Maia's bitstream for
+    `xc7z020clg400-2` and work out the second channel yourself.
 
 Project: <https://maia-sdr.org/> · code: <https://github.com/maia-sdr/maia-sdr> ·
 firmware builds: <https://github.com/maia-sdr/plutosdr-fw> · write-up:
@@ -59,10 +63,11 @@ inspectrum out.sigmf-data
 ## Protocol work: Universal Radio Hacker
 
 [URH](https://github.com/jopohl/urh) demodulates, finds the framing, labels
-fields across captures and re-transmits, with direct PlutoSDR-class support. Its
-transmit side is a real transmitter: [transmitter-safety.md](transmitter-safety.md)
-applies, more strongly than on the hardware URH's documentation assumes because
-of this board's power amplifier.
+fields across captures and re-transmits, with direct PlutoSDR-class support.
+
+!!! danger "Its transmit side is a real transmitter"
+    [transmitter-safety.md](transmitter-safety.md) applies, more strongly than on the
+    hardware URH's documentation assumes, because of this board's power amplifier.
 
 ## Listening: SDRangel, SDR++, GQRX
 
@@ -97,11 +102,12 @@ x = sdr.rx()                      # raw int16 counts, full scale +/-2047
 sdr.rx_destroy_buffer()           # or the script segfaults on exit
 ```
 
-- **Release the buffer before the script ends**, or the process segfaults during
-  interpreter shutdown ([why](your-own-project.md#1-on-your-pc--start-here)).
-- **Mind the scale.** pyadi returns raw counts; gr-iio's `fc32` sources divide by
-  2047. Mixing them is a 66 dB error
-  ([`examples/lib/spectrum_engine.py`](../examples/lib/spectrum_engine.py)).
+!!! warning "Release the buffer before the script ends"
+    Or the process segfaults during interpreter shutdown ([why](your-own-project.md#1-on-your-pc--start-here)).
+
+!!! warning "Mind the scale"
+    pyadi returns raw counts; gr-iio's `fc32` sources divide by 2047. Mixing them is
+    a 66 dB error ([`examples/lib/spectrum_engine.py`](../examples/lib/spectrum_engine.py)).
 
 ## On the board's ARM cores: liquid-dsp
 
