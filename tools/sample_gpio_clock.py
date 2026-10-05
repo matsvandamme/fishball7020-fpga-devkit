@@ -2,9 +2,9 @@
 """Drive the four sample-locked GPIO pins from an authored transmit waveform.
 
     # run from: the repo root, on your HOST (not the board)
-    pip install pyadi-iio numpy
-    ./tools/sample_gpio_clock.py                      # safe: transmitter muted
-    ./tools/sample_gpio_clock.py --tx-gain -40        # ...into a terminated load
+    python3 -m venv .venv && .venv/bin/pip install pyadi-iio numpy
+    .venv/bin/python tools/sample_gpio_clock.py                 # safe: transmitter muted
+    .venv/bin/python tools/sample_gpio_clock.py --tx-gain -40   # ...into a terminated load
 
 This is the complete, runnable version of the example in docs/tx-gpio-bitmap.md. It
 connects to the board, turns the feature on, authors a pattern into the low
@@ -53,7 +53,8 @@ try:
     import adi
     import iio
 except ImportError:
-    sys.exit("needs pyadi-iio: pip install pyadi-iio numpy")
+    sys.exit("needs pyadi-iio, in a venv: python3 -m venv .venv && .venv/bin/pip install pyadi-iio numpy, "
+             "then run this with .venv/bin/python")
 
 DAC_NAME = "cf-ad9361-dds-core-lpc"      # the DAC core that owns the flag
 

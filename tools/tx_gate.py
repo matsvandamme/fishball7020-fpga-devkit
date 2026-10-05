@@ -15,7 +15,8 @@ IDLE-CASES.md.
 
 TWO ROUTES TO THE SAME SCRIPT. Where bash runs (Linux, macOS) it goes through
 `./devkit tx-guard`. On Windows, or with FISHBALL_TX_GATE=python, it does the
-same itself over ssh with paramiko (`pip install paramiko`): push tx-guard.sh,
+same itself over ssh with paramiko (installed in a venv, with the venv's own
+pip): push tx-guard.sh,
 run it, return its exit code. That uses ~/.ssh/fishball if it exists (what
 `./devkit ssh-key` makes), else the root password ($BOARD_PASS, default
 "analog"), at the address tools/board_addr.py finds ($BOARD overrides). From a
@@ -109,7 +110,8 @@ def _guard_python(args: list[str]) -> subprocess.CompletedProcess:
         import paramiko
     except ImportError:
         return fail("the transmit gate needs paramiko on this machine "
-                    "(pip install paramiko), or bash and ./devkit")
+                    "(install it in a venv, with the venv's own pip), "
+                    "or bash and ./devkit")
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
     from board_addr import resolve
     host = resolve()

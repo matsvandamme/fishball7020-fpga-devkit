@@ -19,7 +19,8 @@ and reads its samples with iio_readdev; it never opens a transmit buffer. Put
 a 1090 MHz antenna on RX1A, or on RX2A and add --channel 2.
 
 The window needs PyQt6. `./devkit adsb` runs it through uv, which fetches PyQt6
-(about 100 MB, once) into its cache; or `pip install PyQt6 numpy`. --text needs
+(about 100 MB, once) into its cache; or, in a venv, `.venv/bin/pip install PyQt6
+numpy`. --text needs
 only numpy.
 
 What the columns and the log mean: docs/adsb.md.
@@ -198,7 +199,7 @@ def main(argv=None):
             if "PyQt6" not in str(e):
                 raise
             sys.exit("the window needs PyQt6: run it as ./devkit adsb (which uses uv), "
-                     "or pip install PyQt6 numpy, or use --text")
+                     "or in a venv: .venv/bin/pip install PyQt6 numpy, or use --text")
         return gui.run(a, make_receiver, describe, status_line)
     except BoardError as e:
         print(f"error: {e}", file=sys.stderr)
