@@ -42,6 +42,7 @@
 | find a port, a pin or a part | **[Hardware and I/O](https://matsvandamme.github.io/fishball7020-fpga-devkit/hw/)** |
 | change the kernel, a driver or the FPGA | **[Build your own firmware](https://matsvandamme.github.io/fishball7020-fpga-devkit/build/)** |
 | learn SDR and FPGA from zero | **[Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)**: 54 lessons |
+| watch the board from Claude Code | **[The board in a Claude Code pane](https://matsvandamme.github.io/fishball7020-fpga-devkit/claude-code-pane/)**: `./devkit claude-pane install`, then `/fishball` |
 | fix a problem | **[Troubleshooting](https://matsvandamme.github.io/fishball7020-fpga-devkit/troubleshooting/)** |
 
 ## 🌟 Highlights

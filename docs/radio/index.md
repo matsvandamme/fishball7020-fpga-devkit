@@ -100,6 +100,11 @@ pages with every measurement are under [Reference](#reference).
 
     The self-test, with no cable and nothing transmitted.
 
+-   :material-monitor-dashboard:{ .lg } **[Watch the board from Claude Code](watch-from-claude-code.md)**
+
+
+    A pane with its links, temperatures, radio settings and CI. Reads only.
+
 </div>
 
 ## Reference
@@ -108,6 +113,7 @@ The full pages, with every measurement and caveat:
 [your own project](../your-own-project.md) ·
 [capturing IQ](../capturing-iq.md) ·
 [the automation server](../automation.md) ·
+[the Claude Code pane](../claude-code-pane.md) ·
 [SDR++](../sdrpp.md) ·
 [ADS-B](../adsb.md) ·
 [other SDR tools](../other-sdr-tools.md) ·

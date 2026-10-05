@@ -213,6 +213,13 @@
 #       mute               Both transmitters to the floor, read back.
 #       test               Its unit tests, against a fake board. No board needed.
 #                          -> docs/automation.md
+#     ./devkit claude-pane The board in a Claude Code side pane (/fishball): its
+#                          links, die temperatures, radio settings, CI and the
+#                          build it runs against yours. Reads only, never writes.
+#       install            Load it in every Claude Code session.
+#       uninstall          Stop loading it.
+#       test               Its manifest check and tests. Needs `claude`.
+#                          -> docs/claude-code-pane.md
 #
 # ---- If your host OS is too new for Vivado ----------------------------------
 #
@@ -252,7 +259,7 @@ usage_all() { sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{
 
 COMMANDS="doctor setup sim build verify flash write-card status selftest gpio-check net
           ssh-key tx-guard matlab clock completion uboot-contract temps loopback container adsb
-          automation"
+          automation claude-pane"
 
 # One screen: what each command is for, and the runs people actually do. The
 # full text above is `./devkit help --all`; one command's part of it is
@@ -283,6 +290,7 @@ Once it runs
   adsb            aircraft overhead, live, from 1090 MHz ADS-B (receive only)
   automation      a server on the board for your measurement scripts
   tx-guard        the transmit gate: affirm a port is terminated first
+  claude-pane     the board in a Claude Code side pane (/fishball)
   also: gpio-check  clock  loopback  matlab  uboot-contract  container  completion
 
 Two firmware targets
@@ -547,6 +555,7 @@ case "$cmd" in
         exec "${_ssh[@]}" "$_tgt" "sh /tmp/tx-guard.sh $*" ;;
     clock)      need_board 1 iiod "$@"; exec python3 "$HERE/tools/clock-cal.py" "$@" ;;
     automation) exec "$HERE/tools/automation/automation.sh" "$@" ;;
+    claude-pane) exec python3 "$HERE/tools/claude-pane/claude_pane.py" "$@" ;;
     completion)
         # No argument: print the script, so one command sets this shell up
         #     source <(./devkit completion)

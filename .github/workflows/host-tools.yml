@@ -84,6 +84,27 @@ jobs:
       - name: devkit help, typos and the no-board path
         run: python tools/selftest/test_devkit_cli.py
 
+      # The Claude Code pane's collector with no board: still one JSON object,
+      # every asked-for section present and only those, the board reported
+      # offline rather than a traceback, and inside its own deadline.
+      - name: Claude Code pane collector, with no board
+        env:
+          BOARD: 203.0.113.1
+        run: |
+          timeout 60 python tools/claude-pane/bin/collect.py --sections board,radio > pane.json
+          python - <<'PY'
+          import json
+          d = json.load(open("pane.json"))
+          assert d["sections"] == ["board", "radio"], d.get("sections")
+          assert set(d) >= {"board", "radio"} and not set(d) & {"repo", "build"}, sorted(d)
+          assert d["board"]["ok"] is False and d["board"]["online"] is False, d["board"]
+          assert [l["name"] for l in d["board"]["links"]] == ["usb", "eth", "iio"]
+          assert not any(l["up"] for l in d["board"]["links"]), d["board"]["links"]
+          assert d["radio"]["ok"] is False, d["radio"]
+          assert d["took_s"] < 20, d["took_s"]
+          print("collect.py: no board -> offline, sections", d["sections"], "in", d["took_s"], "s")
+          PY
+
       # The automation server's rules (request checks, busy refusals, capture,
       # stream accounting, never touching a transmitter): the real server and
       # client over localhost, with only the board faked.
@@ -141,6 +162,26 @@ jobs:
 
       - name: FIR coefficient generator still designs a filter it stands behind
         run: python firmware/scripts/gen_fir_coe.py
+
+  # The Claude Code pane (tools/claude-pane/) is a plugin of function hooks:
+  # `claude plugin validate` reads its manifest and module the way Claude Code
+  # will, and `claude plugin test` runs its tests against the real engine with
+  # the collector faked. Neither needs a login. The plugin API is early access
+  # and moves between releases, so this pins the version it was written
+  # against; raise the pin on purpose, and run the tests when you do.
+  claude-pane:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Claude Code, pinned
+        run: npm install -g @anthropic-ai/claude-code@2.1.289
+      - name: The plugin validates and its tests pass
+        run: |
+          claude plugin validate tools/claude-pane
+          claude plugin test tools/claude-pane
 
   hdl-sim:
     # Simulating the custom HDL needs only Icarus Verilog, so unlike synthesis
