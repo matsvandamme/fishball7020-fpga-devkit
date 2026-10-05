@@ -6,6 +6,14 @@ first. On a Windows PC with no tools installed, double-click `tools\board-info.c
 prints what the board is, what it runs and every setting it reports, read-only.
 `board-info.cmd -OutFile board.txt` saves the report for a bug report.
 
+| You see | Section |
+|---|---|
+| ssh, libiio and ping stop after a while; `Calibration TIMEOUT` in the log | [The board stops responding after a while](#the-board-stops-responding-after-a-while) |
+| ssh works, SDR software finds no device | [ssh works, but nothing can open the radio](#ssh-works-but-nothing-can-open-the-radio-debian-root) |
+| SDRangel shows `PlutoSDR0 TBD` | [SDRangel](#sdrangel-lists-the-board-as-plutosdr0-tbd-and-will-not-open-it) |
+| a build error | [Building](#building) |
+| a fresh card does nothing, or the old firmware still runs | [Flashing](#a-freshly-flashed-card-seems-to-do-nothing-or-the-old-firmware-still-runs) |
+
 ## The board
 
 ### The board stops responding after a while
@@ -36,7 +44,10 @@ could not be confirmed.
 
 **Fix.** Ask why, fix what it names (usually `ad9361-phy` missing: the FPGA or
 device tree), then `systemctl start iiod` (which re-runs the quiesce first) or
-reboot. **Never run `/usr/sbin/iiod` directly**: that bypasses the check.
+reboot.
+
+!!! danger "Never run `/usr/sbin/iiod` directly"
+    That bypasses the check that the transmitter is quiet.
 
 ```bash
 # run from: the board
@@ -97,7 +108,9 @@ and libudev frees memory through glibc after Vivado's tcmalloc has replaced
 
 **Fix.** `./devkit container` loads a stub libudev; see
 [Building in a container](building-in-a-container.md#vivado-dies-in-synthesis-with-a-heap-error).
-Do **not** silence it with `MALLOC_CHECK_`: that hides real heap corruption.
+
+!!! warning "Do not silence it with `MALLOC_CHECK_`"
+    That hides real heap corruption.
 
 ### The FSBL stage fails with a bare `Channel closed` from `xsct`
 
@@ -146,9 +159,8 @@ rm -rf src/buildroot/output
 
 ### `dfu-util -l` shows nothing
 
-**Fix.** Do not use DFU on this board; flash
-[over SSH](flashing.md#option-c--over-ssh-from-the-running-board-no-card-removal)
-instead.
+!!! danger "Do not use DFU on this board"
+    Flash [over SSH](flashing.md#option-c--over-ssh-from-the-running-board-no-card-removal) instead.
 
 ### A freshly flashed card seems to do nothing, or the old firmware still runs
 

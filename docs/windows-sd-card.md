@@ -7,12 +7,16 @@ copying files onto the card is not enough. `write-card.cmd` does the whole job
 on a Windows 10 or 11 PC with nothing installed: no WSL, no Python, no extra
 tools.
 
-It needs about five minutes, a microSD card of **1 GB or more** (4 to 32 GB is
-typical), and a card reader.
+!!! abstract "What you need"
+    | | |
+    |---|---|
+    | time | about five minutes |
+    | card | a microSD card of **1 GB or more** (4 to 32 GB is typical), and a card reader |
+    | PC | Windows 10 or 11, nothing installed |
+    | download | seven files from the [latest release](https://github.com/matsvandamme/fishball7020-fpga-devkit/releases/latest) |
 
-> [!TIP]
-> **Use a new card if you can, and keep the one in the board as it is.** Going
-> back to the old firmware is then just swapping the cards.
+!!! tip "Use a new card if you can, and keep the one in the board as it is"
+    Going back to the old firmware is then just swapping the cards.
 
 ## What it does
 
@@ -30,8 +34,8 @@ typical), and a card reader.
 6. Reads everything back from the card and compares it with what it wrote, then
    checks the boot files once more through Windows.
 
-It writes a log, `write-card-<date>.log`, in the same folder. Send it along if
-something goes wrong.
+!!! note "The log"
+    It writes `write-card-<date>.log` in the same folder. Send it along if something goes wrong.
 
 ## Step by step
 
@@ -50,19 +54,23 @@ save these seven files into it:
 | `debian-rootfs.tar.gz` | Debian, about 100 MB |
 | `SHA256SUMS` | checksums for all of the above |
 
-If the browser warns that `write-card.cmd` "is not commonly downloaded", choose
-**Keep**. Check that no file was renamed on the way (`uImage (1)` and the like):
-the script looks for the names above.
+- If the browser warns that `write-card.cmd` "is not commonly downloaded", choose **Keep**.
+- **Check that no file was renamed on the way** (`uImage (1)` and the like): the
+  script looks for the names above.
 
 **2. Unplug the board from this PC**, and leave it unplugged while the script
 runs: the factory firmware shows up on Windows as a small USB drive, which is
-just one more disk in the list. If you are rewriting the board's own card,
-take it out of the board now; with a new card, leave the old one where it is
-for the moment.
+just one more disk in the list.
 
-**3. Put the card in the reader.** If Windows offers to format it, or says it
-must be formatted, click **Cancel**. Do the same if that message appears at any
-later point.
+| Card | Now |
+|---|---|
+| rewriting the board's own card | take it out of the board |
+| a new card | leave the old one where it is for the moment |
+
+**3. Put the card in the reader.**
+
+!!! warning "If Windows offers to format the card, click Cancel"
+    Every time that message appears, at this step or later.
 
 **4. Double-click `write-card.cmd`.**
 
@@ -103,7 +111,9 @@ it back takes about as long again. The script finishes with:
 2. Check the **`BOOT`** DIP switch next to `RST`: both sliders away from `ON`
    (SD mode). Boards ship like that.
 3. Connect **both** USB-C sockets: one to a **mains USB charger**, the other to
-   your PC. On a laptop's USB power alone the board can hang.
+   your PC.
+
+    !!! warning "On a laptop's USB power alone the board can hang"
 4. Wait about a minute.
 
 **9. Check that it runs the new firmware.** Open a Command Prompt and log in to
@@ -152,20 +162,18 @@ that works.
 | `read back differs` | The card or the reader is faulty. Try another card. |
 | The board does not answer at `192.168.2.1` | Give it a full minute. Check the `BOOT` switch and the mains charger. Unplug and replug the USB cable to your PC. Then see [troubleshooting](troubleshooting.md). |
 
-> [!WARNING]
-> **Never update this board with DFU, or through a "PlutoSDR" USB drive.** That
-> route is meant for a different board, the ADALM-Pluto, and has bricked boards
-> like this one. Changing firmware here always means rewriting the card, as above.
+!!! danger "Never update this board with DFU, or through a \"PlutoSDR\" USB drive"
+    That route is meant for a different board, the ADALM-Pluto, and has bricked
+    boards like this one. Changing firmware here always means rewriting the card, as above.
 
 ## How it works, briefly
 
-Windows has no way to create the Linux partition, so the script builds it
-itself: about a thousand lines of C# inside the `.cmd`, compiled on the spot by
-Windows PowerShell. It writes an **ext3** filesystem, which is ext2 with a
-journal. That is simpler to write than ext4, and the board's kernel mounts it
-with its ext4 driver all the same. The script writes the card as a raw disk,
-like Rufus or balenaEtcher do, and writes the partition table last, so an
-interrupted run leaves a card that is plainly blank rather than half-written.
+| | |
+|---|---|
+| the Linux partition | Windows has no way to create it, so the script builds it itself: about a thousand lines of C# inside the `.cmd`, compiled on the spot by Windows PowerShell |
+| filesystem | **ext3**, which is ext2 with a journal: simpler to write than ext4, and the board's kernel mounts it with its ext4 driver all the same |
+| writing | the card as a raw disk, like Rufus or balenaEtcher do |
+| interrupted run | the partition table is written last, so it leaves a card that is plainly blank rather than half-written |
 
 `write-card.cmd -ImageFile card.img` writes a card image file instead, for
 Rufus, balenaEtcher or testing. On Linux,

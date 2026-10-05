@@ -42,10 +42,16 @@ code and the [README](../README.md) gets a board running.
 ./devkit flash      # onto the running board, backed up and md5-verified
 ```
 
-`./devkit verify --board` proves the board runs what you built. Flashing goes
-over the network through the SD card's boot partition; never use DFU, which has
-bricked units of this board. `./devkit ssh-key` first saves typing the
-published root password.
+- `./devkit verify --board` proves the board runs what you built.
+- Flashing goes over the network through the SD card's boot partition.
+- `./devkit ssh-key` first saves typing the published root password.
+
+!!! danger "Never use DFU"
+    It has bricked units of this board. Flash with `./devkit flash` ([flashing](flashing.md)).
+
+!!! warning "Before anything transmits"
+    The board reaches about +19 dBm and its receiver survives only +2.5 dBm: fit at
+    least 20 dB in any TX→RX loop ([transmitter safety](transmitter-safety.md)).
 
 ## Two firmware targets
 
