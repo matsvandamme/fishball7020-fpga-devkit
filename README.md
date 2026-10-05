@@ -11,6 +11,7 @@
 **Editable, rebuildable firmware for a two-channel SDR that ships without any.**
 
 <p align="center">
+  <a href="https://matsvandamme.github.io/fishball7020-fpga-devkit/"><img src="https://img.shields.io/badge/docs-matsvandamme.github.io-4069FF" alt="The documentation site"></a>
   <a href="https://matsvandamme.github.io/fishball7020-fpga-devkit/course/"><img src="https://img.shields.io/badge/course-Fabric%20School%20%C2%B7%2054%20lessons-8A3FFC" alt="Fabric School: a 54-lesson SDR and FPGA course for this board"></a>
   <img src="https://img.shields.io/badge/board-Zynq%20XC7Z020%20%2B%20AD9361-blue" alt="Board: Zynq XC7Z020 + AD9361">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0-lightgrey" alt="License: GPL-2.0"></a>
@@ -24,6 +25,24 @@
   <img src="docs/img/plutosky-r1-antennas.jpg" alt="The PlutoSky R1 in its case, antenna end: four SMA connectors with yellow caps, the fan and the GPIO header slot" height="230">
   <br><sub>The board bare, and boxed as the PlutoSky R1 (ports end, antenna end). Photos: OpenSourceSDRLab.</sub>
 </p>
+
+## 📚 Documentation
+
+**Everything is on the documentation site: [matsvandamme.github.io/fishball7020-fpga-devkit](https://matsvandamme.github.io/fishball7020-fpga-devkit/).** Short task articles with diagrams, searchable, with the full reference one click deeper.
+
+<p align="center">
+  <a href="https://matsvandamme.github.io/fishball7020-fpga-devkit/"><img src="docs/img/docs-site.jpg" alt="The documentation site's home page: the question What do you want to do?, a search field, and tiles for Getting started, Use the radio, Transmit safely, Hardware and I/O, Build your own firmware and Troubleshooting, each with its number of articles" width="820"></a>
+</p>
+
+| I want to… | Start at |
+|---|---|
+| get a board running | **[Start here](https://matsvandamme.github.io/fishball7020-fpga-devkit/start/)**: six short steps from the box to a working radio |
+| receive, transmit, use SDR++ or Python | **[Use the radio](https://matsvandamme.github.io/fishball7020-fpga-devkit/radio/)** |
+| transmit without breaking anything | **[Before you transmit](https://matsvandamme.github.io/fishball7020-fpga-devkit/start/before-you-transmit/)**: four rules |
+| find a port, a pin or a part | **[Hardware and I/O](https://matsvandamme.github.io/fishball7020-fpga-devkit/hw/)** |
+| change the kernel, a driver or the FPGA | **[Build your own firmware](https://matsvandamme.github.io/fishball7020-fpga-devkit/build/)** |
+| learn SDR and FPGA from zero | **[Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)**: 54 lessons |
+| fix a problem | **[Troubleshooting](https://matsvandamme.github.io/fishball7020-fpga-devkit/troubleshooting/)** |
 
 ## 🌟 Highlights
 
@@ -121,7 +140,7 @@ The repository's own scripts, patches and documentation are GPL-2.0; downloaded 
 
 ## 📖 Further reading
 
-- **[The documentation site](https://matsvandamme.github.io/fishball7020-fpga-devkit/)**, searchable, or the [documentation map](docs/README.md): every page, by what you want to do.
+- **[The documentation site](https://matsvandamme.github.io/fishball7020-fpga-devkit/)** ([above](#-documentation)), or the [documentation map](docs/README.md): every page, by what you want to do.
 - **[How it works](docs/how-it-works.md)**: what the build produces and why, assuming nothing.
 - **[Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)**: 54 lessons, from what a radio is to your own logic in the AD9361 datapath.
 - **[Using this board in your own project](docs/your-own-project.md)**: where your code can live, and what each place costs.
