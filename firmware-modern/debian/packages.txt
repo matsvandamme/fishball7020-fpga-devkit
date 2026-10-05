@@ -52,7 +52,11 @@ openssh-server
 # firmware/patches/0013 and every page in docs/networking.md describe, and the
 # Buildroot rootfs this replaces used it too.
 ifupdown
-isc-dhcp-client
+# dhcpcd, not isc-dhcp-client: dhcpcd follows the cable. Unplugged, it drops
+# the lease; plugged in, it asks for a new one at once, so the cable can move
+# between a router and a PC while the board runs. dhclient ignored the cable
+# and kept the old address until the lease ran out, up to hours later.
+dhcpcd-base
 iproute2
 iputils-ping
 net-tools

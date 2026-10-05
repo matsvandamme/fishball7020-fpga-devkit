@@ -104,6 +104,16 @@ nmcli con up fishball-eth
 10.42.0.10), `fishball.local` resolving to it, and the board reaching the
 internet through the PC, since shared mode also routes for it.
 
+**Moving the cable while the board runs** works on the Debian firmware built
+from `main` since 2026-10-06 (releases after v2.3). Its DHCP client, `dhcpcd`,
+watches the link: pulled out, the board drops its address; plugged in, it asks
+for a new one at once. Measured from plug-in to address: 10 s from the PC to a
+router, 7 s plugging in minutes after booting without a cable. A PC that
+starts serving DHCP only after the cable is in can take up to a minute more,
+because the board asks less often the longer nobody answers. On v2.3 and
+earlier the client (`dhclient`) ignores the cable and keeps the old address
+until its lease runs out, up to hours later: reboot the board after moving it.
+
 What a cable is worth in speed, measured:
 [on a direct cable](streaming-paths.md#on-a-direct-cable). Gigabit is not
 the limit; the board's CPU is, at about 600–700 Mb/s.
@@ -190,11 +200,16 @@ ip addr add 192.168.1.50/24 dev eth0     # add a second address, keep the old on
 ip route add default via 192.168.1.1     # give it a gateway too
 ```
 
-!!! warning "On Debian with no DHCP server, the address vanishes within a minute"
+!!! warning "On Debian v2.3 and earlier with no DHCP server, the address vanishes within a minute"
     `eth0` is set to DHCP, and `dhclient` keeps retrying. Each time it gives up
     it clears every IPv4 address on `eth0`, including one added by hand. For a
     temporary address on a cable with no DHCP server, stop it first:
     `kill $(cat /run/dhclient.eth0.pid)`; a reboot starts it again.
+
+    Later Debian firmware uses `dhcpcd`, which leaves an address added by hand
+    alone: one stayed for three minutes on a cable with no DHCP server, never
+    missing a ping. `dhcpcd` also gives `eth0` a self-assigned
+    `169.254.x.x` address next to it while it keeps asking for a lease.
 
 ## Where the address lives
 

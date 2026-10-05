@@ -1039,12 +1039,16 @@ sudo ufw allow in on IFACE to any port 67 proto udp
     everything on the cable.</p>
 
   <div class="box trap">
-    <p class="bt">An address added by hand disappears within a minute</p>
+    <p class="bt">On v2.3 and earlier, an address added by hand disappears within a minute</p>
     <p>On Debian <code>eth0</code> is set to DHCP, and on a cable where nothing answers,
       <code>dhclient</code> keeps retrying. Each time it gives up it removes <em>every</em> IPv4 address
       on <code>eth0</code>, including one you just added with <code>ip addr add</code>. A connection
       that worked a moment ago then hangs. Serve DHCP from the PC, or stop the client first with
       <code>kill $(cat /run/dhclient.eth0.pid)</code>.</p>
+    <p>Firmware built after v2.3 uses <code>dhcpcd</code> instead. It leaves an address you added
+      alone, and it follows the cable: move the cable between your router and your PC while the
+      board runs, and it has a new address about ten seconds later. With <code>dhclient</code>,
+      reboot the board after moving the cable.</p>
   </div>
 
   <p>A cable is not much faster than Wi-Fi here. On a direct gigabit link the board sustained 12 MS/s

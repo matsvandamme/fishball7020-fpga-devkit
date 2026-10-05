@@ -467,10 +467,22 @@ PortAudio ("New Audio") sink for the Radio stream (docs/sdrpp.md).
 (Wi-Fi 11), `zc-stream -8` 20 MS/s and a 42-43 MB/s plateau, identical to Wi-Fi.
 The board's CPU is the limit, not the network: bare TCP reaches only
 580-700 Mb/s with CPU0 at 100% softirq on receive (macb rx overruns), and no
-jumbo frames (macb max 1518, cdc_ncm 1500). On Debian, an `ip addr add` on eth0
-with no DHCP server is erased within a minute by dhclient's failure path: stop
-dhclient via /run/dhclient.eth0.pid (never `pkill -f`) or serve DHCP from the PC
-(NetworkManager `ipv4.method shared`; docs/networking.md#a-direct-cable-to-your-pc).
+jumbo frames (macb max 1518, cdc_ncm 1500). The Debian root's DHCP client
+depends on its build; `grep -E '^(dhcpcd-base|isc-dhcp-client) ' /opt/VERSIONS`
+on the board shows which one was built in (a hand-installed swap does not
+update that file, so `pgrep -a dhcpcd` is the live check):
+- **dhcpcd** (main since 2026-10-06, releases after v2.3): follows the cable.
+  Measured: router to PC adapter and back, address 10 s after plug-in; cable
+  plugged in after booting without one, 7 s. It leaves an `ip addr add`
+  alone (3 min on a cable with no DHCP server, 0/36 pings lost) and adds a
+  169.254.x.x IPv4LL address beside it. Its `duid` client ID made the router
+  hand out a new address once (.163 -> .168), stable after that.
+- **dhclient** (v2.3 and earlier): ignores the cable; after a move the board
+  keeps the old address until the lease expires (2 h on a home router), so
+  reboot it. An `ip addr add` on eth0 with no DHCP server is erased within a
+  minute by its failure path: stop dhclient via /run/dhclient.eth0.pid (never
+  `pkill -f`) or serve DHCP from the PC (NetworkManager `ipv4.method shared`;
+  docs/networking.md#a-direct-cable-to-your-pc).
 
 RX2 to a PC sustains **11 MS/s through iiod 0.26** (44-46 MB/s), **11 through
 libiio 1.0's iiod**, **12 through tools/stream-paths/zc-stream** int16 (raw TCP,
