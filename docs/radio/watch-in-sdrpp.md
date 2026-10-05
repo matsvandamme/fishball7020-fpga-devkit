@@ -23,12 +23,13 @@ description: Stock SDR++ playing an FM station from the board, on any OS.
 | stock SDR++ | receives on RX1 only, and never transmits |
 | one program at a time | the board has one receive buffer |
 
-??? question "No device, streaks, or clicks?"
-    | symptom | cause and fix |
-    |---|---|
-    | no PlutoSDR device after **Refresh** | the board is not answering on USB; `./devkit status` says why |
-    | streaks across the waterfall, clicks in the audio | samples lost: the rate is above what USB carries, or another program is streaming from the board |
-    | stations sit slightly off their frequency | set **Freq. corr. (ppm)** from `./devkit clock measure` |
+**No device, streaks, or clicks?**
+
+| symptom | cause and fix |
+|---|---|
+| no PlutoSDR device after **Refresh** | the board is not answering on USB; `./devkit status` says why |
+| streaks across the waterfall, clicks in the audio | samples lost: the rate is above what USB carries, or another program is streaming from the board |
+| stations sit slightly off their frequency | set **Freq. corr. (ppm)** from `./devkit clock measure` |
 
 More: [stream 20 MS/s to SDR++](stream-20-msps.md), and the full
 [SDR++ page](../sdrpp.md) (every setting, DAB+, the decimator).

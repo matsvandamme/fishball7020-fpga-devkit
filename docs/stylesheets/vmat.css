@@ -1,50 +1,263 @@
-/* The VMAT brand blue, #4069FF: the same colour as the logo on the README's
-   cover image (docs/img/covers/generate-covers.py). mkdocs.yml selects
-   "primary: custom" so these variables are used instead of a stock palette. */
+/* The site's look: a quiet, light support site in the manner of Saleae's
+   (support.saleae.com), in the VMAT brand blue #4069FF (the logo's colour,
+   docs/img/covers/generate-covers.py). mkdocs.yml selects "primary: custom",
+   Inter for text and JetBrains Mono for code.
+
+   Tokens: ink #141415 headings, body #3c3c43, muted #6e6e73, surface #f8f8f8,
+   line #e3e3e6, accent #4069FF. One bold element: the home page's hero. */
+
 :root > * {
   --md-primary-fg-color:        #4069FF;
   --md-primary-fg-color--light: #6f8dff;
   --md-primary-fg-color--dark:  #2a4fd9;
-  --md-primary-bg-color:        #ffffff;
-  --md-accent-fg-color:         #4069FF;
+  --md-primary-bg-color:        #141415;
+  --md-accent-fg-color:         #2a4fd9;
   --md-typeset-a-color:         #4069FF;
+
+  --fb-ink:     #141415;
+  --fb-body:    #3c3c43;
+  --fb-muted:   #6e6e73;
+  --fb-surface: #f8f8f8;
+  --fb-line:    #e3e3e6;
+  --fb-radius:  .5rem;
 }
 
-/* On the dark scheme the header keeps the brand blue; link text is a lighter
-   tint of it, because #4069FF on the dark background is hard to read. */
 [data-md-color-scheme="slate"] {
+  --md-primary-bg-color: #ececf1;
   --md-typeset-a-color: #8aa2ff;
-  --md-accent-fg-color: #8aa2ff;
+  --md-accent-fg-color: #a8baff;
+  --md-default-bg-color: #17171a;
+
+  --fb-ink:     #f4f4f6;
+  --fb-body:    #cfcfd6;
+  --fb-muted:   #9a9aa3;
+  --fb-surface: #1f1f23;
+  --fb-line:    #2e2e34;
 }
 
-/* ---- Support-article look -------------------------------------------- */
+/* ---- Header and section tabs: white, with a hairline under each --------- */
 
-/* The home page's one-paragraph introduction, a size up. */
-.md-typeset .lead { font-size: 1.05rem; line-height: 1.6; color: var(--md-default-fg-color--light); }
+.md-header, .md-tabs {
+  background-color: var(--md-default-bg-color);
+  color: var(--fb-ink);
+  box-shadow: none;
+}
+.md-header { border-bottom: 1px solid var(--fb-line); }
+.md-header--shadow { box-shadow: none; }
+.md-tabs { border-bottom: 1px solid var(--fb-line); }
+.md-header__topic:first-child { font-weight: 600; }
+.md-tabs__link { color: var(--fb-body); opacity: 1; font-size: .72rem; font-weight: 500; }
+.md-tabs__item--active .md-tabs__link, .md-tabs__link:hover { color: var(--md-primary-fg-color); }
+.md-tabs__link .twemoji svg, .md-tabs__link svg { fill: currentcolor; }
 
-/* Calmer callouts: a thin border, a quiet title bar, the same text size as
-   the page, so a callout reads as part of the page rather than an alarm. */
+.md-search__form { background-color: var(--fb-surface); border: 1px solid var(--fb-line); border-radius: var(--fb-radius); box-shadow: none; }
+.md-search__form:hover { background-color: var(--fb-surface); border-color: var(--md-primary-fg-color); }
+.md-search__input, .md-search__input::placeholder, .md-search__icon { color: var(--fb-muted); }
+[data-md-toggle="search"]:checked ~ .md-header .md-search__form { border-radius: var(--fb-radius) var(--fb-radius) 0 0; }
+
+/* ---- Type --------------------------------------------------------------- */
+
+.md-typeset { color: var(--fb-body); font-size: .8rem; line-height: 1.65; }
+.md-typeset h1 {
+  color: var(--fb-ink);
+  font-weight: 700;
+  font-size: 1.9rem;
+  letter-spacing: -.025em;
+  line-height: 1.15;
+  margin-bottom: .4rem;
+}
+.md-typeset h2 { color: var(--fb-ink); font-weight: 650; font-size: 1.2rem; letter-spacing: -.015em; margin-top: 2rem; }
+.md-typeset h3 { color: var(--fb-ink); font-weight: 600; font-size: .95rem; }
+.md-typeset strong { color: var(--fb-ink); }
+.md-typeset a { text-decoration: none; }
+.md-typeset a:hover { text-decoration: underline; text-underline-offset: .15em; }
+
+/* The paragraph straight under a page's title is its lead, as on Saleae's
+   articles; the home page's introduction uses the same class. */
+.md-typeset h1 + p, .md-typeset .lead { font-size: .95rem; line-height: 1.55; color: var(--fb-muted); margin: 0 0 1.6rem; max-width: 40rem; }
+
+/* Breadcrumbs (navigation.path). */
+.md-path { font-size: .64rem; color: var(--fb-muted); margin-bottom: .2rem; }
+.md-path__link { color: var(--fb-muted); }
+
+/* ---- Navigation: quiet; the current page a tinted pill ------------------- */
+
+.md-nav { font-size: .68rem; }
+.md-nav__link { color: var(--fb-body); }
+.md-nav__item--section > .md-nav__link, .md-nav__title { color: var(--fb-ink); font-weight: 600; }
+.md-nav__link--active, .md-nav__item .md-nav__link--active {
+  color: var(--md-primary-fg-color);
+  font-weight: 600;
+}
+.md-sidebar--primary .md-nav__link--active {
+  background: color-mix(in srgb, var(--md-primary-fg-color) 9%, transparent);
+  border-radius: .3rem;
+  margin-left: -.4rem;
+  padding: .15rem .4rem;
+}
+.md-nav__link .md-icon svg, .md-nav__link .twemoji svg { opacity: .75; }
+
+/* ---- Code, tables ------------------------------------------------------- */
+
+.md-typeset pre > code, .md-typeset .highlight {
+  background-color: var(--fb-surface);
+  border-radius: var(--fb-radius);
+}
+.md-typeset .highlight { border: 1px solid var(--fb-line); }
+.md-typeset :not(pre) > code {
+  background-color: var(--fb-surface);
+  border: 1px solid var(--fb-line);
+  border-radius: .25rem;
+  padding: 0 .3em;
+  color: var(--fb-ink);
+}
+
+.md-typeset__table { width: 100%; }
+.md-typeset table:not([class]) {
+  display: table;
+  width: 100%;
+  font-size: .74rem;
+  border: 1px solid var(--fb-line);
+  border-radius: var(--fb-radius);
+  box-shadow: none;
+  overflow: hidden;
+}
+.md-typeset table:not([class]) th {
+  background-color: var(--fb-surface);
+  color: var(--fb-ink);
+  font-weight: 600;
+}
+.md-typeset table:not([class]) td, .md-typeset table:not([class]) th {
+  padding: .6em 1em;
+  border-top: 1px solid var(--fb-line);
+}
+.md-typeset table:not([class]) tr:first-child th { border-top: 0; }
+
+/* ---- Callouts: a tinted banner with its icon, like Saleae's info box ----- */
+
 .md-typeset .admonition, .md-typeset details {
-  border-width: 0 0 0 .2rem;
+  --fb-tint: #4069FF;
+  border: 1px solid color-mix(in srgb, var(--fb-tint) 32%, transparent);
+  border-radius: var(--fb-radius);
+  background-color: color-mix(in srgb, var(--fb-tint) 6%, var(--md-default-bg-color));
   box-shadow: none;
   font-size: .76rem;
+  padding: .1rem .9rem .1rem .9rem;
 }
-.md-typeset .admonition-title, .md-typeset summary { font-weight: 600; }
+.md-typeset .admonition-title, .md-typeset summary {
+  background-color: transparent !important;
+  border: 0;
+  color: var(--fb-ink);
+  font-weight: 600;
+  margin: 0 -.9rem;
+  padding: .55rem .9rem .2rem 2.5rem;
+}
+.md-typeset .admonition-title::before, .md-typeset summary::before {
+  background-color: var(--fb-tint) !important;
+  left: .9rem;
+  top: .62rem;
+}
+.md-typeset .admonition > :last-child, .md-typeset details > :last-child { margin-bottom: .7rem; }
+.md-typeset .admonition.tip, .md-typeset details.tip { --fb-tint: #1a9e5c; }
+.md-typeset .admonition.warning, .md-typeset details.warning { --fb-tint: #d98a00; }
+.md-typeset .admonition.danger, .md-typeset details.danger { --fb-tint: #d6293e; }
+.md-typeset .admonition.question, .md-typeset details.question { --fb-tint: #6e6e73; }
+.md-typeset .admonition.abstract, .md-typeset .admonition.info { --fb-tint: #4069FF; }
 
-/* Cards: an icon in the brand colour, a lift on hover. */
-.md-typeset .grid.cards > ul > li { transition: border-color .15s, box-shadow .15s; }
-.md-typeset .grid.cards > ul > li:hover { border-color: var(--md-primary-fg-color); }
-.md-typeset .grid.cards .lg { color: var(--md-primary-fg-color); }
+/* ---- Cards: Saleae's category tiles ------------------------------------ */
 
-/* Tables fill the column, with a little more air in each cell. */
-.md-typeset__table { width: 100%; }
-.md-typeset__table table:not([class]) { display: table; width: 100%; }
-.md-typeset table:not([class]) td, .md-typeset table:not([class]) th { padding: .6em 1em; }
+.md-typeset .grid.cards > ul > li, .md-typeset .grid > .card {
+  position: relative;
+  background-color: var(--fb-surface);
+  border: 1px solid var(--fb-line);
+  border-radius: .65rem;
+  box-shadow: none;
+  padding: 1.1rem 1.2rem;
+}
+.md-typeset .grid.cards > ul > li:hover { border-color: var(--md-primary-fg-color); box-shadow: none; }
+.md-typeset .grid.cards > ul > li > hr { display: none; }
+.md-typeset .grid.cards > ul > li > p:first-child { margin-top: 0; }
+.md-typeset .grid.cards > ul > li > p > strong { color: var(--fb-ink); font-size: .86rem; }
+.md-typeset .grid.cards > ul > li > p > strong > a { color: var(--fb-ink); }
+.md-typeset .grid.cards > ul > li p { color: var(--fb-body); margin: .35rem 0 0; }
+.md-typeset .grid.cards .lg { color: var(--fb-ink); width: 1.5em; height: 1.5em; display: block; margin-bottom: .55rem; }
+.md-typeset .grid.cards .count { display: block; margin-top: .7rem; font-size: .66rem; color: var(--fb-muted); }
+/* The whole tile is the link: its first link stretches over it. */
+.md-typeset .grid.cards > ul > li > p > strong > a::after { content: ""; position: absolute; inset: 0; }
+
+/* ---- The home page hero ------------------------------------------------- */
+
+.md-typeset .hero { text-align: center; padding: 1rem 0 0; }
+.md-typeset .hero h1 {
+  font-size: clamp(2rem, 5vw, 2.9rem);
+  letter-spacing: -.035em;
+  margin: 0 0 .7rem;
+}
+.md-typeset .hero p { font-size: 1rem; color: var(--fb-muted); margin: 0 auto 1.4rem; max-width: 36rem; }
+.md-typeset .hero-search {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: .85rem 1rem;
+  border: 1px solid var(--fb-line);
+  border-radius: .6rem;
+  background-color: var(--md-default-bg-color);
+  color: var(--fb-muted);
+  font-size: .8rem;
+  text-align: left;
+  cursor: text;
+}
+.md-typeset .hero-search:hover { border-color: var(--md-primary-fg-color); }
+.md-typeset .hero-search svg { width: 1.1rem; height: 1.1rem; fill: currentcolor; flex: none; }
+.md-typeset .banner {
+  max-width: 100%;
+  margin: 1.4rem 0;
+  padding: .75rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--md-primary-fg-color) 30%, transparent);
+  border-radius: var(--fb-radius);
+  background-color: color-mix(in srgb, var(--md-primary-fg-color) 6%, var(--md-default-bg-color));
+  text-align: center;
+  font-size: .76rem;
+}
+
+/* ---- Footer: previous / next on white, the meta line quiet --------------- */
+
+.md-footer { background-color: var(--md-default-bg-color); color: var(--fb-ink); border-top: 1px solid var(--fb-line); }
+.md-footer__link { color: var(--fb-ink); }
+.md-footer__title { opacity: 1; }
+.md-footer__direction { color: var(--fb-muted); opacity: 1; }
+.md-footer-meta { background-color: var(--fb-surface); color: var(--fb-muted); }
+.md-footer-meta .md-copyright, .md-footer-meta a { color: var(--fb-muted); }
 
 /* Mermaid diagrams: never taller than the screen. */
 .md-typeset .mermaid svg { max-height: 70vh; }
 
-/* Page titles in full colour and a heavier weight: Material's default 300
-   grey reads as a placeholder. */
-.md-typeset h1 { color: var(--md-default-fg-color); font-weight: 600; letter-spacing: -.01em; }
-.md-typeset h2 { font-weight: 600; }
+/* Keyboard focus stays visible everywhere. */
+.md-typeset a:focus-visible, .md-typeset label:focus-visible { outline: 2px solid var(--md-primary-fg-color); outline-offset: 2px; }
+
+/* ---- Second pass, from the screenshots ---------------------------------- */
+
+/* Material's per-type rules set a border colour of their own; the tint wins. */
+.md-typeset .admonition, .md-typeset details {
+  border-color: color-mix(in srgb, var(--fb-tint) 32%, transparent) !important;
+}
+.md-typeset details > summary::after { color: var(--fb-muted); }
+
+.md-typeset .highlight pre { margin: 0; }
+.md-typeset .highlight code { padding: .8rem 1rem; }
+
+.md-typeset .grid.cards .lg { width: 1.6rem; height: 1.6rem; }
+.md-typeset .grid.cards .lg svg { width: 1.6rem; height: 1.6rem; }
+
+.md-typeset .hero { padding-bottom: 0; }
+.md-typeset .hero + .banner, .md-typeset .banner { margin-top: 1.6rem; }
+
+.md-copyright, .md-copyright__highlight, .md-footer-meta__inner { color: var(--fb-muted); }
+
+/* The home page needs no edit button above its hero. */
+.md-content__button { opacity: .5; }
+
+html .md-footer-meta.md-typeset a, .md-footer-meta.md-typeset a { color: var(--fb-muted); }
+html .md-footer-meta.md-typeset a:hover { color: var(--md-primary-fg-color); }

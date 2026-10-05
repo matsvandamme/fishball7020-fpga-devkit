@@ -32,12 +32,13 @@ several within a minute, with an outdoor antenna.
 ./devkit adsb --replay flight.sigmf-meta # no board needed
 ```
 
-??? question "The table stays empty?"
-    | Symptom | Fix |
-    |---|---|
-    | **`LINK TOO SLOW`** | `--uri ip:192.168.2.1`, or `export BOARD=192.168.2.1` |
-    | **`NO SAMPLES for N s`** | power it from a mains charger, then check `./devkit status` |
-    | **`rejected` rises, nothing `CRC ok`** | check the antenna and its cable, then try a few dB less or more gain |
-    | **"something else holds the receiver"** | close SDR++ or the capture; only one program can stream at a time |
+**The table stays empty?**
+
+| Symptom | Fix |
+|---|---|
+| **`LINK TOO SLOW`** | `--uri ip:192.168.2.1`, or `export BOARD=192.168.2.1` |
+| **`NO SAMPLES for N s`** | power it from a mains charger, then check `./devkit status` |
+| **`rejected` rises, nothing `CRC ok`** | check the antenna and its cable, then try a few dB less or more gain |
+| **"something else holds the receiver"** | close SDR++ or the capture; only one program can stream at a time |
 
 Settings, positions and how the decoder works: [ADS-B](../adsb.md).

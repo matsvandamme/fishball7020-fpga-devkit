@@ -7,13 +7,10 @@ copying files onto the card is not enough. `write-card.cmd` does the whole job
 on a Windows 10 or 11 PC with nothing installed: no WSL, no Python, no extra
 tools.
 
-!!! abstract "What you need"
-    | | |
-    |---|---|
-    | time | about five minutes |
-    | card | a microSD card of **1 GB or more** (4 to 32 GB is typical), and a card reader |
-    | PC | Windows 10 or 11, nothing installed |
-    | download | seven files from the [latest release](https://github.com/matsvandamme/fishball7020-fpga-devkit/releases/latest) |
+- **time:** about five minutes
+- **card:** a microSD card of **1 GB or more** (4 to 32 GB is typical), and a card reader
+- **PC:** Windows 10 or 11, nothing installed
+- **download:** seven files from the [latest release](https://github.com/matsvandamme/fishball7020-fpga-devkit/releases/latest)
 
 !!! tip "Use a new card if you can, and keep the one in the board as it is"
     Going back to the old firmware is then just swapping the cards.

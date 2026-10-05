@@ -72,11 +72,9 @@ sdr.rx_destroy_buffer()                   # not optional - see below
 ```
 
 !!! warning "Call `rx_destroy_buffer()` (or `tx_destroy_buffer()`) before the script ends"
-    | | |
-    |---|---|
-    | symptom | the script segfaults on exit (code 139) inside `iio_buffer_destroy()`: the data is fine, but the crash fails tests and CI |
-    | cause | Python frees objects in no guaranteed order at shutdown, and the buffer (the memory libiio streams into) can outlive its connection. Both pip `pylibiio` 0.25 and Debian's `python3-libiio` 0.23 do this |
-    | fix | call it; calling it with no buffer is harmless |
+    - **symptom:** the script segfaults on exit (code 139) inside `iio_buffer_destroy()`: the data is fine, but the crash fails tests and CI
+    - **cause:** Python frees objects in no guaranteed order at shutdown, and the buffer (the memory libiio streams into) can outlive its connection. Both pip `pylibiio` 0.25 and Debian's `python3-libiio` 0.23 do this
+    - **fix:** call it; calling it with no buffer is harmless
 
 !!! danger "Transmit: never write the −89.75 dB floor before a stream"
     Both channels at exactly maximum attenuation is how the driver recognises

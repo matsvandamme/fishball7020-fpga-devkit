@@ -41,7 +41,11 @@ validation:
 
 theme:
   name: material
-  logo: img/vmat-mark-white.svg
+  # The blue mark: the header is white, as on the Saleae support site.
+  logo: img/vmat-mark-blue.svg
+  font:
+    text: Inter
+    code: JetBrains Mono
   favicon: img/vmat-mark-blue.svg
   # Not navigation.instant: it loads pages by XHR, which breaks plain-HTML
   # pages served alongside the docs, such as the course.
@@ -51,6 +55,8 @@ theme:
     - navigation.tracking
     - navigation.top
     - navigation.indexes
+    - navigation.path       # breadcrumbs above the title
+    - navigation.footer     # previous / next at the foot of each page
     - search.suggest
     - search.highlight
     - content.code.copy

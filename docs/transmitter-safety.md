@@ -7,13 +7,11 @@ cable a transmit port to anything. The short version is in the
 and [`tools/IDLE-CASES.md`](../tools/IDLE-CASES.md).
 
 !!! danger "The numbers that matter"
-    | | |
-    |---|---|
-    | Transmit output, flat out | **about +19 dBm** (an estimate capped at the PA's compression point; never metered) |
-    | Receiver absolute-maximum input | **+2.5 dBm**, about 16 dB below what the transmitter puts out |
-    | Attenuation in any TX→RX loopback | **at least 20 dB** |
-    | Every power-on | **a ~4 ms burst on both transmit ports**, before any software runs |
-    | Opening a transmit buffer | can raise output by itself: **28.25 dB** measured, from a muted board |
+    - **Transmit output, flat out:** **about +19 dBm** (an estimate capped at the PA's compression point; never metered)
+    - **Receiver absolute-maximum input:** **+2.5 dBm**, about 16 dB below what the transmitter puts out
+    - **Attenuation in any TX→RX loopback:** **at least 20 dB**
+    - **Every power-on:** **a ~4 ms burst on both transmit ports**, before any software runs
+    - **Opening a transmit buffer:** can raise output by itself: **28.25 dB** measured, from a muted board
 
 | Term | Meaning |
 |---|---|
@@ -49,16 +47,17 @@ and [`tools/IDLE-CASES.md`](../tools/IDLE-CASES.md).
 
 !!! danger "+2.5 dBm is the AD9361's absolute-maximum RF input"
     This board is sold in a variant with a Mini-Circuits
-    [**PGA-102+**](https://www.minicircuits.com/pdfs/PGA-102+.pdf) power amplifier on transmit:
-
-    | GHz | 0.05 | 0.8 | 2.0 | 3.0 | 4.0 | 6.0 |
-    |---|---|---|---|---|---|---|
-    | **Gain (dB)** | **17.7** | 15.9 | 14.0 | 12.5 | 11.5 | 10.4 |
-
-    with P1dB (1 dB compression point) around **+17.5 dBm**. Plan for **about
+    [**PGA-102+**](https://www.minicircuits.com/pdfs/PGA-102+.pdf) power amplifier on transmit
+    (its gain is below), with P1dB (1 dB compression point) around **+17.5 dBm**. Plan for **about
     +19 dBm** flat out, roughly **16 dB above what its own receive port survives**.
     That is the self-test's estimate, capped at the compression point; no power
     meter has measured it. The non-PA variant is 10–18 dB quieter; check which you have.
+
+PGA-102+ gain:
+
+| GHz | 0.05 | 0.8 | 2.0 | 3.0 | 4.0 | 6.0 |
+|---|---|---|---|---|---|---|
+| **Gain (dB)** | **17.7** | 15.9 | 14.0 | 12.5 | 11.5 | 10.4 |
 
 | Rule | Why |
 |---|---|
@@ -116,11 +115,11 @@ set; start with nothing set, and you get the last gain used.
     On a board with a power amplifier it applies a fixed gain to both channels a
     second or two after *any* stream starts.
 
-    | Where to look | |
-    |---|---|
-    | Buildroot | `/mnt/jffs2/autorun.sh` first: it survives reflashing and appears nowhere in the source |
-    | Debian | nothing runs `autorun.sh`; look at `systemctl list-units 'fishball*'` and `systemctl --failed` |
-    | either | `tools/selftest/sdr_selftest.py --ssh` reports what is in `/mnt/jffs2` and whether anything would run it |
+| Where to look | |
+|---|---|
+| Buildroot | `/mnt/jffs2/autorun.sh` first: it survives reflashing and appears nowhere in the source |
+| Debian | nothing runs `autorun.sh`; look at `systemctl list-units 'fishball*'` and `systemctl --failed` |
+| either | `tools/selftest/sdr_selftest.py --ssh` reports what is in `/mnt/jffs2` and whether anything would run it |
 
 ### When the program dies: the starve watchdog
 

@@ -10,14 +10,11 @@ on two cores, reaches 20 MS/s, and 19 MS/s with margin. The patched SDR++ uses i
 [Fast TCP transport](sdrpp.md#faster-the-fast-tcp-transport). This page
 records what was measured, so nobody has to repeat it.
 
-!!! abstract "Key facts"
-    | | |
-    |---|---|
-    | 16-bit paths | at most **11–12 MS/s**: one ARM core at 100% copying samples into the network |
-    | 8-bit `zc-stream -8`, two cores | **19–20 MS/s**; 19 MS/s when every sample counts |
-    | ceiling | the kernel's network send path, about **42.7 MB/s** |
-    | cost of 8 bits | about **48 dB** visible dynamic range instead of 72 dB |
-    | every number | crossed Wi-Fi; a wired PC was not tried |
+- **16-bit paths:** at most **11–12 MS/s**: one ARM core at 100% copying samples into the network
+- **8-bit `zc-stream -8`, two cores:** **19–20 MS/s**; 19 MS/s when every sample counts
+- **ceiling:** the kernel's network send path, about **42.7 MB/s**
+- **cost of 8 bits:** about **48 dB** visible dynamic range instead of 72 dB
+- **every number:** crossed Wi-Fi; a wired PC was not tried
 
 | Term | Meaning |
 |---|---|

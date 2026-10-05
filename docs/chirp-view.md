@@ -7,16 +7,13 @@ over, and shows RX1 receiving it through the bench loop, live. It is the
 quickest way to see a cyclic buffer at work, to get a feel for different
 sweeps, and to measure how flat the loop between TX1 and RX1 is.
 
-!!! abstract "Key facts"
-    | | |
-    |---|---|
-    | needs | TX1 → **20 dB attenuator** → RX1, the Debian root, and `zc-stream` on the board for 20 MS/s |
-    | default sweep | 7 MHz up-sweep, 864.5 to 871.5 MHz, every 0.8 s, at 20 MS/s |
-    | sweep limit | one 64 MB DMA block: 0.83 s at 20 MS/s, 3.4 s at 4.8 MS/s |
-    | after auto level | the sweep stands 73 dB above the noise |
-    | pulse compression | 123 ns peak (theory 127 ns) for 7 MHz × 100 µs pulses |
-    | `--reference` | ranging timed against RX2, so lost samples cannot move it; at most 5.5 MS/s |
-    | safety | attenuation set after the buffer starts and read back; muted before every teardown |
+- **needs:** TX1 → **20 dB attenuator** → RX1, the Debian root, and `zc-stream` on the board for 20 MS/s
+- **default sweep:** 7 MHz up-sweep, 864.5 to 871.5 MHz, every 0.8 s, at 20 MS/s
+- **sweep limit:** one 64 MB DMA block: 0.83 s at 20 MS/s, 3.4 s at 4.8 MS/s
+- **after auto level:** the sweep stands 73 dB above the noise
+- **pulse compression:** 123 ns peak (theory 127 ns) for 7 MHz × 100 µs pulses
+- **`--reference`:** ranging timed against RX2, so lost samples cannot move it; at most 5.5 MS/s
+- **safety:** attenuation set after the buffer starts and read back; muted before every teardown
 
 ![chirp-view running: on the left the live spectrum, a waterfall with one slanted line per sweep from 864.5 to 871.5 MHz, the response curve and the transmitted sweep; on the right the control panel.](img/chirp-view.jpg)
 

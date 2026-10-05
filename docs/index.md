@@ -4,67 +4,94 @@ hide:
   - toc
 ---
 
-# Fishball7020 FPGA Devkit
+<div class="hero" markdown>
 
-<p class="lead">Buildable firmware for a two-channel software-defined radio that ships
-without any: a Zynq XC7Z020 and an AD9361, sold as PlutoSky R1, 7020-SDR,
-Fishball7020 and Fish-Wan. Every file on the SD card rebuilds from source, and
-you can put your own logic in the radio's datapath.</p>
+# What do you want to do?
 
-## What do you want to do?
+Firmware, guides and measurements for the Fishball7020 / PlutoSky R1: a Zynq
+XC7Z020 and an AD9361 radio, rebuilt from source.
+
+<label class="hero-search" for="__search">:material-magnify: Search: write the card, SDR++, transmit, GPIO, reference clock…</label>
+
+</div>
+
+<p class="banner">New to the board? <a href="start/">Start here</a>: six short steps from the box to a working radio.</p>
 
 <div class="grid cards" markdown>
 
--   :material-flag-checkered:{ .lg .middle } **Get a board running**
+-   :material-flag-checkered:{ .lg }
 
-    ---
+    **[Getting started](start/index.md)**
 
-    Six short steps from the box to a working radio.
+    First-time setup: the card, the cables, finding the board, the safety rules.
 
-    [:octicons-arrow-right-24: Start here](start/index.md)
+    <span class="count">8 articles</span>
 
--   :material-radio-tower:{ .lg .middle } **Use the radio**
+-   :material-radio-tower:{ .lg }
 
-    ---
+    **[Use the radio](radio/index.md)**
 
     Capture IQ, SDR++, aircraft, a live sweep, MATLAB, your own code.
 
-    [:octicons-arrow-right-24: Your own project](your-own-project.md)
+    <span class="count">12 articles</span>
 
--   :material-alert-octagon-outline:{ .lg .middle } **Transmit safely**
+-   :material-alert-octagon-outline:{ .lg }
 
-    ---
+    **[Transmit safely](start/before-you-transmit.md)**
 
     This board has a power amplifier, and its receiver survives only +2.5 dBm.
 
-    [:octicons-arrow-right-24: Before you transmit](start/before-you-transmit.md)
+    <span class="count">4 rules</span>
 
--   :material-hammer-wrench:{ .lg .middle } **Build your own firmware**
+-   :material-chip:{ .lg }
 
-    ---
+    **[Hardware and I/O](hw/index.md)**
+
+    Ports, the JP5 header, GPIO, the USER LED, an external reference clock.
+
+    <span class="count">8 articles</span>
+
+-   :material-hammer-wrench:{ .lg }
+
+    **[Build your own firmware](build/index.md)**
 
     Kernel, drivers and Debian with no Vivado; the FPGA with it.
 
-    [:octicons-arrow-right-24: Building](building.md)
+    <span class="count">10 articles</span>
 
--   :material-school-outline:{ .lg .middle } **Learn SDR and the FPGA**
+-   :material-wrench-outline:{ .lg }
 
-    ---
+    **[Troubleshooting](troubleshooting.md)**
 
-    Fabric School: 54 lessons, from what a radio is to your own logic in the
-    AD9361 datapath, with 23 live calculators. Assumes no Verilog, no Vivado
-    and no signal processing.
+    Known problems by symptom, each with its cause and fix.
 
-    [:octicons-arrow-right-24: The course](course/index.html)
+    <span class="count">14 problems</span>
 
--   :material-download-outline:{ .lg .middle } **Prebuilt firmware**
+-   :material-school-outline:{ .lg }
 
-    ---
+    **[Fabric School](course/index.html)**
+
+    A course from what a radio is to your own logic in the AD9361 datapath.
+    Assumes no Verilog, no Vivado and no signal processing.
+
+    <span class="count">54 lessons, 23 live calculators</span>
+
+-   :material-chart-bell-curve:{ .lg }
+
+    **[Measured performance](measured-performance.md)**
+
+    What one board measures, with the conditions attached.
+
+    <span class="count">Reference</span>
+
+-   :material-download-outline:{ .lg }
+
+    **[Prebuilt firmware](https://github.com/matsvandamme/fishball7020-fpga-devkit/releases)**
 
     Ready-to-write SD-card files. Every release was booted on a board before it
     was published.
 
-    [:octicons-arrow-right-24: Releases](https://github.com/matsvandamme/fishball7020-fpga-devkit/releases)
+    <span class="count">Releases on GitHub</span>
 
 </div>
 

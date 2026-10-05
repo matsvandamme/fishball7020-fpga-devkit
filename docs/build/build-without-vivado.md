@@ -29,14 +29,15 @@ XSA="$(./firmware-modern/fetch-pinned-xsa.sh)"      # the FPGA design of a facto
 === [1/7] Importing a pre-built XSA (Vivado not invoked) ===
 ```
 
-??? question "The import refuses the XSA?"
-    | If you pass | You get |
-    |---|---|
-    | something that is not a zip | `ERROR: … is not a readable zip archive.` |
-    | an XSA exported without the bitstream | `ERROR: … contains no system_top.bit.` |
-    | an XSA for a different chip | `ERROR: that XSA is not for this board's part (xc7z020clg400-2).` |
-    | an XSA from a different Vivado version | `ERROR: that XSA was written by a different tool version.` |
+**The import refuses the XSA?**
 
-    More: [building without Vivado](../building-without-vivado.md).
+More: [building without Vivado](../building-without-vivado.md).
+
+| If you pass | You get |
+|---|---|
+| something that is not a zip | `ERROR: … is not a readable zip archive.` |
+| an XSA exported without the bitstream | `ERROR: … contains no system_top.bit.` |
+| an XSA for a different chip | `ERROR: that XSA is not for this board's part (xc7z020clg400-2).` |
+| an XSA from a different Vivado version | `ERROR: that XSA was written by a different tool version.` |
 
 **Next:** [check the build](verify-the-build.md).

@@ -3,14 +3,11 @@
 Finding the board, changing either of its addresses, and where those settings
 are stored, which decides what survives a reboot or a reflash.
 
-!!! abstract "Key facts"
-    | | |
-    |---|---|
-    | USB cable | **192.168.2.1**, always: the way back in |
-    | Ethernet | asks your router (DHCP) by default |
-    | Name | **`fishball.local`** (mDNS) |
-    | Settings live in | **Buildroot:** the U-Boot environment in QSPI flash, so they survive reflashing the SD card. **Debian:** `/etc/network/interfaces`, an ordinary file |
-    | Security | **no packet filter, `iiod` (port 30431) has no authentication**: anyone on your LAN can tune, receive and transmit |
+- **USB cable:** **192.168.2.1**, always: the way back in
+- **Ethernet:** asks your router (DHCP) by default
+- **Name:** **`fishball.local`** (mDNS)
+- **Settings live in:** **Buildroot:** the U-Boot environment in QSPI flash, so they survive reflashing the SD card. **Debian:** `/etc/network/interfaces`, an ordinary file
+- **Security:** **no packet filter, `iiod` (port 30431) has no authentication**: anyone on your LAN can tune, receive and transmit
 
 | Term | Meaning |
 |---|---|

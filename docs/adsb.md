@@ -6,14 +6,11 @@ Broadcast). `./devkit adsb` receives those messages with the board, decodes
 them on your PC and shows them live: one row per aircraft, with its callsign,
 altitude, speed and position, above a log of every message received.
 
-!!! abstract "Key facts"
-    | | |
-    |---|---|
-    | antenna | a **1090 MHz antenna** on RX1A (or RX2A with `--channel 2`), with a view of the sky |
-    | power | a **mains charger**: on laptop bus power the board hangs under a sustained 4 MSPS stream |
-    | gain | **25 dB manual** by default; more is not better without a filter in front |
-    | rate | **4 MSPS**, 16 MB/s on the cable |
-    | transmits | **never**: it only receives, so there is no transmit gate to pass and no licence question |
+- **antenna:** a **1090 MHz antenna** on RX1A (or RX2A with `--channel 2`), with a view of the sky
+- **power:** a **mains charger**: on laptop bus power the board hangs under a sustained 4 MSPS stream
+- **gain:** **25 dB manual** by default; more is not better without a filter in front
+- **rate:** **4 MSPS**, 16 MB/s on the cable
+- **transmits:** **never**: it only receives, so there is no transmit gate to pass and no licence question
 
 ## Quick start
 

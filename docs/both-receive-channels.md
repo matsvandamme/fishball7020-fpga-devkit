@@ -7,14 +7,11 @@ channels through the filter for about six lines of Tcl and 22 DSP slices; it is
 **applied by every build**. Read this if you use both receivers at a decimated
 rate, or build upstream's wiring.
 
-!!! abstract "Key facts"
-    | | |
-    |---|---|
-    | the defect (upstream) | with the ÷8 decimator engaged, channel 1 is sampled at one eighth rate **with no anti-alias filter**: a 10 MHz tone's alias lands at 2.32 MHz at full strength |
-    | the fix | patch `0021`, applied by every build: both channels through the filter |
-    | result | at least **69.7 dB** of alias suppression on channel 1 |
-    | cost | 22 DSP slices (94 / 220 instead of 72 / 220); timing still met |
-    | not fixed | the transmit interpolator: **do not engage it**, TX1 then emits nothing |
+- **the defect (upstream):** with the ÷8 decimator engaged, channel 1 is sampled at one eighth rate **with no anti-alias filter**: a 10 MHz tone's alias lands at 2.32 MHz at full strength
+- **the fix:** patch `0021`, applied by every build: both channels through the filter
+- **result:** at least **69.7 dB** of alias suppression on channel 1
+- **cost:** 22 DSP slices (94 / 220 instead of 72 / 220); timing still met
+- **not fixed:** the transmit interpolator: **do not engage it**, TX1 then emits nothing
 
 ## Using it
 

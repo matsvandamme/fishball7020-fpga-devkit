@@ -17,15 +17,12 @@ channel or setting that does not match the board.
 prompt the same check is `fishball.doctor`. If MATLAB is not on `PATH`, set
 `MATLAB_BIN` to the binary.
 
-!!! abstract "Key facts"
-    | | |
-    |---|---|
-    | firmware update offer | **never accept**: that image is for a different board, and there is no undo |
-    | full scale | `int16`: **±2047**; `double`/`single`: **±1.0**; transmit: **±32767** |
-    | channels | `sdrrx`/`sdrtx` see **only RX1/TX1**; RX2 and TX2 through the `fishball` package |
-    | changing a setting | release and re-create: a property set on a running object does nothing |
-    | Simulink blocks | must run with **Simulate using = Interpreted execution** |
-    | listening | engage the FPGA ÷8 decimator, or the sound card starves |
+- **firmware update offer:** **never accept**: that image is for a different board, and there is no undo
+- **full scale:** `int16`: **±2047**; `double`/`single`: **±1.0**; transmit: **±32767**
+- **channels:** `sdrrx`/`sdrtx` see **only RX1/TX1**; RX2 and TX2 through the `fishball` package
+- **changing a setting:** release and re-create: a property set on a running object does nothing
+- **Simulink blocks:** must run with **Simulate using = Interpreted execution**
+- **listening:** engage the FPGA ÷8 decimator, or the sound card starves
 
 ## Never let MATLAB update your firmware
 

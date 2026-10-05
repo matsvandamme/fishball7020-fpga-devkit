@@ -6,14 +6,11 @@ constellations, EVM, PAPR, and which spurs belong to the board. Use it to see
 what the transmitter can do, and as a method for attributing spurs between two
 radios; the code is in [`tools/modulation-gallery/`](../tools/modulation-gallery/).
 
-!!! abstract "Key facts"
-    | | |
-    |---|---|
-    | linear modulations, after equalisation | **5.9–6.1 % EVM**, BPSK to 64-QAM alike: the floor belongs to the link, not the board |
-    | the board's I/Q balance | image rejection **55.0–64.9 dB** |
-    | the board's own CW spurs | carrier feedthrough about **−47 dBc**, I/Q image **−58 dBc**, third-order product **−41 dBc** |
-    | LoRa-style chirp | **128 of 128 symbols decoded** |
-    | not established | absolute transmit power, the board's true EVM, behaviour at full power |
+- **linear modulations, after equalisation:** **5.9–6.1 % EVM**, BPSK to 64-QAM alike: the floor belongs to the link, not the board
+- **the board's I/Q balance:** image rejection **55.0–64.9 dB**
+- **the board's own CW spurs:** carrier feedthrough about **−47 dBc**, I/Q image **−58 dBc**, third-order product **−41 dBc**
+- **LoRa-style chirp:** **128 of 128 symbols decoded**
+- **not established:** absolute transmit power, the board's true EVM, behaviour at full power
 
 ## Repeating it
 

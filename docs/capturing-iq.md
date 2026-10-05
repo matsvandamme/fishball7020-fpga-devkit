@@ -4,14 +4,11 @@ How to record IQ samples so the file describes itself and says whether samples
 were lost, using `tools/sigmf-capture.py`. Read this before recording anything
 you intend to keep, analyse or share.
 
-!!! abstract "Key facts"
-    | | |
-    |---|---|
-    | why not `iio_readdev` | a bare capture has no sample rate, frequency or gain in it, and returns the byte count you asked for whether or not the hardware kept up |
-    | full scale | **±2047** (12-bit), not 32768: dividing by 32768 reads every level **24 dB** low |
-    | receive alone sustains | about **40 MB/s**: 1 channel at 10 MSPS clean, 2 channels at 10 MSPS drop samples |
-    | lost samples | the capture still completes; only `--verify` tells you |
-    | two channels | sample-aligned, but the analogue phase between them is **not calibrated** |
+- **why not `iio_readdev`:** a bare capture has no sample rate, frequency or gain in it, and returns the byte count you asked for whether or not the hardware kept up
+- **full scale:** **±2047** (12-bit), not 32768: dividing by 32768 reads every level **24 dB** low
+- **receive alone sustains:** about **40 MB/s**: 1 channel at 10 MSPS clean, 2 channels at 10 MSPS drop samples
+- **lost samples:** the capture still completes; only `--verify` tells you
+- **two channels:** sample-aligned, but the analogue phase between them is **not calibrated**
 
 ```bash
 # run from: the repo root

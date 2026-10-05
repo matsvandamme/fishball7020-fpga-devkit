@@ -6,15 +6,12 @@ board on any OS, then covers the settings that decide how well it works and
 the extra controls a patched build adds. Every number here was measured on one
 board over the USB cable, with SDR++ receiving the Paris FM band.
 
-!!! abstract "Key facts"
-    | | |
-    |---|---|
-    | USB | carries about **20 MB/s = 5 MS/s**; above that whole blocks are lost, with no error anywhere |
-    | network, libiio | about **10 MS/s** for one receiver |
-    | network, Fast TCP (patched SDR++ + `zc-stream`) | **20 MS/s**, 8-bit samples: about 48 dB visible dynamic range instead of 72 dB |
-    | one station | use the FPGA /8 decimator at 500 kHz: 2 MB/s on the link |
-    | one program at a time | the board has one receive buffer |
-    | stock SDR++ | RX1 only, and never transmits |
+- **USB:** carries about **20 MB/s = 5 MS/s**; above that whole blocks are lost, with no error anywhere
+- **network, libiio:** about **10 MS/s** for one receiver
+- **network, Fast TCP (patched SDR++ + `zc-stream`):** **20 MS/s**, 8-bit samples: about 48 dB visible dynamic range instead of 72 dB
+- **one station:** use the FPGA /8 decimator at 500 kHz: 2 MB/s on the link
+- **one program at a time:** the board has one receive buffer
+- **stock SDR++:** RX1 only, and never transmits
 
 ![SDR++ receiving 99.5 to 103.5 MHz from this board: eleven FM stations in the spectrum and waterfall, tuned to Radio Nova on 101.5 MHz with its RDS text decoded. The source panel on the left shows the PlutoSDR source with the FPGA /8 decimator on at 4.0 MHz.](img/sdrpp-overview.jpg)
 
