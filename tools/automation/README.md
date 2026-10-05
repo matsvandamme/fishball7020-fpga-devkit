@@ -5,8 +5,10 @@ for things at the level of the task ("set 868 MHz at 20 MS/s, record two
 million samples from both receivers, give me the file") and the server does
 the board's part. It is modelled on the Saleae Logic 2 automation API.
 
-**This version never transmits.** No call can raise a transmitter; `mute`
-is always allowed. Full page: [docs/automation.md](../../docs/automation.md).
+**It transmits only on a port a person has vouched for**
+(`./devkit tx-guard affirm 0|1`): `Transmit` and `TransmitCapture` are the only
+calls that raise a transmitter, and `mute` is always allowed. Full page:
+[docs/automation.md](../../docs/automation.md).
 
 ```bash
 # run from: the repo root on your PC
@@ -32,17 +34,19 @@ on first use. To make it yourself:
 # run from: tools/automation
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python tests/test_automation.py     # 40 tests against a fake board; no board needed
+.venv/bin/python tests/test_automation.py     # 64 tests against a fake board; no board needed
 ```
 
 | File | |
 |---|---|
-| `fishball.proto` | the API: nine calls and their messages. Any gRPC client in any language can use it |
+| `fishball.proto` | the API: thirteen calls and their messages. Any gRPC client in any language can use it |
 | `fishball_automation/server.py` | the server; runs on the board, port 7020 |
-| `fishball_automation/backend.py` | the board behind one interface: sysfs and `iio_readdev` for real, a fake for the tests |
+| `fishball_automation/backend.py` | the board behind one interface: sysfs, `iio_readdev` and libiio for real; for the tests, a fake that copies the kernel's cached-gain restore |
 | `fishball_automation/client.py` | the Python client |
 | `fishball_automation/proto.py`, `fishball.desc` | the message types, loaded from the compiled `.proto` at run time |
 | `fishball-automation.service` | the systemd unit; like `iiod`, it starts only if the boot-time transmitter mute was confirmed |
+| `fishball-automation-mute.sh` | run by the unit after the server exits, however it exited: both transmitters to −89.75 dB |
+| `examples/clock_stress.py` | the clock stress test as a client script: rate changes, LO retunes, loopback tones, the reference in ppm; prints PASS |
 | `automation.sh` | what `./devkit automation` runs |
 
 After editing `fishball.proto`, rebuild the descriptor:

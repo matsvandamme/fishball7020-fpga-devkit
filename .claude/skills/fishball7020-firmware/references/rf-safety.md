@@ -213,10 +213,12 @@ four rules:
    on an unreadable value rather than assuming quiet, because the enable
    itself can raise one. `tools/tx_gate.py:assert_quiet_after_enable` does it.
 
-**Four tools in the devkit stream**, and all four follow these rules: the
+**Five tools in the devkit stream**, and all five follow these rules: the
 selftest (the one CI runs), `tools/sample_gpio_clock.py`,
-`tools/modulation-gallery/board.py` and `tools/tx-gpio-bitmap-check.py` (which
-only ever writes −89.75 and still opens a buffer, so it IS a transmit path).
+`tools/modulation-gallery/board.py`, `tools/tx-gpio-bitmap-check.py` (which
+only ever writes −89.75 and still opens a buffer, so it IS a transmit path) and
+the automation server's `Transmit`/`TransmitCapture` (which presets both
+attenuators to −89.5, never the floor, so the enable has nothing to restore).
 Any new streaming tool, including the MCP's `tx_disable` path, must do the
 same. A grep for loud attenuation writes will not find a tool that raises TX
 this way.

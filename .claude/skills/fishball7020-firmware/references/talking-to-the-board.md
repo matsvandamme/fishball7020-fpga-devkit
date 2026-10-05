@@ -517,8 +517,28 @@ the visible span.
 A gRPC server on the board, port 7020, for measurement scripts; `./devkit
 automation install|status|clock|capture|smoke|mute|test`. Python client:
 `fishball_automation.client.Fishball` (venv in `tools/automation/.venv`).
-Version 0.1 never transmits: no call takes a TX attenuation, `Configure` mutes
-and fails if an attenuator rose, `Mute` is always allowed.
+Only `Transmit` and `TransmitCapture` raise a transmitter, and only on a
+channel with a `tx-guard` affirmation; louder than -10 dB (and any
+TransmitCapture) needs `pad_db >= 20`. `Configure` mutes and fails if an
+attenuator rose, `Mute` is always allowed. Waveforms are uploaded once
+(`upload_waveform`, ci16 in /dev/shm) and played by id.
+
+- **Preset both attenuators to -89.5, not -89.75, before the enable.** Both at
+  exactly the floor arms the kernel's cached-gain restore (+28.25 dB); any
+  other value is kept. Then write the asked value after the enable and rewrite
+  until it reads back. A one-shot gets its own value before the enable (it has
+  finished by the time anything could be written), so it must be above -89.5.
+- **The transmit lives as long as the gRPC call.** A server-streaming
+  `Transmit` sends the read-back state every 0.25 s; a client that goes away
+  (kill -9 measured: both at -89.75 in 46 ms) cancels the call, and the
+  server mutes, reads back, then destroys the libiio buffer (python3-libiio,
+  in-process, so it dies with the server). `ExecStopPost` mutes again.
+- **There is no hardware TX/RX start sync** (`sync_start_enable` only offers
+  "arm"; the ADC sync is tied off). Where a waveform lands in a
+  TransmitCapture varies per call (4295, 7372, 4439 samples in three calls);
+  measure against a reference receiver: RX1 - RX2 held at -0.002 samples.
+- `tools/automation/examples/clock_stress.py` is the clock stress test as a
+  client script (rates, retunes, loopback tones, reference ppm): PASS in 66 s.
 
 - **Use `python3-grpclib` on the board, never `python3-grpcio`.** Debian
   trixie's armhf grpcio 1.51 aborts on any use (`time_posix.cc: assertion

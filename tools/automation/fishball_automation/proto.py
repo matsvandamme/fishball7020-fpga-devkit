@@ -50,6 +50,10 @@ METHODS = {
 }
 
 
+# the calls whose request is a stream (UploadWaveform)
+CLIENT_STREAMING = {m.name for m in _file.services_by_name["Fishball"].methods if m.client_streaming}
+
+
 def path(method):
     """The gRPC path of a method: /fishball.v1.Fishball/GetStatus."""
     return f"/{SERVICE}/{method}"

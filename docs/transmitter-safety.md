@@ -258,7 +258,7 @@ to raise that channel without it.
 | | |
 |---|---|
 | where the record lives | the board's `/tmp` (RAM): **a reboot withdraws it** |
-| refuse without it | `./devkit selftest --loopback`, `tools/sample_gpio_clock.py`, `tools/modulation-gallery/board.py` |
+| refuse without it | `./devkit selftest --loopback`, `tools/sample_gpio_clock.py`, `tools/modulation-gallery/board.py`, the [automation server](automation.md#transmitting)'s `Transmit` and `TransmitCapture` |
 | checked, not gated (they never command output) | `./devkit selftest` alone, `./devkit gpio-check` |
 | **muting** | **never gated** |
 | one affirmation covers | one run: the harnesses in `tools/tx-idle-cases/` call `tx-guard.sh revoke both` on exit |

@@ -9,11 +9,18 @@
         rec = board.capture(samples=2_000_000, channels=[1, 2], path="loop")
         print(rec.samples, "samples per channel in", rec.data_path)
 
+        # transmitting needs the port affirmed first: ./devkit tx-guard affirm 0
+        tone = board.upload_waveform(iq)          # complex, full scale +-32767, like pyadi-iio
+        with board.transmit(tone, channels=[1], attenuation_db=-40):
+            ...                                   # TX1 plays until the block ends, then mutes
+
 Every call returns the server's reply message (see fishball.proto), and raises
 FishballError with the server's own explanation when the board refuses.
 """
 import json
 import pathlib
+import threading
+import time
 
 import grpc
 
@@ -65,7 +72,8 @@ class Fishball:
                                               options=[("grpc.max_receive_message_length", 16 << 20)])
         self._calls = {}
         for name, (req, rep, streaming) in proto.METHODS.items():
-            make = self._channel.unary_stream if streaming else self._channel.unary_unary
+            make = (self._channel.stream_unary if name in proto.CLIENT_STREAMING
+                    else self._channel.unary_stream if streaming else self._channel.unary_unary)
             self._calls[name] = make(proto.path(name), request_serializer=req.SerializeToString,
                                      response_deserializer=rep.FromString)
 
@@ -156,6 +164,52 @@ class Fishball:
     def delete(self, capture_id):
         self._call("DeleteCapture", proto.FetchRequest(id=capture_id))
 
+    def upload_waveform(self, iq, channels=None):
+        """Send a waveform to the board, once. `iq` is complex samples at the
+        transmit full scale (+-32767, as pyadi-iio takes them), shape (n,) or
+        (channels, n), or ci16 bytes with `channels`. n must be a multiple of 32.
+        Returns the WaveformInfo that transmit() and transmit_capture() take."""
+        data, ch = _waveform_bytes(iq, channels)
+
+        def chunks():
+            for i in range(0, max(len(data), 1), 1 << 20):
+                yield proto.WaveformChunk(data=data[i:i + (1 << 20)], channels=ch if i == 0 else 0)
+        try:
+            return self._calls["UploadWaveform"](chunks(), timeout=self.timeout + len(data) / 2e6)
+        except grpc.RpcError as e:
+            raise self._error(e) from None
+
+    def delete_waveform(self, waveform):
+        self._call("DeleteWaveform", proto.WaveformRef(id=getattr(waveform, "id", waveform)))
+
+    def transmit(self, waveform, channels=(1,), attenuation_db=-89.75, pad_db=0.0, seconds=0.0,
+                 one_shot=False, cyclic_bound_s=0.0):
+        """Play an uploaded waveform. Returns a Transmission once the board
+        confirms it is playing at the asked attenuation; use it in a `with`
+        block, or call stop(). seconds=0 plays until stopped (the board's own
+        cyclic bound, 60 s, still applies unless cyclic_bound_s raises it)."""
+        req = proto.TransmitRequest(waveform_id=getattr(waveform, "id", waveform), channels=list(channels),
+                                    attenuation_db=attenuation_db, pad_db=pad_db, seconds=seconds,
+                                    one_shot=one_shot, cyclic_bound_s=cyclic_bound_s)
+        return Transmission(self, self._calls["Transmit"](req, timeout=None))
+
+    def transmit_capture(self, waveform, samples, tx_channels=(1,), rx_channels=(1,), attenuation_db=-89.75,
+                         pad_db=0.0, settle_s=0.0, path=None, keep_on_board=False):
+        """Play a waveform cyclically, record the receivers while it plays,
+        mute, stop. pad_db, the attenuation fitted between the transmitter and
+        the receiver, must be at least 20. Returns like capture()."""
+        req = proto.TransmitCaptureRequest(waveform_id=getattr(waveform, "id", waveform),
+                                           tx_channels=list(tx_channels), attenuation_db=attenuation_db,
+                                           pad_db=pad_db, rx_channels=list(rx_channels), samples=int(samples),
+                                           settle_s=settle_s)
+        info = self._call("TransmitCapture", req, timeout=self.timeout + samples / 1e5 + settle_s)
+        if path is None:
+            return info
+        rec = self.fetch(info, path)
+        if not keep_on_board:
+            self.delete(info.id)
+        return rec
+
     def stream(self, channels=(1,), samples=0, block_samples=0):
         """Yield SampleBlock messages as the board receives them. Each block
         carries `dropped_samples`: how many the board had to drop so far because
@@ -169,6 +223,89 @@ class Fishball:
                 raise self._error(e) from None
         finally:
             call.cancel()
+
+
+class Transmission:
+    """A running transmit. The board plays while this object's call is open:
+    stop() (or leaving a `with` block) ends the call, and the server mutes,
+    reads back and releases the buffer. stop() then confirms both
+    transmitters read the floor."""
+
+    def __init__(self, board, call):
+        self._board, self._call = board, call
+        self.state, self.error, self.final = None, None, None
+        self._first, self._done = threading.Event(), threading.Event()
+        threading.Thread(target=self._follow, daemon=True).start()
+        self._first.wait(30)
+        if self.error:
+            raise self.error
+        if self.state is None:
+            self.stop()
+            raise FishballError("DEADLINE_EXCEEDED", "the transmit did not confirm within 30 s; stopped")
+
+    def _follow(self):
+        try:
+            for st in self._call:
+                if st.transmitting:
+                    self.state = st
+                else:
+                    self.final = st
+                self._first.set()
+        except grpc.RpcError as e:
+            if e.code() != grpc.StatusCode.CANCELLED:
+                self.error = self._board._error(e)
+        finally:
+            self._first.set()
+            self._done.set()
+
+    @property
+    def running(self):
+        return not self._done.is_set()
+
+    def wait(self, timeout=None):
+        """Until the server ends it (its `seconds`, a one-shot, Mute). Returns the final TxState."""
+        self._done.wait(timeout)
+        if self.error:
+            raise self.error
+        return self.final
+
+    def stop(self):
+        """End it, and confirm both transmitters read the floor. Returns the status read back."""
+        self._call.cancel()
+        self._done.wait(5)
+        deadline = time.monotonic() + 3
+        while True:
+            s = self._board.status()
+            quiet = all(ch.tx_attenuation_db <= -89.5 for ch in s.channels)
+            if (quiet and not s.transmitting) or time.monotonic() > deadline:
+                break
+            time.sleep(0.05)
+        if not quiet:
+            raise FishballError("UNKNOWN", f"after stopping, the transmitters read "
+                                           f"{[ch.tx_attenuation_db for ch in s.channels]} dB: "
+                                           f"TREAT THEM AS LIVE and run ./devkit automation mute")
+        return s
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.stop()
+
+
+def _waveform_bytes(iq, channels):
+    """Complex samples (full scale +-32767, as pyadi-iio takes them) as ci16
+    bytes, interleaved per sample. Raw bytes pass through."""
+    if isinstance(iq, (bytes, bytearray, memoryview)):
+        return bytes(iq), channels or 1
+    import numpy as np
+    a = np.asarray(iq)
+    if a.ndim == 1:
+        a = a[None, :]
+    out = np.empty((a.shape[1], a.shape[0], 2), dtype="<i2")
+    out[..., 0] = np.clip(np.round(a.real.T), -32768, 32767)
+    out[..., 1] = np.clip(np.round(a.imag.T), -32768, 32767)
+    return out.tobytes(), a.shape[0]
 
 
 def status_text(s):
@@ -197,6 +334,8 @@ def status_text(s):
     if c.measured:
         lines.append(f"Reference     measured {c.measured_reference_hz / 1e6:.5f} MHz, {c.measured_ppm:+.1f} ppm "
                      f"against the board's own crystal, over {c.measured_seconds:.0f} s")
+    if s.transmitting:
+        lines.append("Transmit      running (./devkit automation mute stops it)")
     busy = [n for n, on in (("receive", s.rx_buffer_busy), ("transmit", s.tx_buffer_busy)) if on]
     if busy:
         who = "; ".join(f"{h.buffer}: pid {h.pid} {h.command}" for h in s.holders) or "holder unknown"

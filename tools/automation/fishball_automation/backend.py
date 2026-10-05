@@ -1,10 +1,12 @@
 """What the server needs from the board, behind one interface.
 
 SysfsBackend is the real one: it runs on the board and reads and writes the
-radio through sysfs and debugfs, and records samples with iio_readdev. It needs
-no Python packages. FakeBackend stands in for it in the tests, so the server's
-rules can be checked on any machine.
+radio through sysfs and debugfs, records samples with iio_readdev, and
+transmits through libiio's Python binding (python3-libiio). FakeBackend stands
+in for it in the tests, so the server's rules can be checked on any machine;
+it models the two kernel behaviours the transmit rules exist for.
 """
+import array
 import fcntl
 import glob
 import os
@@ -14,7 +16,9 @@ import threading
 import time
 
 MUTED_DB = -89.75
+QUIET_DB = -89.5                     # one step above the floor: "quiet", but not the state that arms the cache restore
 MUTE_TOL_DB = 0.26                   # one attenuator step is 0.25 dB
+AFFIRM_FLAG = "/tmp/tx-antenna-affirmed.{}"   # tools/tx-guard.sh's record that a port was looked at
 PHY, RX_DEV, TX_DEV, XADC = "ad9361-phy", "cf-ad9361-lpc", "cf-ad9361-dds-core-lpc", "xadc"
 BYTES_PER_SAMPLE = 4                 # one channel: int16 I, int16 Q
 
@@ -68,6 +72,21 @@ class Backend:
         """Return (read_block, close): read_block() gives block_bytes of samples, or b'' at the end."""
         raise NotImplementedError
 
+    def affirmed(self, index):
+        """Whether a person recorded that transmit port `index` (0 = TX1A) is terminated."""
+        raise NotImplementedError
+
+    def tx_start(self, channels, data, cyclic):
+        """Enable the transmit buffer for `channels` (1, 2) and push `data`
+        (ci16, interleaved per sample). Returns a handle for tx_stop. The
+        caller sets the attenuators before and after; this only moves samples."""
+        raise NotImplementedError
+
+    def tx_stop(self, handle):
+        """Release the transmit buffer. The caller mutes first: the kernel's
+        stop hook keeps whatever attenuation it finds, for the next enable."""
+        raise NotImplementedError
+
     # ---- built on the above -------------------------------------------------
 
     def number(self, device, attr):
@@ -78,13 +97,18 @@ class Backend:
         return [self.number(PHY, f"out_voltage{ch}_hardwaregain") for ch in (0, 1)]
 
     def mute(self):
-        """Both transmitters to the floor, read back. Raises Refused if either did not go."""
+        """Both transmitters to the floor, read back. Both are always tried,
+        whatever the first does. Raises Refused if either did not go."""
+        failed = []
         for ch in (0, 1):
-            self.write(PHY, f"out_voltage{ch}_hardwaregain", f"{MUTED_DB}")
+            try:
+                self.write(PHY, f"out_voltage{ch}_hardwaregain", f"{MUTED_DB}")
+            except Refused as e:
+                failed.append(f"TX{ch + 1}: {e}")
         got = self.tx_attenuation()
-        if any(g > MUTED_DB + MUTE_TOL_DB for g in got):
-            raise Refused(f"mute did not apply: the attenuators read {got[0]} and {got[1]} dB. "
-                          f"TREAT BOTH TRANSMIT PORTS AS LIVE")
+        if failed or any(g > MUTED_DB + MUTE_TOL_DB for g in got):
+            raise Refused(f"mute did not apply: the attenuators read {got[0]} and {got[1]} dB"
+                          f"{' (' + '; '.join(failed) + ')' if failed else ''}. TREAT BOTH TRANSMIT PORTS AS LIVE")
         return got
 
     def require_free(self, device, buffer):
@@ -100,6 +124,17 @@ class Backend:
 
     def _clear_stale(self, device):
         """Switch off a buffer that is flagged enabled but that no process holds."""
+
+
+def duplicate_channel(data):
+    """A one-channel waveform as the same samples on both channels."""
+    pairs = array.array("i")
+    assert pairs.itemsize == 4
+    pairs.frombytes(data)
+    out = array.array("i", bytes(len(data) * 2))
+    out[0::2] = pairs
+    out[1::2] = pairs
+    return out.tobytes()
 
 
 def stream_channels(channels):
@@ -183,7 +218,7 @@ class SysfsBackend(Backend):
                 found[pid] = cmd.strip()[:80]
             except (OSError, ValueError):
                 continue
-        return sorted((p, c) for p, c in found.items() if p != os.getpid())
+        return sorted(found.items())
 
     def free_memory(self, directory):
         available = 0
@@ -242,6 +277,38 @@ class SysfsBackend(Backend):
             self._clear_stale(RX_DEV)
         return read_block, close
 
+    def affirmed(self, index):
+        try:
+            return os.path.getsize(AFFIRM_FLAG.format(index)) > 0       # an empty flag is not an affirmation
+        except OSError:
+            return False
+
+    def tx_start(self, channels, data, cyclic):
+        import iio                                  # python3-libiio; only the transmit path needs it
+        ctx = iio.Context("local:")
+        dev = ctx.find_device(TX_DEV)
+        if dev is None:
+            raise Refused(f"no {TX_DEV} device")
+        want = set(stream_channels(channels))
+        for i in range(4):
+            dev.find_channel(f"voltage{i}", True).enabled = f"voltage{i}" in want
+        samples = len(data) // (BYTES_PER_SAMPLE * len(channels))
+        handle = {"ctx": ctx, "buf": None}
+        try:
+            handle["buf"] = iio.Buffer(dev, samples, cyclic)     # this is the enable
+        except OSError as e:
+            raise Refused(f"the transmit buffer could not start: {e}") from e
+        written = handle["buf"].write(bytearray(data))
+        if written != len(data):
+            self.tx_stop(handle)
+            raise Refused(f"the transmit buffer took {written} of {len(data)} bytes")
+        handle["buf"].push()
+        return handle
+
+    def tx_stop(self, handle):
+        handle["buf"] = None                        # the last reference: libiio destroys the buffer now
+        handle["ctx"] = None
+
     def _clear_stale(self, device):
         """Switch off a buffer that is flagged enabled but that no process holds."""
         if self.buffer_enabled(device) and not self.holders(device):
@@ -265,6 +332,7 @@ class FakeBackend(Backend):
             (PHY, "in_voltage_gain_control_mode_available"): "manual fast_attack slow_attack hybrid",
             (PHY, "xo_correction"): "40000000",
             (PHY, "xo_correction_available"): "[39992000 1 40008000]",
+            (TX_DEV, "tx_cyclic_timeout_ms"): "60000",
             (PHY, "in_temp0_input"): "44700",
             (XADC, "in_temp0_raw"): "2600", (XADC, "in_temp0_scale"): "123.040771484",
             (XADC, "in_temp0_offset"): "-2219",
@@ -282,6 +350,15 @@ class FakeBackend(Backend):
         self.writes = []                 # every write, in order
         self.on_write = None             # a hook: called after each write
         self.stream_blocks = None        # limit the stream to this many blocks
+        # The transmit side, and the kernel behaviours the rules are for:
+        self.affirmations = set()        # port indexes a person has affirmed
+        self.cached = [-61.5, -61.5]     # what the last stream's teardown kept
+        self.floor_enables = 0           # enables with both attenuators at the exact floor
+        self.teardown_attenuation = []   # what each teardown found: must always be the floor
+        self.tx_writes = []              # (channel, value, buffer enabled at the time)
+        self.loudest = [MUTED_DB, MUTED_DB]   # the loudest each channel ever read while enabled
+        self.stuck = {}                  # channel -> where its attenuator stays while transmitting, whatever is written
+        self.tx_pushed = None            # (channels, bytes, cyclic) of the last start
         self.stream_pace = 0.001         # seconds per block: a radio delivers at its own rate
         self.sim_time = 0.0              # the radio's own clock: advances one block per block read
 
@@ -297,9 +374,53 @@ class FakeBackend(Backend):
         if (device, attr) not in self.attrs:
             raise Refused(f"the driver refused {attr} = {value}: No such file or directory")
         unit = " dB" if attr.endswith("hardwaregain") else ""
+        m = re.fullmatch(r"out_voltage(\d)_hardwaregain", attr)
+        if m:
+            ch = int(m.group(1))
+            self.tx_writes.append((ch, float(value), self.enabled[TX_DEV]))
+            if ch in self.stuck and self.enabled[TX_DEV] and float(value) > MUTED_DB:
+                value = self.stuck[ch]                # a mute still lands
         self.attrs[(device, attr)] = (f"{float(value):.6f}" if unit else str(value)) + unit
+        if m:
+            self._note_loudest()
         if self.on_write:
             self.on_write(device, attr, value)
+
+    def set_tx(self, ch, value):
+        """The board changing an attenuator by itself (a test's doing)."""
+        self.attrs[(PHY, f"out_voltage{ch}_hardwaregain")] = f"{float(value):.6f} dB"
+        self._note_loudest()
+
+    def _note_loudest(self):
+        if self.enabled[TX_DEV]:
+            for ch, a in enumerate(self.tx_attenuation()):
+                self.loudest[ch] = max(self.loudest[ch], a)
+
+    def affirmed(self, index):
+        return index in self.affirmations
+
+    def tx_start(self, channels, data, cyclic):
+        if self.enabled[TX_DEV]:
+            raise Busy("transmit", self.held[TX_DEV])
+        if all(a == MUTED_DB for a in self.tx_attenuation()):
+            # The kernel: both at the exact floor reads as "muted", and the
+            # enable restores the gain the last stream's teardown kept.
+            self.floor_enables += 1
+            for ch in (0, 1):
+                self.attrs[(PHY, f"out_voltage{ch}_hardwaregain")] = f"{self.cached[ch]:.6f} dB"
+        self.enabled[TX_DEV] = True
+        self._note_loudest()
+        self.tx_pushed = (list(channels), len(data), cyclic)
+        return object()
+
+    def tx_stop(self, handle):
+        # The kernel's stop hook: keep what it finds, then apply the floor.
+        found = self.tx_attenuation()
+        self.teardown_attenuation.append(found)
+        self.cached = found
+        for ch in (0, 1):
+            self.attrs[(PHY, f"out_voltage{ch}_hardwaregain")] = f"{MUTED_DB:.6f} dB"
+        self.enabled[TX_DEV] = False
 
     def reg(self, address):
         return self.registers.get(address, 0)

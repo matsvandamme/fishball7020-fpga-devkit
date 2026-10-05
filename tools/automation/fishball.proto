@@ -1,9 +1,11 @@
-// The Fishball7020 automation API: status, configuration, the reference clock
-// and receive captures, for bench-measurement scripts.
+// The Fishball7020 automation API: status, configuration, the reference clock,
+// receive captures and transmit, for bench-measurement scripts.
 //
 // The server (fishball_automation/server.py) runs on the board, on TCP port
-// 7020. This version never transmits: no call can raise a transmitter, and
-// Mute is always allowed.
+// 7020. Only Transmit and TransmitCapture raise a transmitter, and only with
+// the port affirmed (./devkit tx-guard affirm), the attenuation set after the
+// buffer starts and read back, and a mute before every teardown. Mute is
+// always allowed.
 //
 // After editing this file, rebuild fishball.desc:
 //     # run from: tools/automation
@@ -30,8 +32,19 @@ service Fishball {
   // Samples as they are received. The network limits the rate; samples the
   // board had to drop are counted in every block, never hidden.
   rpc Stream(StreamRequest) returns (stream SampleBlock);
-  // Both transmitters to maximum attenuation, read back. Always allowed.
+  // Both transmitters to maximum attenuation, read back, and any transmit
+  // this server is running stopped. Always allowed.
   rpc Mute(Empty) returns (TxState);
+  // Send a waveform to the board, once; Transmit and TransmitCapture play it.
+  rpc UploadWaveform(stream WaveformChunk) returns (WaveformInfo);
+  rpc DeleteWaveform(WaveformRef) returns (Empty);
+  // Play a waveform. The transmitter stays on while this call is open: a
+  // state every 0.25 s; it mutes when the call ends, when the client goes
+  // away, on Mute, after `seconds`, or if anything reads louder than asked.
+  rpc Transmit(TransmitRequest) returns (stream TxState);
+  // Play a waveform cyclically, record the receivers while it plays, mute,
+  // stop. Needs pad_db: it loops a transmitter into a receiver.
+  rpc TransmitCapture(TransmitCaptureRequest) returns (CaptureInfo);
 }
 
 message Empty {}
@@ -67,6 +80,7 @@ message Status {
   bool tx_buffer_busy = 14;
   repeated Holder holders = 15;
   ClockState clock = 16;         // without a measurement
+  bool transmitting = 17;        // this server has a transmit running
 }
 
 message ConfigureRequest {
@@ -139,4 +153,41 @@ message TxState {
   double tx1_attenuation_db = 1;
   double tx2_attenuation_db = 2;
   bool muted = 3;                // both read back at the floor
+  bool transmitting = 4;
+  double seconds = 5;            // since the transmit started
+  string note = 6;               // why it stopped, when it did
+}
+
+message WaveformChunk {
+  bytes data = 1;                // ci16_le, I then Q; with 2 channels, per sample: I1 Q1 I2 Q2
+  int32 channels = 2;            // set in the first chunk: 1 or 2
+}
+
+message WaveformInfo {
+  string id = 1;
+  int32 channels = 2;
+  int64 samples = 3;             // per channel; a multiple of 32
+  int64 bytes = 4;
+}
+
+message WaveformRef { string id = 1; }
+
+message TransmitRequest {
+  string waveform_id = 1;
+  repeated int32 channels = 2;   // TX1, TX2 or both; a 1-channel waveform plays on each
+  double attenuation_db = 3;     // -89.75 to 0; louder than -10 needs pad_db >= 20
+  double pad_db = 4;             // attenuation between the port and any receiver, as you fitted it
+  double seconds = 5;            // 0: until the call ends or Mute
+  bool one_shot = 6;             // play once instead of repeating
+  double cyclic_bound_s = 7;     // 0: keep the board's bound (60 s); else this, restored after
+}
+
+message TransmitCaptureRequest {
+  string waveform_id = 1;
+  repeated int32 tx_channels = 2;
+  double attenuation_db = 3;
+  double pad_db = 4;             // required: at least 20
+  repeated int32 rx_channels = 5;
+  int64 samples = 6;             // per receive channel
+  double settle_s = 7;           // between the transmitter starting and recording; 0 means 0.2 s
 }

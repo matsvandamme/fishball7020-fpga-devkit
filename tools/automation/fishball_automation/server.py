@@ -11,9 +11,23 @@ grpclib needs nothing compiled. Any gRPC client can call it.
 It answers the calls in fishball.proto for a client on the network: what the
 board is, how the radio is set, the reference clock, and receive captures.
 
-THIS VERSION NEVER TRANSMITS. No call writes a transmit attenuator except
-Mute, which writes the floor. Configure reads both attenuators before and
-after, and mutes and fails if either rose. A call that needs a buffer another
+ONLY TWO CALLS RAISE A TRANSMITTER, Transmit and TransmitCapture, and both
+follow the devkit's transmit rules (docs/transmitter-safety.md), enforced here
+so no script can skip them:
+
+  - a port is raised only if a person affirmed it (./devkit tx-guard affirm);
+  - louder than -10 dB needs the request to state a pad of at least 20 dB,
+    and TransmitCapture, which loops into a receiver, always needs one;
+  - before the buffer starts, both attenuators sit one step above the floor,
+    so the enable cannot restore a cached gain; after it starts, the
+    requested attenuation is written and rewritten until the chip agrees, and
+    the other channel goes to the floor;
+  - while it plays, both are read every 0.25 s: louder than asked mutes it;
+  - every way out mutes and reads back BEFORE the buffer is released: the end
+    of the call, a client that goes away, Mute, an error, a server stop.
+
+Configure reads both attenuators before and after, and mutes and fails if
+either rose. Mute is always allowed. A call that needs a buffer another
 program holds (SDR++, zc-stream, a capture) is refused, naming that program.
 
 There is no authentication and no encryption, like iiod on port 30431: anyone
@@ -36,14 +50,19 @@ from grpclib.exceptions import GRPCError
 from grpclib.server import Server
 
 from . import __version__, proto
-from .backend import (BYTES_PER_SAMPLE, MUTE_TOL_DB, MUTED_DB, PHY, RX_DEV, TX_DEV, XADC, Busy, Refused,
-                      SysfsBackend, measure_sample_rate, parse_range)
+from .backend import (BYTES_PER_SAMPLE, MUTE_TOL_DB, MUTED_DB, PHY, QUIET_DB, RX_DEV, TX_DEV, XADC, Busy,
+                      Refused, SysfsBackend, duplicate_channel, measure_sample_rate, parse_range)
 
 CAPTURE_DIR = "/dev/shm/fishball-automation"   # tmpfs: a capture is recorded into RAM
 FETCH_CHUNK = 1 << 20
 STREAM_QUEUE = 4                                # blocks (about 50 ms each) held for a slow client before dropping
 OWN_WAIT_S = 6                                  # how long a call waits for this server's previous one to let go
 MEASURE_MAX_RATE = 20_000_000                   # above this a Python reader cannot keep count
+LOUD_DB = -10.0                                 # louder than this needs a stated pad
+MIN_PAD_DB = 20.0                               # the receiver survives +2.5 dBm; the transmitter reaches about +19 dBm
+MAX_WAVEFORM = 64 << 20                         # bytes: one DMA block
+HEARTBEAT_S = 0.25                              # how often a running transmit is read back
+MAX_CYCLIC_BOUND_S = 3600
 
 
 class BadRequest(Exception):
@@ -64,6 +83,10 @@ class Service:
         self.captures = {}                      # id -> CaptureInfo
         self.clock = time.monotonic             # replaced in tests
         self.rx_lock = threading.Lock()         # one capture or stream at a time
+        self.waveforms = {}                     # id -> WaveformInfo
+        self.tx_lock = threading.Lock()         # one transmit at a time
+        self.tx_stop = threading.Event()        # set by Mute and by shutdown
+        self.tx_running = False
         os.makedirs(capture_dir, exist_ok=True)
 
     # ---- status ---------------------------------------------------------
@@ -95,7 +118,7 @@ class Service:
             tx_rf_bandwidth_hz=int(b.number(PHY, "out_voltage_rf_bandwidth")),
             ad9361_temp_c=b.number(PHY, "in_temp0_input") / 1000, fpga_temp_c=self._fpga_temp(),
             rx_buffer_busy=b.buffer_enabled(RX_DEV), tx_buffer_busy=b.buffer_enabled(TX_DEV),
-            clock=self._clock())
+            clock=self._clock(), transmitting=self.tx_running)
         for ch in (0, 1):
             s.channels.add(rx_gain_db=b.number(PHY, f"in_voltage{ch}_hardwaregain"),
                            rx_gain_mode=b.read(PHY, f"in_voltage{ch}_gain_control_mode"),
@@ -113,6 +136,8 @@ class Service:
         b = self.b
         # Retuning under a program that is streaming changes its radio: refuse.
         with self._rx():
+            if self.tx_running:
+                raise Busy("transmit", [(os.getpid(), "this server: a transmit is running (Mute stops it)")])
             b.require_free(TX_DEV, "transmit")
             return self._configure(r)
 
@@ -197,28 +222,23 @@ class Service:
         return Held()
 
     @staticmethod
-    def _channels(requested):
+    def _channels(requested, kind="RX"):
         channels = sorted(set(requested)) or [1]
         if not set(channels) <= {1, 2}:
-            raise BadRequest(f"channels are 1 (RX1) and 2 (RX2); got {list(requested)}")
+            raise BadRequest(f"channels are 1 ({kind}1) and 2 ({kind}2); got {list(requested)}")
         return channels
 
-    def Capture(self, r):
-        channels = self._channels(r.channels)
-        if r.samples <= 0:
+    def _capture_room(self, channels, samples):
+        if samples <= 0:
             raise BadRequest("samples must be greater than 0")
-        size = r.samples * BYTES_PER_SAMPLE * len(channels)
+        size = samples * BYTES_PER_SAMPLE * len(channels)
         room = self.b.free_memory(self.dir)        # what is free now: earlier captures already count
         if size > room:
             raise BadRequest(f"this capture needs {size / 1e6:.0f} MB and the board has {max(room, 0) / 1e6:.0f} MB "
                              f"for captures (they are recorded into RAM): ask for fewer samples, "
                              f"or delete earlier captures")
-        cid = secrets.token_hex(6)
-        path = os.path.join(self.dir, cid + ".sigmf-data")
-        with self._rx():
-            rate = int(self.b.number(PHY, "in_voltage_sampling_frequency"))
-            lo = int(self.b.number(PHY, lo_attr("rx")))
-            written = self.b.record(channels, r.samples, path)
+
+    def _capture_info(self, cid, channels, samples, rate, lo, written, extra=None):
         model, firmware, _ = self.b.identity()
         meta = {"global": {"core:datatype": "ci16_le", "core:sample_rate": rate, "core:version": "1.0.0",
                            "core:num_channels": len(channels), "core:hw": model,
@@ -227,11 +247,23 @@ class Service:
                 "captures": [{"core:sample_start": 0, "core:frequency": lo,
                               "core:datetime": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}],
                 "annotations": []}
-        info = proto.CaptureInfo(id=cid, channels=channels, samples=r.samples, sample_rate_hz=rate, rx_lo_hz=lo,
+        meta["global"].update(extra or {})
+        info = proto.CaptureInfo(id=cid, channels=channels, samples=samples, sample_rate_hz=rate, rx_lo_hz=lo,
                                  bytes=written, datatype="ci16_le", sigmf_meta=json.dumps(meta, indent=1),
                                  lost_samples=0)
         self.captures[cid] = info
         return info
+
+    def Capture(self, r):
+        channels = self._channels(r.channels)
+        self._capture_room(channels, r.samples)
+        cid = secrets.token_hex(6)
+        path = os.path.join(self.dir, cid + ".sigmf-data")
+        with self._rx():
+            rate = int(self.b.number(PHY, "in_voltage_sampling_frequency"))
+            lo = int(self.b.number(PHY, lo_attr("rx")))
+            written = self.b.record(channels, r.samples, path)
+        return self._capture_info(cid, channels, r.samples, rate, lo, written)
 
     def _capture_path(self, cid):
         if cid not in self.captures:
@@ -321,12 +353,310 @@ class Service:
                         break
                 t.join(2)
 
-    # ---- transmit: only ever down -------------------------------------------
+    # ---- transmit -------------------------------------------------------------
+
+    def UploadWaveform(self, chunks):
+        cid = secrets.token_hex(6)
+        path = os.path.join(self.dir, cid + ".wave")
+        room = self.b.free_memory(self.dir)
+        channels, total = None, 0
+        try:
+            with open(path, "wb") as f:
+                for c in chunks:
+                    if channels is None:
+                        channels = c.channels or 1
+                    total += len(c.data)
+                    if total > MAX_WAVEFORM:
+                        raise BadRequest(f"a waveform is at most {MAX_WAVEFORM >> 20} MB: it has to fit one DMA block")
+                    if total > room:
+                        raise BadRequest(f"the board has {room / 1e6:.0f} MB free for waveforms and captures")
+                    f.write(c.data)
+            if channels not in (1, 2):
+                raise BadRequest(f"a waveform has 1 or 2 channels; got {channels}")
+            per = BYTES_PER_SAMPLE * channels
+            if total == 0 or total % per:
+                raise BadRequest(f"{total} bytes is not a whole number of {channels}-channel samples "
+                                 f"({per} bytes each: int16 I, int16 Q per channel)")
+            samples = total // per
+            if samples % 32:
+                raise BadRequest(f"{samples} samples: a waveform must be a multiple of 32 samples long, "
+                                 f"which the DMA engine needs. Pad or trim it")
+        except Exception:
+            os.unlink(path)
+            raise
+        info = proto.WaveformInfo(id=cid, channels=channels, samples=samples, bytes=total)
+        self.waveforms[cid] = info
+        return info
+
+    def DeleteWaveform(self, r):
+        if r.id not in self.waveforms:
+            raise BadRequest(f"no waveform with id {r.id!r}")
+        del self.waveforms[r.id]
+        try:
+            os.unlink(os.path.join(self.dir, r.id + ".wave"))
+        except FileNotFoundError:
+            pass
+        return proto.Empty()
+
+    def _tx_check(self, waveform_id, requested, attenuation, pad, one_shot=False):
+        """Everything that can be refused before the radio is touched."""
+        channels = self._channels(requested, "TX")
+        info = self.waveforms.get(waveform_id)
+        if info is None:
+            raise BadRequest(f"no waveform with id {waveform_id!r}: upload it first")
+        if info.channels not in (1, len(channels)):
+            raise BadRequest(f"the waveform has {info.channels} channels and the request names {len(channels)} "
+                             f"transmitters: give a 1-channel waveform (played on each) or one per transmitter")
+        if not MUTED_DB <= attenuation <= 0:
+            raise BadRequest(f"attenuation_db must be {MUTED_DB} to 0; got {attenuation}")
+        if one_shot and attenuation <= QUIET_DB:
+            raise BadRequest(f"a one-shot needs an attenuation above {QUIET_DB} dB: it is set before the "
+                             f"buffer starts, where a value at the floor would bring back a cached gain")
+        if attenuation > LOUD_DB and pad < MIN_PAD_DB:
+            raise BadRequest(f"louder than {LOUD_DB:g} dB needs pad_db of at least {MIN_PAD_DB:g}: the "
+                             f"transmitter reaches about +19 dBm and a receiver survives +2.5 dBm "
+                             f"(docs/transmitter-safety.md)")
+        for ch in channels:
+            if not self.b.affirmed(ch - 1):
+                raise Refused(f"TX{ch} has no affirmation on record. Look at TX{ch}A: is it terminated, or "
+                              f"going through an attenuator? Then run ./devkit tx-guard affirm {ch - 1}")
+        return channels, info
+
+    def _tx_start(self, channels, info, attenuation, one_shot, bound_s):
+        """Start the buffer the safe way round; return a session for _tx_end.
+        Any failure on the way mutes, releases the buffer and raises."""
+        b = self.b
+        b.require_free(TX_DEV, "transmit")
+        with open(os.path.join(self.dir, info.id + ".wave"), "rb") as f:
+            data = f.read()
+        if info.channels == 1 and len(channels) == 2:
+            data = duplicate_channel(data)
+        target = [attenuation if i + 1 in channels else MUTED_DB for i in (0, 1)]
+        # Before the enable: no attenuator at the floor. With both at the
+        # floor the kernel takes the radio for muted and the enable restores
+        # the gain the last stream left; any other value is kept. A one-shot
+        # has finished before anything could be written after the enable, so
+        # its own value goes in now.
+        pre = [attenuation if (one_shot and i + 1 in channels) else QUIET_DB for i in (0, 1)]
+        for i in (0, 1):
+            b.write(PHY, f"out_voltage{i}_hardwaregain", pre[i])
+        got = b.tx_attenuation()
+        if any(abs(got[i] - pre[i]) > MUTE_TOL_DB for i in (0, 1)):
+            b.mute()
+            raise Refused(f"before the start the attenuators read {got[0]}, {got[1]} dB instead of "
+                          f"{pre[0]}, {pre[1]}: nothing started, both muted")
+        sess = {"handle": None, "channels": channels, "target": target, "t0": time.monotonic(),
+                "bound_was": None}
+        try:
+            if bound_s:
+                sess["bound_was"] = b.read(TX_DEV, "tx_cyclic_timeout_ms")
+                b.write(TX_DEV, "tx_cyclic_timeout_ms", int(bound_s * 1000))
+            sess["handle"] = b.tx_start(channels, data, not one_shot)
+            sess["t0"] = time.monotonic()
+            got = b.tx_attenuation()               # the enable must not have raised anything
+            if any(got[i] > pre[i] + MUTE_TOL_DB for i in (0, 1)):
+                raise Refused(f"starting the buffer raised a transmitter: TX1 {got[0]}, TX2 {got[1]} dB, "
+                              f"where {pre[0]}, {pre[1]} was set. Muted and stopped")
+            # Now the buffer runs: the asked value, rewritten until the chip
+            # agrees (the start can land later than the call returns), and
+            # the other channel to the floor.
+            for _ in range(10):
+                for i in (0, 1):
+                    b.write(PHY, f"out_voltage{i}_hardwaregain", target[i])
+                got = b.tx_attenuation()
+                if all(abs(got[i] - target[i]) <= MUTE_TOL_DB for i in (0, 1)):
+                    break
+                time.sleep(0.05)
+            else:
+                raise Refused(f"the attenuation did not apply: asked TX1 {target[0]}, TX2 {target[1]} dB, "
+                              f"the chip reads {got[0]}, {got[1]}. Muted and stopped")
+        except Exception:
+            self._tx_end(sess)
+            raise
+        return sess
+
+    def _tx_end(self, sess):
+        """Mute and read back, THEN release the buffer: the kernel's stop hook
+        keeps whatever it finds for the next stream, so releasing first would
+        hand our gain to whoever streams next. Returns (attenuation, muted ok)."""
+        b, ok = self.b, False
+        try:
+            b.mute()
+            ok = True
+        except Exception:                           # noqa: BLE001 - release regardless: its hook applies the floor
+            pass
+        finally:
+            if sess["handle"] is not None:
+                b.tx_stop(sess["handle"])
+                sess["handle"] = None
+            if sess["bound_was"] is not None:
+                try:
+                    b.write(TX_DEV, "tx_cyclic_timeout_ms", sess["bound_was"])
+                except Refused:
+                    pass
+        try:
+            got = b.tx_attenuation()
+        except Refused:
+            got = [float("nan"), float("nan")]
+        return got, ok
+
+    def _tx_watch(self, sess):
+        """Read both back. Louder than asked: mute and raise. A playing channel
+        at the floor: the board muted it; returns why. Otherwise None."""
+        got = self.b.tx_attenuation()
+        for i in (0, 1):
+            if got[i] > sess["target"][i] + MUTE_TOL_DB:
+                self.b.mute()
+                raise Refused(f"TX{i + 1} read {got[i]} dB, louder than the {sess['target'][i]} dB asked: "
+                              f"both muted and stopped")
+        for ch in sess["channels"]:
+            if sess["target"][ch - 1] > MUTED_DB + MUTE_TOL_DB and got[ch - 1] <= MUTED_DB + 0.01:
+                return (f"the board muted TX{ch} by itself: its cyclic bound, its starve watchdog, "
+                        f"or another program")
+        return None
+
+    def _tx_state(self, transmitting, sess, note=""):
+        got = self.b.tx_attenuation()
+        return proto.TxState(tx1_attenuation_db=got[0], tx2_attenuation_db=got[1],
+                             muted=all(g <= MUTED_DB + MUTE_TOL_DB for g in got), transmitting=transmitting,
+                             seconds=time.monotonic() - sess["t0"], note=note)
+
+    def Transmit(self, r, cancelled=lambda: False):
+        channels, info = self._tx_check(r.waveform_id, r.channels, r.attenuation_db, r.pad_db, r.one_shot)
+        if r.seconds < 0:
+            raise BadRequest("seconds cannot be negative")
+        if r.cyclic_bound_s and not 1 <= r.cyclic_bound_s <= MAX_CYCLIC_BOUND_S:
+            raise BadRequest(f"cyclic_bound_s must be 1 to {MAX_CYCLIC_BOUND_S}")
+        if not r.one_shot and r.seconds and not r.cyclic_bound_s:
+            bound_ms = self.b.number(TX_DEV, "tx_cyclic_timeout_ms")
+            if bound_ms and r.seconds * 1000 > bound_ms:
+                raise BadRequest(f"{r.seconds:g} s is longer than the board's cyclic bound, {bound_ms / 1000:g} s, "
+                                 f"which mutes a repeating transmit: ask for cyclic_bound_s as well")
+        if not self.tx_lock.acquire(blocking=False):
+            raise Busy("transmit", [(os.getpid(), "this server: another transmit")])
+        try:
+            self.tx_stop.clear()
+            sess = self._tx_start(channels, info, r.attenuation_db, r.one_shot, r.cyclic_bound_s)
+            self.tx_running = True
+            rate = self.b.number(PHY, "in_voltage_sampling_frequency")
+            limit = info.samples / rate + 0.3 if r.one_shot else (r.seconds or None)
+            note = ""
+            try:
+                yield self._tx_state(True, sess)
+                while True:
+                    for _ in range(5):
+                        if cancelled() or self.tx_stop.is_set():
+                            break
+                        time.sleep(HEARTBEAT_S / 5)
+                    if cancelled():
+                        note = "stopped: the client went away"
+                        break
+                    if self.tx_stop.is_set():
+                        note = "stopped by Mute"
+                        break
+                    muted_by_board = self._tx_watch(sess)
+                    elapsed = time.monotonic() - sess["t0"]
+                    if r.one_shot and (muted_by_board or elapsed >= limit):
+                        note = "played once"
+                        break
+                    if muted_by_board:
+                        note = muted_by_board
+                        break
+                    if limit and elapsed >= limit:
+                        note = f"played for {r.seconds:g} s"
+                        break
+                    yield self._tx_state(True, sess)
+            finally:
+                got, ok = self._tx_end(sess)
+                self.tx_running = False
+            if not ok:
+                note += "; THE MUTE BEFORE THE BUFFER WAS RELEASED COULD NOT BE VERIFIED"
+            final = proto.TxState(tx1_attenuation_db=got[0], tx2_attenuation_db=got[1],
+                                  muted=all(g <= MUTED_DB + MUTE_TOL_DB for g in got), transmitting=False,
+                                  seconds=time.monotonic() - sess["t0"], note=note)
+        finally:
+            self.tx_lock.release()
+        yield final
+
+    def TransmitCapture(self, r):
+        if r.pad_db < MIN_PAD_DB:
+            raise BadRequest(f"TransmitCapture loops a transmitter into a receiver: state the attenuation "
+                             f"fitted between them as pad_db, at least {MIN_PAD_DB:g} dB (the transmitter "
+                             f"reaches about +19 dBm, a receiver survives +2.5 dBm)")
+        channels, info = self._tx_check(r.waveform_id, r.tx_channels, r.attenuation_db, r.pad_db)
+        rx = self._channels(r.rx_channels)
+        self._capture_room(rx, r.samples)
+        settle = r.settle_s or 0.2
+        if not 0 < settle <= 10:
+            raise BadRequest("settle_s must be 0 to 10")
+        if not self.tx_lock.acquire(blocking=False):
+            raise Busy("transmit", [(os.getpid(), "this server: another transmit")])
+        cid = secrets.token_hex(6)
+        path = os.path.join(self.dir, cid + ".sigmf-data")
+        try:
+            with self._rx():
+                rate = int(self.b.number(PHY, "in_voltage_sampling_frequency"))
+                lo = int(self.b.number(PHY, lo_attr("rx")))
+                self.tx_stop.clear()
+                sess = self._tx_start(channels, info, r.attenuation_db, False, 0)
+                self.tx_running = True
+                try:
+                    time.sleep(settle)
+                    why = self._tx_watch(sess)
+                    if why:
+                        raise Refused(why + ", before the capture")
+                    written = self.b.record(rx, r.samples, path)
+                    why = self._tx_watch(sess)          # was it still on at the end?
+                    if why:
+                        raise Refused(why + ", during the capture: the recording is not trusted")
+                finally:
+                    got, ok = self._tx_end(sess)
+                    self.tx_running = False
+                if not ok:
+                    raise Refused("the capture finished, but the mute before the buffer was released could "
+                                  "not be verified: check both transmitters")
+        except Exception:
+            if os.path.exists(path):
+                os.unlink(path)
+            raise
+        finally:
+            self.tx_lock.release()
+        return self._capture_info(cid, rx, r.samples, rate, lo, written, {
+            "fishball:transmit": {"channels": [f"TX{c}" for c in channels], "attenuation_db": r.attenuation_db,
+                                  "pad_db": r.pad_db, "waveform_samples": info.samples, "settle_s": settle,
+                                  "tx_lo_hz": int(self.b.number(PHY, lo_attr("tx")))}})
 
     def Mute(self, _request=None):
-        got = self.b.mute()
+        self.tx_stop.set()                      # a running transmit ends, and releases its buffer
+        self.b.mute()
+        deadline = time.monotonic() + 3
+        while self.tx_running and time.monotonic() < deadline:
+            time.sleep(0.02)
+        got = self.b.tx_attenuation()
         return proto.TxState(tx1_attenuation_db=got[0], tx2_attenuation_db=got[1],
-                             muted=all(g <= MUTED_DB + MUTE_TOL_DB for g in got))
+                             muted=all(g <= MUTED_DB + MUTE_TOL_DB for g in got), transmitting=self.tx_running)
+
+    def shutdown(self):
+        """The server is stopping: end any transmit (muted first), mute, and
+        remove the files kept in RAM."""
+        self.tx_stop.set()
+        deadline = time.monotonic() + 3
+        while self.tx_running and time.monotonic() < deadline:
+            time.sleep(0.02)
+        try:
+            self.b.mute()
+        except Exception:                       # noqa: BLE001 - the unit's ExecStopPost mutes again
+            pass
+        for cid in list(self.captures):
+            self._unlink(cid + ".sigmf-data")
+        for wid in list(self.waveforms):
+            self._unlink(wid + ".wave")
+
+    def _unlink(self, name):
+        try:
+            os.unlink(os.path.join(self.dir, name))
+        except OSError:
+            pass
 
 
 def _status(e):
@@ -349,9 +679,27 @@ class _Handlers:
         self.service, self.pool = service, futures.ThreadPoolExecutor(max_workers=workers)
 
     def __mapping__(self):
-        return {proto.path(name): Handler(self._stream(name) if streaming else self._unary(name),
-                                          Cardinality.UNARY_STREAM if streaming else Cardinality.UNARY_UNARY, req, rep)
-                for name, (req, rep, streaming) in proto.METHODS.items()}
+        mapping = {}
+        for name, (req, rep, streaming) in proto.METHODS.items():
+            if name in proto.CLIENT_STREAMING:
+                mapping[proto.path(name)] = Handler(self._client_stream(name), Cardinality.STREAM_UNARY, req, rep)
+            elif streaming:
+                mapping[proto.path(name)] = Handler(self._stream(name), Cardinality.UNARY_STREAM, req, rep)
+            else:
+                mapping[proto.path(name)] = Handler(self._unary(name), Cardinality.UNARY_UNARY, req, rep)
+        return mapping
+
+    def _client_stream(self, name):
+        method = getattr(self.service, name)
+
+        async def handler(stream):
+            messages = [m async for m in stream]
+            try:
+                reply = await asyncio.get_running_loop().run_in_executor(self.pool, method, messages)
+            except Exception as e:              # noqa: BLE001
+                raise _status(e) from None
+            await stream.send_message(reply)
+        return handler
 
     def _unary(self, name):
         method = getattr(self.service, name)
@@ -376,7 +724,8 @@ class _Handlers:
                 asyncio.run_coroutine_threadsafe(q.put(item), loop).result()
 
             def pump():
-                gen = method(request, gone.is_set) if name == "Stream" else method(request)
+                # the calls that hold something open learn when the client leaves
+                gen = method(request, gone.is_set) if name in ("Stream", "Transmit") else method(request)
                 try:
                     for reply in gen:
                         put(("reply", reply))
@@ -452,12 +801,8 @@ def main():
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: stop.set())
     stop.wait()
+    service.shutdown()                          # transmit ended and muted; captures and waveforms removed
     server.stop()
-    for cid in list(service.captures):          # a capture does not outlive the server
-        try:
-            os.unlink(os.path.join(args.capture_dir, cid + ".sigmf-data"))
-        except OSError:
-            pass
 
 
 if __name__ == "__main__":

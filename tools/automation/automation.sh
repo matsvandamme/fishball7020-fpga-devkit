@@ -11,7 +11,8 @@
 #   ./devkit automation test         # the unit tests, against a fake board (no board needed)
 #   ./devkit automation uninstall
 #
-# The server never transmits. Your own scripts use the Python client:
+# The server transmits only when a script asks, through Transmit or
+# TransmitCapture, with the transmit rules enforced. Scripts use the Python client:
 # tools/automation/README.md, docs/automation.md.
 #
 # BOARD overrides the address (default fishball.local). install/uninstall use
@@ -46,15 +47,16 @@ case "$cmd" in
         echo "== installing the automation server on $BOARD"
         on_board 'grep -q "^ID=debian" /etc/os-release' || {
             echo "the server needs the Debian root (firmware-modern); this board runs something else" >&2; exit 1; }
-        tar -C "$HERE" --exclude=__pycache__ -cf - fishball_automation fishball-automation.service \
+        tar -C "$HERE" --exclude=__pycache__ -cf - fishball_automation fishball-automation.service fishball-automation-mute.sh \
             | on_board 'mkdir -p /opt/fishball-automation && tar -C /opt/fishball-automation -xf -'
         on_board '
             set -e
             # python3-grpclib, not python3-grpcio: the Debian grpcio aborts on this
             # board (64-bit time in its armhf build); grpclib is pure Python.
-            dpkg -s python3-grpclib python3-protobuf >/dev/null 2>&1 || {
-                echo "   installing python3-grpclib and python3-protobuf (apt)"
-                DEBIAN_FRONTEND=noninteractive apt-get install -y -q python3-grpclib python3-protobuf >/dev/null 2>&1; }
+            # python3-libiio: the transmit path holds its buffer in-process.
+            dpkg -s python3-grpclib python3-protobuf python3-libiio >/dev/null 2>&1 || {
+                echo "   installing python3-grpclib, python3-protobuf and python3-libiio (apt)"
+                DEBIAN_FRONTEND=noninteractive apt-get install -y -q python3-grpclib python3-protobuf python3-libiio >/dev/null 2>&1; }
             cd /opt/fishball-automation
             python3 -c "import fishball_automation.proto as p; print(\"   protocol loads:\", len(p.METHODS), \"calls\")"
             mv fishball-automation.service /etc/systemd/system/

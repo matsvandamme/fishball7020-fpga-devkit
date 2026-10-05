@@ -1,6 +1,7 @@
 # The Fishball7020 automation server: gRPC on port 7020 (fishball.proto).
-# Receive and settings only; it never raises a transmitter. Like iiod, it
-# starts only if the boot-time transmitter mute was confirmed.
+# It transmits only on Transmit/TransmitCapture, with the devkit's rules
+# enforced. Like iiod, it starts only if the boot-time transmitter mute was
+# confirmed, and both transmitters are muted again whenever it stops.
 # Install with `./devkit automation install`.
 [Unit]
 Description=Fishball7020 automation server (gRPC, port 7020)
@@ -10,6 +11,7 @@ Requires=fishball-rf-quiesce.service
 [Service]
 WorkingDirectory=/opt/fishball-automation
 ExecStart=/usr/bin/python3 -m fishball_automation.server
+ExecStopPost=/bin/sh /opt/fishball-automation/fishball-automation-mute.sh
 Restart=on-failure
 
 [Install]

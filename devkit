@@ -202,8 +202,9 @@
 #                          -> docs/adsb.md
 #     ./devkit automation  The automation server: a gRPC service on the board
 #                          (port 7020) that scripts on your PC call to read the
-#                          radio's state, set it, measure the reference clock and
-#                          record gap-free captures. It never transmits.
+#                          radio's state, set it, measure the reference clock,
+#                          record gap-free captures, and transmit (only on a
+#                          channel affirmed with ./devkit tx-guard affirm).
 #       install            Put it on the board as a service (Debian root).
 #       status             The board, the radio, the clock, who holds the buffers.
 #       clock --measure    Time the reference against the board's own crystal.
@@ -280,7 +281,7 @@ Once it runs
   net             the board's address: DHCP, static, hostname, or find it
   temps           live die temperatures
   adsb            aircraft overhead, live, from 1090 MHz ADS-B (receive only)
-  automation      a server on the board for your measurement scripts (never transmits)
+  automation      a server on the board for your measurement scripts
   tx-guard        the transmit gate: affirm a port is terminated first
   also: gpio-check  clock  loopback  matlab  uboot-contract  container  completion
 
