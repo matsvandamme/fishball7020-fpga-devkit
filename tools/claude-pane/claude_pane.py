@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""The board in a Claude Code side pane: load it, install it, test it.
+"""The board in a Claude Code side pane: start it, install it, test it.
 
     # run from: the repo root
-    ./devkit claude-pane              # where the plugin is, and how to load it
+    ./devkit claude-pane start        # Claude Code here, with the pane open
+    ./devkit claude-pane start --model sonnet   # options after `start` go to claude
+    ./devkit claude-pane              # where the plugin is, and whether it is installed
     ./devkit claude-pane install      # load it in every Claude Code session
     ./devkit claude-pane uninstall    # stop loading it
     ./devkit claude-pane test         # its manifest check and its tests (needs `claude`)
@@ -10,6 +12,10 @@
 The plugin is this folder, tools/claude-pane/. In Claude Code, /fishball opens
 the pane: the board's links (USB, Ethernet, libiio), die temperatures, radio
 settings, CI and the local build. It only ever reads from the board.
+
+`start` runs Claude Code in the repo root, where the devkit's agent skill loads
+too, with this plugin for that session (unless it is installed already) and the
+pane opened at once. It needs `claude` on PATH: https://claude.com/claude-code
 
 `install` adds this folder to CLAUDE_CODE_PLUGIN_DIRS in the "env" block of
 ~/.claude/settings.json, which every Claude Code session reads; nothing else
@@ -27,6 +33,8 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(os.path.dirname(HERE))
+TESTED = "2.1.289"          # the Claude Code release CI pins, in .github/workflows/host-tools.yml
 SETTINGS = os.path.join(os.path.expanduser("~"), ".claude", "settings.json")
 VAR = "CLAUDE_CODE_PLUGIN_DIRS"
 
@@ -69,6 +77,7 @@ def where() -> int:
     print(f"plugin:    {HERE}")
     print(f"installed: {'yes, every session loads it' if installed else 'no'} ({SETTINGS})")
     print()
+    print("  start it now:  ./devkit claude-pane start")
     print(f"  one session:   claude --plugin-dir {HERE}")
     print("  every session: ./devkit claude-pane install")
     print("  then, in Claude Code: /fishball")
@@ -108,6 +117,36 @@ def uninstall() -> int:
     return 0
 
 
+def is_installed() -> bool:
+    try:
+        return any(same(d, HERE) for d in dirs_of(load_settings()))
+    except SystemExit:          # settings.json unreadable: Claude Code says so itself
+        return False
+
+
+def start(args: list[str]) -> int:
+    """Claude Code in the repo root, the plugin loaded and /fishball as its first
+    command; `args` go to claude before it."""
+    claude = shutil.which("claude")
+    if not claude:
+        print("ERROR: `claude` is not on PATH. Install Claude Code first: "
+              "https://claude.com/claude-code", file=sys.stderr)
+        return 1
+    try:
+        version = subprocess.run([claude, "--version"], capture_output=True, text=True,
+                                 timeout=15).stdout.split()[0]
+    except (OSError, subprocess.TimeoutExpired, IndexError):
+        version = "?"
+    if version != TESTED:
+        print(f"note: the pane is tested on Claude Code {TESTED}, this is {version}; the plugin "
+              "interface is early access, so if the pane does not open, see "
+              "docs/claude-code-pane.md", file=sys.stderr)
+    argv = [claude] + ([] if is_installed() else ["--plugin-dir", HERE]) + args + ["/fishball"]
+    os.chdir(REPO)
+    os.execv(claude, argv)
+    return 0                    # not reached
+
+
 def test() -> int:
     claude = shutil.which("claude")
     if not claude:
@@ -121,9 +160,12 @@ def main(argv: list[str]) -> int:
         print(__doc__.strip())
         return 0
     cmd = argv[0] if argv else ""
+    if cmd == "start":
+        return start(argv[1:])
     actions = {"": where, "install": install, "uninstall": uninstall, "test": test}
     if cmd not in actions or len(argv) > 1:
-        print(f"usage: ./devkit claude-pane [install|uninstall|test]", file=sys.stderr)
+        print("usage: ./devkit claude-pane [start [claude options]|install|uninstall|test]",
+              file=sys.stderr)
         return 2
     return actions[cmd]()
 

@@ -609,9 +609,14 @@ attenuator rose, `Mute` is always allowed. Waveforms are uploaded once
 
 A Claude Code plugin: `/fishball` opens a side pane with the board's links,
 both die temperatures, the radio's settings, CI on `main` and the firmware the
-board runs against the checkout. `./devkit claude-pane install|uninstall|test`;
-install adds the folder to `CLAUDE_CODE_PLUGIN_DIRS` in
-`~/.claude/settings.json`, so it loads in sessions started afterwards.
+board runs against the checkout. `./devkit claude-pane start` is
+`claude --plugin-dir tools/claude-pane /fishball` run from the repo root: a
+slash command as the initial prompt runs as the session starts, so the pane
+opens at any width. `install` adds the folder to `CLAUDE_CODE_PLUGIN_DIRS` in
+`~/.claude/settings.json` instead, for every session started afterwards.
+The sibling MCP server (docs/mcp-server.md) is what lets Claude act on the
+radio; register it with `claude mcp add -s user`, because the default local
+scope hides it from sessions started in any other folder.
 
 - **It only reads.** IIO attribute reads over iiod (or `iio_attr` over libiio
   USB) and one ssh command, `cat /proc/uptime /proc/loadavg`. It never opens a

@@ -11,19 +11,21 @@ loads at start: type `/fishball` and a pane beside the conversation shows the
 board while you work. It only reads; it never changes a radio setting or
 transmits.
 
-1. Load the plugin in every Claude Code session, once.
+```bash
+# run from: the repo root
+./devkit claude-pane start
+```
 
-    ```bash
-    # run from: the repo root
-    ./devkit claude-pane install
-    ```
+That starts Claude Code in the repo with the plugin loaded and the pane open.
+Options after `start` go to Claude Code: `./devkit claude-pane start --model sonnet`.
 
-2. Start Claude Code, then open the pane.
+To have every Claude Code session load the plugin, so that `/fishball` opens
+the pane wherever you start it, install it once:
 
-    ```text
-    # run in: Claude Code, at its prompt
-    /fishball
-    ```
+```bash
+# run from: the repo root
+./devkit claude-pane install
+```
 
 **You should see:** the board's links, both die temperatures and the radio's
 settings within a few seconds, then CI on `main`. A real pane, with the
@@ -81,7 +83,13 @@ The line under the prompt keeps a summary while the pane is closed:
 
 ??? question "Nothing happens when you type /fishball?"
     Claude Code loads plugins when it starts: quit it and start it again after
-    `install`. `./devkit claude-pane` says whether the plugin is installed.
+    `install`. `./devkit claude-pane` says whether the plugin is installed;
+    `./devkit claude-pane start` works without installing it.
 
-Everything it shows, its settings and how to change it:
-[the board in a Claude Code pane](../claude-code-pane.md).
+??? question "It says `claude` is not on PATH?"
+    Install [Claude Code](https://claude.com/claude-code) first, then open a
+    new terminal so the `claude` command is found.
+
+Everything it shows, how it works and its settings:
+[the board in a Claude Code pane](../claude-code-pane.md). To let Claude act on
+the radio as well: [let Claude use the radio](let-claude-use-the-radio.md).

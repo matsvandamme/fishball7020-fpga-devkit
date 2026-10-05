@@ -100,6 +100,11 @@ with tempfile.TemporaryDirectory() as d:
     check("ssh-key --check with a key but no board says the board is unreachable",
           rc == 1 and "not reachable" in out and "not set up" not in out, "exit=%s out=%r" % (rc, out[-160:]))
 
+# ---- the Claude Code pane: start needs `claude`, and says where to get it ------------
+rc, out, took = run(["claude-pane", "start"], env={"PATH": "/usr/bin:/bin"})
+check("claude-pane start without Claude Code says where to get it, quickly",
+      rc == 1 and "claude.com/claude-code" in out and took < 5, "exit=%s, %.1fs, out=%r" % (rc, took, out[-160:]))
+
 print("\n%d/%d devkit behaviours hold" % (CHECKS - len(FAILURES), CHECKS))
 if FAILURES:
     print("\nFAILED:")

@@ -120,7 +120,7 @@ _devkit_complete() {
         automation)
             COMPREPLY=($(compgen -W "install status clock capture smoke mute test uninstall help --measure --seconds --samples --channels" -- "$cur")) ;;
         claude-pane)
-            COMPREPLY=($(compgen -W "install uninstall test help" -- "$cur")) ;;
+            COMPREPLY=($(compgen -W "start install uninstall test help" -- "$cur")) ;;
         adsb)
             case "$prev" in
                 --replay) COMPREPLY=($(compgen -f -X '!*.sigmf-meta' -- "$cur")); compopt -o plusdirs 2>/dev/null ;;

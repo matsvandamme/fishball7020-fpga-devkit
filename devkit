@@ -216,6 +216,8 @@
 #     ./devkit claude-pane The board in a Claude Code side pane (/fishball): its
 #                          links, die temperatures, radio settings, CI and the
 #                          build it runs against yours. Reads only, never writes.
+#       start              Claude Code in this checkout with the pane open.
+#                          Options after it go to claude: start --model sonnet
 #       install            Load it in every Claude Code session.
 #       uninstall          Stop loading it.
 #       test               Its manifest check and tests. Needs `claude`.
@@ -290,7 +292,7 @@ Once it runs
   adsb            aircraft overhead, live, from 1090 MHz ADS-B (receive only)
   automation      a server on the board for your measurement scripts
   tx-guard        the transmit gate: affirm a port is terminated first
-  claude-pane     the board in a Claude Code side pane (/fishball)
+  claude-pane     Claude Code with the board in a side pane: claude-pane start
   also: gpio-check  clock  loopback  matlab  uboot-contract  container  completion
 
 Two firmware targets
