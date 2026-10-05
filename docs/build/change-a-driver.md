@@ -8,6 +8,9 @@ description: Build the kernel alone in about two minutes and flash it alone; the
 Build `uImage` alone (about two minutes), then flash it alone: the board is
 back in about fifteen seconds.
 
+![The kernel loop as four boxes: edit the driver and add dev_warn(); build uImage, about two minutes; flash --kernel-only, back in about fifteen seconds; read dmesg on the board. A dashed arrow leads back to the start: and again.](../img/build-kernel-loop-light.svg#only-light)
+![The kernel loop as four boxes: edit the driver and add dev_warn(); build uImage, about two minutes; flash --kernel-only, back in about fifteen seconds; read dmesg on the board. A dashed arrow leads back to the start: and again.](../img/build-kernel-loop-dark.svg#only-dark)
+
 === "firmware-modern/ (6.12)"
 
     ```bash
@@ -48,3 +51,15 @@ the tool.
 
 Debugging tips, the transmitter-safety attributes and kernel options:
 [changing the kernel](../kernel.md).
+
+## Comparing two builds byte for byte
+
+The `uImage` is not reproducible by default: the kernel and `mkimage` stamp the
+build time. Pin these before building (`firmware-modern/`):
+
+```bash
+# run from: firmware-modern/src/linux
+export KBUILD_BUILD_TIMESTAMP="Thu Jan  1 00:00:00 UTC 2026"
+export KBUILD_BUILD_USER=devkit KBUILD_BUILD_HOST=devkit KBUILD_BUILD_VERSION=1
+export SOURCE_DATE_EPOCH=1767225600
+```

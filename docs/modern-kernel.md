@@ -2,23 +2,27 @@
 
 Background for [`firmware-modern/`](../firmware-modern/README.md): why this
 kernel, what differs from the factory 5.15, and how to check that nothing a
-host tool depends on has changed. To build and flash it, start with that README.
+host tool depends on has changed. To build and flash it:
+[change a kernel driver](build/change-a-driver.md) and
+[change the device tree](build/change-the-device-tree.md).
 
 ## Why ADI 6.12, and not mainline
 
-Mainline Linux lacks the AD9361 driver, and worse, **cyclic transmit** (the
-board repeating one buffer forever, used by `./devkit gpio-check`, the
-self-test's loopback tone and the MCP server's transmit tools). Cyclic mode
-depends on `IIO_BUFFER_BLOCK_FLAG_CYCLIC`, an Analog Devices change to the IIO
-core (`include/linux/iio/buffer_impl.h`). The board's libiio (0.25, pinned at
-`38483f31`) enables its high-speed path, the only one with cyclic mode, by
-probing the matching `BLOCK_FREE_IOCTL`. Without it libiio falls back to plain
-`read()`/`write()` and `OPEN … CYCLIC` fails at the daemon, with nothing in the
-kernel log.
+| Mainline Linux lacks | Why it matters |
+|---|---|
+| the AD9361 driver | no radio |
+| **cyclic transmit** (the board repeating one buffer forever) | `./devkit gpio-check`, the self-test's loopback tone and the MCP server's transmit tools use it |
+
+Cyclic mode depends on `IIO_BUFFER_BLOCK_FLAG_CYCLIC`, an Analog Devices change
+to the IIO core (`include/linux/iio/buffer_impl.h`). The board's libiio (0.25,
+pinned at `38483f31`) enables its high-speed path, the only one with cyclic
+mode, by probing the matching `BLOCK_FREE_IOCTL`. Without it libiio falls back
+to plain `read()`/`write()` and `OPEN … CYCLIC` fails at the daemon, with
+nothing in the kernel log.
 
 ADI's `main` branch is on 6.12 LTS and still ships `ad9361.c`, `cf_axi_dds.c`,
-`cf_axi_adc_core.c` and that flag, so the safety patches rebase rather than
-being rewritten, and about 18,900 lines of driver code stay upstream's.
+`cf_axi_adc_core.c` and that flag, so the safety patches rebase and are not
+rewritten, and about 18,900 lines of driver code stay upstream's.
 
 ## The device tree
 
@@ -35,11 +39,10 @@ tree sets `adi,tx-attenuation-mdB = 89750`, so the transmitter comes up at
 
 Check the **built** `.dtb`, not the build log; two mistakes boot fine:
 
-- A `memory@0` node beside the dtsi's `memory` node gives the kernel two memory
-  sizes; `dtc` only warns "duplicate unit-address".
-- Without `adi,channels`, the DMA driver fails to probe on this board's
-  2018-era FPGA cores (`dma-axi-dmac.c` reads it from hardware only for cores
-  `>= 4.3.a`), and nothing streams.
+| Mistake | Effect |
+|---|---|
+| a `memory@0` node beside the dtsi's `memory` node | the kernel gets two memory sizes; `dtc` only warns "duplicate unit-address" |
+| no `adi,channels` | the DMA driver fails to probe on this board's 2018-era FPGA cores (`dma-axi-dmac.c` reads it from hardware only for cores `>= 4.3.a`), and nothing streams |
 
 `firmware-modern/verify_dtb.py` checks the built tree, including that every
 node the factory tree enables is still enabled; CI runs it on every push.
@@ -115,14 +118,8 @@ compare two kernels with the same method.
 
 The device tree is reproducible (CI checks it). The `uImage` is not by default,
 because the kernel and `mkimage` stamp the build time, which is how you tell
-which kernel is on a card. Pin these to compare two builds byte for byte:
-
-```bash
-# run from: firmware-modern/src/linux
-export KBUILD_BUILD_TIMESTAMP="Thu Jan  1 00:00:00 UTC 2026"
-export KBUILD_BUILD_USER=devkit KBUILD_BUILD_HOST=devkit KBUILD_BUILD_VERSION=1
-export SOURCE_DATE_EPOCH=1767225600
-```
+which kernel is on a card. To compare two builds byte for byte, pin the
+stamps: [how](build/change-a-driver.md#comparing-two-builds-byte-for-byte).
 
 With only `KBUILD_BUILD_*`, the kernel is identical but six bytes of the
 64-byte U-Boot header (`ih_time` and its checksum) differ.

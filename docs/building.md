@@ -1,19 +1,28 @@
 # Building your own firmware
 
-How to build the five SD-card files that contain your change, directly on an
-Ubuntu 18.04, 20.04 or 22.04 host (the releases Vivado 2022.2 runs on). On any
-other Linux, use **[Building in a container](building-in-a-container.md)**
-instead: it is the recommended route, installs Vivado for you and produces a
-byte-identical `BOOT.bin`. To put the result on the board, see
-[Flashing the board](flashing.md).
+The factory build on an Ubuntu 18.04, 20.04 or 22.04 host (the releases Vivado
+2022.2 runs on): its requirements, commands, stages and layout. It produces the
+five SD-card files that contain your change.
+
+| To | See |
+|---|---|
+| check this machine | [check your machine can build](build/check-your-machine.md) |
+| build on any other Linux (the recommended route; it installs Vivado for you and produces a byte-identical `BOOT.bin`) | [build with Vivado in a container](build/build-in-a-container.md) · [reference](building-in-a-container.md) |
+| build without Vivado | [build without Vivado](build/build-without-vivado.md) |
+| add your own logic | [add your own logic to the FPGA](build/add-fpga-logic.md) |
+| put the result on the board | [put it on the board](build/flash-your-build.md) · [flashing reference](flashing.md) |
+
+![The build path as five boxes joined by arrows: doctor (can this machine build?), setup (fetch the sources, apply the patches), build (the SD-card files, into output/), verify (is the build sane? with --board: is it running?) and flash (over the network, md5-verified). Each is one ./devkit command, run from the repo root.](img/build-path-light.svg#only-light)
+![The build path as five boxes joined by arrows: doctor (can this machine build?), setup (fetch the sources, apply the patches), build (the SD-card files, into output/), verify (is the build sane? with --board: is it running?) and flash (over the network, md5-verified). Each is one ./devkit command, run from the repo root.](img/build-path-dark.svg#only-dark)
 
 ## Requirements
 
-**Hardware:** the board, a USB-C cable, and a microSD card with a reader (a
-board that still boots can be reflashed over the network instead, see
-[Option C](flashing.md#option-c--over-ssh-from-the-running-board-no-card-removal)).
-If you will ever loop TX to RX, **an SMA attenuator of at least 20 dB**. A
-debug-port cable only for the serial console or JTAG.
+| Hardware | Needed for |
+|---|---|
+| the board, a USB-C cable | everything |
+| a microSD card with a reader | a board that no longer boots; one that still boots can be reflashed over the network ([Option C](flashing.md#option-c--over-ssh-from-the-running-board-no-card-removal)) |
+| **an SMA attenuator of at least 20 dB** | any loop from TX to RX |
+| a debug-port cable | the serial console or JTAG only |
 
 **Software** (Ubuntu 22.04; on anything else, use the container):
 
@@ -36,14 +45,15 @@ sudo apt install -y git build-essential bison flex libssl-dev \
 | `libiio-utils` | `iio_attr` and `iio_info` |
 | `screen` | the serial console only |
 
-GCC 11 on 22.04 builds everything; on GCC 14 or later `build_all.sh` also needs
-`gcc-13` for one legacy Buildroot host tool and picks it itself. No display is
-needed. `./devkit doctor --target factory` checks all of this.
+- GCC 11 on 22.04 builds everything. On GCC 14 or later `build_all.sh` also
+  needs `gcc-13` for one legacy Buildroot host tool, and picks it itself.
+- No display is needed.
+- `./devkit doctor --target factory` checks all of this.
 
 ### An ARM cross-compiler on Arch
 
-Arch has no ARM Linux cross-compiler in its official repositories. The quick
-route is **Arm's prebuilt toolchain** (no root): download
+Arch has no ARM Linux cross-compiler in its official repositories. Use **Arm's
+prebuilt toolchain** (no root): download
 `arm-gnu-toolchain-<version>-x86_64-arm-none-linux-gnueabihf.tar.xz` and its
 `.sha256asc` from [Arm's download page](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads),
 then link its tools under the names the build looks for:
@@ -59,42 +69,32 @@ done
 arm-linux-gnueabihf-gcc --version     # ~/.local/bin must be on PATH
 ```
 
-Version 15.2.rel1 builds both targets. Remove any other `arm-linux-gnueabihf-*`
-tools in `/usr/bin` (for example from a half-finished AUR install) so all tools
-come from one toolchain. The AUR route takes hours: install
-`arm-linux-gnueabihf-gcc-stage1`, `-glibc-headers`, `-gcc-stage2`, `-glibc`,
-then `arm-linux-gnueabihf-gcc`, one `yay -S` at a time, in that order.
+| | |
+|---|---|
+| version | 15.2.rel1 builds both targets |
+| other toolchains | remove any other `arm-linux-gnueabihf-*` tools in `/usr/bin` (for example from a half-finished AUR install), so all tools come from one toolchain |
+| the AUR route | takes hours: install `arm-linux-gnueabihf-gcc-stage1`, `-glibc-headers`, `-gcc-stage2`, `-glibc`, then `arm-linux-gnueabihf-gcc`, one `yay -S` at a time, in that order |
 
 ## Install Vivado 2022.2
 
-Vivado is AMD's FPGA design tool: about 50 GB, and 20 to 70 minutes of every
-build. The Zynq-7020 is covered by the free WebPACK licence. If you are not
-changing the FPGA design, you do not need it:
-**[Building without Vivado](building-without-vivado.md)**. On a host newer than
-22.04 the installer will not run either; use
-[Installing Vivado in the first place](building-in-a-container.md#installing-vivado-in-the-first-place).
+Vivado is AMD's FPGA design tool. The steps are in
+[install Vivado 2022.2](build/install-vivado.md).
 
-1. Create an account at [xilinx.com](https://www.xilinx.com) and open the
-   [2022.2 downloads page](https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/vivado-design-tools/2022-2.html).
-2. Download the **Vitis** unified installer for Linux (it offers both products;
-   this project uses only Vivado).
-3. Run it:
+| | |
+|---|---|
+| size, time | about 50 GB, and 20 to 70 minutes of every build |
+| licence | the Zynq-7020 is covered by the free WebPACK licence |
+| not changing the FPGA design? | you do not need it: **[Building without Vivado](building-without-vivado.md)** |
+| host newer than 22.04 | the installer will not run either; use [Installing Vivado in the first place](building-in-a-container.md#installing-vivado-in-the-first-place) |
+| what to install | the **Vitis** unified installer for Linux (it offers both products; this project uses only Vivado): **Vivado**, edition **Vivado ML Standard**, only **Zynq-7000** under device families (~130 GB down to ~30 GB) |
+| where | **the default path `/tools/Xilinx`**, which `tools/env-vivado.sh` points at |
 
-    ```bash
-    # run from: the directory holding the installer, on your host
-    chmod +x Xilinx_Unified_2022.2_*.bin && ./Xilinx_Unified_2022.2_*.bin
-    ```
-
-4. Choose **Vivado**, edition **Vivado ML Standard**; select only
-   **Zynq-7000** under device families (~130 GB down to ~30 GB); **keep the
-   default path `/tools/Xilinx`**, which `tools/env-vivado.sh` points at.
-
-**Always `source tools/env-vivado.sh`, never Vivado's own `settings64.sh`.**
-Vivado needs `libtinfo.so.5`, `libncurses.so.5` and `libssl.so.1.1`, which a
-default 22.04 lacks; the script prepends vendored copies to `LD_LIBRARY_PATH`,
-only where the distribution has no `libtinfo.so.5` of its own (the copies need
-`GLIBC_2.33`; forced onto an older release they fail with
-`librdi_commontasks.so: GLIBC_2.33 not found`).
+!!! warning "Always `source tools/env-vivado.sh`, never Vivado's own `settings64.sh`"
+    Vivado needs `libtinfo.so.5`, `libncurses.so.5` and `libssl.so.1.1`, which a
+    default 22.04 lacks. The script prepends vendored copies to `LD_LIBRARY_PATH`,
+    only where the distribution has no `libtinfo.so.5` of its own: the copies need
+    `GLIBC_2.33`, and forced onto an older release they fail with
+    `librdi_commontasks.so: GLIBC_2.33 not found`.
 
 ## Get the firmware source
 
@@ -105,11 +105,12 @@ cd fishball7020-fpga-devkit/firmware
 ./scripts/setup.sh
 ```
 
-`./devkit setup --target factory` from the repo root does the same. It clones the upstream
-source (a Zynq-7020 port of ADI's `plutosdr-fw`) into the gitignored `src/` and
-applies `patches/` ([table and rationale](../firmware/patches/README.md); read
-it before dropping any). Re-run it any time for a clean slate. `./devkit …`
-runs from the repo root; the raw scripts run from `firmware/`.
+- `./devkit setup --target factory` from the repo root does the same.
+- It clones the upstream source (a Zynq-7020 port of ADI's `plutosdr-fw`) into
+  the gitignored `src/` and applies `patches/`
+  ([table and rationale](../firmware/patches/README.md); read it before dropping any).
+- Re-run it any time for a clean slate.
+- `./devkit …` runs from the repo root; the raw scripts run from `firmware/`.
 
 ## Build the firmware
 
@@ -135,7 +136,8 @@ previous full build.
 | 7. Packaging | `bootgen`, built from AMD's Apache-2.0 source, combines FSBL + bitstream + U-Boot into `BOOT.bin` |
 
 Every stage runs every time; Vivado's incremental synthesis rebuilds only what
-changed. Output lands in `firmware/output/`; check it with `./devkit verify --target factory`.
+changed. Output lands in `firmware/output/`; check it with
+`./devkit verify --target factory` ([check the build](build/verify-the-build.md)).
 
 ## Simulating your HDL first
 
@@ -148,61 +150,30 @@ with only `iverilog`, then prove the tests can fail:
 ./sim/run_sim.sh --mutate   # breaks the modules ten ways; every mutant must be caught
 ```
 
-Modules not in `src/` are taken from their patch files. **The key check is
-gapped valid:** in 2R2T mode (two receive, two transmit channels) the AD9361
-asserts `valid` only every second clock, so a counter must advance once per
-sample, not per clock; getting this wrong passes a back-to-back simulation and
-fails on hardware. If you add HDL, add a testbench and at least one mutant. CI
-runs both.
+- Modules not in `src/` are taken from their patch files.
+- **The key check is gapped valid:** in 2R2T mode (two receive, two transmit
+  channels) the AD9361 asserts `valid` only every second clock, so a counter
+  must advance once per sample, not per clock. Getting this wrong passes a
+  back-to-back simulation and fails on hardware.
+- If you add HDL, add a testbench and at least one mutant. CI runs both.
 
 ## Add your own HDL
 
-New to Verilog? The course written against this board,
-**[Fabric School](course/index.html)**, assumes nothing: lessons 4–10 cover
-Verilog itself, 13–18 this block design, 19–23 adding your own IP, pins,
-constraints and clock-domain crossings. Whether the FPGA is the right place for
-your code at all: [using this board in your own project](your-own-project.md).
+The steps, from simulation to the flashed bitstream:
+[add your own logic to the FPGA](build/add-fpga-logic.md).
 
-Open the block design (it exists only after a first full build):
+| | |
+|---|---|
+| New to Verilog? | **[Fabric School](course/index.html)**, the course written against this board, assumes nothing: lessons 4–10 cover Verilog itself, 13–18 this block design, 19–23 adding your own IP, pins, constraints and clock-domain crossings |
+| Is the FPGA the right place? | [using this board in your own project](your-own-project.md) |
+| Every block, clock domain and what is safe to change | [the stock block design](block-design.md) |
+| Worked examples | [isolating one FM channel in the FPGA](wbfm-channelizer.md) (a custom RX block and new FIR coefficients), and the thirty-line [sample-locked GPIO outputs](tx-gpio-bitmap.md) (module, block-design tap, pin constraint and driver attribute) |
 
-```bash
-# run from: firmware/
-source ../tools/env-vivado.sh
-cd src/hdl/projects/pluto
-vivado pluto.xpr
-```
+Upstream's datapath, and where custom logic goes: between `axi_ad9361` and
+`cpack`/`tx_upack` (channel 1), or before/after the FIR blocks (channel 0).
 
-In the GUI: **Sources → Design Sources → system_top → system_i**, right-click
-**Open Block Design**. [The stock block design](block-design.md) explains every
-block, clock domain and what is safe to change. Upstream's datapath:
-
-```
-                            AD9361 (physical LVDS pins)
-                                    │
-                             ┌──────▼───────┐
-                             │  axi_ad9361   │
-                             └──┬────────▲───┘
-      RX ch.0: adc_data_i0/q0 ──┤         ├── TX ch.0: dac_data_i0/q0
-      RX ch.1: adc_data_i1/q1 ──┤         ├── TX ch.1: dac_data_i1/q1
-                                │         │
-                    ┌───────────▼──┐   ┌──┴────────────┐
-        ch.0 only:  │rx_fir_       │   │tx_fir_        │  ch.0 only:
-     (decimation,   │decimator     │   │interpolator   │  (interpolation,
-      8x, 2x taps)  └──────┬───────┘   └───────▲───────┘   2x/8x taps)
-                           │                     │
-      ch.1 connects  ┌─────▼──────┐       ┌──────┴─────┐  ch.1 connects
-      directly, no   │   cpack     │       │  tx_upack  │  directly, no
-      filter ────────►(util_cpack2)│       │(util_upack2)◄──── filter
-                     └─────┬──────┘       └──────▲─────┘
-                           │                       │
-                    ┌──────▼──────┐         ┌──────┴──────┐
-                    │  adc_dma     │         │  dac_dma     │
-                    │ (axi_dmac)   │         │ (axi_dmac)   │
-                    └──────────────┘         └──────────────┘
-                     ▲ YOU ARE HERE: insert custom logic between
-                     axi_ad9361 and cpack/tx_upack (channel 1),
-                     or before/after the FIR blocks (channel 0)
-```
+![Upstream's datapath in two columns under axi_ad9361, which holds the AD9361's LVDS pins. Receive: channel 0 (adc_data_i0/q0) goes through rx_fir_decimator, divide by 8, into cpack (util_cpack2), while channel 1 (adc_data_i1/q1) connects directly with no filter; cpack feeds adc_dma (axi_dmac). Transmit is the mirror: dac_dma, tx_upack (util_upack2), tx_fir_interpolator times 8 on channel 0 (dac_data_i0/q0), channel 1 (dac_data_i1/q1) direct. Green circles mark where your logic goes: on each channel-1 connection, and before and after each FIR block.](img/build-insert-points-light.svg#only-light)
+![Upstream's datapath in two columns under axi_ad9361, which holds the AD9361's LVDS pins. Receive: channel 0 (adc_data_i0/q0) goes through rx_fir_decimator, divide by 8, into cpack (util_cpack2), while channel 1 (adc_data_i1/q1) connects directly with no filter; cpack feeds adc_dma (axi_dmac). Transmit is the mirror: dac_dma, tx_upack (util_upack2), tx_fir_interpolator times 8 on channel 0 (dac_data_i0/q0), channel 1 (dac_data_i1/q1) direct. Green circles mark where your logic goes: on each channel-1 connection, and before and after each FIR block.](img/build-insert-points-dark.svg#only-dark)
 
 The default build also feeds RX channel 1 through the decimator (patch `0021`);
 `STOCK_RX_FILTER=1` builds the design shown.
@@ -218,24 +189,16 @@ The default build also feeds RX channel 1 through the decimator (patch `0021`);
   and TX filters share that one file. The `.v` files in `util_fir_int/` and
   `util_fir_dec/` are dead code (never packaged).
 - Both channel-0 groups run on `axi_ad9361/l_clk`; match that clock domain.
-
-Worked examples: [isolating one FM channel in the FPGA](wbfm-channelizer.md)
-(a custom RX block and new FIR coefficients), and the thirty-line
-[sample-locked GPIO outputs](tx-gpio-bitmap.md) (module, block-design tap, pin
-constraint and driver attribute).
-
-**After a GUI edit**, save the block design (`Ctrl-S`; unsaved edits are
-silently left out), Validate Design (F6) and close Vivado (it holds a project
-lock), then run `./scripts/build_all.sh` from `firmware/`. GUI edits live in
-the regenerated `src/`; to keep one, port it into `system_bd.tcl` and add it to
-`patches/`.
+- **GUI edits live in the regenerated `src/`**: to keep one, port it into
+  `system_bd.tcl` and add it to `patches/`.
 
 ## Change the kernel
 
 Much of the board's behaviour (what appears in `/sys`, when the transmitter is
 muted, the serial number) lives in the Linux kernel and its ADI drivers.
 **[Changing the kernel](kernel.md)** covers the patches, the two-minute
-kernel-only loop, options, driver debugging and making a change stick.
+kernel-only loop, options, driver debugging and making a change stick; the
+steps are in [change a kernel driver](build/change-a-driver.md).
 
 This page builds `firmware/`, the factory reconstruction on Linux 5.15.
 [`firmware-modern/`](../firmware-modern/README.md) builds **6.12 LTS** from
@@ -252,25 +215,20 @@ work. A kernel swap is one file:
 
 ## Repository layout
 
-```
-fishball7020-fpga-devkit/
-├── devkit                  one entry point: doctor · setup · sim · build · verify · flash · …
-├── docs/                   building, flashing, safety, measurements, hardware; vendor/ schematic
-├── .claude/skills/         Agent Skill for Claude Code: rules, map, healthy-board figures
-├── tools/                  env-vivado.sh (source before vivado) · flash.sh · make-sd-card.sh
-│                           tx-gpio-bitmap-check.py · sample_gpio_clock.py · selftest/
-│                           container/ (pinned build image) · legacy-libs/ (libtinfo5 etc.)
-├── firmware-modern/        Linux 6.12 and a Debian root; no HDL; boots on firmware/'s BOOT.bin
-└── firmware/               the FPGA, the factory 5.15 kernel and device tree
-    ├── patches/            all applied by setup.sh; optional/ holds worked examples (not applied)
-    ├── fsbl/               the first-stage boot loader, built without Vitis
-    ├── scripts/            doctor.sh · setup.sh · build_all.sh · build_hdl.tcl · import_xsa.sh
-    │                       verify_output.sh · check_bootbin.py · gen_fir_coe.py · boot.bif
-    ├── sim/                run_sim.sh and the golden-model testbenches
-    ├── src/                created by setup.sh, not committed; hdl/projects/pluto/ is the
-    │                       Vivado project (system_bd.tcl, system_top.v, system_constr.xdc)
-    └── output/             the 5 final SD-card files
-```
+| Path | What |
+|---|---|
+| `devkit` | one entry point: doctor · setup · sim · build · verify · flash · … |
+| `docs/` | building, flashing, safety, measurements, hardware; `vendor/` schematic |
+| `.claude/skills/` | Agent Skill for Claude Code: rules, map, healthy-board figures |
+| `tools/` | `env-vivado.sh` (source before vivado) · `flash.sh` · `make-sd-card.sh` · `tx-gpio-bitmap-check.py` · `sample_gpio_clock.py` · `selftest/` · `container/` (pinned build image) · `legacy-libs/` (libtinfo5 etc.) |
+| `firmware-modern/` | Linux 6.12 and a Debian root; no HDL; boots on `firmware/`'s `BOOT.bin` |
+| `firmware/` | the FPGA, the factory 5.15 kernel and device tree |
+| `firmware/patches/` | all applied by `setup.sh`; `optional/` holds worked examples (not applied) |
+| `firmware/fsbl/` | the first-stage boot loader, built without Vitis |
+| `firmware/scripts/` | `doctor.sh` · `setup.sh` · `build_all.sh` · `build_hdl.tcl` · `import_xsa.sh` · `verify_output.sh` · `check_bootbin.py` · `gen_fir_coe.py` · `boot.bif` |
+| `firmware/sim/` | `run_sim.sh` and the golden-model testbenches |
+| `firmware/src/` | created by `setup.sh`, not committed; `hdl/projects/pluto/` is the Vivado project (`system_bd.tcl`, `system_top.v`, `system_constr.xdc`) |
+| `firmware/output/` | the 5 final SD-card files |
 
 Each patch is listed and explained in
 [`firmware/patches/README.md`](../firmware/patches/README.md).

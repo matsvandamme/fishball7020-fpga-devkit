@@ -1,10 +1,15 @@
 # Building in a container
 
-**This is the recommended way to build this firmware.** Vivado 2022.2, pinned
-here because a toolchain change changes the bitstream, runs only on Ubuntu
-18.04–22.04; `./devkit container` runs the build (and the Vivado installer) in
-a pinned Ubuntu 22.04 container (an isolated userspace on your own kernel), so
-your host distribution does not matter.
+**This is the recommended way to build this firmware.** Vivado 2022.2 runs only
+on Ubuntu 18.04–22.04; `./devkit container` runs the build (and the Vivado
+installer) in a pinned Ubuntu 22.04 container (an isolated userspace on your
+own kernel), so your host distribution does not matter. Vivado 2022.2 is pinned
+here because a toolchain change changes the bitstream. The steps are in
+[build with Vivado in a container](build/build-in-a-container.md); this page is
+the detail.
+
+![Inside your Linux host, the repo is mounted into the container at its own absolute path and /tools/Xilinx, holding Vivado 2022.2, is mounted read-only. The container, a pinned Ubuntu 22.04 image of about 1.4 GB, runs doctor, setup, build and build --hdl-only. flash, selftest, gpio-check and verify --board run on the host only.](img/build-container-light.svg#only-light)
+![Inside your Linux host, the repo is mounted into the container at its own absolute path and /tools/Xilinx, holding Vivado 2022.2, is mounted read-only. The container, a pinned Ubuntu 22.04 image of about 1.4 GB, runs doctor, setup, build and build --hdl-only. flash, selftest, gpio-check and verify --board run on the host only.](img/build-container-dark.svg#only-dark)
 
 ## Steps
 
@@ -19,40 +24,26 @@ your host distribution does not matter.
 ./devkit container build --target factory --hdl-only #                                       (~20 min)
 ```
 
-No Vivado yet? Install it first, below. **Build in the container; flash from
-the host**: `flash`, `selftest`, `gpio-check` and `verify --board` are host
-commands.
+No Vivado yet? [Install it first](build/install-vivado.md). **Build in the
+container; flash from the host**: `flash`, `selftest`, `gpio-check` and
+`verify --board` are host commands.
 
 ## Installing Vivado in the first place
 
-On a host too new for Vivado, its installer (the same Java/GTK application)
-will not run either, so it runs in the container too, writing to the host:
+The steps are in [install Vivado 2022.2](build/install-vivado.md):
+`./devkit container install <installer>`.
 
-```bash
-# run from: the repo root
-# AMD put the installer behind an account login, so download it yourself first:
-#   https://www.xilinx.com/support/download.html  ->  Vivado 2022.2  ->  Linux Self Extracting Web Installer
+| | |
+|---|---|
+| why in the container | on a host too new for Vivado, its installer (the same Java/GTK application) will not run either, so it runs in the container too, writing to the host |
+| the mount | `/tools/Xilinx` read-write (the only time it is not read-only), and the installer's GUI |
+| answers | as in [building.md](building.md#install-vivado-20222): **Vivado**, only **Zynq-7000** under device families (~130 GB down to ~30 GB), path `/tools/Xilinx` |
+| time | the web installer needs your AMD account and downloads the content itself; budget an hour |
 
-# Rootless podman maps the container's root to YOUR user, so the target must be
-# yours: a root-owned /tools/Xilinx cannot be written even from "root" inside.
-sudo mkdir -p /tools/Xilinx && sudo chown "$USER" /tools/Xilinx
-
-./devkit container install ~/Downloads/Xilinx_Unified_2022.2_1014_8888_Lin64.bin
-```
-
-This mounts `/tools/Xilinx` read-write (the only time it is not read-only) and
-runs the installer's GUI. Answer it as in
-[building.md](building.md#install-vivado-20222): **Vivado**, only
-**Zynq-7000** under device families (~130 GB down to ~30 GB), path
-`/tools/Xilinx`. The web installer needs your AMD account and downloads the
-content itself; budget an hour.
-
-**"Extraction failed." / "Signal caught, cleaning up"** from the installer is
-usually false: it exits with status 143 after extracting all 720 MB, so the
-install step checks for an executable `xsetup` instead of the exit status. It
-is real when unpacking onto a read-only directory or onto rootless podman's
-overlay filesystem (mounted `userxattr`), which is why the work directory is a
-bind mount.
+| Symptom | Cause | Fix |
+|---|---|---|
+| **"Extraction failed." / "Signal caught, cleaning up"** from the installer | usually false: it exits with status 143 after extracting all 720 MB | none needed: the install step checks for an executable `xsetup` instead of the exit status |
+| the same, and real | unpacking onto a read-only directory, or onto rootless podman's overlay filesystem (mounted `userxattr`) | the work directory is a bind mount |
 
 ## Same output as a host build
 
@@ -104,16 +95,12 @@ realloc(): invalid pointer
 Abnormal program termination (6)
 ```
 
-**Cause.** Vivado's licence manager (`libXil_lmgr11.so`) `dlopen`s
-`libudev.so.1` to fingerprint the host, after Vivado's bundled tcmalloc has
-replaced malloc process-wide, while libudev frees through glibc. On Ubuntu
-20.04 it shows as a `SIGSEGV` in `malloc_usable_size` instead.
-
-**Fix (already applied by `./devkit container`).** `tools/container/udev-stub.c`
-answers that enumeration with an empty list, so the allocators never meet.
-Synthesis and the bitstream are untouched; the XC7Z020 needs no licence. **Do
-not** switch off glibc's heap checker instead; mounting `/run/udev`,
-`config_webtalk -user off` and a 20.04 base do not fix it.
+| | |
+|---|---|
+| symptom | the lines above; on Ubuntu 20.04 it shows as a `SIGSEGV` in `malloc_usable_size` instead |
+| cause | Vivado's licence manager (`libXil_lmgr11.so`) `dlopen`s `libudev.so.1` to fingerprint the host, after Vivado's bundled tcmalloc has replaced malloc process-wide, while libudev frees through glibc |
+| fix (already applied by `./devkit container`) | `tools/container/udev-stub.c` answers that enumeration with an empty list, so the allocators never meet. Synthesis and the bitstream are untouched; the XC7Z020 needs no licence |
+| what does not fix it | mounting `/run/udev`, `config_webtalk -user off`, a 20.04 base. **Do not** switch off glibc's heap checker instead |
 
 **Why 22.04 and not 20.04:** both are supported
 ([UG973](https://docs.amd.com/r/2022.2-English/ug973-vivado-release-notes-install-license/Supported-Operating-Systems)),

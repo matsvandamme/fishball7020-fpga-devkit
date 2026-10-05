@@ -2,59 +2,36 @@
 
 Much of the board's behaviour (what appears in `/sys`, when the transmitter is
 muted, the serial number) lives in the Linux kernel and Analog Devices' (ADI's)
-drivers, not in the FPGA. This page is for anyone changing a driver, the device
-tree or kernel options, on either kernel: the two-minute rebuild loop, what is
-already patched, debugging, and making a change stick.
+drivers, not in the FPGA. This page is the reference for both kernels: which
+one to use, what is already patched, the options, debugging, and making a
+change stick. The steps are in [change a kernel driver](build/change-a-driver.md)
+and [change the device tree](build/change-the-device-tree.md).
+
+![The kernel loop as four boxes: edit the driver and add dev_warn(); build uImage, about two minutes; flash --kernel-only, back in about fifteen seconds; read dmesg on the board. A dashed arrow leads back to the start: and again.](img/build-kernel-loop-light.svg#only-light)
+![The kernel loop as four boxes: edit the driver and add dev_warn(); build uImage, about two minutes; flash --kernel-only, back in about fifteen seconds; read dmesg on the board. A dashed arrow leads back to the start: and again.](img/build-kernel-loop-dark.svg#only-dark)
 
 ## Rebuild and flash
 
-Terms: **the kernel** is built as one file (`uImage`); **a driver** is kernel
-code operating a device (the AD9361, the FPGA's capture and playback blocks);
-**the device tree** (`devicetree.dtb`, compiled from a `.dts`) describes what
-hardware exists and where; **a defconfig** is a saved set of build options.
-You are **cross-compiling** (building on your PC for the board's ARM cores),
-hence `ARCH=arm CROSS_COMPILE=…`. Not sure the kernel is where your change
-belongs? See [using this board in your own project](your-own-project.md) and
-lesson 23 of [Fabric School](course/index.html).
-
 `./devkit build` builds the kernel with everything else; while iterating, build
-it alone (about two minutes).
+it alone (about two minutes) and flash `uImage` alone: the board is back in
+about fifteen seconds. A changed device tree goes with `--dtb-only`.
 
-**`firmware/` (5.15):**
+| | Commands |
+|---|---|
+| build and flash `uImage`, either kernel | [change a kernel driver](build/change-a-driver.md) |
+| build and flash the device tree, either kernel | [change the device tree](build/change-the-device-tree.md) |
 
-```bash
-# run from: firmware/
-make -C src/linux -j"$(nproc)" ARCH=arm \
-  CROSS_COMPILE=arm-linux-gnueabi- uImage UIMAGE_LOADADDR=0x8000
-cp src/linux/arch/arm/boot/uImage output/uImage
-# the device tree:
-DTC_FLAGS=-@ make -C src/linux ARCH=arm \
-  CROSS_COMPILE=arm-linux-gnueabi- zynq-pluto-sdr-fishball.dtb
-cp src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dtb output/devicetree.dtb
-```
+| Term | Meaning |
+|---|---|
+| **the kernel** | built as one file (`uImage`) |
+| **a driver** | kernel code operating a device (the AD9361, the FPGA's capture and playback blocks) |
+| **the device tree** | `devicetree.dtb`, compiled from a `.dts`: describes what hardware exists and where |
+| **a defconfig** | a saved set of build options |
+| **cross-compiling** | building on your PC for the board's ARM cores, hence `ARCH=arm CROSS_COMPILE=…` |
 
-**`firmware-modern/` (6.12):**
-
-```bash
-# run from: firmware-modern/src/linux
-CROSS=arm-linux-gnueabi-      # or arm-linux-gnueabihf-
-make ARCH=arm CROSS_COMPILE=$CROSS fishball_defconfig
-make ARCH=arm CROSS_COMPILE=$CROSS uImage LOADADDR=0x8000 -j$(nproc)
-make ARCH=arm CROSS_COMPILE=$CROSS DTC_FLAGS=-@ xilinx/zynq-pluto-sdr-fishball.dtb
-cp arch/arm/boot/uImage ../../output/
-# The rename is yours to do: tools/flash.sh looks for the literal name
-# devicetree.dtb and aborts if it is missing.
-cp arch/arm/boot/dts/xilinx/zynq-pluto-sdr-fishball.dtb ../../output/devicetree.dtb
-```
-
-Then flash `uImage` alone; the board is back in about fifteen seconds. A
-changed device tree goes with `--dtb-only`.
-
-```bash
-# run from: the repo root
-./devkit flash --target factory --kernel-only  # firmware/
-./devkit flash --kernel-only                   # firmware-modern/
-```
+Not sure the kernel is where your change belongs? See
+[using this board in your own project](your-own-project.md) and lesson 23 of
+[Fabric School](course/index.html).
 
 **Compiler.** Either ARM Linux compiler builds both kernels and, through
 `./devkit build`, U-Boot. On the factory target prefer
@@ -185,5 +162,3 @@ The modern workflow also builds and audits the device tree
 (`firmware-modern/verify_dtb.py`, 16 checks, because device-tree mistakes
 usually build and boot) and cross-builds `uImage`, failing on a warning in any
 patched file. Details: [`CONTRIBUTING.md`](../CONTRIBUTING.md).
-
-Back to [Building your own firmware](building.md#change-the-kernel).

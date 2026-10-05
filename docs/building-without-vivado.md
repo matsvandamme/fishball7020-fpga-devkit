@@ -1,10 +1,16 @@
 # Building the firmware without installing Vivado
 
 Vivado, AMD's FPGA design tool, is about **50 GB** and spends **20 to 70
-minutes** in every build; if you are changing a driver, the kernel or the root
-filesystem rather than the FPGA design, you can skip it and install nothing
-from AMD. This page shows how, where to get the pre-built FPGA design it needs,
-and what you give up.
+minutes** in every build. A build that changes a driver, the kernel or the root
+filesystem, not the FPGA design, can skip it and install nothing from AMD: it
+takes the pre-built FPGA design from an XSA. The steps are in
+[build without Vivado](build/build-without-vivado.md); this page is the detail:
+where to get an XSA, what you need installed, and what you give up. The full
+build, with Vivado: [building your own firmware](building.md). What is in the
+bitstream: [the block design](block-design.md).
+
+![The FPGA half of a build comes from one of two places: Vivado 2022.2, about 50 GB installed and 20 to 70 minutes of every build, which builds the XSA; or an XSA you already have, from a release or saved from a full build, passed with --xsa. The XSA holds system_top.bit and ps7_init.c. From it the rest of the build makes the FSBL, U-Boot, the kernel, the root filesystem and BOOT.bin, in minutes, with nothing from AMD installed.](img/build-xsa-light.svg#only-light)
+![The FPGA half of a build comes from one of two places: Vivado 2022.2, about 50 GB installed and 20 to 70 minutes of every build, which builds the XSA; or an XSA you already have, from a release or saved from a full build, passed with --xsa. The XSA holds system_top.bit and ps7_init.c. From it the rest of the build makes the FSBL, U-Boot, the kernel, the root filesystem and BOOT.bin, in minutes, with nothing from AMD installed.](img/build-xsa-dark.svg#only-dark)
 
 ## Steps
 
@@ -49,11 +55,14 @@ rest of the build needs. The FPGA half of a build takes 20–70 minutes and
 rarely changes; the rest (boot loader, kernel, root filesystem, packaging)
 takes minutes. An XSA skips the first half.
 
-Use it if you only change Linux, if you re-run `./devkit setup --target factory` often (it
-throws the Vivado project in `firmware/src/` away, so the XSA is the one piece
-worth keeping), or to freeze the hardware while chasing a software bug. Do not
-use it to change the FPGA design: that needs Vivado. To change only the kernel,
-see [Change the kernel](building.md#change-the-kernel).
+| Use an XSA | Why |
+|---|---|
+| you only change Linux | the FPGA half is unchanged |
+| you re-run `./devkit setup --target factory` often | it throws the Vivado project in `firmware/src/` away, so the XSA is the one piece worth keeping |
+| to freeze the hardware while chasing a software bug | |
+| **not** to change the FPGA design | that needs Vivado |
+
+To change only the kernel, see [Change the kernel](building.md#change-the-kernel).
 
 ## What you need installed
 
@@ -152,18 +161,7 @@ from AMD installed (`XILINX_DIR=/nonexistent`, no `$DISPLAY`).
 `timing.rpt` and `utilization.rpt`, so a stale report cannot vouch for a
 bitstream it never saw. On a tree that was built from source with Vivado,
 regenerate them in about a minute from the implemented design:
-
-```bash
-# run from: the repo root
-cat > firmware/src/hdl/projects/pluto/regen.tcl <<'EOF'
-open_project pluto.xpr
-open_run impl_1
-report_utilization -file utilization.rpt
-report_timing_summary -file timing.rpt
-EOF
-./devkit container shell -c "source tools/env-vivado.sh && cd firmware/src/hdl/projects/pluto \
-    && vivado -mode batch -nojournal -nolog -source regen.tcl"
-```
+[how](build/verify-the-build.md#timing-reports-gone-after-an-import).
 
 ## What can go wrong
 
@@ -176,8 +174,3 @@ fail with a misleading error:
 | An XSA exported without the bitstream | `ERROR: … contains no system_top.bit.` |
 | An XSA for a different chip | `ERROR: that XSA is not for this board's part (xc7z020clg400-2).` |
 | An XSA from a different Vivado version | `ERROR: that XSA was written by a different tool version.` |
-
-## See also
-
-- [Building your own firmware](building.md): the full build, including Vivado
-- [The block design](block-design.md): what is in the bitstream

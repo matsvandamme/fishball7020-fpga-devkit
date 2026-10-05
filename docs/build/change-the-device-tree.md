@@ -9,20 +9,42 @@ The modern tree, `firmware-modern/dts/zynq-pluto-sdr-fishball.dts`, is an
 **overlay** on ADI's `zynq-pluto-sdr.dtsi`: it states only where this board
 differs from an ADALM-Pluto.
 
-```bash
-# run from: firmware-modern/src/linux
-CROSS=arm-linux-gnueabi-      # or arm-linux-gnueabihf-
-make ARCH=arm CROSS_COMPILE=$CROSS DTC_FLAGS=-@ xilinx/zynq-pluto-sdr-fishball.dtb
-# The rename is yours to do: tools/flash.sh looks for the literal name
-# devicetree.dtb and aborts if it is missing.
-cp arch/arm/boot/dts/xilinx/zynq-pluto-sdr-fishball.dtb ../../output/devicetree.dtb
-```
+![ADI's zynq-pluto-sdr.dtsi, which describes an ADALM-Pluto, and this board's overlay zynq-pluto-sdr-fishball.dts, which states only where this board differs, compile into devicetree.dtb. verify_dtb.py runs 16 checks on the built file, and flash --dtb-only puts it on the running board.](../img/build-devicetree-light.svg#only-light)
+![ADI's zynq-pluto-sdr.dtsi, which describes an ADALM-Pluto, and this board's overlay zynq-pluto-sdr-fishball.dts, which states only where this board differs, compile into devicetree.dtb. verify_dtb.py runs 16 checks on the built file, and flash --dtb-only puts it on the running board.](../img/build-devicetree-dark.svg#only-dark)
 
-```bash
-# run from: the repo root
-python3 firmware-modern/verify_dtb.py firmware-modern/output/devicetree.dtb   # stdlib only
-./devkit flash --dtb-only
-```
+=== "firmware-modern/ (6.12)"
+
+    ```bash
+    # run from: firmware-modern/src/linux
+    CROSS=arm-linux-gnueabi-      # or arm-linux-gnueabihf-
+    make ARCH=arm CROSS_COMPILE=$CROSS DTC_FLAGS=-@ xilinx/zynq-pluto-sdr-fishball.dtb
+    # The rename is yours to do: tools/flash.sh looks for the literal name
+    # devicetree.dtb and aborts if it is missing.
+    cp arch/arm/boot/dts/xilinx/zynq-pluto-sdr-fishball.dtb ../../output/devicetree.dtb
+    ```
+
+    ```bash
+    # run from: the repo root
+    python3 firmware-modern/verify_dtb.py firmware-modern/output/devicetree.dtb   # stdlib only
+    ./devkit flash --dtb-only
+    ```
+
+=== "firmware/ (5.15)"
+
+    The factory tree is one flat file,
+    `arch/arm/boot/dts/zynq-pluto-sdr-fishball.dts`.
+
+    ```bash
+    # run from: firmware/
+    DTC_FLAGS=-@ make -C src/linux ARCH=arm \
+      CROSS_COMPILE=arm-linux-gnueabi- zynq-pluto-sdr-fishball.dtb
+    cp src/linux/arch/arm/boot/dts/zynq-pluto-sdr-fishball.dtb output/devicetree.dtb
+    ```
+
+    ```bash
+    # run from: the repo root
+    ./devkit flash --target factory --dtb-only
+    ```
 
 **Check the built `.dtb`, not the `.dts`.** Most of what lands in it comes from
 the dtsi, and two mistakes found here built and booted fine:

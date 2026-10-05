@@ -3,20 +3,18 @@
 The factory firmware runs Buildroot and busybox from a RAM disk: no `apt`,
 nothing survives a reboot, many tools missing. The modern target's root
 filesystem is **Debian 13 (trixie) armhf with systemd** on an ext4 SD-card
-partition ([issue #4](https://github.com/matsvandamme/fishball7020-fpga-devkit/issues/4)),
-and this page explains the design for anyone changing it.
-[`firmware-modern/debian/README.md`](../firmware-modern/debian/README.md) is the
-quick start; [`debian-root-reference.md`](debian-root-reference.md) explains
-each unit and setting.
+partition ([issue #4](https://github.com/matsvandamme/fishball7020-fpga-devkit/issues/4)).
+This page explains the design, for anyone changing it.
+
+| To | See |
+|---|---|
+| rebuild the root and write a card | [rebuild the Debian root](build/rebuild-the-debian-root.md) |
+| start quickly | [`firmware-modern/debian/README.md`](../firmware-modern/debian/README.md) |
+| look up a unit or setting | [`debian-root-reference.md`](debian-root-reference.md) |
 
 ## Building and writing the root
 
-```bash
-# run from: the repo root
-./devkit build --rootfs-only        # -> firmware-modern/debian/rootfs.tar
-sudo ./devkit write-card /dev/sdX   # refuses anything not removable
-```
-
+The commands: [rebuild the Debian root](build/rebuild-the-debian-root.md).
 Rebuild whenever `firmware-modern/debian/overlay/` changes: `write-card`
 refuses a `rootfs.tar` older than the overlay and lists what it would miss.
 

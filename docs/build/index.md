@@ -10,6 +10,9 @@ and Debian) builds **without Vivado**; only a change to the FPGA design needs it
 
 ## The path
 
+![The build path as five boxes joined by arrows: doctor (can this machine build?), setup (fetch the sources, apply the patches), build (the SD-card files, into output/), verify (is the build sane? with --board: is it running?) and flash (over the network, md5-verified). Each is one ./devkit command, run from the repo root.](../img/build-path-light.svg#only-light)
+![The build path as five boxes joined by arrows: doctor (can this machine build?), setup (fetch the sources, apply the patches), build (the SD-card files, into output/), verify (is the build sane? with --board: is it running?) and flash (over the network, md5-verified). Each is one ./devkit command, run from the repo root.](../img/build-path-dark.svg#only-dark)
+
 <div class="grid cards steps" markdown>
 
 -   :material-numeric-1-circle:{ .lg } **[Check your machine can build](check-your-machine.md)**
@@ -57,6 +60,16 @@ and Debian) builds **without Vivado**; only a change to the FPGA design needs it
 
 
     The recommended route for FPGA builds, on any Linux.
+
+-   :material-download-box-outline:{ .lg .middle } **[Install Vivado 2022.2](install-vivado.md)**
+
+
+    Only for an FPGA change: through the container, or on an Ubuntu host.
+
+-   :material-radio:{ .lg .middle } **[Build the FM channelizer example](build-the-fm-channelizer.md)**
+
+
+    A worked example: one FM channel, filtered in the FPGA.
 
 -   :material-debian:{ .lg .middle } **[Rebuild the Debian root](rebuild-the-debian-root.md)**
 

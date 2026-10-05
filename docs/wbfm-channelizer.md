@@ -8,66 +8,22 @@ or as a template for your own FPGA filter.
 
 ## Building it
 
-The default targets **102.1 MHz** (Studio Brussel); the station is a runtime
-setting ([retuning](#retuning-to-another-station)). The coefficients and the
-block-design change both need the FIR IP regenerated, and `build_hdl.tcl` reuses
-an existing `pluto.xpr`, so **delete the project first** or the build silently
-produces the old filter.
+The commands, and the check before flashing:
+[build the FM channelizer example](build/build-the-fm-channelizer.md).
 
-```bash
-# run from: firmware/
-./scripts/setup.sh          # if src/ does not exist yet
-# --hdl-only reuses the kernel, U-Boot and rootfs from a previous FULL build
-# and refuses to run without one - run a plain ./scripts/build_all.sh first.
-(cd src && git apply ../patches/optional/0003-wbfm-channelizer.patch)
-rm -rf src/hdl/projects/pluto/pluto.{xpr,cache,gen,hw,ip_user_files,runs,sim,srcs,sdk}
-./scripts/build_all.sh --hdl-only     # ~20 min instead of 70
-```
-
-It is not applied by default because it narrows RX channel 0 to one broadcast
-channel. Check before flashing `output/` as usual:
-
-```bash
-# run from: firmware/
-grep -A6 "^4. DSP" src/hdl/projects/pluto/utilization.rpt   # expect 96 / 220
-grep -A3 "Design Timing Summary" src/hdl/projects/pluto/timing.rpt
-```
+| | |
+|---|---|
+| default station | **102.1 MHz** (Studio Brussel); the station is a runtime setting ([retuning](#retuning-to-another-station)) |
+| why delete the project first | the coefficients and the block-design change both need the FIR IP regenerated, and `build_hdl.tcl` reuses an existing `pluto.xpr`: without it the build silently produces the old filter |
+| why it is opt-in | it narrows RX channel 0 to one broadcast channel |
+| expected after the build | 96 / 220 DSP48s in `utilization.rpt`, and timing met |
 
 ## Running it
 
-The second rate **engages the filter**: it drives `GP_CONTROL` bit 0, which
-selects the filtered path through the bypass mux. Without it samples arrive
-unfiltered.
-
-```bash
-# run from: the board
-iio_attr -o -c ad9361-phy altvoltage0 frequency 101044000     # RX LO
-iio_attr -i -c ad9361-phy voltage0 sampling_frequency 4224000 # converter rate
-iio_attr -i -c ad9361-phy voltage0 rf_bandwidth 4000000       # analog LPF
-iio_attr -i -c cf-ad9361-lpc voltage0 sampling_frequency 528000   # <- engages the FIR
-```
-
-- **Read the converter rate back.** Anything other than 4224000 puts the channel
-  off-centre.
-- **Check the shifter is in the bitstream:** the LO-leakage spur (always at 0 Hz
-  on a zero-IF receiver) should appear at −1.056 MHz. Still at DC means the
-  flashed bitstream lacks the change.
-- **A/B the filter:** set `cf-ad9361-lpc voltage0 sampling_frequency` back to
-  4224000 to bypass it, then to 528000 again. With a 65 536-point transform:
-
-| | Filter bypassed | Filter engaged |
-|---|---|---|
-| Out-of-band signal at −724 kHz | −66.5 dBFS, 37.8 dB over the floor | gone |
-| Capture RMS | −49.2 dBFS | −78.6 dBFS |
-| Peak sample | 23 LSB | 1 LSB |
-
-`rx_ddc` (the shifter) sits *ahead* of the bypass mux, so an undecimated capture
-from this build is frequency-shifted but unfiltered, not raw.
-
-**The GNU Radio flowgraph `docs/grc/fishball_wbfm_rx.grc` is untested on
-hardware.** It sets both rates from a Python snippet after initialisation,
-because gr-iio does not know about the FPGA decimator. Treat it as a starting
-point, and report in an issue or PR if you run it.
+The four `iio_attr` commands and the A/B check:
+[build the FM channelizer example](build/build-the-fm-channelizer.md#run-it).
+The second rate, 528000 on `cf-ad9361-lpc`, **engages the filter**: it drives
+`GP_CONTROL` bit 0, which selects the filtered path through the bypass mux.
 
 ## Retuning to another station
 
@@ -97,13 +53,12 @@ Instead, shift the channel to DC, then lowpass. With the offset at exactly
 only swaps and sign flips: two registers and a 2-bit counter, no multipliers, no
 NCO (numerically controlled oscillator), no block RAM.
 
-```
-# the Fs/4 shift, sample by sample
-n=0   x  1   ->  ( I,  Q)
-n=1   x -j   ->  ( Q, -I)
-n=2   x -1   ->  (-I, -Q)
-n=3   x +j   ->  (-Q,  I)
-```
+| n | multiply by | (I, Q) becomes |
+|---|---|---|
+| 0 | 1 | ( I,  Q) |
+| 1 | −j | ( Q, −I) |
+| 2 | −1 | (−I, −Q) |
+| 3 | +j | (−Q,  I) |
 
 ## The rate plan
 
@@ -132,22 +87,8 @@ it if you change the rate plan.
 
 ## The datapath
 
-```
-# receive path with the patch applied
-AD9361   LO 101.044 MHz, 4.224 MSPS
-   |     wanted channel at +1.056 MHz;  LO-leak + DC offset at 0
-   v
-axi_ad9361   adc_data_i0 / adc_data_q0
-   |
-   v
-rx_ddc  (ad_fs4_ddc.v)          <- NEW: x exp(-j*pi*n/2), 0 DSPs, 0 BRAM
-   |     wanted channel now at DC;  spur pushed to -1.056 MHz
-   v
-rx_fir_decimator                <- EXISTING block, new coefficients
-   |     321-tap lowpass, Fpass 100 kHz, Fstop 175 kHz, then /8
-   v
-cpack -> adc_dma -> USB         528 kSPS, the channel and nothing else
-```
+![The receive path with the patch applied, top to bottom. The AD9361, with its LO at 101.044 MHz and 4.224 MSPS: the wanted channel sits at +1.056 MHz, the LO leak and DC offset at 0. axi_ad9361 passes adc_data_i0 and adc_data_q0. rx_ddc (ad_fs4_ddc.v) is new: it multiplies by exp(-j pi n/2), with 0 DSPs and 0 block RAM, so the wanted channel is now at DC and the spur is pushed to -1.056 MHz. rx_fir_decimator is the existing block with new coefficients: a 321-tap lowpass, Fpass 100 kHz, Fstop 175 kHz, then divide by 8. cpack, adc_dma and USB deliver 528 kSPS: the channel and nothing else.](img/build-wbfm-datapath-light.svg#only-light)
+![The receive path with the patch applied, top to bottom. The AD9361, with its LO at 101.044 MHz and 4.224 MSPS: the wanted channel sits at +1.056 MHz, the LO leak and DC offset at 0. axi_ad9361 passes adc_data_i0 and adc_data_q0. rx_ddc (ad_fs4_ddc.v) is new: it multiplies by exp(-j pi n/2), with 0 DSPs and 0 block RAM, so the wanted channel is now at DC and the spur is pushed to -1.056 MHz. rx_fir_decimator is the existing block with new coefficients: a 321-tap lowpass, Fpass 100 kHz, Fstop 175 kHz, then divide by 8. cpack, adc_dma and USB deliver 528 kSPS: the channel and nothing else.](img/build-wbfm-datapath-dark.svg#only-dark)
 
 TX is unchanged. **Channel 1 is not a usable second receiver with this build.**
 The patch pins `rx_filt_chan` to 2 regardless of patch `0021` (its coefficients

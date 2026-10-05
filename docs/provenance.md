@@ -6,23 +6,11 @@ that reconstruction, the evidence, and how to check it yourself.
 
 ## Check it yourself
 
-```bash
-# run from: the repo root
-./devkit verify --target factory --board  # is the card running what you built?
-iio_info -u ip:fishball.local | grep -E 'fw_version|hw_model'
-
-# against a devicetree.dtb from a factory SD card (FACTORY/): only
-# gpio-line-names (0008) and adi,tx-attenuation-mdB (0011) should differ
-diff <(dtc -I dtb -O dts FACTORY/devicetree.dtb) \
-     <(dtc -I dtb -O dts firmware/output/devicetree.dtb)
-```
-
-```bash
-# run from: the board. The configuration the running kernel was built with
-zcat /proc/config.gz
-```
-
-Compare that output between a factory board and your build. More in
+The commands: [compare with the factory firmware](build/check-provenance.md).
+They check that the card runs what you built, diff a factory `devicetree.dtb`
+against yours (only `gpio-line-names` (`0008`) and `adi,tx-attenuation-mdB`
+(`0011`) should differ), and read the running kernel's configuration from
+`/proc/config.gz`, to compare between a factory board and your build. More in
 [`firmware/README.md`](../firmware/README.md) and
 [Verify your build is actually running](flashing.md#verify-your-build-is-actually-running).
 

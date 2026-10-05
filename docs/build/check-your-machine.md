@@ -15,6 +15,28 @@ It checks the compilers, host packages, disk and the sources, in about a
 second. Every check is a failure that once cost somebody an hour: run it before
 the build, not during.
 
+**You should see** every line say `ok`, as on a machine that can build the
+modern firmware:
+
+```
+=== preflight ===
+  ok     kernel source
+  ok     U-Boot source
+  ok     get_default_envs.sh
+  ok     embeddedsw
+  ok     bootgen source
+  ok     bare-metal cross (FSBL)
+  ok     ARM Linux cross (U-Boot, kernel): arm-linux-gnueabihf-gcc
+  ok     make
+  ok     flex (U-Boot, kernel)
+  ok     bison (U-Boot, kernel)
+  ok     mkimage (uImage)
+  ok     bc (kernel)
+  ok     unzip
+  ARM Linux compiler: arm-linux-gnueabihf-gcc
+=== preflight passed; nothing built (--preflight-only) ===
+```
+
 | Missing | What to install |
 |---|---|
 | `arm-none-eabi-gcc`, or one without the hard-float multilib (*"uses VFP register arguments"*) | `gcc-arm-none-eabi` + `libnewlib-arm-none-eabi` |

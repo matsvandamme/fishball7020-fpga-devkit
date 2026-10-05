@@ -18,6 +18,9 @@ sudo ./devkit write-card /dev/sdX   # refuses anything not removable
 `write-card` refuses a `rootfs.tar` older than the overlay, and lists what it
 would miss. The root cannot be swapped over the network: it takes a card.
 
+![The two partitions of the card: a 128 MB FAT boot partition holding BOOT.bin, uImage, devicetree.dtb and uEnv.txt, and a Debian root partition on the rest of the card.](../img/start-card-light.svg#only-light)
+![The two partitions of the card: a 128 MB FAT boot partition holding BOOT.bin, uImage, devicetree.dtb and uEnv.txt, and a Debian root partition on the rest of the card.](../img/start-card-dark.svg#only-dark)
+
 | Where | What |
 |---|---|
 | `firmware-modern/debian/packages.txt` | every package, with the reason for each unobvious one |

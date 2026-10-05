@@ -1,9 +1,9 @@
 # The Debian root: how it works, and why
 
-Reference for [`firmware-modern/debian/`](../firmware-modern/debian/README.md),
-which is the quick start: what the overlay's units and settings do, and what goes
-wrong without each. Why the board moved off Buildroot is in
-[`debian-rootfs.md`](debian-rootfs.md).
+What the Debian root's units and settings do, and what goes wrong without
+each. The quick start is [`firmware-modern/debian/`](../firmware-modern/debian/README.md);
+to rebuild the root, see [rebuild the Debian root](build/rebuild-the-debian-root.md).
+Why the board moved off Buildroot is in [`debian-rootfs.md`](debian-rootfs.md).
 
 ## Transmitter safety at boot
 
@@ -30,11 +30,11 @@ says why, and `systemctl start iiod` re-runs the quiesce first.
 The USB cable carries a network link (`usb0`, the board at `192.168.2.1`), a
 serial console and libiio, independently of Ethernet:
 
-```
-fishball-usb-gadget.service   Before=iiod.service   builds the USB gadget, mounts FunctionFS
-fishball-usb-bind.service     After=iiod.service    attaches the gadget to the USB controller, brings usb0 up
-serial-getty@ttyGS0.service                         a login console on the same cable
-```
+| Unit | Ordering | What it does |
+|---|---|---|
+| `fishball-usb-gadget.service` | `Before=iiod.service` | builds the USB gadget, mounts FunctionFS |
+| `fishball-usb-bind.service` | `After=iiod.service` | attaches the gadget to the USB controller, brings usb0 up |
+| `serial-getty@ttyGS0.service` | | a login console on the same cable |
 
 **FunctionFS** lets `iiod` serve libiio over USB from userspace. The gadget can
 be attached only after `iiod` has written its USB descriptors (earlier fails with
@@ -158,25 +158,19 @@ rm -f /var/log/journal/*/system@*.journal~
 
 ## A rare boot hang: RCU stops early in boot
 
-**Symptom.** After a reboot the board never comes back (no USB device, console or
-network), but the USER LED keeps blinking steadily: the kernel heartbeat, so the
-kernel runs and userspace has stalled. Seen once in about 25 boots.
+| | |
+|---|---|
+| symptom | after a reboot the board never comes back (no USB device, console or network), but the USER LED keeps blinking steadily: the kernel heartbeat, so the kernel runs and userspace has stalled. Seen once in about 25 boots |
+| the journal of that boot (`journalctl -b -1 -k` after a power cycle) | `WARNING ... at kernel/rcu/tree.c:3094 call_rcu` about 9 s in, then `INFO: task (mount) blocked for more than 20 seconds` (mounting `/mnt/jffs2`) and `dev-ttyGS0.device` timing out |
+| cause | **RCU** (read-copy-update) is how the kernel frees shared data safely; once it stops, anything waiting on it waits forever. Why it stops, a kernel bug or a hardware glitch, is unknown |
+| fix | power-cycle. The serial console on the `DEBUG` port would show the boot as it hangs |
 
-**The journal of that boot** (`journalctl -b -1 -k` after a power cycle) shows
-`WARNING ... at kernel/rcu/tree.c:3094 call_rcu` about 9 s in, then
-`INFO: task (mount) blocked for more than 20 seconds` (mounting `/mnt/jffs2`) and
-`dev-ttyGS0.device` timing out. **RCU** (read-copy-update) is how the kernel
-frees shared data safely; once it stops, anything waiting on it waits forever.
-The cause, a kernel bug or a hardware glitch, is unknown.
-
-**Fix:** power-cycle. **If it happens again**, save the evidence first:
+**If it happens again**, save the evidence first:
 
 ```bash
 # run from: the board, after the power cycle
 journalctl -b -1 -k --no-pager > /root/hang-$(date +%s).txt
 ```
-
-The serial console on the `DEBUG` port would show the boot as it hangs.
 
 ## SD card writes
 

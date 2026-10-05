@@ -10,6 +10,9 @@ build in a pinned Ubuntu 22.04 container, so your distribution does not matter,
 and the `BOOT.bin` comes out byte-identical to a host build. **This is the
 recommended way to build the FPGA.**
 
+![Inside your Linux host, the repo is mounted into the container at its own absolute path and /tools/Xilinx, holding Vivado 2022.2, is mounted read-only. The container, a pinned Ubuntu 22.04 image of about 1.4 GB, runs doctor, setup, build and build --hdl-only. flash, selftest, gpio-check and verify --board run on the host only.](../img/build-container-light.svg#only-light)
+![Inside your Linux host, the repo is mounted into the container at its own absolute path and /tools/Xilinx, holding Vivado 2022.2, is mounted read-only. The container, a pinned Ubuntu 22.04 image of about 1.4 GB, runs doctor, setup, build and build --hdl-only. flash, selftest, gpio-check and verify --board run on the host only.](../img/build-container-dark.svg#only-dark)
+
 ```bash
 # run from: the repo root
 ./devkit container build-image                       # once, ~3 min
@@ -24,18 +27,10 @@ recommended way to build the FPGA.**
 **Build in the container; flash from the host:** `flash`, `selftest`,
 `gpio-check` and `verify --board` are host commands.
 
-??? question "No Vivado installed yet?"
-    Download the Vivado 2022.2 installer from AMD (it needs an account), then let
-    the container run it:
+**No Vivado installed yet?** [Install Vivado 2022.2](install-vivado.md) first:
+the container runs the installer too. Budget an hour.
 
-    ```bash
-    # run from: the repo root
-    sudo mkdir -p /tools/Xilinx && sudo chown "$USER" /tools/Xilinx
-    ./devkit container install ~/Downloads/Xilinx_Unified_2022.2_1014_8888_Lin64.bin
-    ```
-
-    Choose **Vivado**, only **Zynq-7000** under device families, path
-    `/tools/Xilinx`. Budget an hour. Details:
-    [installing Vivado in the first place](../building-in-a-container.md#installing-vivado-in-the-first-place).
+What is in the image, why the output matches a host build, and other operating
+systems: [building in a container](../building-in-a-container.md).
 
 **Next:** [check the build](verify-the-build.md).

@@ -21,7 +21,8 @@ Linux) and a previous full factory build.
     clock.
 
 2. **Make the change**, in `system_bd.tcl` or the block design
-   ([what is safe to change](../block-design.md#what-you-can-change)).
+   ([what is safe to change](../block-design.md#what-you-can-change)). To edit
+   in the Vivado GUI instead, see [below](#editing-in-the-vivado-gui).
 
 3. **Delete the Vivado project, then rebuild only the FPGA:**
 
@@ -45,6 +46,32 @@ Linux) and a previous full factory build.
 
 **You should see:** the DSP and LUT counts in `verify`'s FPGA section change
 the way your design should.
+
+![Upstream's datapath in two columns under axi_ad9361. Receive: channel 0 goes through rx_fir_decimator, divide by 8, into cpack, while channel 1 connects directly with no filter; cpack feeds adc_dma. Transmit is the mirror: dac_dma, tx_upack, tx_fir_interpolator times 8 on channel 0, channel 1 direct. Green circles mark where your logic goes: on each channel-1 connection, and before and after each FIR block.](../img/build-insert-points-light.svg#only-light)
+![Upstream's datapath in two columns under axi_ad9361. Receive: channel 0 goes through rx_fir_decimator, divide by 8, into cpack, while channel 1 connects directly with no filter; cpack feeds adc_dma. Transmit is the mirror: dac_dma, tx_upack, tx_fir_interpolator times 8 on channel 0, channel 1 direct. Green circles mark where your logic goes: on each channel-1 connection, and before and after each FIR block.](../img/build-insert-points-dark.svg#only-dark)
+
+*Where a block can go, on upstream's wiring. The default build also sends
+receive channel 1 through the decimator
+([the design as built](../block-design.md#a-samples-journey)).*
+
+## Editing in the Vivado GUI
+
+The block design exists only after a first full build. Open it:
+
+```bash
+# run from: firmware/
+source ../tools/env-vivado.sh
+cd src/hdl/projects/pluto
+vivado pluto.xpr
+```
+
+In the GUI: **Sources → Design Sources → system_top → system_i**, right-click
+**Open Block Design**.
+
+**After a GUI edit**, save the block design (`Ctrl-S`; unsaved edits are
+silently left out), Validate Design (F6) and close Vivado (it holds a project
+lock), then run `./scripts/build_all.sh` from `firmware/`. A GUI edit saved
+into `pluto.xpr` is picked up without deleting the project.
 
 Worked examples: [an FM channelizer in the FPGA](../wbfm-channelizer.md) and the
 [sample-locked GPIO outputs](../tx-gpio-bitmap.md). Every block, clock and trap:
