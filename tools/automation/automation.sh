@@ -5,7 +5,7 @@
 #   ./devkit automation install      # put the server on the board, as a service
 #   ./devkit automation status       # the board, the radio, the clock, who holds the buffers
 #   ./devkit automation clock --measure          # time the reference against the board's crystal
-#   ./devkit automation capture loop --samples 2e6 --channels 1,2
+#   ./devkit automation capture loop --samples 2e6 --channels 1,2   # writes loop.sigmf-data/-meta here
 #   ./devkit automation smoke        # an end-to-end check; receive only
 #   ./devkit automation mute         # both transmitters to the floor, read back
 #   ./devkit automation test         # the unit tests, against a fake board (no board needed)
@@ -72,7 +72,8 @@ case "$cmd" in
     test)
         venv; exec "$HERE/.venv/bin/python" "$HERE/tests/test_automation.py" "$@" ;;
     status|clock|capture|smoke|mute)
-        venv; cd "$HERE"; exec "$HERE/.venv/bin/python" -m fishball_automation.cli --host "$BOARD" "$cmd" "$@" ;;
+        # No cd: a capture's PATH is relative to where you ran the command.
+        venv; PYTHONPATH="$HERE${PYTHONPATH:+:$PYTHONPATH}" exec "$HERE/.venv/bin/python" -m fishball_automation.cli --host "$BOARD" "$cmd" "$@" ;;
     help|-h|--help)
         sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//' ;;
     *)

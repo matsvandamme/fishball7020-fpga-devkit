@@ -52,7 +52,8 @@ def main(argv=None):
     c.add_argument("--measure", action="store_true")
     c.add_argument("--seconds", type=float, default=30.0)
     k = sub.add_parser("capture", help="record on the board and fetch a SigMF recording")
-    k.add_argument("path", help="output name: writes PATH.sigmf-data and PATH.sigmf-meta")
+    k.add_argument("path", help="output name, relative to where you run the command: "
+                                "writes PATH.sigmf-data and PATH.sigmf-meta")
     k.add_argument("--samples", type=float, required=True, help="samples per channel, e.g. 2e6")
     k.add_argument("--channels", default="1", help="1, 2 or 1,2 (default: 1)")
     sub.add_parser("smoke", help="an end-to-end check: status, a capture, a stream, transmitters still muted")
@@ -70,7 +71,7 @@ def main(argv=None):
                 rec = board.capture(samples=int(a.samples), channels=[int(x) for x in a.channels.split(",")], path=a.path)
                 print(f"{rec.samples} samples per channel, RX{', RX'.join(map(str, rec.channels))}, "
                       f"{rec.sample_rate_hz / 1e6:g} MS/s at {rec.rx_lo_hz / 1e6:g} MHz, {rec.lost_samples} lost")
-                print(f"{rec.data_path}\n{rec.meta_path}")
+                print(f"{os.path.abspath(rec.data_path)}\n{os.path.abspath(rec.meta_path)}")
             elif a.cmd == "smoke":
                 smoke(board)
             elif a.cmd == "mute":
