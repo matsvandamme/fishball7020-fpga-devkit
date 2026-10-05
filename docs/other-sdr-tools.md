@@ -49,7 +49,7 @@ firmware builds: <https://github.com/maia-sdr/plutosdr-fw> · write-up:
 [inspectrum](https://github.com/miek/inspectrum) opens a recorded IQ file as a
 spectrogram with cursors: measure a burst's length, read a symbol rate, extract
 and demodulate a slice. This repo's capture tools
-([`tools/sigmf-capture.py`](capturing-iq.md) and the MCP server's
+([`tools/sigmf-capture.py`](capturing-iq.md) and the [MCP server](mcp-server.md)'s
 `sdr_capture_iq`) write SigMF, which it reads:
 
 ```bash

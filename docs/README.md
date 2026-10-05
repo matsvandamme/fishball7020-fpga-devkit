@@ -32,7 +32,8 @@ covers getting a board running.
 | [Watching a sweep live: chirp-view](chirp-view.md) | sweep TX1 and watch RX1 receive it: waterfall, response, eight sweep modes, mirror cancelling |
 | [Measured performance](measured-performance.md) | know the loopback numbers: gain accuracy, harmonics, isolation |
 | [Throughput and modulation quality](modulation-and-throughput.md) | know how fast you can stream, and what limits it |
-| [The board in a Claude Code pane](claude-code-pane.md) | watch the board's links, temperatures, radio settings, CI and build from Claude Code (`./devkit claude-pane`); reads only |
+| [The board in a Claude Code pane](claude-code-pane.md) | watch the board's links, temperatures, radio settings, CI and build from Claude Code (`./devkit claude-pane start`), and how the plugin works; reads only |
+| [Claude and the radio: the MCP server](mcp-server.md) | let Claude tune, scan, capture and transmit through the sibling Fishball7020-mcp server: install, connect, the transmit gate |
 
 ## Hardware and I/O
 

@@ -42,7 +42,7 @@
 | find a port, a pin or a part | **[Hardware and I/O](https://matsvandamme.github.io/fishball7020-fpga-devkit/hw/)** |
 | change the kernel, a driver or the FPGA | **[Build your own firmware](https://matsvandamme.github.io/fishball7020-fpga-devkit/build/)** |
 | learn SDR and FPGA from zero | **[Fabric School](https://matsvandamme.github.io/fishball7020-fpga-devkit/course/)**: 54 lessons |
-| watch the board from Claude Code | **[The board in a Claude Code pane](https://matsvandamme.github.io/fishball7020-fpga-devkit/claude-code-pane/)**: `./devkit claude-pane install`, then `/fishball` |
+| work on the board with Claude Code | **[The board in a Claude Code pane](https://matsvandamme.github.io/fishball7020-fpga-devkit/claude-code-pane/)**: `./devkit claude-pane start`; **[the MCP server](https://matsvandamme.github.io/fishball7020-fpga-devkit/mcp-server/)** lets Claude use the radio |
 | fix a problem | **[Troubleshooting](https://matsvandamme.github.io/fishball7020-fpga-devkit/troubleshooting/)** |
 
 ## 🌟 Highlights
@@ -147,4 +147,4 @@ The repository's own scripts, patches and documentation are GPL-2.0; downloaded 
 - **[Using this board in your own project](docs/your-own-project.md)**: where your code can live, and what each place costs.
 - **[The modulation gallery](docs/modulation-gallery.md)** and **[measured performance](docs/measured-performance.md)**: what the board puts on the air, measured.
 - **[What is on the board](docs/hardware.md)** and the [vendor schematic](docs/vendor/README.md).
-- The sibling **[Fishball7020-mcp](https://github.com/matsvandamme/Fishball7020-mcp)** drives the radio from an AI assistant.
+- The sibling **[Fishball7020-mcp](https://github.com/matsvandamme/Fishball7020-mcp)** drives the radio from an AI assistant: [how to connect it](docs/mcp-server.md).

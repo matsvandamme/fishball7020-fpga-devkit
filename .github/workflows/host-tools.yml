@@ -168,7 +168,8 @@ jobs:
   # will, and `claude plugin test` runs its tests against the real engine with
   # the collector faked. Neither needs a login. The plugin API is early access
   # and moves between releases, so this pins the version it was written
-  # against; raise the pin on purpose, and run the tests when you do.
+  # against; raise the pin on purpose, with TESTED in claude_pane.py, and run
+  # the tests when you do.
   claude-pane:
     runs-on: ubuntu-latest
     steps:
@@ -182,6 +183,8 @@ jobs:
         run: |
           claude plugin validate tools/claude-pane
           claude plugin test tools/claude-pane
+      - name: devkit claude-pane start hands its options to Claude Code
+        run: ./devkit claude-pane start --version | grep -F "(Claude Code)"
 
   hdl-sim:
     # Simulating the custom HDL needs only Icarus Verilog, so unlike synthesis

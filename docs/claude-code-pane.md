@@ -37,20 +37,28 @@ The words, first:
 Without the last three, the GitHub section shows `gh`'s error, the libiio
 link stays ○ and uptime is left out; the rest still works.
 
-## Load it
+## Start it
 
 ```bash
 # run from: the repo root
+./devkit claude-pane start          # Claude Code here, with the pane open
 ./devkit claude-pane                # where the plugin is, and whether it is installed
 ./devkit claude-pane install        # load it in every Claude Code session
 ./devkit claude-pane uninstall      # stop loading it
 ./devkit claude-pane test           # its manifest check and tests (needs `claude`)
 ```
 
+`start` runs Claude Code in the repo root, so the devkit's agent skill loads
+too, with the plugin for that session (`claude --plugin-dir tools/claude-pane`)
+and `/fishball` as its first command. Options after `start` go to Claude Code,
+before that command: `./devkit claude-pane start --model sonnet`. It warns when
+your Claude Code is not the version CI tests against.
+
 `install` adds `tools/claude-pane` to `CLAUDE_CODE_PLUGIN_DIRS` in the `env`
-block of `~/.claude/settings.json`, and changes nothing else in that file. For
-one session only, start Claude Code with `claude --plugin-dir tools/claude-pane`.
-Then type `/fishball`.
+block of `~/.claude/settings.json`, and changes nothing else in that file.
+Every Claude Code session started afterwards loads it, wherever you start it;
+type `/fishball` to open the pane. `start` then leaves out `--plugin-dir`, so
+the plugin is not loaded twice.
 
 **You should see:** the VMAT mark and `Fishball7020` at the top, then four
 sections filling in within a few seconds: 📡 Board, 📻 Radio, 🐙 GitHub and
@@ -78,6 +86,55 @@ passing to failing or back (a run on a pull request's branch counts for
 neither). A read that fails once is not reported as a disconnect.
 
 `R` or the Refresh button reads everything at once.
+
+## How it works
+
+A Claude Code plugin is a folder that Claude Code loads when it starts. This
+one has three parts:
+
+```mermaid
+flowchart TB
+    subgraph cc [Claude Code]
+        hooks["hooks/register.tsx"]
+        pane["the /fishball pane,<br/>status line and alerts"]
+        hooks --> pane
+    end
+    hooks <-- "runs it every 10 s or 3 min,<br/>reads one JSON object back" --> collect["bin/collect.py<br/>on your PC"]
+    collect --> board[("the board<br/>iiod, ssh")]
+    collect --> github[("GitHub<br/>gh")]
+    collect --> checkout[("your checkout<br/>git, ./devkit status")]
+```
+
+1. **The manifest**, [`.claude-plugin/plugin.json`](../tools/claude-pane/.claude-plugin/plugin.json),
+   names the plugin (`fishball-stats`), its two [settings](#settings) and its
+   hooks module.
+2. **The hooks module**, [`hooks/register.tsx`](../tools/claude-pane/hooks/register.tsx),
+   answers events from Claude Code:
+    - when a session starts, it registers `/fishball` and starts a slow timer:
+      a board-only read once a minute, for the status line;
+    - `/fishball` opens the pane and switches to the fast timers: board and
+      radio every 10 s, GitHub and the build every 3 min;
+    - each timer runs the collector and merges what it prints into the
+      session's state; a change there redraws the pane, and a transition (the
+      board connecting, a die crossing a level, CI on `main` turning) becomes
+      an alert;
+    - closing the pane goes back to the slow timer.
+3. **The collector**, [`bin/collect.py`](../tools/claude-pane/bin/collect.py),
+   does all the reading, with the devkit's own tools: `board_addr.py` finds the
+   board, `iiod_min.py` speaks to iiod and `board_info.py` names the firmware.
+   It prints one JSON object. Each section is read on its own, inside a 20 s
+   deadline, so a missing board or a logged-out `gh` empties only its own
+   section.
+
+The hooks module is TypeScript, and Claude Code runs it in a sandbox of its
+own, without Node: it reaches timers, processes and the screen only through
+Claude Code's interface. That is why the reading is a Python program it
+starts, and why you can run that program yourself and see exactly what the
+pane sees.
+
+In an interactive session Claude Code watches the plugin's folder: saving a
+file reloads the hooks module. The pane keeps its last snapshot across a
+reload, because that lives in the session's state, not in the module.
 
 ## How it finds the board
 

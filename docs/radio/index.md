@@ -105,6 +105,11 @@ pages with every measurement are under [Reference](#reference).
 
     A pane with its links, temperatures, radio settings and CI. Reads only.
 
+-   :material-robot-happy-outline:{ .lg } **[Let Claude use the radio](let-claude-use-the-radio.md)**
+
+
+    Connect the MCP server and ask Claude to tune, scan and capture.
+
 </div>
 
 ## Reference
@@ -114,6 +119,7 @@ The full pages, with every measurement and caveat:
 [capturing IQ](../capturing-iq.md) ·
 [the automation server](../automation.md) ·
 [the Claude Code pane](../claude-code-pane.md) ·
+[the MCP server](../mcp-server.md) ·
 [SDR++](../sdrpp.md) ·
 [ADS-B](../adsb.md) ·
 [other SDR tools](../other-sdr-tools.md) ·

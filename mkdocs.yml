@@ -144,6 +144,7 @@ nav:
       - Beamform across two boards: radio/beamform-two-boards.md
       - Check the radio is healthy: radio/check-the-radio.md
       - Watch the board from Claude Code: radio/watch-from-claude-code.md
+      - Let Claude use the radio: radio/let-claude-use-the-radio.md
       - Reference:
           - Your own project: your-own-project.md
           - Capturing IQ: capturing-iq.md
@@ -160,6 +161,7 @@ nav:
           - Faster streaming, what was tried: streaming-paths.md
           - The automation server: automation.md
           - The board in a Claude Code pane: claude-code-pane.md
+          - "Claude and the radio: the MCP server": mcp-server.md
   - Hardware and I/O:
       - hw/index.md
       - Which port is which: hw/which-port-is-which.md
