@@ -117,34 +117,70 @@ nav:
           - Writing the card on Windows: windows-sd-card.md
           - How it works: how-it-works.md
   - Using the radio:
-      - Your own project: your-own-project.md
-      - Capturing IQ: capturing-iq.md
-      - Using SDR++: sdrpp.md
-      - Aircraft (ADS-B): adsb.md
-      - Other SDR tools: other-sdr-tools.md
-      - MATLAB: matlab.md
-      - Both receive channels: both-receive-channels.md
-      - Cyclic buffers and triggers: cyclic-buffers.md
-      - "Watching a sweep live: chirp-view": chirp-view.md
-      - Modulation gallery: modulation-gallery.md
-      - Measured performance: measured-performance.md
-      - Throughput and modulation: modulation-and-throughput.md
-      - Faster streaming, what was tried: streaming-paths.md
+      - radio/index.md
+      - Choose where your code runs: radio/choose-where-code-runs.md
+      - Talk to the board from Python: radio/talk-from-python.md
+      - Capture IQ to a file: radio/capture-iq.md
+      - Watch a band in SDR++: radio/watch-in-sdrpp.md
+      - Stream 20 MS/s to SDR++: radio/stream-20-msps.md
+      - Track aircraft (ADS-B): radio/track-aircraft.md
+      - Receive on both channels: radio/receive-both-channels.md
+      - Transmit a waveform on repeat: radio/transmit-on-repeat.md
+      - Send a burst on a trigger: radio/burst-on-trigger.md
+      - Watch a sweep live: radio/watch-a-sweep.md
+      - Use MATLAB: radio/use-matlab.md
+      - Check the radio is healthy: radio/check-the-radio.md
+      - Reference:
+          - Your own project: your-own-project.md
+          - Capturing IQ: capturing-iq.md
+          - Using SDR++: sdrpp.md
+          - Aircraft (ADS-B): adsb.md
+          - Other SDR tools: other-sdr-tools.md
+          - MATLAB: matlab.md
+          - Both receive channels: both-receive-channels.md
+          - Cyclic buffers and triggers: cyclic-buffers.md
+          - "Watching a sweep live: chirp-view": chirp-view.md
+          - Modulation gallery: modulation-gallery.md
+          - Measured performance: measured-performance.md
+          - Throughput and modulation: modulation-and-throughput.md
+          - Faster streaming, what was tried: streaming-paths.md
   - Hardware and I/O:
-      - What is on the board: hardware.md
-      - GPIO: gpio.md
-      - Sample-locked GPIO: tx-gpio-bitmap.md
-      - The USER LED: user-led.md
-      - Vendor schematic: vendor/README.md
+      - hw/index.md
+      - Which port is which: hw/which-port-is-which.md
+      - Wire something to the JP5 header: hw/wire-to-jp5.md
+      - Toggle a GPIO pin from Linux: hw/toggle-a-gpio.md
+      - Make pins follow the transmit samples: hw/pins-follow-transmit.md
+      - Control the USER LED: hw/control-the-user-led.md
+      - Use an external reference clock: hw/external-reference-clock.md
+      - Check which reference the radio uses: hw/check-the-reference.md
+      - Find a part on the schematic: hw/find-a-part.md
+      - Reference:
+          - What is on the board: hardware.md
+          - GPIO: gpio.md
+          - Sample-locked GPIO: tx-gpio-bitmap.md
+          - The USER LED: user-led.md
+          - Vendor schematic: vendor/README.md
   - Building:
-      - Building your own firmware: building.md
-      - Building in a container: building-in-a-container.md
-      - Building without Vivado: building-without-vivado.md
-      - The stock block design: block-design.md
-      - An FM channelizer in the FPGA: wbfm-channelizer.md
-      - Changing the kernel: kernel.md
-      - The modern kernel: modern-kernel.md
-      - Why Debian: debian-rootfs.md
-      - The Debian root reference: debian-root-reference.md
-      - Provenance: provenance.md
+      - build/index.md
+      - Check your machine can build: build/check-your-machine.md
+      - Build without Vivado: build/build-without-vivado.md
+      - Check the build: build/verify-the-build.md
+      - Put it on the board: build/flash-your-build.md
+      - Change a kernel driver: build/change-a-driver.md
+      - Change the device tree: build/change-the-device-tree.md
+      - Add your own logic to the FPGA: build/add-fpga-logic.md
+      - Build with Vivado in a container: build/build-in-a-container.md
+      - Rebuild the Debian root: build/rebuild-the-debian-root.md
+      - Compare with the factory firmware: build/check-provenance.md
+      - Reference:
+          - Building your own firmware: building.md
+          - Building in a container: building-in-a-container.md
+          - Building without Vivado: building-without-vivado.md
+          - The stock block design: block-design.md
+          - An FM channelizer in the FPGA: wbfm-channelizer.md
+          - Changing the kernel: kernel.md
+          - The modern kernel: modern-kernel.md
+          - Why Debian: debian-rootfs.md
+          - The Debian root reference: debian-root-reference.md
+          - Provenance: provenance.md
   - Fabric School course: course/index.html
