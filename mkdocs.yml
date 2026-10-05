@@ -92,16 +92,30 @@ markdown_extensions:
   # === "fish" / === "bash" content tabs
   - pymdownx.tabbed:
       alternate_style: true
+  # :material-...: icons on the home page cards and in callouts
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
   - Home: index.md
   - Getting started:
-      - How it works: how-it-works.md
-      - Transmitter safety: transmitter-safety.md
-      - Reaching the board: networking.md
-      - Flashing the board: flashing.md
-      - Writing the card on Windows: windows-sd-card.md
+      - start/index.md
+      - Check you have the right board: start/right-board.md
+      - Gather what you need: start/what-you-need.md
+      - Put the firmware on a card: start/write-the-card.md
+      - Connect and find the board: start/connect.md
+      - Check what it runs: start/check-the-firmware.md
+      - Before you transmit: start/before-you-transmit.md
+      - Change the IP address or name: start/change-the-address.md
+      - Log in with a key: start/log-in-with-a-key.md
       - Troubleshooting: troubleshooting.md
+      - Reference:
+          - Transmitter safety: transmitter-safety.md
+          - Networking: networking.md
+          - Flashing: flashing.md
+          - Writing the card on Windows: windows-sd-card.md
+          - How it works: how-it-works.md
   - Using the radio:
       - Your own project: your-own-project.md
       - Capturing IQ: capturing-iq.md

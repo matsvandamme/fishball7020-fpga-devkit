@@ -1,34 +1,70 @@
+---
+hide:
+  - navigation
+  - toc
+---
+
 # Fishball7020 FPGA Devkit
 
-Buildable firmware for a two-channel software-defined radio that ships without
-any: a Zynq XC7Z020 and an AD9361, sold as PlutoSky R1, 7020-SDR, Fishball7020
-and Fish-Wan. Every file on the SD card rebuilds from source, and you can put
-your own logic in the radio's datapath. This site is the documentation; the
-[repository](https://github.com/matsvandamme/fishball7020-fpga-devkit) has the
-code and the [README](../README.md) gets a board running.
+<p class="lead">Buildable firmware for a two-channel software-defined radio that ships
+without any: a Zynq XC7Z020 and an AD9361, sold as PlutoSky R1, 7020-SDR,
+Fishball7020 and Fish-Wan. Every file on the SD card rebuilds from source, and
+you can put your own logic in the radio's datapath.</p>
+
+## What do you want to do?
 
 <div class="grid cards" markdown>
 
-- **[Fabric School](course/index.html)**
+-   :material-flag-checkered:{ .lg .middle } **Get a board running**
 
-    A ground-up course in SDR and the FPGA inside this board: 54 lessons, from
-    what a radio is to your own logic in the AD9361 datapath, with 23 live
-    calculators. Assumes no Verilog, no Vivado and no signal processing.
+    ---
 
-- **[Using this board in your own project](your-own-project.md)**
+    Six short steps from the box to a working radio.
 
-    Your code can live on your PC, in the board's Linux, in the kernel or in the
-    FPGA. What each costs, and how to choose. Start here if the board works.
+    [:octicons-arrow-right-24: Start here](start/index.md)
 
-- **[Transmitter safety](transmitter-safety.md)**
+-   :material-radio-tower:{ .lg .middle } **Use the radio**
 
-    Read before anything radiates: this board has a power amplifier, and its
-    receiver survives only +2.5 dBm.
+    ---
 
-- **[Prebuilt firmware](https://github.com/matsvandamme/fishball7020-fpga-devkit/releases)**
+    Capture IQ, SDR++, aircraft, a live sweep, MATLAB, your own code.
+
+    [:octicons-arrow-right-24: Your own project](your-own-project.md)
+
+-   :material-alert-octagon-outline:{ .lg .middle } **Transmit safely**
+
+    ---
+
+    This board has a power amplifier, and its receiver survives only +2.5 dBm.
+
+    [:octicons-arrow-right-24: Before you transmit](start/before-you-transmit.md)
+
+-   :material-hammer-wrench:{ .lg .middle } **Build your own firmware**
+
+    ---
+
+    Kernel, drivers and Debian with no Vivado; the FPGA with it.
+
+    [:octicons-arrow-right-24: Building](building.md)
+
+-   :material-school-outline:{ .lg .middle } **Learn SDR and the FPGA**
+
+    ---
+
+    Fabric School: 54 lessons, from what a radio is to your own logic in the
+    AD9361 datapath, with 23 live calculators. Assumes no Verilog, no Vivado
+    and no signal processing.
+
+    [:octicons-arrow-right-24: The course](course/index.html)
+
+-   :material-download-outline:{ .lg .middle } **Prebuilt firmware**
+
+    ---
 
     Ready-to-write SD-card files. Every release was booted on a board before it
     was published.
+
+    [:octicons-arrow-right-24: Releases](https://github.com/matsvandamme/fishball7020-fpga-devkit/releases)
 
 </div>
 
@@ -44,14 +80,11 @@ code and the [README](../README.md) gets a board running.
 
 - `./devkit verify --board` proves the board runs what you built.
 - Flashing goes over the network through the SD card's boot partition.
+  **Never use DFU**: it has bricked units of this board.
 - `./devkit ssh-key` first saves typing the published root password.
-
-!!! danger "Never use DFU"
-    It has bricked units of this board. Flash with `./devkit flash` ([flashing](flashing.md)).
-
-!!! warning "Before anything transmits"
-    The board reaches about +19 dBm and its receiver survives only +2.5 dBm: fit at
-    least 20 dB in any TX→RX loop ([transmitter safety](transmitter-safety.md)).
+- Transmitting? Read [before you transmit](start/before-you-transmit.md):
+  about +19 dBm out, a receiver that survives +2.5 dBm, at least 20 dB in any
+  TX→RX loop.
 
 ## Two firmware targets
 
@@ -78,3 +111,6 @@ AMD's Apache-2.0 source. Vivado is needed only to synthesise a new bitstream.
 
 Measured on one unit, with conditions attached: indicative, not a
 specification. Details: [measured performance](measured-performance.md).
+
+The [repository](https://github.com/matsvandamme/fishball7020-fpga-devkit) has
+the code; its [README](../README.md) gets a board running.
