@@ -261,3 +261,13 @@
 
 html .md-footer-meta.md-typeset a, .md-footer-meta.md-typeset a { color: var(--fb-muted); }
 html .md-footer-meta.md-typeset a:hover { color: var(--md-primary-fg-color); }
+
+/* The "Copied to clipboard" pop-up: its text shares .md-typeset with the page,
+   so it needs its own colours, the reverse of the page in either scheme. */
+.md-dialog {
+  background-color: var(--fb-ink);
+  border-radius: var(--fb-radius);
+  box-shadow: 0 .2rem .8rem rgb(0 0 0 / 25%);
+  padding: .5rem .8rem;
+}
+.md-dialog__inner.md-typeset, .md-dialog__inner { color: var(--md-default-bg-color); font-weight: 500; }
