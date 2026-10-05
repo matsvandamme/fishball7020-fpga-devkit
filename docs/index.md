@@ -33,7 +33,7 @@ XC7Z020 and an AD9361 radio, rebuilt from source.
 
     Capture IQ, SDR++, aircraft, a live sweep, MATLAB, your own code.
 
-    <span class="count">12 articles</span>
+    <span class="count">15 articles</span>
 
 -   :material-alert-octagon-outline:{ .lg }
 
@@ -49,7 +49,7 @@ XC7Z020 and an AD9361 radio, rebuilt from source.
 
     Ports, the JP5 header, GPIO, the USER LED, an external reference clock.
 
-    <span class="count">8 articles</span>
+    <span class="count">9 articles</span>
 
 -   :material-hammer-wrench:{ .lg }
 
@@ -57,7 +57,7 @@ XC7Z020 and an AD9361 radio, rebuilt from source.
 
     Kernel, drivers and Debian with no Vivado; the FPGA with it.
 
-    <span class="count">10 articles</span>
+    <span class="count">12 articles</span>
 
 -   :material-wrench-outline:{ .lg }
 

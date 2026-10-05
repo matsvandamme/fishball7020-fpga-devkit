@@ -23,7 +23,7 @@ signature.
 
 **Fix.** Put the board's second USB cable on a **mains charger**, not another
 port on the same laptop. To confirm, run `./devkit selftest`: on mains it reports
-`24 passed, 0 failed, HEALTHY` with no Calibration TIMEOUTs.
+`25 passed, 0 warnings, 0 failed` and `HEALTHY`, with no Calibration TIMEOUTs.
 
 ### ssh works, but nothing can open the radio (Debian root)
 

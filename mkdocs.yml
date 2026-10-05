@@ -129,12 +129,15 @@ nav:
       - Talk to the board from Python: radio/talk-from-python.md
       - Capture IQ to a file: radio/capture-iq.md
       - Watch a band in SDR++: radio/watch-in-sdrpp.md
+      - Install the patched SDR++: radio/install-patched-sdrpp.md
       - Stream 20 MS/s to SDR++: radio/stream-20-msps.md
+      - Listen to DAB+ radio: radio/listen-to-dab.md
       - Track aircraft (ADS-B): radio/track-aircraft.md
       - Receive on both channels: radio/receive-both-channels.md
       - Transmit a waveform on repeat: radio/transmit-on-repeat.md
       - Send a burst on a trigger: radio/burst-on-trigger.md
       - Watch a sweep live: radio/watch-a-sweep.md
+      - Measure ten modulations: radio/measure-modulations.md
       - Use MATLAB: radio/use-matlab.md
       - Check the radio is healthy: radio/check-the-radio.md
       - Reference:
@@ -157,6 +160,7 @@ nav:
       - Wire something to the JP5 header: hw/wire-to-jp5.md
       - Toggle a GPIO pin from Linux: hw/toggle-a-gpio.md
       - Make pins follow the transmit samples: hw/pins-follow-transmit.md
+      - Write a pin pattern in Python: hw/write-a-pin-pattern.md
       - Control the USER LED: hw/control-the-user-led.md
       - Use an external reference clock: hw/external-reference-clock.md
       - Check which reference the radio uses: hw/check-the-reference.md
@@ -177,6 +181,8 @@ nav:
       - Change the device tree: build/change-the-device-tree.md
       - Add your own logic to the FPGA: build/add-fpga-logic.md
       - Build with Vivado in a container: build/build-in-a-container.md
+      - Install Vivado 2022.2: build/install-vivado.md
+      - Build the FM channelizer example: build/build-the-fm-channelizer.md
       - Rebuild the Debian root: build/rebuild-the-debian-root.md
       - Compare with the factory firmware: build/check-provenance.md
       - Reference:
