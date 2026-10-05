@@ -92,7 +92,7 @@ Everything the AD9361 does derives from `Y3`, so its accuracy is the radio's.
 | Ref | What it is |
 |---|---|
 | 4 × SMA | `TX1A`, `RX1A`, `TX2A`, `RX2A`. **Read the silkscreen** rather than counting positions, or the labels on the case, which are [wrong on some units](#what-it-looks-like) |
-| `RF1` | `EXT_CLK`, U.FL. **Connected to nothing as shipped:** two unfitted resistors would join it to the radio's reference (`R109`) and to the FPGA (`R110`, Zynq pin `K17`, a clock-capable fabric pin). See [locking to an external reference](#locking-the-board-to-an-external-reference) |
+| `RF1` | `EXT_CLK`, U.FL. **Connected to nothing as shipped.** Moving `R107`'s 33 Ω to `R109` makes it the radio's reference input; `R110` would take it to the FPGA (Zynq pin `K17`). See [locking to an external reference](#locking-the-board-to-an-external-reference) |
 | `RF2` `RF3` | `TX_LO` and `RX_LO`, U.FL: the AD9361's local oscillators, brought out |
 | `JP5` | the 2×10 expansion header. Pins 7/9/11/13 are `sample_gpio[3:0]`; see [the pinout](tx-gpio-bitmap.md#the-pins) |
 | `JP1`–`JP4` | further headers |
@@ -102,65 +102,117 @@ Everything the AD9361 does derives from `Y3`, so its accuracy is the radio's.
 
 ## Locking the board to an external reference
 
-**There is no reference switch** like the Rev.C ADALM-Pluto's
-`clock_extern_en` / `clock_internal_en` GPIOs. There is, though, an
-**unfitted external-reference option**, on schematic sheet 10:
+**To feed the radio an external reference through `EXT_CLK`, move the 33 Ω
+resistor from `R107` to `R109`:** unsolder it from `R107`, solder it (or a new
+33 Ω of the same size) across `R109`'s empty pads. `R107` cuts `Y3` off the radio's
+reference line; `R109` joins that line to the `EXT_CLK` U.FL socket. As
+shipped, `EXT_CLK` is connected to nothing. Unlike the Rev.C ADALM-Pluto, which
+selects its reference with a GPIO (`refclk_source` in U-Boot), this board has
+no switch: the resistors are the switch.
 
 ![The reference clock section of the vendor schematic: Y3, a 40 MHz oscillator with pins OE (net XTAL_VTC), GND, OUT and VDD, feeds AD936X_CLK through R107, 33 ohm. R109, 33R/NC, joins AD936X_CLK to EXT_CLK, and R110, 33R/NC, joins EXT_CLK to FPGA_CLK. EXT_CLK is the signal pin of the U.FL connector RF1. C164, 100 nF, decouples Y3's VDD_INTERFACE supply.](img/ref-clock-schematic.png)
 
-On the board, the two empty footprints sit just left of `Y3`, the 40 MHz
-oscillator, between it and the `EXT_CLK` socket:
-
 ![The corner of the board between the EXT_CLK U.FL socket and the AD9361, enlarged from the vendor photo and annotated. EXT_CLK, the U.FL at top left, is boxed in red. Two empty two-pad footprints, boxed in red near the bottom, are labelled R109 and R110 with a question mark: arrows run from their shared pad to EXT_CLK, from the horizontal pair to Y3 and AD936X_CLK, and from the vertical pair down to FPGA_CLK. Y3, the 40 MHz oscillator, is boxed in orange beside them. A pair of fitted 33 ohm resistors nearby is marked 2 x 33R.](img/ref-clock-pads.jpg)
 
-*The empty footprints, read from the schematic's wiring: their shared pad is
-`EXT_CLK`; the horizontal pair, towards `Y3`, is most likely `R109`, to the
-radio's reference; the vertical pair, running down, `R110`, to the FPGA. The
-photo is the vendor's, enlarged, so the part labels are not legible in it:
-confirm with a continuity check before fitting anything.*
+*The footprints beside `Y3`: their shared pad is `EXT_CLK`; the horizontal
+pair, towards `Y3`, is `R109`; the vertical pair `R110`. The photo is the
+vendor's, enlarged: confirm with a continuity check before fitting anything.*
+
+### The parts
 
 | Part | Joins | As shipped |
 |---|---|---|
-| `R107` 33 Ω | `Y3`'s output to `AD936X_CLK`, the AD9361's `XTALN` | fitted |
-| **`R109` 33R/NC** | **`AD936X_CLK` to `EXT_CLK`** (`RF1`, the U.FL socket) | **not fitted**: two empty pads near `Y3` |
-| **`R110` 33R/NC** | **`EXT_CLK` to `FPGA_CLK`**, Zynq pin `K17` | **not fitted**: two empty pads |
-| `C164` 100 nF | `Y3`'s supply (`VDD_INTERFACE`) to ground | fitted: decoupling, not a series capacitor. The reference line is DC-coupled |
+| `R107` 33 Ω | `Y3`'s output to `AD936X_CLK`, the AD9361's `XTALN` (ball M12) | fitted |
+| `R109` 33R/NC | `AD936X_CLK` to `EXT_CLK` (`RF1`, U.FL) | empty |
+| `R110` 33R/NC | `EXT_CLK` to `FPGA_CLK`, Zynq pin `K17` (not constrained in the stock design) | empty |
+| `C164` 100 nF | `Y3`'s supply (`VDD_INTERFACE`) to ground | fitted. Decoupling, not a series capacitor: the reference line is DC-coupled |
 
-So the `EXT_CLK` socket reaches nothing until one of the two is fitted:
+### The configurations
 
-- **`R109` connects the socket to the radio's reference.** Either way round:
-  - **Reference in.** `Y3` must stop driving the line first. Its pin 1 is
-    labelled **OE** (output enable) in the schematic symbol; if the part is a
-    plain oscillator, pulling **JP5 pin 15** to ground switches it off, and
-    no part has to come off the board. Feed the reference AC-coupled, at
-    most **1.3 V p-p** ([AD9361 datasheet](https://www.analog.com/media/en/technical-documentation/data-sheets/ad9361.pdf));
-    a 3.3 V CMOS source, such as a HackRF One's 10 MHz CLKOUT, wants about
-    6 dB of pad and a series capacitor. The AD9361 accepts 10 to 80 MHz; any
-    frequency but 40 MHz also needs the device tree's `clock-frequency`
-    changed to match.
-  - **Reference out.** With `Y3` running, the socket carries its 40 MHz, to
-    lock another instrument to this board. A cable hangs on the radio's own
-    reference line then: keep it short, or buffer it.
-- **`R110` connects the socket to the FPGA**, pin `K17`, which is **not
-  constrained in the stock design**. With a reference there, fabric logic can
-  count the AD9361's data clock (derived from `Y3`) against it, to measure
-  `Y3` to parts per billion, timestamp samples, or close a disciplining loop.
-- **Fitting both** gives the radio and the FPGA the same reference.
+| `R107` | `R109` | The radio's reference | `EXT_CLK` | Measured on this board |
+|---|---|---|---|---|
+| fitted | empty | `Y3`, 40 MHz | nothing | stock: 40.0001 MHz, every lock held under stress |
+| **empty** | **fitted** | **whatever is on `EXT_CLK`** | **reference in** | with nothing on `EXT_CLK` the radio does not start (below) |
+| fitted | fitted | `Y3` | `Y3`'s 40 MHz, **out** | a HackRF CLKOUT on `EXT_CLK` changed nothing: `Y3` out-drives it |
 
-**Pin 1 of `Y3`: OE or tuning voltage, unconfirmed.** The net is named
-`XTAL_VTC`, as for a voltage-controlled oscillator's tuning input; the symbol
-names the pin OE, as for a plain oscillator's enable. Four-pin oscillators of
-both kinds share the footprint. The marking on `Y3`, looked up, settles it;
-so does the voltage on JP5 pin 15 at rest, near the supply for an enable
-held high, near mid-supply for a tuning input. **Check before driving that
-pin:** as OE, the wrong level stops the radio's clock outright.
+- **Never connect a source to `EXT_CLK` with both fitted.** Two outputs then
+  drive one line through 66 Ω. As a reference *output* (to lock another
+  instrument to this board) it works, but the cable hangs on the radio's own
+  reference line: keep it short, or buffer it.
+- **`R110`** puts `EXT_CLK` on an FPGA clock pin instead, or as well. Fabric
+  logic could then count the AD9361's data clock against it: measure `Y3`,
+  timestamp samples, or close a disciplining loop. Nothing in the stock design
+  uses it.
 
-- **Nothing to change in software for a 40 MHz substitute.** `Y3` is an active
-  oscillator, so the device tree already carries
-  `adi,xo-disable-use-ext-refclk-enable` with `clock-frequency = <40000000>`.
-- **Correct the frequency, no soldering.** Measure `Y3` against a disciplined
-  reference and write its true frequency to `xo_correction`. This gives accuracy,
-  not stability.
+### Feeding a reference in
+
+With `R107` moved to `R109`:
+
+| Requirement | Why |
+|---|---|
+| **10 to 80 MHz** | the AD9361's external-reference range |
+| **At most 1.3 V p-p, AC-coupled** ([AD9361 datasheet](https://www.analog.com/media/en/technical-documentation/data-sheets/ad9361.pdf)) | `XTALN` sits in the chip's 1.3 V analogue domain; `R109` alone provides no coupling capacitor and no attenuation |
+| **Running before the board boots** | the driver locks the BBPLL once, at 1.4 s into boot |
+| **`clock-frequency` in the device tree equal to it**, unless it is 40 MHz | the driver programs every PLL from that number (node `/clocks/clock@0`, `ad9364_clkin`, in `zynq-pluto-sdr.dtsi`; flash with `./devkit flash --dtb-only`). U-Boot's `ad936x_ext_refclk_override` would do it without a rebuild, but only the QSPI and DFU boot paths apply it, not the SD-card boot this firmware uses |
+
+**Without a reference, the radio does not start.** Measured with `R107`
+removed and nothing driving `EXT_CLK`: `ad9361 spi0.0: Calibration TIMEOUT
+(0x5E, 0x80)`, then `probe with driver ad9361 failed with error -110`;
+`fishball-rf-quiesce` fails and `iiod` is held back, so nothing can transmit.
+Refitting `R107` brings it back.
+
+**A 3.3 V CMOS source needs a DC block and about 20 dB.** `XTALN` is a
+high-impedance load, not 50 Ω, so a 50 Ω attenuator divides much less than
+its rating:
+
+| 50 Ω pad into a high-impedance load | 3.3 V p-p becomes |
+|---|---|
+| 6 dB | about 2.6 V p-p |
+| 10 dB | about 1.9 V p-p |
+| **20 dB** | **about 0.65 V p-p** |
+
+From an open-circuit calculation; check the real swing on a scope.
+
+**HackRF One as the reference.** Its CLKOUT is a 10 MHz, 3.3 V square wave,
+off after every power-up. Turn it on before the Fishball boots, and set the
+device tree to `<10000000>`:
+
+```bash
+# run from: the PC the HackRF is plugged into
+hackrf_clock -o 1      # CLKOUT on (10 MHz)
+hackrf_clock -r 2      # on HackRF One r9, CLKOUT is Si5351 clock 2: "Up" means on
+```
+
+`hackrf_clock --help` gives `-r 3` as the CLKOUT example; that is the older
+boards' layout. The HackRF's CLKIN accepts only 10 MHz, so `Y3`'s 40 MHz cannot
+drive it the other way.
+
+### Which reference is the radio really using
+
+The settings alone do not tell you: a board whose reference was not what its
+device tree said still reported every PLL locked. Two checks:
+
+```bash
+# run from: the board
+D=/sys/kernel/debug/iio/iio:device0
+for r in 0x05E 0x247 0x287; do echo $r > $D/direct_reg_access; echo "$r $(cat $D/direct_reg_access)"; done
+#   0x05E 0x81   bit 7: BBPLL locked
+#   0x247 0x2    bit 1: RX synthesizer locked
+#   0x287 0x2    bit 1: TX synthesizer locked
+```
+
+The frequency itself: stream at 20 MS/s on the board (`iio_readdev -u local:`)
+and time the samples against `CLOCK_MONOTONIC_RAW`, the Zynq's own 33.333 MHz
+crystal. Use the RAW clock: right after boot, network time slews
+`CLOCK_MONOTONIC`, and a stock board read −93 ppm instead of +2. Over 120 s
+this resolves a few ppm, enough to tell a 40 MHz reference from a 10 MHz one,
+not to discipline one.
+
+### Without soldering
+
+- **`xo_correction`: the frequency, not the source.** Measure `Y3` against a
+  disciplined reference and write its true frequency; the PLLs are then
+  programmed from it. Accuracy, not stability.
 
     ```bash
     # run from: the board
@@ -169,6 +221,15 @@ pin:** as OE, the wrong level stops the radio's clock outright.
     cat /sys/bus/iio/devices/iio:device0/xo_correction
     #   40000000
     ```
+
+- **`Y3`'s pin 1 (`XTAL_VTC`, JP5 pin 15): OE or tuning input, unconfirmed.**
+  The schematic symbol calls it OE; the net name suggests a tuning voltage.
+  If it is an enable, holding it low stops `Y3`, and fitting `R109` alone (with
+  `R107` left in) would make the reference switchable, as on the Rev.C Pluto.
+  The marking on `Y3`, or the pin's voltage at rest (near the supply for an
+  enable, near mid-supply for a tuning input), settles it. **Measure before
+  driving it:** a jumper to ground there survives a reboot, and as an enable it
+  leaves the radio without a clock.
 
 ## Supply rails
 
