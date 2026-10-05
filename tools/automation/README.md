@@ -46,6 +46,7 @@ python3 -m venv .venv
 | `fishball_automation/proto.py`, `fishball.desc` | the message types, loaded from the compiled `.proto` at run time |
 | `fishball-automation.service` | the systemd unit; like `iiod`, it starts only if the boot-time transmitter mute was confirmed |
 | `fishball-automation-mute.sh` | run by the unit after the server exits, however it exited: both transmitters to −89.75 dB |
+| `examples/loopback_sweep.py` | both loopbacks swept from 100 MHz to 5.8 GHz: level, image, LO leakage and worst spur per receiver, to a CSV ([docs](../../docs/radio/sweep-a-loopback.md)) |
 | `examples/clock_stress.py` | the clock stress test as a client script: rate changes, LO retunes, loopback tones, the reference in ppm; prints PASS |
 | `automation.sh` | what `./devkit automation` runs |
 

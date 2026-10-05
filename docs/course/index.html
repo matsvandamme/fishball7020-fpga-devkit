@@ -5177,6 +5177,43 @@ and for BER * FRAME_SIZE * 8 &lt;&lt; 1,   p ~= BER * FRAME_SIZE * 8
     </ul>
   </div>
 
+  <h3>Measuring it again, by script</h3>
+  <p>A number measured once, by hand, is an anecdote. Measured by a script, it can be measured again
+    after a firmware change, on a second board, or tomorrow, under the same conditions. The devkit's
+    <strong>automation server</strong> is for that: a small server on the board (gRPC, port 7020) and a
+    Python client on your PC. The script asks for the task, such as "868 MHz, 4.8 MSPS, play this tone
+    on TX1 and record RX1 while it plays", and the server does the board's part, including every
+    transmit-safety rule from <a href="#l51">the rules lesson</a>. It refuses to raise a transmitter
+    that nobody has vouched for with <code>./devkit tx-guard affirm</code>, and it mutes before it lets
+    go of the buffer.</p>
+<pre><code><span class="c"># run from: tools/automation, as: .venv/bin/python tone.py</span>
+import numpy as np
+from fishball_automation.client import Fishball
+tone = 0.5 * 32767 * np.exp(2j * np.pi * 1e6 * np.arange(76_800) / 4_800_000)   <span class="c"># 1 MHz, 16 000 whole cycles</span>
+with Fishball("fishball.local") as board:
+    board.configure(sample_rate_hz=4_800_000, rx_lo_hz=868_000_000, tx_lo_hz=868_000_000)
+    w = board.upload_waveform(tone)            <span class="c"># once; played by its id</span>
+    rec = board.transmit_capture(w, 1 &lt;&lt; 20, tx_channels=[1], rx_channels=[1],
+                                 attenuation_db=-40, pad_db=20, path="tone")
+</code></pre>
+  <p>Measured on this board with that call, through a 20 dB attenuator, the tone landed 0.12 Hz from
+    where it was sent. A sweep of both loopbacks across 14 frequencies from 100 MHz to 5.8 GHz takes
+    15 seconds: <a href="../radio/sweep-a-loopback.md">the complete script and its output</a>.</p>
+
+  <div class="box trap">
+    <p class="bt">Two things a script finds that one measurement hides</p>
+    <ul>
+      <li><strong>Not every figure repeats.</strong> The loopback sweep, run twice a few minutes apart:
+        the tone level moved by at most 1.2 dB, but the image moved by up to 14.5 dB at the same
+        frequency. Measure image, LO leakage and spurs several times and report the worst.</li>
+      <li><strong>Transmit and receive do not start together.</strong> This design has no shared start
+        for the transmit and receive DMA, so where a pulse lands in a capture changes from call to call
+        (samples 4295, 7372 and 4439 in three calls). For timing, record a reference: loop the second
+        transmitter into the second receiver and measure against it. The difference between the two
+        receivers held at &minus;0.002 samples in all three.</li>
+    </ul>
+  </div>
+
   <details class="check">
     <summary>Check yourself: SNR is excellent but EVM is terrible. What is wrong?</summary>
     <div class="ans">
@@ -6827,6 +6864,7 @@ as eta -> 0:   -> ln 2 = 0.693  ->  10*log10(0.693) = -1.59 dB
       <tr><td>Framing, protocols, routing</td><td><a href="#l37">37</a>, <a href="#l38">38</a></td><td><strong>RFC 3819 (BCP 89)</strong> — read this one</td></tr>
       <tr><td>Security</td><td><a href="#l39">39</a></td><td>NIST SP 800-38C/38D, SP 800-175B</td></tr>
       <tr><td>Measuring, link budgets, antennas, RF design</td><td><a href="#l40">40</a>&ndash;<a href="#l43">43</a></td><td>Steer, <em>Microwave and RF Design</em> (free) · Keysight AN 154</td></tr>
+      <tr><td>Measuring by script: the automation server</td><td><a href="#l40">40</a></td><td>the repo's <code>docs/automation.md</code> and <code>tools/automation/examples/</code></td></tr>
       <tr><td>IQ metadata</td><td><a href="#l44">44</a></td><td>PySDR Ch 14 · the SigMF specification</td></tr>
       <tr><td>MATLAB and Simulink, and verifying what a radio actually did</td><td><a href="#l44a">44A</a></td><td>MathWorks Communications Toolbox &middot; the repo's <code>examples/matlab/</code></td></tr>
       <tr><td>Coherent receivers, MIMO, beamforming</td><td><a href="#l45">45</a>, <a href="#l46">46</a></td><td>PySDR Ch 19&ndash;21</td></tr>

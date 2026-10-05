@@ -140,6 +140,7 @@ nav:
       - Measure ten modulations: radio/measure-modulations.md
       - Use MATLAB: radio/use-matlab.md
       - Automate a measurement: radio/automate-measurements.md
+      - Sweep both loopbacks: radio/sweep-a-loopback.md
       - Check the radio is healthy: radio/check-the-radio.md
       - Reference:
           - Your own project: your-own-project.md

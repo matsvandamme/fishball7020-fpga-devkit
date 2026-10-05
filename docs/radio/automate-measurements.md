@@ -87,4 +87,5 @@ For timing between transmit and receive, record a reference channel as well:
 the hardware does not start both together
 ([why](../automation.md#transmitting)).
 
+A complete script to copy, with its real output: [sweep both loopbacks](sweep-a-loopback.md).
 Every call, the limits and the measurements: [the automation server](../automation.md).

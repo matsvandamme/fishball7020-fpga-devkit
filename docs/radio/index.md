@@ -85,6 +85,11 @@ pages with every measurement are under [Reference](#reference).
 
     A server on the board and a Python client: set, capture, fetch.
 
+-   :material-chart-line:{ .lg } **[Sweep both loopbacks](sweep-a-loopback.md)**
+
+
+    A complete script: 14 frequencies, both channels, a CSV, in 15 seconds.
+
 -   :material-stethoscope:{ .lg } **[Check the radio is healthy](check-the-radio.md)**
 
 

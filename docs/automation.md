@@ -3,7 +3,8 @@
 A gRPC server on the board, on port 7020, and a Python client for your PC:
 status, settings, the reference clock, receive captures, transmit, and
 transmit plus capture in one call, for measurement scripts. To use it, see
-[automate a measurement](radio/automate-measurements.md).
+[automate a measurement](radio/automate-measurements.md); for a complete
+script to copy, [sweep both loopbacks](radio/sweep-a-loopback.md).
 
 !!! danger "No authentication, like `iiod`"
     Anyone who can reach port 7020 can retune the radio and read what it
@@ -136,6 +137,7 @@ Over Wi-Fi, board on gigabit Ethernet, 2026-10-05.
 | Tone, 1 MHz from the LO at 868 MHz, TX1 at −40 dB → 20 dB → RX1, recorded by a separate `Capture` while `Transmit` ran | at +0.118 Hz from 1 MHz; noise floor −86.8 dBc |
 | The client killed with `kill -9` while TX1 and TX2 played at −40 dB | both read −89.75 dB **46 ms** later, transmit buffer released |
 | Pulsed chirp on TX1 and TX2, `TransmitCapture` on RX1 and RX2, three calls at 15.36 MS/s | the pulse landed at samples 4295, 7372 and 4439; RX1 − RX2 was −0.002 samples each time |
+| [`examples/loopback_sweep.py`](../tools/automation/examples/loopback_sweep.py), TX1 → 20 dB → RX1 and TX2 → 30 dB → RX2 | 14 frequencies, 100 MHz to 5.8 GHz, in 15 s; between two runs the tone level moved at most 1.2 dB, the image up to 14.5 dB ([the result](radio/sweep-a-loopback.md#reading-the-result)) |
 | [`examples/clock_stress.py`](../tools/automation/examples/clock_stress.py) | PASS in 66 s: 48 rate changes, 200 retunes, tones within 0.12 Hz at 433.92, 868 and 2400 MHz with the worst spur at −58.3 dBc, reference +5.5 ppm |
 
 - **A capture is the way to get every sample.** It is recorded into RAM on the

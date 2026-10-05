@@ -539,6 +539,10 @@ attenuator rose, `Mute` is always allowed. Waveforms are uploaded once
   measure against a reference receiver: RX1 - RX2 held at -0.002 samples.
 - `tools/automation/examples/clock_stress.py` is the clock stress test as a
   client script (rates, retunes, loopback tones, reference ppm): PASS in 66 s.
+- `examples/loopback_sweep.py` is the worked example (docs/radio/sweep-a-loopback.md):
+  both loopbacks, 14 LOs 100 MHz-5.8 GHz, level/image/LO/spur per receiver, CSV,
+  15 s. Between two runs the level moved <= 1.2 dB but image up to 14.5 dB:
+  image rejection does not repeat run to run, so never quote one run of it.
 
 - **Use `python3-grpclib` on the board, never `python3-grpcio`.** Debian
   trixie's armhf grpcio 1.51 aborts on any use (`time_posix.cc: assertion
