@@ -62,7 +62,8 @@ jobs:
     # registers the runner, and --remove clears it again.
     if: vars.HARDWARE_RUNNER == 'enabled'
     runs-on: [self-hosted, fishball-board]
-    timeout-minutes: 30
+    # 30 minutes of tests plus up to 30 of waiting for the board to be free.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
 
@@ -102,6 +103,14 @@ jobs:
 
       - name: HDL simulation and mutation testing
         run: ./devkit sim --mutate
+
+      - name: Wait until nobody else is using the board
+        # The board has one receive and one transmit buffer, and this machine is
+        # also the bench: SDR++, chirp-view or a capture holding one made the
+        # self-test fail with EBUSY, which read as a hardware regression. Wait
+        # for both buffers to be off for 60 s in a row, up to 30 minutes; if
+        # someone is still streaming then, fail saying who, not with EBUSY.
+        run: tools/board-busy.sh --wait 1800 --quiet 60
 
       - name: Board self-test (no cable, never transmits)
         run: ./devkit selftest --ssh
