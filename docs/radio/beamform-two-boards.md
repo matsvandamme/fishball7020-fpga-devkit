@@ -180,9 +180,40 @@ boards it has not been run yet.
 
 ## 4. Find a direction, over the air
 
+### Which antennas
+
+Identical, broad-beam antennas, all facing the same way. The direction comes
+from the phase differences between them, not from the antennas: each one only
+sets where the array can see, because the array's pattern is the element's
+pattern multiplied by the array factor.
+
+| Element | For this array |
+|---|---|
+| **Patch, or a monopole with a reflector** (60–90° beam) | the best fit: no front/back ambiguity, a few dB more per element, and a field of view of about ±60°, where a line array resolves well anyway |
+| **Omnidirectional** (vertical whip, dipole, sleeve dipole) | works, and is the easiest start. A line of them cannot tell front from back: a beacon 30° in front looks the same as one 30° behind. Keep the beacon in front, or put a metal plate about a quarter wavelength behind the line (31 mm at 2450 MHz) |
+| **High gain** (Yagi, horn) | no. They sit far wider than half a wavelength apart (61 mm at 2450 MHz, 173 mm at 868 MHz), and an array spaced wider than that has grating lobes: one beacon appears at two or more angles. Their narrow beam would also limit what the array can see |
+
+- **The same model, mounted the same way, on cables of equal length.** The
+  calibration removes cable and chain differences at one frequency, and
+  assumes every element has the same pattern.
+- **The same polarisation as the beacon.** Vertical on both is simplest.
+- **Expect some error that grows with angle.** At half a wavelength the
+  antennas couple to each other and change each other's patterns; calibrating
+  at 0° corrects 0° exactly. How large the error gets at the edges has not been
+  measured.
+- **The beacon antenna can be anything in the band**, omnidirectional included,
+  at least 1 m away.
+
+A first test at 2450 MHz: four identical 2.4 GHz vertical whips or sleeve
+dipoles 61 mm apart, with a metal plate behind them to use the whole −90° to
++90°.
+
+### Steps
+
 1. **Four antennas in a line, 61 mm apart** (half a wavelength at 2450 MHz),
-   in array order: A:RX1, A:RX2, B:RX1, B:RX2. Their cables should be equal
-   in length; the calibration absorbs any difference, but only at one frequency.
+   in array order: A:RX1, A:RX2, B:RX1, B:RX2, chosen as
+   [above](#which-antennas). Their cables should be equal in length; the
+   calibration absorbs any difference, but only at one frequency.
 2. **The beacon antenna on board A's TX1**, straight ahead of the middle of the
    line, at least 1 m away: the far field of a four-element, half-wavelength
    array starts at about 0.55 m. At −40 dB, the default, the beacon radiates

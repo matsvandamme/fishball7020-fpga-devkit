@@ -553,6 +553,10 @@ attenuator rose, `Mute` is always allowed. Waveforms are uploaded once
   Measured on ONE board only (--emulate, TX2 phase as the angle): 5 angles
   within 0.3 deg; no array gain (shared-LO phase noise floor at -40 dB; 10 dB
   loop imbalance at -80 dB). Two-board runs: not yet done.
+  Antennas: identical broad-beam elements facing one way (patch, or monopole
+  + reflector ~lambda/4 behind); omni works but a line cannot tell front from
+  back; never Yagis/horns (lambda/2 = 61 mm at 2450 MHz, wider spacing =
+  grating lobes). Mutual-coupling error vs angle: unmeasured.
 - `examples/svgplot.py` draws every example's SVG (stdlib only; `retheme()`
   makes the docs' light/dark copies). clock_stress at exactly 2400.000 MHz can
   show sidebands at +-0.19 MHz from the tone, -46 dBc, tune-dependent: it failed
