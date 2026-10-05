@@ -1,0 +1,4 @@
+# Laid by Claude Code each time it loads the plugin
+.claude-plugin/types/
+tsconfig.json
+__pycache__/

@@ -1,0 +1,21 @@
+{
+  "name": "fishball-stats",
+  "version": "0.2.0",
+  "description": "Fishball7020 board, radio, CI and build stats in a pane (/fishball), with a status line and alerts",
+  "author": { "name": "VMAT" },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "repo": {
+      "type": "directory",
+      "title": "Devkit repo",
+      "description": "The fishball7020-fpga-devkit checkout whose tools read the board and whose build is compared with it. Empty: the checkout this plugin sits in",
+      "default": ""
+    },
+    "pollWhileClosed": {
+      "type": "boolean",
+      "title": "Poll the board while the pane is closed",
+      "description": "Keep the status line under the prompt fresh with a board-only read every minute, even with the pane closed",
+      "default": true
+    }
+  }
+}

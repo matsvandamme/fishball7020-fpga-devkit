@@ -158,6 +158,7 @@ nav:
           - Throughput and modulation: modulation-and-throughput.md
           - Faster streaming, what was tried: streaming-paths.md
           - The automation server: automation.md
+          - The board in a Claude Code pane: claude-code-pane.md
   - Hardware and I/O:
       - hw/index.md
       - Which port is which: hw/which-port-is-which.md
