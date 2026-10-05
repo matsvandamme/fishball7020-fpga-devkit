@@ -189,13 +189,13 @@ test('an online board draws temperature gauges and the board-vs-local build verd
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ plugin: 'fishball-stats', surface, ...PANE })
     await ui.press({ key: 'refresh' })
-    // 73.8 of 85 over a 33-cell gauge (48 columns - 15) is 29 filled cells: lines, never full blocks
-    expect(await ui.find({ type: 'Text', text: /^━{29}$/ })).toBeDefined()
+    // 73.8 of 85 over a 32-cell gauge (48 columns - 16) is 28 filled cells: lines, never full blocks
+    expect(await ui.find({ type: 'Text', text: /^━{28}$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^─{4}$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /[░▕▏]/ })).toBeUndefined() // the old block gauge
     expect(await ui.find({ type: 'Text', text: /🌡 die temperatures/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^73\.8°C$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^53\.5°C$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^ 73\.8°C$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^ 53\.5°C$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /board is 255 commits behind local/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^v2\.0-9-g5ae29d94-dirty$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^v2\.3-66-g608cb36$/ })).toBeDefined()
@@ -205,6 +205,19 @@ test('an online board draws temperature gauges and the board-vs-local build verd
     if (surface === 'terminal') expect(await ui.find({ type: 'Text', text: /trend: last \d+ readings/ })).toBeUndefined()
     await ui.unmount()
   }
+})
+
+test('a seven-character reading fits its column, so its gauge stays in line', async ($, on) => {
+  mock.clock(on, { now: 1_700_000_000_000 })
+  on('ui.panes', () => ({ value: [] }))
+  quietUi(on)
+  // the AD9361 reads -41.2 °C once as the board boots
+  collector(on, { snapshot: { ...ONLINE, board: online(73.8, -41.2) } })
+  const ui = await $.ui.mount({ plugin: 'fishball-stats', surface: 'terminal', ...PANE })
+  await ui.press({ key: 'refresh' })
+  expect(await ui.find({ type: 'Text', text: /^-41\.2°C$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^─{32}$/ })).toBeDefined() // empty, and as wide as the Zynq's
+  await ui.unmount()
 })
 
 test('two readings make a trend under each gauge: a Raster on the terminal, block text elsewhere', async ($, on) => {
@@ -220,13 +233,13 @@ test('two readings make a trend under each gauge: a Raster on the terminal, bloc
     await ui.press({ key: 'refresh' })
     expect(await ui.find({ type: 'Text', text: /^trend: last \d+ readings over \d+s, each on its own scale$/ })).toBeDefined()
     // each die's range sits under its reading
-    expect(await ui.find({ type: 'Text', text: /^ 74–76$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^ 54–55$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^  74–76$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^  54–55$/ })).toBeDefined()
     if (surface === 'terminal') {
       // one row each, as wide as the gauge above it
       for (const key of ['trend-zynq', 'trend-ad9361']) {
         const raster = await ui.find({ type: 'Raster', key })
-        expect(raster?.props).toMatchObject({ columns: 33, rows: 1 })
+        expect(raster?.props).toMatchObject({ columns: 32, rows: 1 })
       }
     } else {
       expect(await ui.find({ type: 'Raster' })).toBeUndefined()

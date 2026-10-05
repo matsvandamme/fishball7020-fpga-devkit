@@ -78,8 +78,8 @@ The temperature gauges are green below 68 °C, yellow from 68 °C and red from
 warns at. The board has only the two die sensors; see `./devkit temps --help`.
 
 ```text
-Zynq   76.7°C ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━──────
-        76–77                                                    ▄▄▄▃▄▄▄▆▅
+Zynq    76.7°C ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━──────
+         76–77                                                    ▄▄▄▃▄▄▄▆▅
 ```
 
 Each gauge spans 0 to 85 °C. The trend under it is a sparkline (a chart of

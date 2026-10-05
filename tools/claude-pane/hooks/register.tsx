@@ -32,6 +32,9 @@ const HISTORY = 60
 const WARM_C = 68
 const HOT_C = 80
 const SCALE_C = 85
+// a reading's column: `-41.2°C` (the AD9361 reads that once as the board
+// boots) and `100.0°C` are seven, and one wider would push its gauge out of line
+const TEMP_COLUMNS = 7
 
 const BLUE = '#4069FF' // VMAT brand blue, docs/stylesheets/vmat.css
 const LEVEL_RGB = [0x3fb950, 0xd29922, 0xf85149] as const
@@ -445,13 +448,13 @@ export const register: Register = (on, options) => {
       ))
     }
 
-    // Each die is a gauge row, `Zynq   66.6°C ━━━━━━──`, with its trend under
-    // it, `        47–67 ▁▂▃▅▇`: the trend's range sits under the reading and
+    // Each die is a gauge row, `Zynq    66.6°C ━━━━━━──`, with its trend under
+    // it, `         47–67 ▁▂▃▅▇`: the trend's range sits under the reading and
     // its bars under the gauge, as wide as the gauge, filling in from the right.
     function temps(b: BoardStats) {
       const t = b.temps_c
       if (!t) return null
-      const width = Math.max(6, Math.min(HISTORY, cols - 15))
+      const width = Math.max(6, Math.min(HISTORY, cols - 16))
       // (`h` is the JSX factory here: no local may take that name)
       const shown = s.history.length >= 2 ? s.history.slice(-width) : []
       const dies = [
@@ -472,7 +475,7 @@ export const register: Register = (on, options) => {
               <Box flexDirection="column">
                 <Box gap={1}>
                   <Text>{name.padEnd(6)}</Text>
-                  <Text color={level}>{`${c.toFixed(1)}°C`.padStart(6)}</Text>
+                  <Text color={level}>{`${c.toFixed(1)}°C`.padStart(TEMP_COLUMNS)}</Text>
                   <Box>
                     <Text color={level}>{full}</Text>
                     <Text dimColor>{empty}</Text>
@@ -510,7 +513,7 @@ export const register: Register = (on, options) => {
       }
       return (
         <Box gap={1} paddingLeft={7}>
-          <Text dimColor>{range.padStart(6)}</Text>
+          <Text dimColor>{range.padStart(TEMP_COLUMNS)}</Text>
           {bars}
         </Box>
       )
