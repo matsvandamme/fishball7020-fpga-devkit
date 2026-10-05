@@ -619,7 +619,7 @@ radio; register it with `claude mcp add -s user`, because the default local
 scope hides it from sessions started in any other folder.
 
 - **It only reads.** IIO attribute reads over iiod (or `iio_attr` over libiio
-  USB) and one ssh command, `cat /proc/uptime /proc/loadavg`. It never opens a
+  USB) and one ssh command, `cat /proc/uptime /proc/loadavg; ip addr`. It never opens a
   buffer, so it is never the holder behind EBUSY, and `tools/board-busy.sh`
   rightly does not list it. Open, it polls the board every 10 s and GitHub
   every 3 min; closed, a board-only read every 60 s keeps the status line.
@@ -630,6 +630,14 @@ scope hides it from sessions started in any other folder.
 - **Links are told apart by the route, not the address:** USB when the route
   to an address that answers leaves on the board's own USB interface (vendor
   `0456`), Ethernet otherwise, libiio when `iio_info -s` lists a `usb:`
-  context. `$BOARD` or `$SDR_URI` limits the network probe to that address;
-  the libiio USB probe still runs, so a board on the USB cable still reads as
-  online.
+  context. Every address a name resolves to is probed on its own, and so is
+  every address the board reports in that ssh `ip addr`: with USB and
+  Ethernet both in, nss-mdns hands back only one of `fishball.local`'s two
+  addresses (avahi-browse shows both), so probing the name alone hides the
+  other link. `$BOARD` or `$SDR_URI` limits the network probe to that
+  address, and skips the board's own list; the libiio USB probe still runs,
+  so a board on the USB cable still reads as online.
+- **libiio over USB is one process at a time.** A `usb:` context claims the
+  USB interface while it is open, so two `iio_attr -u usb:…` at once fail
+  "Unable to claim interface … Device or resource busy"; the collector
+  serialises its USB reads.

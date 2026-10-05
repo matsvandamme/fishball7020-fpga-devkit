@@ -32,6 +32,11 @@ const LINKS_USB = [
   { name: 'eth', addr: 'no answer', up: false, iiod: false },
   { name: 'iio', addr: 'usb:3.35.4', up: true, iiod: true },
 ]
+const LINKS_BOTH = [
+  { name: 'usb', addr: 'fishball.local (192.168.2.1)', iface: 'usb0', up: true, iiod: true },
+  { name: 'eth', addr: '192.168.129.163', iface: 'wlo1', up: true, iiod: true },
+  { name: 'iio', addr: 'usb:3.41.4', up: true, iiod: true },
+]
 
 const REPO_OK = {
   ok: true,
@@ -184,8 +189,10 @@ test('an online board draws temperature gauges and the board-vs-local build verd
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ plugin: 'fishball-stats', surface, ...PANE })
     await ui.press({ key: 'refresh' })
-    // 73.8 of 85 over a 29-cell bar (48 columns - 19) is 25 filled cells
-    expect(await ui.find({ type: 'Text', text: /^▕█{25}░{4}▏$/ })).toBeDefined()
+    // 73.8 of 85 over a 33-cell gauge (48 columns - 15) is 29 filled cells: lines, never full blocks
+    expect(await ui.find({ type: 'Text', text: /^━{29}$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^─{4}$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /[░▕▏]/ })).toBeUndefined() // the old block gauge
     expect(await ui.find({ type: 'Text', text: /🌡 die temperatures/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^73\.8°C$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^53\.5°C$/ })).toBeDefined()
@@ -195,12 +202,12 @@ test('an online board draws temperature gauges and the board-vs-local build verd
     expect(await ui.find({ type: 'Text', text: /⏱ up 8m · ⚡ load 0\.24 0\.05 0\.02/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /RX LO 2400\.000 MHz/ })).toBeDefined()
     // one reading is no history: the sparkline waits for a second (the desktop mount is that second)
-    if (surface === 'terminal') expect(await ui.find({ type: 'Text', text: /last \d+ readings/ })).toBeUndefined()
+    if (surface === 'terminal') expect(await ui.find({ type: 'Text', text: /trend: last \d+ readings/ })).toBeUndefined()
     await ui.unmount()
   }
 })
 
-test('two readings make a temperature sparkline: a Raster on the terminal, block text elsewhere', async ($, on) => {
+test('two readings make a trend under each gauge: a Raster on the terminal, block text elsewhere', async ($, on) => {
   mock.clock(on, { now: 1_700_000_000_000 })
   on('ui.panes', () => ({ value: [] }))
   quietUi(on)
@@ -211,15 +218,53 @@ test('two readings make a temperature sparkline: a Raster on the terminal, block
     await ui.press({ key: 'refresh' })
     state.snapshot = { ...ONLINE, board: online(76.3, 55.3) }
     await ui.press({ key: 'refresh' })
-    expect(await ui.find({ type: 'Text', text: /last \d+ readings · Zynq \d+–\d+ · AD9361 \d+–\d+ °C/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^trend: last \d+ readings over \d+s, each on its own scale$/ })).toBeDefined()
+    // each die's range sits under its reading
+    expect(await ui.find({ type: 'Text', text: /^ 74–76$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^ 54–55$/ })).toBeDefined()
     if (surface === 'terminal') {
-      expect(await ui.find({ type: 'Raster', key: 'temps' })).toBeDefined()
+      // one row each, as wide as the gauge above it
+      for (const key of ['trend-zynq', 'trend-ad9361']) {
+        const raster = await ui.find({ type: 'Raster', key })
+        expect(raster?.props).toMatchObject({ columns: 33, rows: 1 })
+      }
     } else {
       expect(await ui.find({ type: 'Raster' })).toBeUndefined()
-      expect(await ui.find({ type: 'Text', text: /^[▁▂▃▄▅▆▇█]+$/ })).toBeDefined()
+      expect(await ui.findAll({ type: 'Text', text: /^[▁▂▃▄▅▆▇█]+$/ })).toHaveLength(2)
     }
     await ui.unmount()
   }
+})
+
+test('with the USB cable and Ethernet both in, the pane, the status line and the toast name both', async ($, on) => {
+  mock.clock(on, { now: 1_700_000_000_000 })
+  on('ui.panes', () => ({ value: [] }))
+  const { toasts, statuses } = quietUi(on)
+  const state: Held = { snapshot: OFFLINE }
+  collector(on, state)
+  const ui = await $.ui.mount({ plugin: 'fishball-stats', surface: 'terminal', ...PANE })
+  await ui.press({ key: 'refresh' })
+
+  state.snapshot = { ...ONLINE, board: { ...online(73.8), links: LINKS_BOTH } }
+  await ui.press({ key: 'refresh' })
+  expect(toasts).toEqual(['Fishball7020 connected over USB and Ethernet'])
+  expect(statuses.at(-1)).toBe('fishball ● USB+Ethernet 74°C CI ✗')
+  expect(await ui.find({ type: 'Text', text: /^fishball\.local \(192\.168\.2\.1\)$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^192\.168\.129\.163$/ })).toBeDefined()
+
+  // an address the board holds that does not answer from here is shown, not "not found"
+  const unreachable = { name: 'eth', addr: '10.0.0.5', up: false, iiod: false, reported: true }
+  state.snapshot = { ...ONLINE, board: { ...online(73.8), links: [LINKS_BOTH[0], unreachable, LINKS_BOTH[2]] } }
+  await ui.press({ key: 'refresh' })
+  expect(await ui.find({ type: 'Text', text: /^10\.0\.0\.5 on the board, no answer from here$/ })).toBeDefined()
+  expect(statuses.at(-1)).toBe('fishball ● USB 74°C CI ✗')
+
+  // with no network link, libiio is the one named
+  const iioOnly = LINKS_DOWN.map(l => (l.name === 'iio' ? { ...l, addr: 'usb:3.41.4', up: true, iiod: true } : l))
+  state.snapshot = { ...ONLINE, board: { ...online(73.8), links: iioOnly } }
+  await ui.press({ key: 'refresh' })
+  expect(statuses.at(-1)).toBe('fishball ● libiio 74°C CI ✗')
+  await ui.unmount()
 })
 
 test('the status line summarises the board, and only transitions toast', async ($, on) => {

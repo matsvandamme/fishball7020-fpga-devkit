@@ -19,6 +19,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -61,14 +62,19 @@ def run(argv: list[str], timeout: float = 10, **kw) -> subprocess.CompletedProce
 #   iio  - libiio straight over USB, with no network at all (`usb:` URIs)
 # Nothing here knows an address. Every place board_addr.py would look (its
 # names and the USB gadget's address, or only $BOARD / $SDR_URI when set) is
-# probed at once; each one that answers is told apart by the interface the
-# route to it leaves on, which is "usb" when that interface is the board's own
-# USB device. Data is read over the first network link that answers (usb, then
-# eth), else over libiio USB.
+# resolved to every address it has, and each address is probed on its own:
+# with the USB cable and Ethernet both in, fishball.local has one address on
+# each, and the name lookup hands back only one of them. The board is then
+# asked which addresses it holds (one ssh call, which reads its uptime too),
+# and any of those not probed yet is probed as well. Each address that answers
+# is told apart by the interface the route to it leaves on, which is "usb" when
+# that interface is the board's own USB device. Data is read over the first
+# network link that answers (usb, then eth), else over libiio USB.
 
 USB_VENDOR = "0456"                    # Analog Devices: the board's USB gadget
 USB_ID = USB_VENDOR + ":b673"
 PROBE_DEADLINE_S = 2.5
+BOARD_KINDS = ("iiod", "dropbear", "openssh-debian")
 
 
 def route_iface(addr: str) -> str | None:
@@ -90,51 +96,98 @@ def is_board_usb(iface: str) -> bool:
         return False
 
 
-def resolve_ip(host: str) -> str | None:
+def resolve_all(host: str) -> list[str]:
+    """Every IPv4 address host has (an address is its own), in the resolver's order."""
     import socket
     try:
-        return socket.getaddrinfo(host, None, socket.AF_INET)[0][4][0]
-    except (OSError, IndexError):
-        return None
+        return list(dict.fromkeys(a[4][0] for a in socket.getaddrinfo(host, None, socket.AF_INET)))
+    except OSError:
+        return []
 
 
-def probe_candidates() -> list[dict]:
-    """Every board_addr candidate that answers, one entry per distinct address."""
-    import threading
-    from board_addr import candidates, identify                   # noqa: E402
+def probe_hosts(hosts: list[str], deadline: float) -> tuple[list[dict], set[str]]:
+    """Probe every address of every host at once: (the hits, every address tried).
+
+    A hit is {"host", "ip", "iface", "iiod", "kind"}; hosts are taken in
+    priority order, and of two hits on one address the first is kept.
+    """
+    from board_addr import identify                               # noqa: E402
+
+    hits: dict[tuple[str, str], dict] = {}
+    tried: dict[str, list[str]] = {}
+
+    def probe(host: str, ip: str) -> None:
+        try:
+            kind = identify(ip)
+            if kind in BOARD_KINDS:
+                iface = route_iface(ip)
+                hits[(host, ip)] = {"host": host, "ip": ip, "iface": iface,
+                                    "iiod": kind != "openssh-debian",
+                                    "kind": "usb" if iface and is_board_usb(iface) else "eth"}
+        except Exception:
+            pass
+
+    def work(host: str) -> None:
+        ips = tried[host] = resolve_all(host)
+        threads = [threading.Thread(target=probe, args=(host, ip), daemon=True) for ip in ips]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+    threads = [threading.Thread(target=work, args=(h,), daemon=True) for h in hosts]
+    for t in threads:
+        t.start()
+    end = time.time() + deadline
+    for t in threads:
+        t.join(max(0.0, end - time.time()))
+    seen: dict[str, dict] = {}
+    for h in hosts:                      # priority order
+        for ip in tried.get(h, []):
+            hit = hits.get((h, ip))
+            if hit and (ip not in seen or (hit["iiod"] and not seen[ip]["iiod"])):
+                seen[ip] = hit
+    return list(seen.values()), {ip for ips in list(tried.values()) for ip in ips}
+
+
+def probe_candidates() -> tuple[list[dict], set[str]]:
+    """Every address of every board_addr candidate that answers, and every address tried."""
+    from board_addr import candidates                             # noqa: E402
 
     cands = candidates()
     # As board_addr.check(): an address in $BOARD / $SDR_URI is the only one probed.
     if os.environ.get("BOARD") or os.environ.get("SDR_URI"):
         cands = cands[:1]
-    found: dict[str, dict] = {}
+    return probe_hosts(cands, PROBE_DEADLINE_S)
 
-    def work(c: str) -> None:
-        try:
-            kind = identify(c)
-            if kind not in ("iiod", "dropbear", "openssh-debian"):
-                return
-            ip = resolve_ip(c) or c
-            iface = route_iface(ip)
-            found[c] = {"host": c, "ip": ip, "iface": iface, "iiod": kind != "openssh-debian",
-                        "kind": "usb" if iface and is_board_usb(iface) else "eth"}
-        except Exception:
-            pass
 
-    threads = [threading.Thread(target=work, args=(c,), daemon=True) for c in cands]
-    for t in threads:
-        t.start()
-    end = time.time() + PROBE_DEADLINE_S
-    for t in threads:
-        t.join(max(0.0, end - time.time()))
-    seen: dict[str, dict] = {}
-    for c in cands:                      # board_addr's priority order
-        hit = found.get(c)
-        if hit and hit["ip"] not in seen:
-            seen[hit["ip"]] = hit
-        elif hit and hit["iiod"] and not seen[hit["ip"]]["iiod"]:
-            seen[hit["ip"]] = hit
-    return list(seen.values())
+def board_shell(host: str) -> dict:
+    """Uptime, load and the board's own IPv4 addresses, in one ssh call.
+
+    The one thing iiod does not publish. Every board shares the USB address and
+    a reflashed one gets a new host key, so this read-only call neither checks
+    nor records one (as tools/net.sh). `ip addr` without -o: the factory
+    firmware's busybox prints it the same way.
+    """
+    out: dict = {}
+    try:
+        r = run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=3",
+                 "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+                 "-o", "LogLevel=ERROR", "-o", "IdentitiesOnly=yes", "-i", SSH_KEY,
+                 f"root@{host}", "cat /proc/uptime /proc/loadavg; ip addr"], timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        return out
+    if r.returncode != 0:
+        return out
+    lines = r.stdout.split("\n")
+    try:
+        out["uptime_s"] = float(lines[0].split()[0])
+        out["load"] = [float(x) for x in lines[1].split()[:3]]
+    except (IndexError, ValueError):
+        pass
+    out["addrs"] = [a for a in re.findall(r"\binet (\d+\.\d+\.\d+\.\d+)/", "\n".join(lines[2:]))
+                    if not a.startswith(("127.", "169.254."))]
+    return out
 
 
 def probe_iio_usb() -> str | None:
@@ -147,7 +200,10 @@ def probe_iio_usb() -> str | None:
     return None
 
 
-def link_row(name: str, hit: dict | None, fallback: str) -> dict:
+def link_row(name: str, hit: dict | None, fallback: str, reported: str | None = None) -> dict:
+    if hit is None and reported:
+        # the board holds this address, and it does not answer from here
+        return {"name": name, "addr": reported, "up": False, "iiod": False, "reported": True}
     if hit is None:
         return {"name": name, "addr": fallback, "up": False, "iiod": False}
     addr = hit["host"] if hit["host"] == hit["ip"] else f"{hit['host']} ({hit['ip']})"
@@ -155,33 +211,51 @@ def link_row(name: str, hit: dict | None, fallback: str) -> dict:
 
 
 def links() -> dict:
-    """{"links": [...], "host": addr or None, "iiod": bool, "usb_uri": uri or None}"""
+    """{"links": [...], "host": addr or None, "iiod": bool, "usb_uri": uri or None,
+    "shell": {uptime_s, load, addrs} when ssh answered}"""
     from board_addr import USB                                     # noqa: E402
     ex = ThreadPoolExecutor(2)
     nets_f = ex.submit(probe_candidates)
     usb_f = ex.submit(probe_iio_usb)
     try:
-        nets = nets_f.result(timeout=PROBE_DEADLINE_S + 4)
+        nets, tried = nets_f.result(timeout=PROBE_DEADLINE_S + 4)
     except Exception:
-        nets = []
+        nets, tried = [], set()
+
+    def pick(kind: str) -> dict | None:
+        hits = [n for n in nets if n["kind"] == kind]
+        return next((n for n in hits if n["iiod"]), hits[0] if hits else None)
+
+    def best() -> dict | None:
+        usb, eth = pick("usb"), pick("eth")
+        return next((n for n in (usb, eth) if n and n["iiod"]), usb or eth)
+
+    # what the board says it holds: another link the name lookup did not offer
+    first = best()
+    shell = board_shell(first["ip"]) if first else {}
+    unanswered: list[str] = []
+    if not (os.environ.get("BOARD") or os.environ.get("SDR_URI")):
+        more = [a for a in shell.get("addrs", []) if a not in tried]
+        if more:
+            extra, _ = probe_hosts(more, PROBE_DEADLINE_S)
+            nets += extra
+            answered = {n["ip"] for n in extra}
+            unanswered = [a for a in more if a not in answered]
     try:
         usb_uri = usb_f.result(timeout=8)
     except Exception:
         usb_uri = None
     ex.shutdown(wait=False)
 
-    def pick(kind: str) -> dict | None:
-        hits = [n for n in nets if n["kind"] == kind]
-        return next((n for n in hits if n["iiod"]), hits[0] if hits else None)
-
     usb, eth = pick("usb"), pick("eth")
-    out: dict = {"links": [link_row("usb", usb, USB), link_row("eth", eth, "no answer"),
+    out: dict = {"links": [link_row("usb", usb, USB),
+                           link_row("eth", eth, "no answer", unanswered[0] if unanswered else None),
                            {"name": "iio", "addr": usb_uri or "usb:", "up": usb_uri is not None,
                             "iiod": usb_uri is not None}],
-                 "host": None, "iiod": False, "usb_uri": usb_uri}
-    best = next((n for n in (usb, eth) if n and n["iiod"]), usb or eth)
-    if best:
-        out["host"], out["iiod"] = best["ip"], best["iiod"]
+                 "host": None, "iiod": False, "usb_uri": usb_uri, "shell": shell}
+    top = best()
+    if top:
+        out["host"], out["iiod"] = top["ip"], top["iiod"]
     return out
 
 
@@ -205,19 +279,26 @@ class NetReader:
 
 
 class UsbReader:
+    # libiio claims the USB interface for as long as a context is open, so two
+    # iio_attr at once (the board and radio sections run side by side) fail
+    # "Device or resource busy": one at a time
+    lock = threading.Lock()
+
     def __init__(self, uri: str):
         self.uri = uri
         self.via = f"libiio {uri}"
 
     def read(self, dev, ch, attr, output=False) -> str:
-        r = run(["iio_attr", "-u", self.uri, "-c", "-o" if output else "-i",
-                 dev, ch, attr], timeout=5)
+        with self.lock:
+            r = run(["iio_attr", "-u", self.uri, "-c", "-o" if output else "-i",
+                     dev, ch, attr], timeout=5)
         if r.returncode != 0 or not r.stdout.strip():
             raise OSError(f"iio_attr {dev} {ch} {attr}: {r.stderr.strip() or 'no value'}")
         return r.stdout.strip()
 
     def context_attrs(self) -> dict:
-        r = run(["iio_attr", "-u", self.uri, "-C"], timeout=5)
+        with self.lock:
+            r = run(["iio_attr", "-u", self.uri, "-C"], timeout=5)
         attrs = {}
         for line in r.stdout.splitlines()[1:]:
             k, sep, v = line.partition(": ")
@@ -249,21 +330,9 @@ def board(link: dict) -> dict:
         return {**out, "ok": False, "online": False, "error": "board not found on USB or the network"}
     out.update({"ok": True, "online": True, "host": host})
 
-    # uptime and load over ssh: the one thing iiod does not publish. Every
-    # board shares the USB address and a reflashed one gets a new host key, so
-    # this read-only call neither checks nor records one (as tools/net.sh).
-    if host:
-        try:
-            r = run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=3",
-                     "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
-                     "-o", "LogLevel=ERROR", "-o", "IdentitiesOnly=yes", "-i", SSH_KEY,
-                     f"root@{host}", "cat /proc/uptime /proc/loadavg"], timeout=8)
-            if r.returncode == 0:
-                lines = r.stdout.split("\n")
-                out["uptime_s"] = float(lines[0].split()[0])
-                out["load"] = [float(x) for x in lines[1].split()[:3]]
-        except (subprocess.TimeoutExpired, IndexError, ValueError):
-            pass
+    for k in ("uptime_s", "load"):          # read with the addresses, in links()
+        if k in link.get("shell", {}):
+            out[k] = link["shell"][k]
 
     c = reader(link)
     if c is None:
@@ -439,9 +508,9 @@ def main() -> None:
     if want & {"board", "radio"}:
         found_f = ex.submit(links)
         try:
-            found = found_f.result(timeout=10)
+            found = found_f.result(timeout=14)
         except Exception:
-            found = {"links": [], "host": None, "iiod": False, "usb_uri": None}
+            found = {"links": [], "host": None, "iiod": False, "usb_uri": None, "shell": {}}
         if "board" in want:
             futures["board"] = ex.submit(guarded, board, found)
         if "radio" in want:

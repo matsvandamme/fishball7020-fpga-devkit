@@ -11,7 +11,6 @@ import type {
   SectionName,
   Snapshot,
   Stats,
-  TempSample,
   Workflow,
 } from '../types'
 
@@ -79,7 +78,7 @@ let pollWhileClosed = true
 
 // -- collecting ------------------------------------------------------------------
 
-const tempLevel = (c: number) => (c >= HOT_C ? 2 : c >= WARM_C ? 1 : 0)
+const tempLevel = (c: number): 0 | 1 | 2 => (c >= HOT_C ? 2 : c >= WARM_C ? 1 : 0)
 
 function merge(s: Stats, got: Collected, at: number, started: number, kind: 'fast' | 'slow' | 'all'): Stats {
   const snapshot: Snapshot = { ...(s.snapshot ?? {}) }
@@ -111,8 +110,8 @@ function alerts(prev: Snapshot | null, got: Collected): string[] {
   if (!prev) return out
   const b = got.board
   if (b && prev.board && typeof b.online === 'boolean' && typeof prev.board.online === 'boolean' && b.online !== prev.board.online) {
-    const via = (b.links ?? []).find(l => l.up)
-    out.push(b.online ? `${TITLE} connected${via ? ` over ${LINK_NAME[via.name]}` : ''}` : `${TITLE} disconnected`)
+    const via = upLinks(b)
+    out.push(b.online ? `${TITLE} connected${via.length ? ` over ${via.join(' and ')}` : ''}` : `${TITLE} disconnected`)
   }
   if (b?.temps_c && prev.board?.temps_c) {
     for (const die of ['zynq', 'ad9361'] as const) {
@@ -143,14 +142,24 @@ function ciSummary(workflows: Workflow[] | undefined): { mark: string; color: st
   return { mark: '✓', color: 'green' }
 }
 
-/** The one-line status under the prompt: `fishball ● USB 74°C CI ✓`. */
+/**
+ * The links that are up, by name. libiio rides the USB cable, so it is named
+ * only when no network link answers.
+ */
+function upLinks(b: BoardStats): string[] {
+  const up = (b.links ?? []).filter(l => l.up)
+  const nets = up.filter(l => l.name !== 'iio')
+  return (nets.length ? nets : up).map(l => LINK_NAME[l.name])
+}
+
+/** The one-line status under the prompt: `fishball ● USB+Ethernet 74°C CI ✓`. */
 function statusText(snap: Snapshot | null): string | undefined {
   if (!snap?.board) return undefined
   const b = snap.board
   if (typeof b.online !== 'boolean') return 'fishball ? unreadable'
   if (!b.online) return 'fishball ○ offline'
-  const via = (b.links ?? []).find(l => l.up)
-  const parts = ['fishball ●', via ? LINK_NAME[via.name] : 'online']
+  const via = upLinks(b)
+  const parts = ['fishball ●', via.length ? via.join('+') : 'online']
   if (b.temps_c) parts.push(`${Math.round(b.temps_c.zynq)}°C`)
   const ci = ciSummary(snap.repo?.workflows)
   if (ci) parts.push(`CI ${ci.mark}`)
@@ -243,7 +252,7 @@ function duration(s: number): string {
   const d = Math.floor(s / 86400)
   const h = Math.floor((s % 86400) / 3600)
   const m = Math.floor((s % 3600) / 60)
-  return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`
+  return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m` : `${Math.round(s)}s`
 }
 
 function ago(fromMs: number, nowMs: number): string {
@@ -253,6 +262,7 @@ function ago(fromMs: number, nowMs: number): string {
 
 function linkNote(l: Link): string {
   if (l.up) return l.name === 'iio' ? l.addr : `${l.addr}${l.iiod ? '' : ' (ssh only)'}`
+  if (l.reported) return `${l.addr} on the board, no answer from here`
   if (l.name !== 'usb') return 'not found'
   return `${l.addr} not answering`
 }
@@ -264,10 +274,14 @@ function ciMark(status: string, conclusion: string | null): { mark: string; colo
   return { mark: '✗', color: 'red' }
 }
 
-/** `▕████████░░░░▏`: `c` over 0..SCALE_C in `width` cells. */
-function gauge(c: number, width: number): string {
+/**
+ * `━━━━━━━━────`: `c` over 0..SCALE_C in `width` cells, as [filled, empty].
+ * Line glyphs sit mid-cell, so the rows above and below stay apart; full
+ * blocks fill the cell and fuse with them.
+ */
+function gauge(c: number, width: number): [string, string] {
   const filled = Math.max(0, Math.min(width, Math.round((c / SCALE_C) * width)))
-  return `▕${'█'.repeat(filled)}${'░'.repeat(width - filled)}▏`
+  return ['━'.repeat(filled), '─'.repeat(width - filled)]
 }
 
 const BLOCKS = '▁▂▃▄▅▆▇█'
@@ -296,27 +310,20 @@ function base64(bytes: Uint8Array): string {
   return out
 }
 
-/** The Raster cells of a sparkline: one row per die, the newest sample at the right. */
-function sparkCells(history: TempSample[], columns: number): string {
-  const rows: (readonly [number[], number[]])[] = (['zynq', 'ad9361'] as const).map(die => {
-    const vals = history.map(h => h[die])
-    return [heights(vals), vals.map(tempLevel)] as const
-  })
-  const bytes = new Uint8Array(columns * rows.length * 12)
+/** The Raster cells of one die's sparkline, `columns` wide, the newest reading at the right. */
+function sparkCells(values: number[], columns: number): string {
+  const hs = heights(values)
+  const bytes = new Uint8Array(columns * 12)
   const view = new DataView(bytes.buffer)
-  let off = 0
-  for (const [hs, levels] of rows) {
-    const pad = columns - hs.length
-    for (let x = 0; x < columns; x++) {
-      const i = x - pad
-      const k = hs[i]
-      const cp = k === undefined ? 0x20 : BLOCKS.codePointAt(k)!
-      const fg = k === undefined ? 0x01000000 : (LEVEL_RGB[levels[i] ?? 0] ?? LEVEL_RGB[0])
-      view.setUint32(off, cp, true)
-      view.setUint32(off + 4, fg, true)
-      view.setUint32(off + 8, 0x01000000, true)
-      off += 12
-    }
+  const pad = columns - hs.length
+  for (let x = 0; x < columns; x++) {
+    const i = x - pad
+    const k = hs[i]
+    const cp = k === undefined ? 0x20 : BLOCKS.codePointAt(k)!
+    const fg = k === undefined ? 0x01000000 : LEVEL_RGB[tempLevel(values[i]!)]
+    view.setUint32(x * 12, cp, true)
+    view.setUint32(x * 12 + 4, fg, true)
+    view.setUint32(x * 12 + 8, 0x01000000, true)
   }
   return base64(bytes)
 }
@@ -438,63 +445,73 @@ export const register: Register = (on, options) => {
       ))
     }
 
+    // Each die is a gauge row, `Zynq   66.6°C ━━━━━━──`, with its trend under
+    // it, `        47–67 ▁▂▃▅▇`: the trend's range sits under the reading and
+    // its bars under the gauge, as wide as the gauge, filling in from the right.
     function temps(b: BoardStats) {
-      if (!b.temps_c) return null
-      const width = Math.max(6, Math.min(30, cols - 19))
+      const t = b.temps_c
+      if (!t) return null
+      const width = Math.max(6, Math.min(HISTORY, cols - 15))
+      // (`h` is the JSX factory here: no local may take that name)
+      const shown = s.history.length >= 2 ? s.history.slice(-width) : []
       const dies = [
-        ['Zynq', b.temps_c.zynq],
-        ['AD9361', b.temps_c.ad9361],
+        ['zynq', 'Zynq'],
+        ['ad9361', 'AD9361'],
       ] as const
+      const span = shown.length ? (shown[shown.length - 1]!.at - shown[0]!.at) / 1000 : 0
       return (
         <Box flexDirection="column">
-          <Text dimColor>🌡 die temperatures (warm {WARM_C}, hot {HOT_C} °C)</Text>
-          {dies.map(([name, c]) => (
-            <Box gap={1}>
-              <Text>{name.padEnd(6)}</Text>
-              <Text color={LEVEL_NAME[tempLevel(c)]}>{gauge(c, width)}</Text>
-              <Text color={LEVEL_NAME[tempLevel(c)]}>{c.toFixed(1)}°C</Text>
-            </Box>
-          ))}
+          <Text dimColor wrap="truncate-end">
+            🌡 die temperatures (warm {WARM_C}, hot {HOT_C} °C)
+          </Text>
+          {dies.map(([die, name]) => {
+            const c = t[die]
+            const level = LEVEL_NAME[tempLevel(c)]
+            const [full, empty] = gauge(c, width)
+            return (
+              <Box flexDirection="column">
+                <Box gap={1}>
+                  <Text>{name.padEnd(6)}</Text>
+                  <Text color={level}>{`${c.toFixed(1)}°C`.padStart(6)}</Text>
+                  <Box>
+                    <Text color={level}>{full}</Text>
+                    <Text dimColor>{empty}</Text>
+                  </Box>
+                </Box>
+                {shown.length > 0 && trend(die, shown.map(x => x[die]), width)}
+              </Box>
+            )
+          })}
+          {shown.length > 0 && (
+            <Text dimColor wrap="truncate-end">
+              trend: last {shown.length} readings over {duration(span)}, each on its own scale
+            </Text>
+          )}
         </Box>
       )
     }
 
-    function sparkline() {
-      // (`h` is the JSX factory here: no local may take that name)
-      const hist = s.history
-      if (hist.length < 2) return null
-      const columns = Math.max(2, Math.min(hist.length, cols - 2))
-      const shown = hist.slice(-columns)
-      const range = (die: 'zynq' | 'ad9361') => {
-        const v = shown.map(x => x[die])
-        return `${Math.min(...v).toFixed(0)}–${Math.max(...v).toFixed(0)}`
-      }
-      const label = (
-        <Text dimColor wrap="truncate-end">
-          last {shown.length} readings · Zynq {range('zynq')} · AD9361 {range('ad9361')} °C
-        </Text>
-      )
+    function trend(die: 'zynq' | 'ad9361', values: number[], width: number) {
+      const range = `${Math.min(...values).toFixed(0)}–${Math.max(...values).toFixed(0)}`
+      let bars
       if (e.surface === 'terminal') {
         const { Raster } = $.ui.resolve(e)
-        return (
-          <Box flexDirection="column">
-            <Raster key="temps" columns={columns} rows={2} cells={sparkCells(shown, columns)} />
-            {label}
-          </Box>
+        bars = <Raster key={`trend-${die}`} columns={width} rows={1} cells={sparkCells(values, width)} />
+      } else {
+        // the other surfaces have no Raster: the same bars as block characters
+        const last = values[values.length - 1]!
+        bars = (
+          <Text color={LEVEL_NAME[tempLevel(last)]} wrap="truncate-end">
+            {heights(values)
+              .map(k => BLOCKS[k])
+              .join('')}
+          </Text>
         )
       }
-      // the other surfaces have no Raster: the same bars as block characters
       return (
-        <Box flexDirection="column">
-          {(['zynq', 'ad9361'] as const).map(die => {
-            const last = shown[shown.length - 1]!
-            return (
-              <Text color={LEVEL_NAME[tempLevel(last[die])]} wrap="truncate-end">
-                {heights(shown.map(x => x[die])).map(k => BLOCKS[k]).join('')}
-              </Text>
-            )
-          })}
-          {label}
+        <Box gap={1} paddingLeft={7}>
+          <Text dimColor>{range.padStart(6)}</Text>
+          {bars}
         </Box>
       )
     }
@@ -548,7 +565,6 @@ export const register: Register = (on, options) => {
             </Line>
           )}
           {temps(b)}
-          {sparkline()}
           {firmware(b)}
           {b.kernel && <Line dim>kernel {b.kernel}</Line>}
           {b.via && <Line dim>read via {b.via}</Line>}

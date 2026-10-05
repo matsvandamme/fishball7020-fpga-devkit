@@ -68,17 +68,29 @@ sections filling in within a few seconds: 📡 Board, 📻 Radio, 🐙 GitHub an
 
 | Section | What | Refreshed |
 |---|---|---|
-| 📡 Board | each link (🔌 USB, 🌐 Ethernet, 🔗 libiio) as ● up or ○ down; model, firmware and kernel; ⏱ uptime and ⚡ load; a bar per die temperature and a sparkline of the recent readings | every 10 s |
+| 📡 Board | each link (🔌 USB, 🌐 Ethernet, 🔗 libiio) as ● up or ○ down, all three at once when the board is on more than one; model, firmware and kernel; ⏱ uptime and ⚡ load; a gauge per die temperature with that die's recent readings under it | every 10 s |
 | 📻 Radio | RX and TX LO, sample rate, RX and TX bandwidth, and per channel the RX gain, gain mode and TX attenuation | every 10 s |
 | 🐙 GitHub | stars, forks, open PRs and issues, the latest run of each workflow on `main`, and the self-hosted runners (the PCs that run CI against a real board) | every 3 min |
 | 🔨 Build | `git describe` of your checkout, the last modern build, and the firmware the board runs against it: the same build, or how many commits it is behind | every 3 min |
 
-The temperature bars are green below 68 °C, yellow from 68 °C and red from
+The temperature gauges are green below 68 °C, yellow from 68 °C and red from
 80 °C: 80 % and 94 % of 85 °C, the same levels [`./devkit temps`](../tools/temps.py)
 warns at. The board has only the two die sensors; see `./devkit temps --help`.
 
-**The status line** under the prompt reads like `fishball ● USB 71°C CI ✓`,
-and stays current with the pane closed: a board-only read once a minute.
+```text
+Zynq   76.7°C ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━──────
+        76–77                                                    ▄▄▄▃▄▄▄▆▅
+```
+
+Each gauge spans 0 to 85 °C. The trend under it is a sparkline (a chart of
+one bar per reading, newest on the right) as wide as the gauge, up to the
+last 60 readings. Each die's trend is scaled to its own lowest and highest
+reading, which are printed at its left (`76–77`), so a change of a degree
+still shows.
+
+**The status line** under the prompt reads like `fishball ● USB+Ethernet 71°C CI ✓`,
+naming every network link that is up (libiio only when none is), and stays
+current with the pane closed: a board-only read once a minute.
 
 **Alerts** appear only on a change: the board connecting or disconnecting, a
 die crossing 68 °C or 80 °C either way, a workflow on `main` going from
@@ -138,11 +150,18 @@ reload, because that lives in the session's state, not in the module.
 
 ## How it finds the board
 
-It knows no address of its own. It probes every place
+It knows no address of its own. It looks everywhere
 [`tools/board_addr.py`](../tools/board_addr.py) looks (`fishball.local`,
 `Fishball7020.local`, `pluto.local`, the USB address, and `$BOARD` or
-`$SDR_URI` when set), all at once, and sorts each one that answers by the
-interface the route to it leaves on:
+`$SDR_URI` when set), all at once, and probes every address each name
+resolves to, not only the first.
+
+With the USB cable and Ethernet both in, the board has an address on each,
+and your PC's name lookup often hands back only one of them for
+`fishball.local`. So once one link answers, the collector also asks the
+board which addresses it holds (in the ssh command that reads its uptime)
+and probes those too. Each address that answers is sorted by the interface
+the route to it leaves on:
 
 | Link | It is | Read over |
 |---|---|---|
@@ -157,6 +176,7 @@ libiio over USB. Over libiio there is no ssh, so uptime and load are missing.
 |---|---|
 | **libiio is ● but USB is ○** | the cable is in, but your PC's USB network interface has no address. Give it one in the board's USB subnet, e.g. `192.168.2.10/24`, and set that profile to connect by itself: `nmcli con mod <profile> connection.autoconnect yes`, then `nmcli con up <profile>` |
 | **Ethernet is ○ on a direct cable** | set up the PC's side as in [a direct cable to your PC](networking.md#a-direct-cable-to-your-pc) |
+| **Ethernet says `<address> on the board, no answer from here`** | the board has a network address, but your PC cannot reach it: the two are on different networks, or a firewall is in between. Put the PC on the board's network, or use the USB link |
 | **everything is ○** | the board is off, still booting (about 40 s), or on a USB port that cannot power it; see [reaching the board](networking.md#reaching-the-board) |
 | **the board's ● but uptime is missing** | ssh did not log in with `~/.ssh/fishball` (or `$FISHBALL_SSH_KEY`); `./devkit ssh-key` sets that up |
 

@@ -6,6 +6,8 @@ export type Link = {
   iface?: string
   up: boolean
   iiod: boolean
+  /** an address the board holds that does not answer from this machine */
+  reported?: boolean
 }
 
 export type BoardStats = Section & {
