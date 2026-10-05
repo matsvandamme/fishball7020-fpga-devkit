@@ -751,8 +751,9 @@ sudo ./devkit write-card --target modern /dev/sdX   <span class="c"># the Debian
 </section>
 <section class="part" id="l3a">
   <div class="part-head"><span class="part-n">3A</span><h2>Reaching the board, and changing its address</h2></div>
-  <p class="lede">The board answers on 192.168.2.1 over USB and asks your router for an address over
-    Ethernet. How you change either depends on which rootfs you run.</p>
+  <p class="lede">The board answers on 192.168.2.1 over USB and asks for an address over Ethernet: from
+    your router, or from your PC when a cable runs straight between them. How you change either depends
+    on which rootfs you run.</p>
 
   <div class="box jargon">
     <p class="bt">Words used here</p>
@@ -1017,6 +1018,39 @@ iface eth0 inet dhcp
   </div>
 
   <p>Each reads the setting back <em>before</em> rebooting, then finds the board again.</p>
+
+  <h3>A cable straight to your PC</h3>
+  <p>With no router there is no DHCP server, so make your PC one. NetworkManager does it in
+    <em>shared</em> mode: it gives the port an address, runs a small DHCP and DNS server on it, and
+    routes the board to the internet through the PC. The board needs no change; it asks for DHCP as
+    always.</p>
+  <div class="code">
+    <div class="code-bar"><span class="f">terminal</span><span class="t">Shell</span></div>
+<pre><code><span class="c"># run from: your HOST; IFACE is the port the cable is in (ip -br link)</span>
+nmcli con add type ethernet con-name fishball-eth ifname IFACE \
+      ipv4.method shared ipv4.addresses 10.42.0.1/24 ipv6.method link-local
+nmcli con up fishball-eth
+<span class="c"># a firewall that denies incoming must let the board's DHCP request in, on that port only</span>
+sudo ufw allow in on IFACE to any port 67 proto udp
+</code></pre>
+  </div>
+  <p>The board then takes an address from 10.42.0.0/24 and <code>fishball.local</code> finds it. If USB
+    is plugged in too, the name answers on both links; take the PC's USB network down to keep
+    everything on the cable.</p>
+
+  <div class="box trap">
+    <p class="bt">An address added by hand disappears within a minute</p>
+    <p>On Debian <code>eth0</code> is set to DHCP, and on a cable where nothing answers,
+      <code>dhclient</code> keeps retrying. Each time it gives up it removes <em>every</em> IPv4 address
+      on <code>eth0</code>, including one you just added with <code>ip addr add</code>. A connection
+      that worked a moment ago then hangs. Serve DHCP from the PC, or stop the client first with
+      <code>kill $(cat /run/dhclient.eth0.pid)</code>.</p>
+  </div>
+
+  <p>A cable is not much faster than Wi-Fi here. On a direct gigabit link the board sustained 12 MS/s
+    of 16-bit samples through <code>iiod</code> (11 over Wi-Fi) and 20 MS/s of 8-bit ones (the same as
+    over Wi-Fi), and plain TCP reached only about 600&ndash;700 Mb/s, with one ARM core at 100% handling
+    the network. The board's CPU is the limit, not the cable.</p>
 
   <h3>Finding the board again</h3>
   <div class="code">
@@ -1659,6 +1693,9 @@ Nyquist, fs/(2D), sits in the MIDDLE of that transition - not at its start.
     (12 MB/s), it took one starve mute inside ten seconds; with the client on the board, none. What
     matters is the play-out time each buffer holds: 256 K samples at 3.072 MSPS is 85 ms, so a longer
     stall empties the DAC, and 250 ms of empty mutes the transmitter. Larger buffers buy slack.</p>
+  <p>Streaming without a break is set by the board's CPU, not the network: 12 MS/s at 16 bits and
+    20 MS/s at 8 bits per receiver, measured on a direct gigabit cable, which is barely more than over
+    Wi-Fi. Anything faster has to be captured on the board first (lesson 3A has the numbers).</p>
   <p>If you only care about a 200 kHz signal, why sample 56 MHz at all? See
     <a href="#l27">lesson 27</a>.</p>
 </section>
