@@ -4,7 +4,8 @@ How fast samples move between this board and a host, where each limit sits, and
 how clean modulated signals (QPSK, 16-QAM, OFDM and others) are up to the full
 61.44 MSPS. Read it before planning a capture or transmit stream above a few
 MSPS; the radio's own tone measurements are in
-[measured-performance.md](measured-performance.md).
+[measured-performance.md](measured-performance.md). For the tasks:
+[transmit a waveform on repeat](radio/transmit-on-repeat.md), [capture IQ to a file](radio/capture-iq.md).
 
 The limit you meet first is the host link and the board's CPU, not the radio. To
 transmit at any rate without the host in the loop, load the waveform once and
@@ -107,10 +108,8 @@ occupy the interface whether or not you read both.
 
 Limits in the order you meet them:
 
-```mermaid
-flowchart LR
-    H["your host link<br/><small>the only cheap one to change</small>"] --> C["the board's CPU"] --> L["the LVDS port and converter<br/><small>61.44 MS/s on two channels,<br/>only with the host out of the loop</small>"]
-```
+![The limits in the order you meet them: your host link, the only cheap one to change; then the board's CPU; then the LVDS port and converter, 61.44 MS/s on two channels, reached only with the host out of the loop.](img/radio-limits-light.svg#only-light)
+![The limits in the order you meet them: your host link, the only cheap one to change; then the board's CPU; then the LVDS port and converter, 61.44 MS/s on two channels, reached only with the host out of the loop.](img/radio-limits-dark.svg#only-dark)
 
 ### Throughput against buffer size
 
@@ -258,6 +257,5 @@ thermal, not the supply rails, and logs no kernel error.
 
 ## Further reading
 
-- [capturing-iq.md](capturing-iq.md): recording with metadata and a drop check
-- [measured-performance.md](measured-performance.md): the radio's own figures
-- [transmitter-safety.md](transmitter-safety.md): before anything transmits
+[capturing-iq.md](capturing-iq.md): recording with metadata and a drop check ·
+[transmitter-safety.md](transmitter-safety.md): before anything transmits

@@ -5,7 +5,9 @@ makes TX1 play a **sweep** (a signal whose frequency moves across a band,
 also called a *chirp*) from a [cyclic buffer](cyclic-buffers.md), over and
 over, and shows RX1 receiving it through the bench loop, live. It is the
 quickest way to see a cyclic buffer at work, to get a feel for different
-sweeps, and to measure how flat the loop between TX1 and RX1 is.
+sweeps, and to measure how flat the loop between TX1 and RX1 is. This page
+lists what the window shows, the controls, the modes and the measurements. To
+start it, see [watch a sweep live](radio/watch-a-sweep.md).
 
 - **needs:** TX1 → **20 dB attenuator** → RX1, the Debian root, and `zc-stream` on the board for 20 MS/s
 - **default sweep:** 7 MHz up-sweep, 864.5 to 871.5 MHz, every 0.8 s, at 20 MS/s
@@ -42,12 +44,8 @@ sweeps, and to measure how flat the loop between TX1 and RX1 is.
 
 ## Running it
 
-```bash
-# run from: tools/chirp-view on your PC
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python chirp_view.py --fullscreen
-```
+The three commands (a venv, its packages, `chirp_view.py --fullscreen`):
+[watch a sweep live](radio/watch-a-sweep.md).
 
 The window opens transmitting: by default a 7 MHz up-sweep from 864.5 to
 871.5 MHz every 0.8 s, sampled at 20 MS/s. It sets RX1's gain by itself
@@ -200,10 +198,8 @@ the reading stayed at −0.56 ns.
 
 ## How it works
 
-```mermaid
-flowchart LR
-    P["PC: one period<br/>of the sweep"] -->|"upload once"| C["cyclic buffer, replayed<br/>by the FPGA"] --> L["TX1 → 20 dB pad → RX1"] --> Z["zc-stream<br/><small>8-bit, 20 MS/s</small>"] --> W["receiver process on the PC:<br/>window and sound"]
-```
+![chirp-view's signal path: the PC computes one period of the sweep and uploads it once; the FPGA replays it as a cyclic buffer; it goes round the loop TX1, 20 dB pad, RX1; zc-stream sends it back as 8-bit samples at 20 MS/s; a receiver process on the PC draws the window and plays the sound.](img/radio-chirp-light.svg#only-light)
+![chirp-view's signal path: the PC computes one period of the sweep and uploads it once; the FPGA replays it as a cyclic buffer; it goes round the loop TX1, 20 dB pad, RX1; zc-stream sends it back as 8-bit samples at 20 MS/s; a receiver process on the PC draws the window and plays the sound.](img/radio-chirp-dark.svg#only-dark)
 
 **One period in the board's memory.** The program computes one full period
 of the sweep, uploads it as a cyclic buffer, and the FPGA replays it with

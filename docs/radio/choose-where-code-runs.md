@@ -7,6 +7,9 @@ description: Your PC, the board, the kernel or the FPGA - four questions decide 
 
 **Most projects belong on your PC.** Ask these in order and stop at the first yes:
 
+![Three questions, asked in order. Can my PC keep up (streaming plateaus near 44 MB/s)? Yes: on your PC. If no: must it run with no PC, or is the data too big to ship? Yes: on the board. If no: a new sysfs file, or act between samples? Yes: in the kernel. If no: in the FPGA, for a high input rate and a small output.](../img/radio-code-places-light.svg#only-light)
+![Three questions, asked in order. Can my PC keep up (streaming plateaus near 44 MB/s)? Yes: on your PC. If no: must it run with no PC, or is the data too big to ship? Yes: on the board. If no: a new sysfs file, or act between samples? Yes: in the kernel. If no: in the FPGA, for a high input rate and a small output.](../img/radio-code-places-dark.svg#only-dark)
+
 | # | Question | If yes |
 |---|---|---|
 | 1 | **Can my PC keep up?** Streaming over gigabit Ethernet plateaus near **44 MB/s** | **on your PC** |

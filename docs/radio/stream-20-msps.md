@@ -7,11 +7,14 @@ description: The patched SDR++ and zc-stream give a live 20 MHz-wide view over t
 
 libiio carries about **10 MS/s** for one receiver over the network. The
 **Fast TCP** transport carries **20 MS/s**, using 8-bit samples from
-`zc-stream` on the board. It needs the patched SDR++ (`tools/sdrpp/`) and the
-Debian root.
+`zc-stream` on the board. It needs the [patched SDR++](install-patched-sdrpp.md)
+and the Debian root (`firmware-modern/`), which has systemd and a compiler.
 
-1. Once: install `zc-stream` on the board as a service. It then starts at every
-   boot and waits, idle, for SDR++.
+![Inside the board, the AD9361 feeds zc-stream on ports 5555 (RX1) and 5556 (RX2), which sends 8-bit samples to SDR++ on the PC. SDR++ sends tuning, gain, rate and RX port to iiod on port 30431, which sets the AD9361.](../img/radio-fasttcp-light.svg#only-light)
+![Inside the board, the AD9361 feeds zc-stream on ports 5555 (RX1) and 5556 (RX2), which sends 8-bit samples to SDR++ on the PC. SDR++ sends tuning, gain, rate and RX port to iiod on port 30431, which sets the AD9361.](../img/radio-fasttcp-dark.svg#only-dark)
+
+1. Once: build and install `zc-stream` on the board as a service. It then
+   starts at every boot and waits, idle, for SDR++.
 
     ```bash
     # run from: the repo root, on your PC
@@ -36,6 +39,10 @@ Debian root.
 | **one program receives at a time** | another program that tries to stream is refused with "Device or resource busy" |
 | **up to 20 MS/s** | **pick 19 MS/s when every sample counts** |
 
-Installing the patched SDR++, and the measurements:
+**You should see:** a live view up to 20 MHz wide, as here across the FM band:
+
+![SDR++ at 20 MS/s through zc-stream: 88 to 108 MHz live, centred on 98 MHz, with FM stations near 90.4, 95.7, 98.6, 101.5, 102.1 and 104.7 MHz in the spectrum and waterfall.](../img/sdrpp-fast-20msps.jpg)
+
+The costs in full, and the measurements:
 [SDR++](../sdrpp.md#faster-the-fast-tcp-transport) ·
 [faster streaming](../streaming-paths.md).

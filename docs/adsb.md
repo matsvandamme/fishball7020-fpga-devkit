@@ -6,6 +6,10 @@ Broadcast). `./devkit adsb` receives those messages with the board, decodes
 them on your PC and shows them live: one row per aircraft, with its callsign,
 altitude, speed and position, above a log of every message received.
 
+This page covers what the window shows, the settings, recording and how the
+decoder works. To get a table of aircraft on screen, see
+[track aircraft](radio/track-aircraft.md).
+
 - **antenna:** a **1090 MHz antenna** on RX1A (or RX2A with `--channel 2`), with a view of the sky
 - **power:** a **mains charger**: on laptop bus power the board hangs under a sustained 4 MSPS stream
 - **gain:** **25 dB manual** by default; more is not better without a filter in front
@@ -14,20 +18,11 @@ altitude, speed and position, above a log of every message received.
 
 ## Quick start
 
-1. Put a **1090 MHz antenna** on **RX1A** (or RX2A, then add `--channel 2`).
-   Outdoors, or at a window with a view of the sky. Aircraft are line of sight:
-   walls and hills cost more range than anything else.
-2. Power the board from a **mains charger**, not a laptop's USB port.
-
-    !!! warning "On bus power it hangs under a sustained 4 MSPS stream, which is all this tool does"
-
-3. Run:
-
-```bash
-# run from: the repo root, on your host PC (not the board)
-./devkit adsb                  # the antenna on RX1A
-./devkit adsb --channel 2      # the antenna on RX2A
-```
+The three steps (antenna, mains power, `./devkit adsb`):
+[track aircraft](radio/track-aircraft.md). Aircraft are line of sight: walls
+and hills cost more range than anything else. Power matters because on bus
+power the board hangs under a sustained 4 MSPS stream, which is all this tool
+does.
 
 The first run fetches PyQt6, the window toolkit, into uv's cache (about
 100 MB, once). Without [uv](https://docs.astral.sh/uv/): a venv with `.venv/bin/pip install PyQt6 numpy`,
@@ -179,10 +174,8 @@ The code is in `tools/adsb/`, in plain Python and numpy:
 | `engine.py` | runs the two in threads, so a slow screen never stalls the stream |
 | `gui.py`, `adsb.py` | the window, and the command line |
 
-```mermaid
-flowchart LR
-    S["source.py<br/><small>iio_attr setup, iio_readdev stream,<br/>or a recording</small>"] --> D["demod.py<br/><small>finds messages</small>"] --> M["modes.py<br/><small>checksums, fields,<br/>positions, table</small>"] --> G["gui.py / adsb.py<br/><small>window or terminal</small>"]
-```
+![The decoder as four parts in a row: source.py sets up with iio_attr and streams with iio_readdev, or reads a recording; demod.py finds messages; modes.py does checksums, fields, positions and the table; gui.py or adsb.py show the window or the terminal.](img/radio-adsb-light.svg#only-light)
+![The decoder as four parts in a row: source.py sets up with iio_attr and streams with iio_readdev, or reads a recording; demod.py finds messages; modes.py does checksums, fields, positions and the table; gui.py or adsb.py show the window or the terminal.](img/radio-adsb-dark.svg#only-dark)
 
 The receiver is tuned to 1090 MHz exactly, so a message arrives as a pattern
 of on/off pulses, and only each sample's magnitude matters. Each message

@@ -10,7 +10,8 @@ receives them with the board, decodes them on your PC and shows one row per
 aircraft. It **never transmits**.
 
 1. Put a **1090 MHz antenna** on **RX1A** (or RX2A, then add `--channel 2`),
-   outdoors or at a window with a view of the sky.
+   outdoors or at a window with a view of the sky. Aircraft are line of
+   sight: walls and hills cost more range than anything else.
 2. Power the board from a **mains charger**: on bus power it hangs under a
    sustained 4 MSPS stream, which is all this tool does.
 3. Run:

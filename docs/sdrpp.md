@@ -1,10 +1,13 @@
 # Using SDR++ with this board
 
 [SDR++](https://www.sdrpp.org/) is a fast, simple receiver for listening and
-watching a band. This page gets stock SDR++ playing an FM station from this
-board on any OS, then covers the settings that decide how well it works and
-the extra controls a patched build adds. Every number here was measured on one
-board over the USB cable, with SDR++ receiving the Paris FM band.
+watching a band. This page lists what each setting does, what each link
+carries, and the controls a patched build adds. For the tasks, see
+[watch a band in SDR++](radio/watch-in-sdrpp.md),
+[stream 20 MS/s to SDR++](radio/stream-20-msps.md),
+[install the patched SDR++](radio/install-patched-sdrpp.md) and
+[listen to DAB+ radio](radio/listen-to-dab.md). Every number here was measured
+on one board over the USB cable, with SDR++ receiving the Paris FM band.
 
 - **USB:** carries about **20 MB/s = 5 MS/s**; above that whole blocks are lost, with no error anywhere
 - **network, libiio:** about **10 MS/s** for one receiver
@@ -17,15 +20,8 @@ board over the USB cable, with SDR++ receiving the Paris FM band.
 
 ## Quick start: stock SDR++, any OS
 
-1. Install SDR++ from [sdrpp.org](https://www.sdrpp.org/) or your distribution.
-2. Connect the board's **USB 2.0** socket and power it from a mains charger.
-   After about 40 s it answers at `192.168.2.1`.
-3. Start SDR++. Under **Source**, choose **PlutoSDR**, press **Refresh**, and
-   pick the device named `FISH Ball PlutoSDR Rev.A (Z7020/AD9361)`.
-4. Set the sample rate to **2.0 MHz**, **Bandwidth** to **Auto**, **Gain Mode**
-   to **Manual** and **Gain** to about **40 dB**.
-5. Under **Radio**, choose **WFM**. Type a station's frequency in the box at the
-   top (101.5 MHz in the picture) and press play.
+The five steps, from installing SDR++ to hearing a station (101.5 MHz in the
+picture): [watch a band in SDR++](radio/watch-in-sdrpp.md).
 
 !!! note "Stock SDR++ receives on RX1 only, and nothing here transmits"
     SDR++'s PlutoSDR source powers the transmitter's local oscillator down.
@@ -108,39 +104,18 @@ them to the same source panel:
 | libiio | about **10 MS/s** over the network | each block is a round trip to the board. This build fetches 50 ms blocks; SDR++'s usual 5 ms blocks lost samples from 5 MS/s up (83% arrived at 7.68 MS/s, enough to stop a DAB+ decode) |
 | **Fast TCP** | **20 MS/s**, a live 20 MHz-wide view | 8-bit samples instead of 16-bit ones, from [`zc-stream`](../tools/stream-paths/zc-stream/README.md) on the board |
 
-```mermaid
-flowchart LR
-    subgraph board["the board"]
-        R[AD9361] --> Z["zc-stream<br/><small>ports 5555 (RX1), 5556 (RX2)</small>"]
-        I["iiod<br/><small>port 30431</small>"] --> R
-    end
-    Z -->|"8-bit samples"| S[SDR++]
-    S -->|"tuning, gain, rate, RX port"| I
-```
+![Inside the board, the AD9361 feeds zc-stream on ports 5555 (RX1) and 5556 (RX2), which sends 8-bit samples to SDR++ on the PC. SDR++ sends tuning, gain, rate and RX port to iiod on port 30431, which sets the AD9361.](img/radio-fasttcp-light.svg#only-light)
+![Inside the board, the AD9361 feeds zc-stream on ports 5555 (RX1) and 5556 (RX2), which sends 8-bit samples to SDR++ on the PC. SDR++ sends tuning, gain, rate and RX port to iiod on port 30431, which sets the AD9361.](img/radio-fasttcp-dark.svg#only-dark)
 
 Tuning, gain, rate, RX port and the rest still go through libiio, so the panel
 works exactly as before. [Faster streaming](streaming-paths.md) has the
 measurements.
 
-1. Once: build and install `zc-stream` on the board as a service. It then
-   starts at every boot and waits, idle, for SDR++. It needs the Debian root
-   (`firmware-modern/`), which has systemd and a compiler.
-
-    ```bash
-    # run from: the repo root, on your PC
-    scp -r tools/stream-paths/zc-stream root@192.168.2.1:
-    ```
-
-    ```bash
-    # run from: the board, in ~/zc-stream
-    apt install gcc make libiio-dev
-    make && make install
-    systemctl enable --now zc-stream
-    ```
-
-2. In SDR++, stop, set **Transport** to **Fast TCP, 8-bit (zc-stream)**, pick
-   a rate up to 20 MHz, and play. Leave **zc-stream port** at 5555: RX1 comes
-   from port 5555 and RX2 from 5556.
+To set it up, install `zc-stream` on the board as a service, once, and pick
+**Fast TCP, 8-bit (zc-stream)** under **Transport**:
+[stream 20 MS/s to SDR++](radio/stream-20-msps.md). `zc-stream` needs the Debian
+root (`firmware-modern/`), which has systemd and a compiler. RX1 comes from
+port 5555 and RX2 from 5556.
 
 What it costs and where it stops:
 
@@ -155,31 +130,8 @@ The DAB+ decoder works the same on either transport.
 
 ### Installing it
 
-=== "Arch"
-
-    ```bash
-    # run from: tools/sdrpp/
-    makepkg -f
-    sudo pacman -U sdrpp-git-*-x86_64.pkg.tar.zst
-    ```
-
-=== "Another Linux"
-
-    Build SDR++ from source at the same commit with the patch applied:
-
-    ```bash
-    # run from: wherever you build software
-    git clone https://github.com/AlexandreRouma/SDRPlusPlus.git && cd SDRPlusPlus
-    git checkout 8c9f5ee8fe405775bfcd62c8c8f8c0fc928a64af
-    patch -p1 < /path/to/fishball7020-fpga-devkit/tools/sdrpp/plutosdr-fishball.patch
-    cmake -B build -DCMAKE_BUILD_TYPE=Release && make -C build -j"$(nproc)"
-    sudo make -C build install
-    ```
-
-    Its dependencies are SDR++'s own (`fftw`, `glfw`, `glew`, `volk`, `libiio`,
-    `libad9361`, an audio library); its
-    [build instructions](https://github.com/AlexandreRouma/SDRPlusPlus#building-on-linux--bsd)
-    list them per distribution.
+On Arch, a package; on another Linux, SDR++ built from source at the pinned
+commit with the patch applied: [install the patched SDR++](radio/install-patched-sdrpp.md).
 
 ## DAB+ radio
 
@@ -188,15 +140,10 @@ module, which uses welle.io's receiver. DAB+ is digital radio in Band III
 (174–240 MHz): one 1.536 MHz-wide block, a *multiplex*, carries a dozen or so
 stations at once.
 
-1. Point the board at a Band III antenna, on RX2 or whichever input is
-   cabled, and set a sample rate of **2.4 MS/s or more**. The decoder takes
-   its own 2.048 MS/s slice from whatever SDR++ receives.
-2. **Module Manager**: add an instance of `dab_decoder`, if there is not one
-   already.
-3. In the DAB Decoder panel, pick a block from the dropdown (`8C` is
-   199.360 MHz). This tunes the radio.
-4. Wait for **SYNC LOCKED**. The multiplex name and its stations appear within
-   a few seconds; click a station to hear it.
+The four steps, from the antenna to **SYNC LOCKED**:
+[listen to DAB+ radio](radio/listen-to-dab.md). The decoder takes its own
+2.048 MS/s slice from whatever SDR++ receives, so it needs a sample rate of
+2.4 MS/s or more. Block `8C` is 199.360 MHz.
 
 In Paris, block 8C carries "Métropolitain 2": France Inter, FIP, RMC and ten
 more.
@@ -211,10 +158,8 @@ carries all of it. With it on, the rate you pick is still what reaches SDR++,
 but the AD9361 runs eight times faster and the FPGA's filter removes everything
 outside the view before discarding seven samples in eight:
 
-```mermaid
-flowchart LR
-    A["AD9361<br/><small>8 × the rate you pick</small>"] --> F["FPGA filter<br/><small>removes all outside the view</small>"] --> D["keep 1 sample in 8"] --> L["the link<br/><small>the rate you pick</small>"] --> S[SDR++]
-```
+![With the decimator on, the AD9361 samples at 8 times the rate you pick, the FPGA filter removes everything outside the view, one sample in 8 is kept, and the link carries the rate you pick to SDR++.](img/radio-decimator-light.svg#only-light)
+![With the decimator on, the AD9361 samples at 8 times the rate you pick, the FPGA filter removes everything outside the view, one sample in 8 is kept, and the link carries the rate you pick to SDR++.](img/radio-decimator-dark.svg#only-dark)
 
 | you pick | AD9361 samples at | on the cable |
 |---|---|---|

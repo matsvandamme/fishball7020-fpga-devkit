@@ -23,10 +23,8 @@ Radio, best for building a signal chain from parts; other jobs suit other tools.
 on the ARM cores, avoiding the streaming ceiling in
 [modulation-and-throughput.md](modulation-and-throughput.md):
 
-```mermaid
-flowchart LR
-    A["AD9361<br/><small>245 MB/s of IQ</small>"] --> F["FFT on the FPGA"] --> W["web server<br/><small>ARM cores</small>"] -->|"a few hundred kB/s"| B["browser:<br/>real-time waterfall"]
-```
+![Maia SDR's path: the AD9361 produces 245 MB/s of IQ, the FFT runs on the FPGA, a web server runs on the ARM cores, and a few hundred kB/s reach a real-time waterfall in the browser.](img/radio-maia-light.svg#only-light)
+![Maia SDR's path: the AD9361 produces 245 MB/s of IQ, the FFT runs on the FPGA, a web server runs on the ARM cores, and a few hundred kB/s reach a real-time waterfall in the browser.](img/radio-maia-dark.svg#only-dark)
 
 It can also record raw IQ to the board's memory; recordings open in
 [IQEngine](https://www.iqengine.org/) in a browser.
@@ -87,10 +85,10 @@ For anything whose output is a number, a script beats a flowgraph.
 way, and [`tools/selftest/iiod_min.py`](../tools/selftest/iiod_min.py) talks the
 IIOD protocol with only the standard library, so a libiio version mismatch cannot
 block a health check. [pyadi-iio](https://github.com/analogdevicesinc/pyadi-iio)
-is the convenient version:
+is the convenient version ([install it in a venv](radio/talk-from-python.md)):
 
 ```python
-# run from: anywhere with pyadi-iio installed
+# run from: your project's folder, as: .venv/bin/python example.py (a venv with pyadi-iio)
 import adi, numpy as np
 sdr = adi.ad9361(uri='ip:fishball.local')
 sdr.rx_lo = 2_437_000_000

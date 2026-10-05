@@ -6,14 +6,8 @@ its transmitter into its own receiver. Read it before you design a measurement,
 set up a loopback, or quote a figure for this board.
 
 Every figure comes from the self-test, `tools/selftest/sdr_selftest.py`
-(`./devkit selftest` runs the same script). To reproduce them:
-
-```bash
-# run from: the repo root
-./devkit selftest --ssh                                    # no cable, never transmits
-./devkit selftest --ssh --loopback --pad 20 --channel 0 \
-    --sweep-points 60 --sweep-start 70e6 --sweep-stop 6e9 --json run1.json
-```
+(`./devkit selftest` runs the same script). The two commands that reproduce
+them, without and with the loopback: [check the radio is healthy](radio/check-the-radio.md).
 
 !!! danger "`--loopback` transmits"
     Cable a transmit port to a receive port through **at least 20 dB of
@@ -196,11 +190,8 @@ leak.
 Some transmit signal reaches the receiver **inside the board**: with the cable
 removed, the tone is still 35–59 dB above the noise on channel 0.
 
-```mermaid
-flowchart LR
-    T[TX port] -->|"cable + pad"| R[RX port]
-    T -.->|"leak inside the board"| R
-```
+![Two paths from the TX port to the RX port: the wanted one through the cable and pad, and a dashed one, the leak inside the board.](img/radio-leak-light.svg#only-light)
+![Two paths from the TX port to the RX port: the wanted one through the cable and pad, and a dashed one, the leak inside the board.](img/radio-leak-dark.svg#only-dark)
 
 The table gives it as an **equivalent pad** (the attenuator a cable loop would
 need to be as strong); higher means a weaker leak.

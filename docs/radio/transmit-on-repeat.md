@@ -9,6 +9,9 @@ A **cyclic buffer** is one block of samples the board replays from its own
 memory until stopped: up to 61.44 MS/s, with nothing needed from your PC while
 it plays.
 
+![A cyclic buffer: your PC uploads one block of samples once; the board's memory replays it until stopped; TX1 plays it at up to 61.44 MS/s.](../img/radio-cyclic-light.svg#only-light)
+![A cyclic buffer: your PC uploads one block of samples once; the board's memory replays it until stopped; TX1 plays it at up to 61.44 MS/s.](../img/radio-cyclic-dark.svg#only-dark)
+
 !!! danger "Read [before you transmit](../start/before-you-transmit.md) first"
     The board puts out about +19 dBm and its receivers survive only +2.5 dBm:
     never loop TX into RX without at least 20 dB of attenuation, and transmit only

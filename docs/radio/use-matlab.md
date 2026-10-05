@@ -5,6 +5,9 @@ description: One command checks MATLAB is ready; three rules keep levels and set
 
 # Use MATLAB
 
+One command checks that MATLAB is ready for this board; another runs the
+first example.
+
 ```bash
 # run from: the repo root
 ./devkit matlab            # is MATLAB ready to use this board?

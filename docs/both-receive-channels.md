@@ -4,8 +4,9 @@ With the FPGA's ÷8 decimator engaged, upstream's block design filters only
 channel 0, so channel 1 comes out aliased. Patch
 `firmware/patches/0021-filter-both-receive-channels-by-default.patch` puts both
 channels through the filter for about six lines of Tcl and 22 DSP slices; it is
-**applied by every build**. Read this if you use both receivers at a decimated
-rate, or build upstream's wiring.
+**applied by every build**. This page records the defect, the measurements and
+the cost. To capture both channels, see
+[receive on both channels](radio/receive-both-channels.md).
 
 - **the defect (upstream):** with the ÷8 decimator engaged, channel 1 is sampled at one eighth rate **with no anti-alias filter**: a 10 MHz tone's alias lands at 2.32 MHz at full strength
 - **the fix:** patch `0021`, applied by every build: both channels through the filter
@@ -47,21 +48,17 @@ STOCK_RX_FILTER=1 ./devkit build --target factory --hdl-only && ./devkit verify 
 
 ## The defect
 
-```mermaid
-flowchart LR
-    A0["channel 0<br/><small>adc_*_i0/q0</small>"] --> F["rx_fir_decimator<br/><small>filter, ÷8</small>"] -->|"data, valid_out_0"| C["cpack"]
-    A1["channel 1<br/><small>adc_*_i1/q1</small>"] -->|"stock: straight through,<br/>no filter"| C
-    F -.->|"fifo_wr_en = valid_out_0<br/><small>strobes once per 8 samples</small>"| C
-```
+![The stock receive path. Channel 0 (adc_*_i0/q0) goes through rx_fir_decimator, which filters and divides by 8, and on to cpack with valid_out_0. Channel 1 (adc_*_i1/q1) goes straight to cpack with no filter. cpack's write strobe, fifo_wr_en, is valid_out_0, which strobes once per 8 samples.](img/radio-channel1-light.svg#only-light)
+![The stock receive path. Channel 0 (adc_*_i0/q0) goes through rx_fir_decimator, which filters and divides by 8, and on to cpack with valid_out_0. Channel 1 (adc_*_i1/q1) goes straight to cpack with no filter. cpack's write strobe, fifo_wr_en, is valid_out_0, which strobes once per 8 samples.](img/radio-channel1-dark.svg#only-dark)
 
 Three facts in the stock block design combine badly:
 
-1. **Only channel 0 is filtered.** Channel 1 goes straight to `cpack` inputs 2 and 3.
-2. **`cpack` captures everything on channel 0's timing.** Its write strobe,
-   `fifo_wr_en`, is `rx_fir_decimator/valid_out_0`; channel 1's `adc_valid_i1`
-   is connected to nothing.
-3. **The decimator drops the rate by 8**, so that strobe fires once per eight
-   input samples.
+- **Only channel 0 is filtered.** Channel 1 goes straight to `cpack` inputs 2 and 3.
+- **`cpack` captures everything on channel 0's timing.** Its write strobe,
+  `fifo_wr_en`, is `rx_fir_decimator/valid_out_0`; channel 1's `adc_valid_i1`
+  is connected to nothing.
+- **The decimator drops the rate by 8**, so that strobe fires once per eight
+  input samples.
 
 So channel 1 is sampled at one eighth rate **with no anti-alias filter**:
 everything outside ±Fs/16 folds onto it, offset from channel 0 by the filter's

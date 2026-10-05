@@ -1,9 +1,11 @@
 # Using this board in your own project
 
-Where to put your code once the board works: on your PC, on the board, in the
-kernel, or in the FPGA (most projects want the first), with what each costs and
-how to start. New to the board? Get it talking with the [README](../README.md) and
-come back when `./devkit selftest --ssh` passes.
+The four places your code can run (your PC, the board, the kernel, the FPGA),
+what each costs, and the commands that start each one. Most projects want the
+first. To choose, see [choose where your code runs](radio/choose-where-code-runs.md);
+to start on the PC, [talk to the board from Python](radio/talk-from-python.md).
+New to the board? Get it talking with the [README](../README.md) and come back
+when `./devkit selftest --ssh` passes.
 
 ## The four places your code can live
 
@@ -14,31 +16,22 @@ come back when `./devkit selftest --ssh` passes.
 | **3. In the kernel** | the board's Linux | a kernel build and a patch to maintain | **2m46s** from clean, **6 s** to flash | you need a new sysfs knob, or per-sample timing |
 | **4. In the FPGA** | the PL fabric | Vivado, and HDL | **20 min** with `--hdl-only`, **70** from cold | the data rate is too high for anything above |
 
-```mermaid
-flowchart TD
-    Q1{"Can my PC keep up?<br/><small>streaming plateaus near 44 MB/s</small>"} -->|yes| P1["1. On your PC"]
-    Q1 -->|no| Q2{"Must it run with no PC,<br/>or is the data too big to ship?"}
-    Q2 -->|yes| P2["2. On the board"]
-    Q2 -->|no| Q3{"A new sysfs file, or act<br/>between samples?"}
-    Q3 -->|yes| P3["3. In the kernel"]
-    Q3 -->|no| P4["4. In the FPGA<br/><small>high input rate, small output</small>"]
-```
+![Three questions, asked in order. Can my PC keep up (streaming plateaus near 44 MB/s)? Yes: on your PC. If no: must it run with no PC, or is the data too big to ship? Yes: on the board. If no: a new sysfs file, or act between samples? Yes: in the kernel. If no: in the FPGA, for a high input rate and a small output.](img/radio-code-places-light.svg#only-light)
+![Three questions, asked in order. Can my PC keep up (streaming plateaus near 44 MB/s)? Yes: on your PC. If no: must it run with no PC, or is the data too big to ship? Yes: on the board. If no: a new sysfs file, or act between samples? Yes: in the kernel. If no: in the FPGA, for a high input rate and a small output.](img/radio-code-places-dark.svg#only-dark)
 
 Ask in order and stop at the first yes:
 
-1. **Can my PC keep up?** One channel at the full 61.44 MS/s is 245.8 MB/s;
-   streaming over gigabit Ethernet plateaus near **44 MB/s**
-   ([measurements](modulation-and-throughput.md)). Under that: **place 1**. A
-   **burst** is different: one libiio buffer fills at the converter's rate and
-   ships afterwards. A **33 554 432-sample (128 MB) buffer** of two channels at
-   30.72 MS/s completes cleanly, with 891 MB of 1001 free during the run; 128 MB
-   is about **0.55 s** at 245.8 MB/s.
-2. **Must it run with no PC, or is the data too big to ship?** **Place 2**, on
-   the Debian root. On the board, capture reaches 220.0 MB/s (one channel) and
-   430.8 MB/s (two).
-3. **Do I need a new sysfs file, or to act between samples?** **Place 3**.
-4. **Is the input rate higher than the bus can carry, with a small output?**
-   **Place 4**.
+| Question | If yes | The numbers |
+|---|---|---|
+| **Can my PC keep up?** | **place 1** | One channel at the full 61.44 MS/s is 245.8 MB/s; streaming over gigabit Ethernet plateaus near **44 MB/s** ([measurements](modulation-and-throughput.md)). Under that: place 1 |
+| **Must it run with no PC, or is the data too big to ship?** | **place 2**, on the Debian root | On the board, capture reaches 220.0 MB/s (one channel) and 430.8 MB/s (two) |
+| **Do I need a new sysfs file, or to act between samples?** | **place 3** | |
+| **Is the input rate higher than the bus can carry, with a small output?** | **place 4** | |
+
+A **burst** is different from a stream: one libiio buffer fills at the
+converter's rate and ships afterwards. A **33 554 432-sample (128 MB) buffer**
+of two channels at 30.72 MS/s completes cleanly, with 891 MB of 1001 free
+during the run; 128 MB is about **0.55 s** at 245.8 MB/s.
 
 !!! tip "Before any of them"
     Rule out a damaged board with `./devkit selftest --ssh` (rails, die
@@ -54,23 +47,8 @@ Ask in order and stop at the first yes:
 The board's `iiod` daemon serves the radio over the network; anything speaking
 **libiio** can drive it, from any language.
 
-```bash
-# run from: your project's folder, on your PC
-python3 -m venv .venv                     # a venv: Python packages for this project only
-.venv/bin/pip install pyadi-iio           # this is the whole install
-```
-
-```python
-# run from: your project's folder, as: .venv/bin/python example.py
-import adi
-sdr = adi.ad9361("ip:fishball.local")     # or ip:192.168.2.1 over USB
-sdr.rx_lo             = 2_400_000_000     # tune to 2.4 GHz
-sdr.sample_rate       = 4_000_000
-sdr.rx_rf_bandwidth   = 4_000_000
-sdr.rx_buffer_size    = 65536
-x = sdr.rx()                              # 65536 complex samples
-sdr.rx_destroy_buffer()                   # not optional - see below
-```
+The install (a venv and `pyadi-iio`) and a six-line receive example:
+[talk to the board from Python](radio/talk-from-python.md).
 
 !!! warning "Call `rx_destroy_buffer()` (or `tx_destroy_buffer()`) before the script ends"
     - **symptom:** the script segfaults on exit (code 139) inside `iio_buffer_destroy()`: the data is fine, but the crash fails tests and CI
@@ -146,7 +124,7 @@ cp arch/arm/boot/uImage ../../output/
 ```
 
 Flashing takes about six seconds, and the previous kernel stays on the card as
-`uImage.prev` for rollback.
+`uImage.prev` for rollback. Step by step: [change a kernel driver](build/change-a-driver.md).
 
 - **Then fold the change into a numbered patch** in `firmware-modern/patches/`,
   or the next clean `setup.sh` loses it, and add a CI assertion so it cannot
@@ -181,10 +159,13 @@ rm -rf src/hdl/projects/pluto/pluto.{xpr,cache,gen,hw,ip_user_files,runs,sim,src
 cd .. && ./devkit flash --target factory --boot-only
 ```
 
-1. **Simulate first**: one second, and synthesis cannot tell you the logic is wrong.
-2. **Delete the Vivado project before any HDL or block-design change**, or
-   `build_hdl.tcl` reuses `pluto.xpr` and you flash the old bitstream.
-3. **Never change the bitstream and the kernel in the same step.**
+| Rule | Why |
+|---|---|
+| **Simulate first** | one second, and synthesis cannot tell you the logic is wrong |
+| **Delete the Vivado project before any HDL or block-design change** | or `build_hdl.tcl` reuses `pluto.xpr` and you flash the old bitstream |
+| **Never change the bitstream and the kernel in the same step** | |
+
+Step by step: [add your own logic to the FPGA](build/add-fpga-logic.md).
 
 ## When it goes wrong
 

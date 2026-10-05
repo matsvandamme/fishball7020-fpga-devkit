@@ -14,32 +14,11 @@ radios; the code is in [`tools/modulation-gallery/`](../tools/modulation-gallery
 
 ## Repeating it
 
-!!! danger "This transmits"
-    866.5 MHz is inside the European ISM band and the levels are low, but the band
-    has duty-cycle and power limits that differ by country; what leaves the antenna
-    port is the operator's responsibility (see [transmitter safety](transmitter-safety.md)).
-
-```bash
-# run from: tools/modulation-gallery/
-python3 -m venv --system-site-packages .venv   # a venv that still sees the system's GNU Radio
-.venv/bin/pip install numpy scipy matplotlib
-.venv/bin/python campaign.py   # transmit each signal, capture it, measure it
-.venv/bin/python fig1.py       # ... through fig5.py, redraw the figures
-```
-
-You need a HackRF (or any SoapySDR receiver, by editing `hackrf_cap.py`), GNU
-Radio for the capture, and the board reachable over libiio. `board.py` takes the
-board's address as its argument ([changing the board's IP](networking.md)).
-Every waveform comes from a fixed seed, so captures can be re-analysed without
-transmitting again. The measurement chain is checked against known answers:
-
-```bash
-# run from: tools/modulation-gallery/
-.venv/bin/python dsp.py          # spectrum calibration against known answers
-.venv/bin/python waveforms.py    # every waveform normalised and cyclic-seamless
-.venv/bin/python rx.py           # the demodulator, against a known synthetic channel
-.venv/bin/python chain.py        # anti-alias filter, and what it does to an interferer
-```
+The commands, what you need and the self-checks of the measurement chain:
+[measure ten modulations](radio/measure-modulations.md). It transmits: 866.5 MHz
+is inside the European ISM band and the levels are low, but what leaves the
+antenna port is the operator's responsibility (see
+[transmitter safety](transmitter-safety.md)).
 
 ## The setup
 

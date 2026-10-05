@@ -1,8 +1,10 @@
 # Capturing IQ with metadata and an integrity check
 
-How to record IQ samples so the file describes itself and says whether samples
-were lost, using `tools/sigmf-capture.py`. Read this before recording anything
-you intend to keep, analyse or share.
+What `tools/sigmf-capture.py` records, its options, its rate limits and what
+its verdicts mean. It writes a file that describes itself and says whether
+samples were lost. To record one now, see
+[capture IQ to a file](radio/capture-iq.md) and
+[receive on both channels](radio/receive-both-channels.md).
 
 - **why not `iio_readdev`:** a bare capture has no sample rate, frequency or gain in it, and returns the byte count you asked for whether or not the hardware kept up
 - **full scale:** **±2047** (12-bit), not 32768: dividing by 32768 reads every level **24 dB** low
@@ -67,14 +69,8 @@ running too).
     `sigmf-capture.py` warns above about 30 MB/s and uses `-b 1048576` by default
     (`--buffer`); smaller buffers fail sooner.
 
-Find your own threshold:
-
-```bash
-# run from: the repo root
-for r in 3e6 5e6 10e6; do
-  tools/sigmf-capture.py record /tmp/t --channels both --rate $r --seconds 2 --verify
-done
-```
+To find your own threshold, capture at rising rates with `--verify`: the loop
+is in [capture IQ to a file](radio/capture-iq.md).
 
 !!! note "A looped channel is noisier than an open one"
     With the transmitter muted, a looped channel reads about 13 dB hotter than an
@@ -85,10 +81,8 @@ done
 
 A dropped chunk leaves a **step in phase**. The check:
 
-```mermaid
-flowchart LR
-    A["blank bins within<br/>about ±5 kHz of DC"] --> B["find the<br/>strongest tone"] --> C["de-rotate by it<br/><small>the tone stands still</small>"] --> D["average the phase over<br/>1000-sample blocks"] --> E["flag any step above<br/>0.5 radian between blocks"]
-```
+![The check in five steps: blank the bins within about 5 kHz of DC; find the strongest tone; de-rotate by it so the tone stands still; average the phase over 1000-sample blocks; flag any step above 0.5 radian between blocks.](img/radio-verify-light.svg#only-light)
+![The check in five steps: blank the bins within about 5 kHz of DC; find the strongest tone; de-rotate by it so the tone stands still; average the phase over 1000-sample blocks; flag any step above 0.5 radian between blocks.](img/radio-verify-dark.svg#only-dark)
 
 De-rotating multiplies by a complex exponential at minus the tone's frequency.
 
@@ -174,7 +168,7 @@ cf-ad9361-lpc   input voltage0/1 = RX1 I/Q,  voltage2/3 = RX2 I/Q
 ## Reading one back
 
 ```python
-# run from: anywhere, beside the capture
+# run from: beside the capture, as: .venv/bin/python read.py (a venv with numpy)
 import json, numpy as np
 
 meta = json.load(open("out.sigmf-meta"))

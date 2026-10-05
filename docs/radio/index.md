@@ -30,10 +30,20 @@ pages with every measurement are under [Reference](#reference).
 
     Stock SDR++ playing an FM station, on any OS.
 
+-   :material-package-variant-closed:{ .lg } **[Install the patched SDR++](install-patched-sdrpp.md)**
+
+
+    The build that knows RX2, the FPGA decimator and the Fast TCP transport.
+
 -   :material-speedometer:{ .lg } **[Stream 20 MS/s to SDR++](stream-20-msps.md)**
 
 
     The patched SDR++ and `zc-stream`: a live 20 MHz-wide view.
+
+-   :material-radio:{ .lg } **[Listen to DAB+ radio](listen-to-dab.md)**
+
+
+    Pick a block, wait for SYNC LOCKED, click a station.
 
 -   :material-airplane:{ .lg } **[Track aircraft (ADS-B)](track-aircraft.md)**
 
@@ -59,6 +69,11 @@ pages with every measurement are under [Reference](#reference).
 
 
     chirp-view: TX1 sweeps, RX1 receives it, live, through the 20 dB loop.
+
+-   :material-sine-wave:{ .lg } **[Measure ten modulations](measure-modulations.md)**
+
+
+    Transmit them, capture them on a HackRF One, redraw the gallery.
 
 -   :material-matrix:{ .lg } **[Use MATLAB](use-matlab.md)**
 

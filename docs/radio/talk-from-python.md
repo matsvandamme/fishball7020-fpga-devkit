@@ -8,6 +8,9 @@ description: A venv, pyadi-iio, then tune and receive in six lines.
 The board's `iiod` daemon serves the radio over the network; anything speaking
 **libiio** can drive it, from any language. From Python:
 
+![A Python script on your PC, using pyadi-iio in a venv, talks libiio over Ethernet or USB to iiod on the board, port 30431, which drives the AD9361 radio.](../img/radio-libiio-light.svg#only-light)
+![A Python script on your PC, using pyadi-iio in a venv, talks libiio over Ethernet or USB to iiod on the board, port 30431, which drives the AD9361 radio.](../img/radio-libiio-dark.svg#only-dark)
+
 ```bash
 # run from: your project's folder, on your PC
 python3 -m venv .venv                     # a venv: Python packages for this project only

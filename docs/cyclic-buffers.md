@@ -17,11 +17,16 @@ memory and the radio chip. Once a cyclic or one-shot buffer is in memory, it
 needs nothing from the network or the CPU to play, which is why both reach the
 radio's full rate.
 
-To see a cyclic buffer at work, with a live waterfall of TX1 heard on RX1,
-run [chirp-view](chirp-view.md).
+This page covers how to design a waveform, the commands, the board's limits
+and the measurements. For the tasks, see
+[transmit a waveform on repeat](radio/transmit-on-repeat.md),
+[send a burst on a trigger](radio/burst-on-trigger.md) and, to see a cyclic
+buffer at work, [watch a sweep live](radio/watch-a-sweep.md).
 
-This page covers cyclic buffers, then one-shot bursts on a trigger, then
-triggering other equipment. The short version on triggers: the board can send
+![A cyclic buffer: your PC uploads one block of samples once; the board's memory replays it until stopped; TX1 plays it at up to 61.44 MS/s.](img/radio-cyclic-light.svg#only-light)
+![A cyclic buffer: your PC uploads one block of samples once; the board's memory replays it until stopped; TX1 plays it at up to 61.44 MS/s.](img/radio-cyclic-dark.svg#only-dark)
+
+The short version on triggers: the board can send
 a trigger **out**, locked to the exact sample. A trigger **in** is
 software-timed, because the FPGA design this board ships has no hardware
 trigger input.
@@ -66,39 +71,14 @@ things decide whether that join is invisible:
 [pyadi-iio](https://github.com/analogdevicesinc/pyadi-iio), Analog Devices'
 Python package, plays a cyclic buffer with one setting, `tx_cyclic_buffer`:
 
-```python
-# run from: your PC, in a venv: .venv/bin/pip install pyadi-iio numpy; .venv/bin/python example.py
-import adi, numpy as np
-
-sdr = adi.ad9361("ip:192.168.2.1")      # or ip:fishball.local over Ethernet
-sdr.tx_enabled_channels = [0]           # TX1
-sdr.sample_rate = 30_720_000            # shared by RX and TX on this chip
-sdr.tx_lo = 433_920_000                 # a licence-free band
-sdr.tx_cyclic_buffer = True             # play the buffer forever
-
-N  = 3840                               # exactly 125 cycles of 1 MHz at 30.72 MS/s
-n  = np.arange(N)
-iq = 0.5 * 2**15 * np.exp(2j * np.pi * 1e6 * n / sdr.sample_rate)
-
-sdr.tx(iq)                              # starts it; returns at once
-for _ in range(10):                     # AFTER the start: set, then read back
-    sdr.tx_hardwaregain_chan0 = -40     # dB; -89.75 is muted, 0 is maximum
-    if abs(sdr.tx_hardwaregain_chan0 + 40) < 0.3:
-        break
-else:
-    raise RuntimeError("TX attenuation did not apply")
-
-input("transmitting - press Enter to stop")
-sdr.tx_hardwaregain_chan0 = -89.75      # mute FIRST...
-assert sdr.tx_hardwaregain_chan0 <= -89.0
-sdr.tx_destroy_buffer()                 # ...then stop
-```
+The complete example, with the attenuation set after the start and the mute
+before the stop: [transmit a waveform on repeat](radio/transmit-on-repeat.md).
 
 **Both transmitters at once** come from one buffer, so they start together and
 stay sample-aligned. This is what beamforming and two-port measurements need:
 
 ```python
-# run from: your PC, continuing from the example above
+# run from: your PC, continuing from that example
 sdr.tx_enabled_channels = [0, 1]        # TX1 and TX2
 sdr.tx([iq_tx1, iq_tx2])                # two arrays of the same length
 # then set and read back tx_hardwaregain_chan0 AND tx_hardwaregain_chan1
@@ -165,28 +145,15 @@ burst once, prepares the transmit buffer, and then waits for a trigger:
 - **a network packet:** any UDP datagram to the port you choose;
 - **a GPIO edge:** a rising edge on one of the JP5 pins, used as an input.
 
-```mermaid
-flowchart LR
-    T["trigger<br/><small>UDP datagram, or<br/>GPIO rising edge</small>"] --> B["tx-burst on the board<br/><small>one memory copy, one push</small>"] --> D["DMA plays the<br/>buffer once"] --> Z["DAC outputs zeros<br/>until the next trigger"]
-```
+![A trigger (a UDP datagram, or a GPIO rising edge) reaches tx-burst on the board, which does one memory copy and one push; the DMA plays the buffer once; then the DAC outputs zeros until the next trigger.](img/radio-burst-light.svg#only-light)
+![A trigger (a UDP datagram, or a GPIO rising edge) reaches tx-burst on the board, which does one memory copy and one push; the DMA plays the buffer once; then the DAC outputs zeros until the next trigger.](img/radio-burst-dark.svg#only-dark)
 
 Running on the board, with no network between the program and the radio, keeps
 the copy-and-push short.
 
-```bash
-# run from: the board. Build once (apt install gcc make libiio-dev), or copy a binary built elsewhere.
-make -C tx-burst
-# play burst.iq once per UDP datagram to port 5556, TX1 at -40 dB:
-./tx-burst/tx-burst -f burst.iq -u 5556 -a -40
-```
-
-```python
-# run from: any computer that can reach the board - fires one burst
-import socket
-s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-s.sendto(b"fire", ("fishball.local", 5556))
-print(s.recv(64).decode())             # "fired 1 139": burst number, microseconds to queue it
-```
+Building it, starting it and firing a burst from another computer:
+[send a burst on a trigger](radio/burst-on-trigger.md). The sender gets back
+`fired 1 139`: the burst number, and the microseconds it took to queue it.
 
 | Option | Meaning |
 |---|---|
@@ -237,7 +204,7 @@ that sample, every time the buffer plays. A scope, a logic analyser or an
 external switch can trigger on it:
 
 ```python
-# run from: your PC, before sdr.tx() in the cyclic example above
+# run from: your PC, before sdr.tx() in the cyclic example (a venv with pyadi-iio and numpy)
 i16 = iq.real.astype(np.int16)
 q16 = iq.imag.astype(np.int16)
 marker = np.zeros(N, dtype=np.int16)

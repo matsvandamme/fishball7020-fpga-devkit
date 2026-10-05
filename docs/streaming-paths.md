@@ -8,7 +8,8 @@ sustains 12 MS/s. Sending 8 bits per I and Q instead, from
 [`zc-stream`](https://github.com/matsvandamme/fishball7020-fpga-devkit/tree/main/tools/stream-paths/zc-stream)
 on two cores, reaches 20 MS/s, and 19 MS/s with margin. The patched SDR++ uses it as its
 [Fast TCP transport](sdrpp.md#faster-the-fast-tcp-transport). This page
-records what was measured, so nobody has to repeat it.
+records what was measured, so nobody has to repeat it. To use it, see
+[stream 20 MS/s to SDR++](radio/stream-20-msps.md).
 
 - **16-bit paths:** at most **11–12 MS/s**: one ARM core at 100% copying samples into the network
 - **8-bit `zc-stream -8`, two cores:** **19–20 MS/s**; 19 MS/s when every sample counts
@@ -76,11 +77,8 @@ For comparison, on the same board and network:
 network and not the radio. Every 16-bit path ends with one ARM Cortex-A9 core
 at 100% while the second core has little to do.
 
-```mermaid
-flowchart LR
-    D["DMA buffer"] -->|"copy 1"| I["iiod's memory"] -->|"copy 2"| S["socket"]
-    D -->|"mapped, no copy"| Z["zc-stream"] -->|"one copy"| S2["socket"]
-```
+![Two rows. iiod: the DMA buffer is copied into iiod's memory, then copied again into the socket, in one thread. zc-stream: the DMA buffer is mapped with no copy, then copied once into the socket.](img/radio-copies-light.svg#only-light)
+![Two rows. iiod: the DMA buffer is copied into iiod's memory, then copied again into the socket, in one thread. zc-stream: the DMA buffer is mapped with no copy, then copied once into the socket.](img/radio-copies-dark.svg#only-dark)
 
 - **`iiod` copies each sample twice**: from the DMA buffer into its own
   memory, then into the socket. One thread does both.
@@ -106,10 +104,8 @@ sends the converted block, from a ring of four, while the first converts the
 next. The sender is pinned to CPU1, because every interrupt, the network's
 included, lands on CPU0. That last step was worth 1 MS/s.
 
-```mermaid
-flowchart LR
-    D["DMA block"] --> C["CPU0 thread:<br/>wait, convert to 8 bits"] --> R["ring of four<br/>converted blocks"] --> T["CPU1 thread:<br/>send"] --> N["network"]
-```
+![zc-stream's 8-bit pipeline: a DMA block goes to a thread on CPU0 that waits and converts to 8 bits, into a ring of four converted blocks, to a thread on CPU1 that sends, to the network.](img/radio-twocore-light.svg#only-light)
+![zc-stream's 8-bit pipeline: a DMA block goes to a thread on CPU0 that waits and converts to 8 bits, into a ring of four converted blocks, to a thread on CPU1 that sends, to the network.](img/radio-twocore-dark.svg#only-dark)
 
 **The ceiling is the kernel's network send path**, at about 42.7 MB/s:
 

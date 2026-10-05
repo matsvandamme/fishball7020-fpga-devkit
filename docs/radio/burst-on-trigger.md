@@ -9,6 +9,9 @@ description: Play a prepared buffer once per UDP datagram or GPIO edge, with tx-
 **once per trigger** (a UDP datagram, or a rising edge on a JP5 pin), and the
 DAC outputs zeros in between.
 
+![A trigger (a UDP datagram, or a GPIO rising edge) reaches tx-burst on the board, which does one memory copy and one push; the DMA plays the buffer once; then the DAC outputs zeros until the next trigger.](../img/radio-burst-light.svg#only-light)
+![A trigger (a UDP datagram, or a GPIO rising edge) reaches tx-burst on the board, which does one memory copy and one push; the DMA plays the buffer once; then the DAC outputs zeros until the next trigger.](../img/radio-burst-dark.svg#only-dark)
+
 !!! danger "Read [before you transmit](../start/before-you-transmit.md) first"
     At least 20 dB in any TX→RX loop.
 

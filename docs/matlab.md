@@ -1,17 +1,10 @@
 # MATLAB
 
-How to use this board from MATLAB and Simulink: what to install, where MathWorks'
-ADALM-Pluto support package falls short on this board, and the `fishball` package
-and blocks this repository adds to get around it. Read it before the
-[MATLAB examples](../examples/matlab/README.md), or when MATLAB reads a level,
-channel or setting that does not match the board.
-
-```bash
-# run from: the repo root
-./devkit matlab            # is MATLAB ready to use this board?
-./devkit matlab shell      # interactive, package already on the path
-./devkit matlab hello      # run example 01
-```
+What to install for MATLAB and Simulink, where MathWorks' ADALM-Pluto support
+package falls short on this board, and the `fishball` package and blocks this
+repository adds to get around it. To check MATLAB and run the first example,
+see [use MATLAB](radio/use-matlab.md); then the
+[MATLAB examples](../examples/matlab/README.md).
 
 `./devkit matlab` checks MATLAB and the board in a few seconds; from a MATLAB
 prompt the same check is `fishball.doctor`. If MATLAB is not on `PATH`, set
