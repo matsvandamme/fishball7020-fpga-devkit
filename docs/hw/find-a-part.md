@@ -7,7 +7,7 @@ description: Which schematic to trust, which sheets matter, and the ratings ever
 
 !!! note "PlutoSky R2"
     This page is the R1's schematic. The R2's is the vendor's
-    [PlutoSky-R2-schematic.pdf](https://github.com/OpenSourceSDRLab/PlutoSky-R2/blob/main/hardware/PlutoSky-R2-schematic.pdf);
+    [PlutoSky-R2_Schematic.pdf](https://github.com/OpenSourceSDRLab/PlutoSky-R2/blob/main/hardware/PlutoSky-R2_Schematic.pdf);
     what differs is on [the PlutoSky R2](../plutosky-r2.md).
 
 Use **[`docs/vendor/7020_936x_SDR-schematic.pdf`](../vendor/7020_936x_SDR-schematic.pdf)**:

@@ -104,7 +104,7 @@ echo "=== Building the $REV_NAME FPGA design ($REV_PART): synth -> impl -> bitst
     cp "$FW1_DIR/scripts/build_hdl.tcl" .
     cp "$FW1_DIR/scripts/coefile_wbfm_102100.coe" .
     vivado -mode batch -source build_hdl.tcl -journal build_hdl.jou -log build_hdl.log
-    echo "    Timing summary:"; grep -A3 "Design Timing Summary" timing.rpt | tail -2 || true
+    echo "    Timing summary:"; grep -A9 "Design Timing Summary" timing.rpt | tail -6 || true
 )
 XSA="$PLUTO/system_top.xsa"
 [ -s "$XSA" ] || { echo "ERROR: Vivado finished without writing $XSA - see $PLUTO/build_hdl.log" >&2; exit 1; }
@@ -114,9 +114,8 @@ unzip -l "$XSA" 2>/dev/null | grep -q ' system_top.bit$' || {
 cat <<EOF
 
 === Done: $XSA ===
-  Read the timing summary above before using it: this revision's constraints
-  were first written without a Vivado run, and a design that does not meet
-  timing still produces a bitstream.
+  Read the timing summary above before using it: a design that does not
+  meet timing still produces a bitstream.
       less $PLUTO/timing.rpt
 
   The rest of the firmware is the modern target's, built around this XSA:

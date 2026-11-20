@@ -43,7 +43,7 @@ XSA="$(./firmware-modern/fetch-pinned-xsa.sh)"      # the FPGA design of a facto
 |---|---|
 | something that is not a zip | `ERROR: … is not a readable zip archive.` |
 | an XSA exported without the bitstream | `ERROR: … contains no system_top.bit.` |
-| an XSA for a different chip | `ERROR: that XSA is not for this board's part (xc7z020clg400-2).` |
+| an XSA for a different chip | `ERROR: that XSA is not for the PlutoSky R1's part (xc7z020clg400-2).` |
 | an XSA from a different Vivado version | `ERROR: that XSA was written by a different tool version.` |
 
 Where to get an XSA, what must be installed, and what you give up:

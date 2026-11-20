@@ -5,7 +5,7 @@
     FPGA, a 10 MHz reference input and a 1.8 V header. The parts, sheets and
     rails below are the R1's. For the R2 see [the PlutoSky R2](plutosky-r2.md)
     and the vendor's
-    [R2 schematic](https://github.com/OpenSourceSDRLab/PlutoSky-R2/blob/main/hardware/PlutoSky-R2-schematic.pdf).
+    [R2 schematic](https://github.com/OpenSourceSDRLab/PlutoSky-R2/blob/main/hardware/PlutoSky-R2_Schematic.pdf).
 
 The board's main parts, clocks, connectors and supply rails, read off the
 vendor schematic in [`docs/vendor/`](vendor/7020_936x_SDR-schematic.pdf) (sheet

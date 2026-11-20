@@ -254,8 +254,10 @@ jobs:
             echo "::error::CONFIG_XILINX_GMII2RGMII did not survive olddefconfig"; exit 1; }
           make ARCH=arm DTC_FLAGS=-@ xilinx/zynq-pluto-sdr-fishball-r2.dtb
           D=arch/arm/boot/dts/xilinx
-          dtc -I dtb -O dts -q $D/zynq-pluto-sdr-fishball.dtb    | sed 's/phandle = <0x[0-9a-f]*>;//' > /tmp/r1.dts
-          dtc -I dtb -O dts -q $D/zynq-pluto-sdr-fishball-r2.dtb | sed 's/phandle = <0x[0-9a-f]*>;//' > /tmp/r2.dts
+          # the kernel's own dtc: the runner has none installed
+          DTC=./scripts/dtc/dtc
+          $DTC -I dtb -O dts -q $D/zynq-pluto-sdr-fishball.dtb    | sed 's/phandle = <0x[0-9a-f]*>;//' > /tmp/r1.dts
+          $DTC -I dtb -O dts -q $D/zynq-pluto-sdr-fishball-r2.dtb | sed 's/phandle = <0x[0-9a-f]*>;//' > /tmp/r2.dts
           # The transmitter must probe muted on the R2 exactly as on the R1: the
           # value is inherited, not restated, so prove it arrived.
           grep -q 'adi,tx-attenuation-mdB = <0x15e96>;' /tmp/r2.dts
@@ -265,7 +267,8 @@ jobs:
           fi
           grep -q 'ethernet-phy@1' /tmp/r2.dts
           grep -q 'compatible = "xlnx,gmii-to-rgmii-1.0";' /tmp/r2.dts
-          grep -q 'phy-mode = "rgmii-rxid";' /tmp/r2.dts
+          # rgmii-id, not the vendor's rgmii-rxid: measured on the board (see the dts)
+          grep -q 'phy-mode = "rgmii-id";' /tmp/r2.dts
           # And nothing else moved: every differing line is one of the five things
           # the R2 changes. A sixth means the R2 tree has drifted from the R1's.
           if diff /tmp/r1.dts /tmp/r2.dts | grep '^[<>]' | grep -v '^[<>][[:space:]]*$' \

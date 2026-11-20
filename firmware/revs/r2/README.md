@@ -30,5 +30,5 @@ stop applying to the R2's; CI's `verify-r2` job checks it.
 `hardware/PlutoSky-R2_Schematic.pdf`), not off the R1's. The two packages share
 no pin-out, and the R2's header is 1.8 V.
 
-None of this has been through Vivado yet: see
-[the R2 page](../../../docs/plutosky-r2.md#what-is-not-done).
+Built with Vivado 2022.2 and booted on one R2 on 2026-11-20; what is and is not
+tested is on [the R2 page](../../../docs/plutosky-r2.md#what-is-tested-and-what-is-not).

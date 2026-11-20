@@ -157,7 +157,7 @@ with tempfile.TemporaryDirectory() as d:
     cases = [
         ("import_xsa refuses a file that is not a zip", str(notzip), "not a readable zip"),
         ("import_xsa refuses an XSA with no bitstream", xsa("nobit.xsa", bit=None), "contains no system_top.bit"),
-        ("import_xsa refuses another board's part", xsa("part.xsa", part="xc7z010clg400-1"), "not for this board's part"),
+        ("import_xsa refuses another board's part", xsa("part.xsa", part="xc7z010clg400-1"), "is not for the PlutoSky R1's part"),
         ("import_xsa refuses another tool version", xsa("ver.xsa", version="2023.1"), "different tool version"),
     ]
     for name, f, needle in cases:

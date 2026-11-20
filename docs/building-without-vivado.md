@@ -177,5 +177,5 @@ fail with a misleading error:
 |---|---|
 | Something that is not a zip | `ERROR: … is not a readable zip archive.` |
 | An XSA exported without the bitstream | `ERROR: … contains no system_top.bit.` |
-| An XSA for a different chip | `ERROR: that XSA is not for this board's part (xc7z020clg400-2).` |
+| An XSA for a different chip | `ERROR: that XSA is not for the PlutoSky R1's part (xc7z020clg400-2).` |
 | An XSA from a different Vivado version | `ERROR: that XSA was written by a different tool version.` |
