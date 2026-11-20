@@ -5,6 +5,11 @@ description: A complete Python program that puts a clock, a frame pulse and a sy
 
 # Write a pin pattern in Python
 
+!!! note "PlutoSky R2"
+    Written and measured on the R1. On the R2 the same four `JP5` pins are
+    **1.8 V** and have not been tested yet:
+    [the PlutoSky R2](../plutosky-r2.md#the-sample-locked-gpio-pins-on-the-r2).
+
 A complete program that puts a clock, a frame pulse and a sync marker on the
 four JP5 pins, with the transmitter muted.
 

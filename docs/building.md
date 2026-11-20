@@ -1,5 +1,10 @@
 # Building your own firmware
 
+!!! note "PlutoSky R2"
+    This page is the R1 build. With `--rev r2` the factory target builds the
+    FPGA design only, and the modern target builds the rest:
+    [build for the R2](plutosky-r2.md#build-for-the-r2).
+
 The factory build on an Ubuntu 18.04, 20.04 or 22.04 host (the releases Vivado
 2022.2 runs on): its requirements, commands, stages and layout. It produces the
 five SD-card files that contain your change.

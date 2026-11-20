@@ -5,6 +5,10 @@ description: Double-click write-card.cmd, pick the card, type ERASE. Nothing to 
 
 # Write the card on Windows
 
+!!! warning "PlutoSky R2: the release does not fit"
+    The released image is for the R1 and does not work on an R2:
+    [the PlutoSky R2](../plutosky-r2.md).
+
 `write-card.cmd` writes the whole card on a Windows 10 or 11 PC with nothing
 installed. It takes about five minutes, a microSD card of 1 GB or more, and a
 card reader.

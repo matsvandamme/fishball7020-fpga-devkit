@@ -5,6 +5,12 @@ description: Four free 3.3 V pins on JP5, where ground is, and what not to touch
 
 # Wire something to the JP5 header
 
+!!! danger "Not for the PlutoSky R2 as written"
+    The R2's `JP5` is a different header: 2×12, **1.8 V** signals, and pin 1 is
+    **5 V**. An R1 wiring harness can put 5 V on an FPGA pin. Check
+    [the PlutoSky R2](../plutosky-r2.md#the-sample-locked-gpio-pins-on-the-r2)
+    and the R2 schematic before connecting anything.
+
 Four pins on `JP5` are free for you: **7, 9, 11 and 13**, 3.3 V, pulled down.
 **Ground is pins 2 and 20.**
 

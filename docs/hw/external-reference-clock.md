@@ -5,6 +5,12 @@ description: Move R107 to R109, then feed EXT_CLK within the AD9361's limits.
 
 # Use an external reference clock
 
+!!! note "PlutoSky R2: use the `10M_IN` socket instead"
+    This page is the R1's resistor change. The R2 has a `10M_IN` socket: a
+    hardware PLL locks its 40 MHz oscillator to a 10 MHz reference, with no
+    soldering. That input is untested with this firmware:
+    [the PlutoSky R2](../plutosky-r2.md).
+
 **Move the 33 Ω resistor from `R107` to `R109`.** `R107` joins the board's own
 40 MHz oscillator (`Y3`) to the radio's reference line; `R109` joins that line
 to the `EXT_CLK` U.FL socket. As shipped, `EXT_CLK` is connected to nothing.

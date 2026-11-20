@@ -5,6 +5,11 @@ description: Build the modern firmware (kernel, drivers, Debian) from a pinned F
 
 # Build without Vivado
 
+!!! note "PlutoSky R2: not possible yet"
+    This route starts from a released FPGA design, and none is released for the
+    R2. An R2 build needs one Vivado run first:
+    [build for the R2](../plutosky-r2.md#build-for-the-r2).
+
 The modern firmware takes its FPGA design from an **XSA** (AMD's export of a
 finished design: the bitstream plus the processor setup), so it builds with
 nothing from AMD installed. Vivado is about 50 GB and 20 to 70 minutes of every

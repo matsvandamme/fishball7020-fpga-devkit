@@ -5,6 +5,12 @@ description: ./devkit flash puts a build on the running board over the network, 
 
 # Put it on the board
 
+!!! warning "PlutoSky R2"
+    Add `--rev r2` to every command. `./devkit flash` does not check which
+    board answers, and an image for the other revision boots without a network.
+    Flashing an R2 over the network is untested; the R2 was installed from a
+    card reader. See [the PlutoSky R2](../plutosky-r2.md).
+
 ```bash
 # run from: the repo root
 ./devkit flash              # BOOT.bin + uImage

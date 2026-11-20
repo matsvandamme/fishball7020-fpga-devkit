@@ -1,5 +1,11 @@
 # GPIO: where the pins come from, and how to drive them
 
+!!! warning "PlutoSky R2: 1.8 V, and different balls"
+    The tables here are the R1's. On the R2 the four pins keep their `JP5` pin
+    numbers but are **1.8 V**, sit on other FPGA balls, and pin 1 of the header
+    is **5 V**: see [the PlutoSky R2](plutosky-r2.md#the-sample-locked-gpio-pins-on-the-r2).
+    The R2's pins have not been measured yet.
+
 GPIO (general-purpose input/output) pins are digital lines software can read or
 drive. This page lists the pins that are free on this board, the three routes
 to them (your host, Linux on the board, your own logic in the FPGA fabric) and

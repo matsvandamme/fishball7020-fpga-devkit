@@ -1,5 +1,11 @@
 # Four header pins that tick with the transmitted waveform
 
+!!! warning "PlutoSky R2: 1.8 V outputs, not yet measured"
+    The R2 build contains this feature, on the same `JP5` pin numbers, at
+    **1.8 V** instead of 3.3 V. Every measurement on this page was made on an
+    R1; the R2's outputs are untested. See
+    [the PlutoSky R2](plutosky-r2.md#the-sample-locked-gpio-pins-on-the-r2).
+
 The base firmware can drive four digital output pins on header JP5 whose every
 edge is locked to a specific transmitted RF sample, at a fixed offset rather
 than a software-dependent delay: triggers, clocks and markers for radar or

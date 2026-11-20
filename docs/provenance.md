@@ -1,5 +1,12 @@
 # Provenance: how close the rebuild is to the factory firmware
 
+!!! note "PlutoSky R2"
+    Nothing on this page is claimed for the R2. Its design comes from the
+    vendor's published source,
+    [OpenSourceSDRLab/PlutoSky-R2](https://github.com/OpenSourceSDRLab/PlutoSky-R2),
+    and has not been compared with a factory unit:
+    [the PlutoSky R2](plutosky-r2.md).
+
 The board ships with no published, editable firmware source; this repository
 reconstructs it from public sources. This page states what is claimed about
 that reconstruction, the evidence, and how to check it yourself.

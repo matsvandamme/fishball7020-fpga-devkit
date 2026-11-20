@@ -5,6 +5,11 @@ description: The four SMAs, the U.FL sockets and the two USB-C sockets. Trust th
 
 # Which port is which
 
+!!! note "PlutoSky R2"
+    The R2 has one more socket, `10M_IN`, and the same `ETH`, `DEBUG` and
+    `USB2.0` sockets. The photos here are the R1:
+    [the PlutoSky R2](../plutosky-r2.md).
+
 **Read the board, not the box.** On some PlutoSky R1 units the case's SMA
 labels are in the wrong order: what is printed on the case does not match the
 ports on the board behind it. With the lid off, each SMA has its name on the

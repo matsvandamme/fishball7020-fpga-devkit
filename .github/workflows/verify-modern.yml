@@ -56,6 +56,7 @@ jobs:
         run: |
           L=firmware-modern/src/linux
           test -f $L/arch/arm/boot/dts/xilinx/zynq-pluto-sdr-fishball.dts
+          test -f $L/arch/arm/boot/dts/xilinx/zynq-pluto-sdr-fishball-r2.dts
           test -f $L/arch/arm/configs/fishball_defconfig
 
       - name: TX mutes when no DMA stream is running (0004, 0005)
@@ -239,6 +240,39 @@ jobs:
             echo "::error::fishball_defconfig does not round-trip - regenerate it"
             exit 1
           }
+
+      - name: The PlutoSky R2's tree builds, and differs from the R1's only where the board does
+        working-directory: firmware-modern/src/linux
+        run: |
+          # --rev r2: dts/zynq-pluto-sdr-fishball-r2.dts INCLUDES the R1's tree and
+          # overrides it, and its kernel options are config/r2.config merged over
+          # fishball_defconfig. Run LAST in this job, because it changes .config.
+          # What is asserted is the built .dtb, for the reason given above.
+          ./scripts/kconfig/merge_config.sh -m .config ../../config/r2.config
+          make ARCH=arm olddefconfig
+          grep -qx 'CONFIG_XILINX_GMII2RGMII=y' .config || {
+            echo "::error::CONFIG_XILINX_GMII2RGMII did not survive olddefconfig"; exit 1; }
+          make ARCH=arm DTC_FLAGS=-@ xilinx/zynq-pluto-sdr-fishball-r2.dtb
+          D=arch/arm/boot/dts/xilinx
+          dtc -I dtb -O dts -q $D/zynq-pluto-sdr-fishball.dtb    | sed 's/phandle = <0x[0-9a-f]*>;//' > /tmp/r1.dts
+          dtc -I dtb -O dts -q $D/zynq-pluto-sdr-fishball-r2.dtb | sed 's/phandle = <0x[0-9a-f]*>;//' > /tmp/r2.dts
+          # The transmitter must probe muted on the R2 exactly as on the R1: the
+          # value is inherited, not restated, so prove it arrived.
+          grep -q 'adi,tx-attenuation-mdB = <0x15e96>;' /tmp/r2.dts
+          # Ethernet: no PHY at address 0, one at 1, the converter at 8.
+          if grep -q 'ethernet-phy@0' /tmp/r2.dts; then
+            echo "::error::the R1's PHY node at address 0 is still in the R2 tree"; exit 1
+          fi
+          grep -q 'ethernet-phy@1' /tmp/r2.dts
+          grep -q 'compatible = "xlnx,gmii-to-rgmii-1.0";' /tmp/r2.dts
+          grep -q 'phy-mode = "rgmii-rxid";' /tmp/r2.dts
+          # And nothing else moved: every differing line is one of the five things
+          # the R2 changes. A sixth means the R2 tree has drifted from the R1's.
+          if diff /tmp/r1.dts /tmp/r2.dts | grep '^[<>]' | grep -v '^[<>][[:space:]]*$' \
+             | grep -vE 'model = |phy-mode = |ethernet[-_]phy|reg = <0x0[018]>;|gmii|xlnx,gmii-to-rgmii|phy-handle = |xlnx,phy-reset-gpio|gpios = <0x[0-9a-f]+ 0x0[07] 0x00>;|^[<>][[:space:]]*};$'; then
+            echo "::error::the R2 device tree differs from the R1's in a line that is not one of the R2's five differences (above)"
+            exit 1
+          fi
 
   kernel:
     name: The kernel builds

@@ -41,6 +41,11 @@ and Debian) builds **without Vivado**; only a change to the FPGA design needs it
 
 <div class="grid cards" markdown>
 
+-   :material-chip:{ .lg .middle } **[Build for a PlutoSky R2](../plutosky-r2.md#build-for-the-r2)**
+
+
+    `--rev r2`: its own FPGA design, device tree and output directory.
+
 -   :material-chip:{ .lg .middle } **[Change a kernel driver](change-a-driver.md)**
 
 

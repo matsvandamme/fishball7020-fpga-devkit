@@ -1,0 +1,570 @@
+The PlutoSky R2's FPGA design: pins, PL Ethernet and the reference PLL
+
+Turns the tree's FPGA project, which is the PlutoSky R1's (XC7Z020-CLG400), into
+the PlutoSky R2's (XC7Z020-CLG484). Applied FIRST on --rev r2, so the rest of
+the series lands on the R2 design.
+
+What it is: the hdl/ part of OpenSourceSDRLab's own R2 port,
+
+    github.com/OpenSourceSDRLab/PlutoSky-R2
+    firmware/source/plutosky-r2-plutosdr-fw-v0.38.patch
+
+re-expressed against this repo's pinned tree. That tree is ADI's plutosdr-fw
+v0.38 plus the vendor's R1 port - checked file by file on 2026-11-18: reversing
+the vendor's R1 patch (PlutoSky_7020_AD936X_SDR) applies cleanly to it - so this
+patch is "undo the R1 port's hdl/ changes, apply the R2 port's". The six files it
+leaves are byte-identical to ADI hdl 1978df29 with the vendor's R2 patch applied.
+
+What changes for the R2:
+  system_project.tcl   the part: xc7z020clg484-2
+  system_constr.xdc    every ball; RGMII and MDIO on bank 35; the PLL pins
+  system_bd.tcl        the PS package (clg484); MIO bank 1 at LVCMOS 3.3 V, not
+                       1.8 V; GEM0 and its MDIO on EMIO instead of MIO 16-27 and
+                       52-53, into a gmii_to_rgmii core clocked from FCLK_CLK1
+  system_top.v         the RGMII and PLL ports
+  ADF4001_init.v, ADF4001_spi_drive.v   (new) program the ADF4001 that locks the
+                       40 MHz oscillator to the 10M_IN reference
+
+NOT carried from the vendor's R2 patch: its linux/, u-boot-xlnx/ and buildroot/
+hunks. --rev r2 on the factory target builds the FPGA only; the R2's kernel and
+device tree are the modern target's (firmware-modern/dts/*-r2.dts).
+
+Licence: the modified files are Analog Devices' HDL, under ADI's licence terms
+as before; the vendor's changes are distributed under the licence of each file
+they modify (the vendor repo's NOTICE.md).
+
+diff --git a/hdl/projects/pluto/ADF4001_init.v b/hdl/projects/pluto/ADF4001_init.v
+new file mode 100644
+index 00000000..71a35d75
+--- /dev/null
++++ b/hdl/projects/pluto/ADF4001_init.v
+@@ -0,0 +1,116 @@
++module ADF4001_init#
++(
++    parameter SPI_CLK_FREQ_MHZ = 5 
++)(
++//system clock and reset
++	input 				clk,
++	input 				rst_n,
++	
++//ADF4001 interface
++	output				SPI_LE,
++	output				SPI_SCLK,
++	output				SPI_MOSI,
++//status	
++	output 	reg		    init_done
++);
++
++//SPI driver
++wire 			spi_wr_start;
++wire 			spi_wr_done;
++reg [23:0] 	    spi_wr_data;
++reg 			spi_wr_en;
++
++ADF4001_spi_drive ADF4001_spi_drive_u(
++    .clk				(clk),
++    .rst_n				(rst_n),
++	
++    .wr_start			(spi_wr_start),
++    .wr_done			(spi_wr_done),
++
++    .wr_en				(spi_wr_en),
++    .wr_data			(spi_wr_data),
++
++    .spi_clk			(SPI_SCLK),
++    .spi_csn			(SPI_LE),
++    .spi_sdo			(SPI_MOSI)
++);
++
++reg	   [ 1:0]	reset_index;
++reg	   [ 7:0]	index;          
++reg	   [ 2:0]	state;
++reg    [31:0] 	delay_cnt;
++
++    
++always @ (posedge clk or negedge rst_n)begin
++    if(!rst_n) begin 
++        index       <= 0;       //reset index
++        init_done   <= 0;       //clear init-done flag
++        state       <= 0;       //reset state machine
++        delay_cnt   <= 0;       //delay counter
++        spi_wr_en   <= 0;       //clear SPI write enable
++        reset_index <= 0;
++    end
++    else 
++        case (state)    
++            3'd0    :   begin 
++                            spi_wr_data <= ADF4001_lut(index);
++                            spi_wr_en   <= 1'b0;	
++                            state 		<= 3'd1;
++            end  
++            
++            3'd1    :   begin 
++                            spi_wr_en   <= 1'b1;	
++                            state 		<= 3'd2;
++                        end  
++
++            3'd2    :   begin
++                            if(spi_wr_start) begin 
++                                state <= 3'd3;
++                                spi_wr_en   <= 1'b0;
++                            end
++                        end
++            3'd3    :   begin
++                            if(spi_wr_done) begin 
++                                state <= 3'd4;
++                            end
++                        end       
++            3'd4    :   begin 
++                            if(delay_cnt <= SPI_CLK_FREQ_MHZ * 2000)   //200Us
++                                delay_cnt <= delay_cnt + 1;
++                            else begin
++                                delay_cnt <= 0;   
++                                if(index == 8'd3) begin
++                                state <= 3'd5;
++                                end
++                                else begin
++                                    state <= 3'd0;
++                                    index <= index + 8'd1;
++                                end
++                            end
++                        end                        
++            3'd5    :   begin 
++                            state <= state;
++                            init_done <= 1'b1;
++                        end
++                        
++            default :   state <= 3'd0;
++            
++        endcase
++end
++	
++
++function [23:0] ADF4001_lut;
++    input [7:0] index;              //input index
++    reg [23:0] ADF4001_lut_d;       //intermediate value
++    begin
++        case(index)
++            8'd0:  ADF4001_lut_d = 24'h1F_8093;		
++            8'd1:  ADF4001_lut_d = 24'h1F_8092;	 			
++            8'd2:  ADF4001_lut_d = 24'h00_0004;                                          
++            8'd3:  ADF4001_lut_d = 24'h00_0401;	
++        endcase   
++        ADF4001_lut = ADF4001_lut_d;            //output the current value
++    end   
++endfunction   
++     
++endmodule
+diff --git a/hdl/projects/pluto/ADF4001_spi_drive.v b/hdl/projects/pluto/ADF4001_spi_drive.v
+new file mode 100644
+index 00000000..4a77bfde
+--- /dev/null
++++ b/hdl/projects/pluto/ADF4001_spi_drive.v
+@@ -0,0 +1,87 @@
++module ADF4001_spi_drive(
++//system clock and reset
++    input 				clk,
++    input				rst_n,
++	
++//status
++    input 				wr_en,          //write enable, active high
++    input 		[23:0]  wr_data,        //write data
++    output 	reg 		wr_done,        //write done, active high
++    output 	reg 		wr_start,       //write start output
++	
++//SPI interface
++    output	reg 		spi_clk,
++    output	reg		    spi_csn,
++    output	 			spi_sdo
++);
++
++reg	   [4:0]   bit_cnt;	            //number of bits sent
++reg	   [23:0]  command;
++reg	   [2:0]   state;
++//SPI state    
++localparam     IDLE			= 0,            //idle
++			   START		= 1,            //start: load the command register
++			   TR			= 2,            //rising edge
++			   TR_0			= 3,            //falling edge
++			   DONE			= 4;
++
++//SPI write
++assign spi_sdo = command[23];
++always @ (posedge clk or negedge rst_n)
++begin
++    if(!rst_n) begin
++        state       <= IDLE;
++        spi_csn     <= 0;           
++        bit_cnt     <= 0;
++        wr_done 	<= 0;
++        spi_clk     <= 0;           //SPI idle state
++    end
++    else 
++        case (state)
++            IDLE   :   if (wr_en)                       
++                            begin
++                                state   <= START;
++                                bit_cnt <= 5'd0;	
++                                wr_done <= 1'b0;
++                                spi_clk <= 0;
++                                spi_csn <= 0;
++                            end 
++
++            START :     begin
++                                state   <= TR;
++                                wr_start<= 1'b1;
++                                command <= wr_data;//{1'b0,wr_addr,wr_data};
++                                spi_csn <= 1'b0;
++                        end
++            TR      :   if (bit_cnt <= 5'd23) 
++                            begin
++                                bit_cnt <= bit_cnt + 5'd1;
++                                spi_clk <= 1;
++                                state   <= TR_0;
++                            end
++                        else 
++                            begin
++                                spi_csn <= 1'b0;
++                                bit_cnt <= 5'd0;
++                                spi_clk <= 0;
++                                state   <= DONE;
++                            end
++            
++            TR_0    :   begin
++                            spi_clk <= 0;
++                            command <= command << 1;
++                            state   <= TR;
++                        end
++
++            DONE    :   begin 
++                            wr_done  <= 1'b1;
++                            wr_start <= 1'b0;
++                            spi_csn  <= 1'b1;
++                            state <= IDLE;
++                        end
++            
++            default :   state <= IDLE;
++        endcase
++end
++       
++endmodule
+\ No newline at end of file
+diff --git a/hdl/projects/pluto/system_bd.tcl b/hdl/projects/pluto/system_bd.tcl
+index 8eeff72a..56a3a19b 100755
+--- a/hdl/projects/pluto/system_bd.tcl
++++ b/hdl/projects/pluto/system_bd.tcl
+@@ -7,6 +7,9 @@ source $ad_hdl_dir/projects/common/xilinx/adi_fir_filter_bd.tcl
+ create_bd_intf_port -mode Master -vlnv xilinx.com:interface:ddrx_rtl:1.0 ddr
+ create_bd_intf_port -mode Master -vlnv xilinx.com:display_processing_system7:fixedio_rtl:1.0 fixed_io
+ 
++create_bd_intf_port -mode Master -vlnv xilinx.com:interface:mdio_rtl:1.0 MDIO_PHY
++create_bd_intf_port -mode Master -vlnv xilinx.com:interface:rgmii_rtl:1.0 RGMII
++
+ create_bd_port -dir O spi0_csn_2_o
+ create_bd_port -dir O spi0_csn_1_o
+ create_bd_port -dir O spi0_csn_0_o
+@@ -37,13 +40,13 @@ ad_ip_instance processing_system7 sys_ps7
+ # ps7 settings
+ 
+ ad_ip_parameter sys_ps7 CONFIG.PCW_PRESET_BANK0_VOLTAGE {LVCMOS 3.3V}
+-ad_ip_parameter sys_ps7 CONFIG.PCW_PRESET_BANK1_VOLTAGE {LVCMOS 1.8V}
+-ad_ip_parameter sys_ps7 CONFIG.PCW_PACKAGE_NAME clg400
++ad_ip_parameter sys_ps7 CONFIG.PCW_PRESET_BANK1_VOLTAGE {LVCMOS 3.3V}
++ad_ip_parameter sys_ps7 CONFIG.PCW_PACKAGE_NAME clg484
+ ad_ip_parameter sys_ps7 CONFIG.PCW_GPIO_MIO_GPIO_ENABLE 1
+ ad_ip_parameter sys_ps7 CONFIG.PCW_ENET0_PERIPHERAL_ENABLE 1
+-ad_ip_parameter sys_ps7 CONFIG.PCW_ENET0_ENET0_IO "MIO 16 .. 27"
++ad_ip_parameter sys_ps7 CONFIG.PCW_ENET0_ENET0_IO "EMIO"
+ ad_ip_parameter sys_ps7 CONFIG.PCW_ENET0_GRP_MDIO_ENABLE 1
+-ad_ip_parameter sys_ps7 CONFIG.PCW_ENET0_GRP_MDIO_IO "MIO 52 .. 53"
++ad_ip_parameter sys_ps7 CONFIG.PCW_ENET0_GRP_MDIO_IO "EMIO"
+ 
+ ad_ip_parameter sys_ps7 CONFIG.PCW_USE_S_AXI_HP1 1
+ ad_ip_parameter sys_ps7 CONFIG.PCW_USE_S_AXI_HP2 1
+@@ -101,6 +104,11 @@ ad_ip_parameter sys_concat_intc CONFIG.NUM_PORTS 16
+ ad_ip_instance proc_sys_reset sys_rstgen
+ ad_ip_parameter sys_rstgen CONFIG.C_EXT_RST_WIDTH 1
+ 
++
++# add external ethernet phy
++ad_ip_instance gmii_to_rgmii sys_rgmii
++ad_ip_parameter sys_rgmii CONFIG.SupportLevel Include_Shared_Logic_in_Core
++
+ # system reset/clock definitions
+ 
+ # add external spi
+@@ -117,6 +125,14 @@ ad_connect  sys_cpu_resetn sys_rstgen/peripheral_aresetn
+ ad_connect  sys_cpu_clk sys_rstgen/slowest_sync_clk
+ ad_connect  sys_rstgen/ext_reset_in sys_ps7/FCLK_RESET0_N
+ 
++
++ad_connect  sys_rgmii/tx_reset sys_rstgen/peripheral_reset
++ad_connect  sys_rgmii/rx_reset sys_rstgen/peripheral_reset
++ad_connect  sys_rgmii/clkin sys_ps7/FCLK_CLK1 
++ad_connect  sys_ps7/MDIO_ETHERNET_0 sys_rgmii/MDIO_GEM
++ad_connect  sys_ps7/GMII_ETHERNET_0 sys_rgmii/GMII
++ad_connect  sys_rgmii/MDIO_PHY MDIO_PHY
++ad_connect  sys_rgmii/RGMII RGMII
+ # interface connections
+ 
+ ad_connect  ddr sys_ps7/DDR
+diff --git a/hdl/projects/pluto/system_constr.xdc b/hdl/projects/pluto/system_constr.xdc
+index ff020ba0..7ace8d97 100755
+--- a/hdl/projects/pluto/system_constr.xdc
++++ b/hdl/projects/pluto/system_constr.xdc
+@@ -1,72 +1,94 @@
+ # constraints
+ # ad9361 (SWAP == 0x1)
++set_property  -dict {PACKAGE_PIN  B15   IOSTANDARD  LVCMOS25} [get_ports  MDIO_PHY_mdio_io]   ;
++set_property  -dict {PACKAGE_PIN  C15   IOSTANDARD  LVCMOS25} [get_ports  MDIO_PHY_mdc]       ;
++set_property  -dict {PACKAGE_PIN  B16   IOSTANDARD  LVCMOS25} [get_ports  RGMII_td[3]]  ;
++set_property  -dict {PACKAGE_PIN  A16   IOSTANDARD  LVCMOS25} [get_ports  RGMII_td[2]]  ;
++set_property  -dict {PACKAGE_PIN  B17   IOSTANDARD  LVCMOS25} [get_ports  RGMII_td[1]]  ;
++set_property  -dict {PACKAGE_PIN  A17   IOSTANDARD  LVCMOS25} [get_ports  RGMII_td[0]]  ;
++set_property  -dict {PACKAGE_PIN  A22   IOSTANDARD  LVCMOS25} [get_ports  RGMII_rd[3]]  ;
++set_property  -dict {PACKAGE_PIN  A18   IOSTANDARD  LVCMOS25} [get_ports  RGMII_rd[2]]  ;
++set_property  -dict {PACKAGE_PIN  A19   IOSTANDARD  LVCMOS25} [get_ports  RGMII_rd[1]]  ;
++set_property  -dict {PACKAGE_PIN  A21   IOSTANDARD  LVCMOS25} [get_ports  RGMII_rd[0]]  ;
+ 
+-set_property  -dict {PACKAGE_PIN  U18  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_clk_in_p]        
+-set_property  -dict {PACKAGE_PIN  U19  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_clk_in_n]        
+-set_property  -dict {PACKAGE_PIN  Y16  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_frame_in_p]      
+-set_property  -dict {PACKAGE_PIN  Y17  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_frame_in_n]      
+-set_property  -dict {PACKAGE_PIN  Y18  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_p[0]]   
+-set_property  -dict {PACKAGE_PIN  Y19  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_n[0]]   
+-set_property  -dict {PACKAGE_PIN  T16  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_p[1]]   
+-set_property  -dict {PACKAGE_PIN  U17  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_n[1]]   
+-set_property  -dict {PACKAGE_PIN  V20  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_p[2]]   
+-set_property  -dict {PACKAGE_PIN  W20  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_n[2]]   
+-set_property  -dict {PACKAGE_PIN  T17  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_p[3]]   
+-set_property  -dict {PACKAGE_PIN  R18  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_n[3]]   
+-set_property  -dict {PACKAGE_PIN  T20  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_p[4]]   
+-set_property  -dict {PACKAGE_PIN  U20  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_n[4]]   
+-set_property  -dict {PACKAGE_PIN  W18  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_p[5]]   
+-set_property  -dict {PACKAGE_PIN  W19  IOSTANDARD LVDS_25 DIFF_TERM TRUE} [get_ports rx_data_in_n[5]]   
+-set_property  -dict {PACKAGE_PIN  U14  IOSTANDARD LVDS_25} [get_ports tx_clk_out_p]                     
+-set_property  -dict {PACKAGE_PIN  U15  IOSTANDARD LVDS_25} [get_ports tx_clk_out_n]                     
+-set_property  -dict {PACKAGE_PIN  V16  IOSTANDARD LVDS_25} [get_ports tx_frame_out_p]                   
+-set_property  -dict {PACKAGE_PIN  W16  IOSTANDARD LVDS_25} [get_ports tx_frame_out_n]                   
+-set_property  -dict {PACKAGE_PIN  V15  IOSTANDARD LVDS_25} [get_ports tx_data_out_p[0]]                 
+-set_property  -dict {PACKAGE_PIN  W15  IOSTANDARD LVDS_25} [get_ports tx_data_out_n[0]]                 
+-set_property  -dict {PACKAGE_PIN  V12  IOSTANDARD LVDS_25} [get_ports tx_data_out_p[1]]                 
+-set_property  -dict {PACKAGE_PIN  W13  IOSTANDARD LVDS_25} [get_ports tx_data_out_n[1]]                 
+-set_property  -dict {PACKAGE_PIN  W14  IOSTANDARD LVDS_25} [get_ports tx_data_out_p[2]]                 
+-set_property  -dict {PACKAGE_PIN  Y14  IOSTANDARD LVDS_25} [get_ports tx_data_out_n[2]]                 
+-set_property  -dict {PACKAGE_PIN  T12  IOSTANDARD LVDS_25} [get_ports tx_data_out_p[3]]                 
+-set_property  -dict {PACKAGE_PIN  U12  IOSTANDARD LVDS_25} [get_ports tx_data_out_n[3]]                 
+-set_property  -dict {PACKAGE_PIN  T11  IOSTANDARD LVDS_25} [get_ports tx_data_out_p[4]]                 
+-set_property  -dict {PACKAGE_PIN  T10  IOSTANDARD LVDS_25} [get_ports tx_data_out_n[4]]                 
+-set_property  -dict {PACKAGE_PIN  U13  IOSTANDARD LVDS_25} [get_ports tx_data_out_p[5]]                 
+-set_property  -dict {PACKAGE_PIN  V13  IOSTANDARD LVDS_25} [get_ports tx_data_out_n[5]]                  
+-
+-set_property  -dict {PACKAGE_PIN  L20 IOSTANDARD LVCMOS25} [get_ports gpio_status[0]]                  
+-set_property  -dict {PACKAGE_PIN  L19 IOSTANDARD LVCMOS25} [get_ports gpio_status[1]]                  
+-set_property  -dict {PACKAGE_PIN  K19 IOSTANDARD LVCMOS25} [get_ports gpio_status[2]]                  
+-set_property  -dict {PACKAGE_PIN  T14 IOSTANDARD LVCMOS25} [get_ports gpio_status[3]]                  
+-set_property  -dict {PACKAGE_PIN  P15 IOSTANDARD LVCMOS25} [get_ports gpio_status[4]]                  
+-set_property  -dict {PACKAGE_PIN  M20 IOSTANDARD LVCMOS25} [get_ports gpio_status[5]]                  
+-set_property  -dict {PACKAGE_PIN  M19 IOSTANDARD LVCMOS25} [get_ports gpio_status[6]]                  
+-set_property  -dict {PACKAGE_PIN  N20 IOSTANDARD LVCMOS25} [get_ports gpio_status[7]]
+-                 
+-set_property  -dict {PACKAGE_PIN  J19 IOSTANDARD LVCMOS25} [get_ports gpio_ctl[0]]                     
+-set_property  -dict {PACKAGE_PIN  K14 IOSTANDARD LVCMOS25} [get_ports gpio_ctl[1]]                     
+-set_property  -dict {PACKAGE_PIN  L17 IOSTANDARD LVCMOS25} [get_ports gpio_ctl[2]]                     
+-set_property  -dict {PACKAGE_PIN  J20 IOSTANDARD LVCMOS25} [get_ports gpio_ctl[3]] 
+-set_property  -dict {PACKAGE_PIN  P20  IOSTANDARD LVCMOS25} [get_ports gpio_en_agc]
+-set_property  -dict {PACKAGE_PIN  R19  IOSTANDARD LVCMOS25} [get_ports gpio_resetb]
+-
+-set_property  -dict {PACKAGE_PIN  T15  IOSTANDARD LVCMOS25} [get_ports enable]
+-set_property  -dict {PACKAGE_PIN  P18  IOSTANDARD LVCMOS25} [get_ports txnrx]
+-
+-set_property  -dict {PACKAGE_PIN  M14  IOSTANDARD LVCMOS25 PULLTYPE PULLUP} [get_ports iic_scl]
+-set_property  -dict {PACKAGE_PIN  M15  IOSTANDARD LVCMOS25 PULLTYPE PULLUP} [get_ports iic_sda]
+-
+-set_property  -dict {PACKAGE_PIN  R17  IOSTANDARD LVCMOS25  PULLTYPE PULLUP} [get_ports spi_csn]
+-set_property  -dict {PACKAGE_PIN  V18  IOSTANDARD LVCMOS25} [get_ports spi_clk]
+-set_property  -dict {PACKAGE_PIN  P16  IOSTANDARD LVCMOS25} [get_ports spi_mosi]
+-set_property  -dict {PACKAGE_PIN  V17  IOSTANDARD LVCMOS25} [get_ports spi_miso]
+-
+-set_property  -dict {PACKAGE_PIN  L14  IOSTANDARD LVCMOS25} [get_ports pl_spi_clk_o]
+-set_property  -dict {PACKAGE_PIN  N15  IOSTANDARD LVCMOS25} [get_ports pl_spi_miso]
+-set_property  -dict {PACKAGE_PIN  N16  IOSTANDARD LVCMOS25} [get_ports pl_spi_mosi]
++set_property  -dict {PACKAGE_PIN  C17   IOSTANDARD  LVCMOS25} [get_ports  RGMII_tx_ctl]  ;
++set_property  -dict {PACKAGE_PIN  D18   IOSTANDARD  LVCMOS25} [get_ports  RGMII_txc]     ;
++set_property  -dict {PACKAGE_PIN  C18   IOSTANDARD  LVCMOS25} [get_ports  RGMII_rx_ctl]  ;
++set_property  -dict {PACKAGE_PIN  B19   IOSTANDARD  LVCMOS25} [get_ports  RGMII_rxc]     ;
++
++set_property -dict {PACKAGE_PIN AA7 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports rx_clk_in_p]
++set_property -dict {PACKAGE_PIN AA6 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports rx_clk_in_n]
++set_property -dict {PACKAGE_PIN AA9 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports rx_frame_in_p]
++set_property -dict {PACKAGE_PIN AA8 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports rx_frame_in_n]
++set_property -dict {PACKAGE_PIN AB10 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_p[0]}]
++set_property -dict {PACKAGE_PIN AB9 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_n[0]}]
++set_property -dict {PACKAGE_PIN Y11 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_p[1]}]
++set_property -dict {PACKAGE_PIN Y10 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_n[1]}]
++set_property -dict {PACKAGE_PIN AA11 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_p[2]}]
++set_property -dict {PACKAGE_PIN AB11 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_n[2]}]
++set_property -dict {PACKAGE_PIN V12 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_p[3]}]
++set_property -dict {PACKAGE_PIN W12 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_n[3]}]
++set_property -dict {PACKAGE_PIN AA12 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_p[4]}]
++set_property -dict {PACKAGE_PIN AB12 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_n[4]}]
++set_property -dict {PACKAGE_PIN W11 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_p[5]}]
++set_property -dict {PACKAGE_PIN W10 IOSTANDARD LVDS_25 DIFF_TERM 1} [get_ports {rx_data_in_n[5]}]
++set_property -dict {PACKAGE_PIN Y6 IOSTANDARD LVDS_25} [get_ports tx_clk_out_p]
++set_property -dict {PACKAGE_PIN Y5 IOSTANDARD LVDS_25} [get_ports tx_clk_out_n]
++set_property -dict {PACKAGE_PIN Y9 IOSTANDARD LVDS_25} [get_ports tx_frame_out_p]
++set_property -dict {PACKAGE_PIN Y8 IOSTANDARD LVDS_25} [get_ports tx_frame_out_n]
++set_property -dict {PACKAGE_PIN Y4 IOSTANDARD LVDS_25} [get_ports {tx_data_out_p[0]}]
++set_property -dict {PACKAGE_PIN AA4 IOSTANDARD LVDS_25} [get_ports {tx_data_out_n[0]}]
++set_property -dict {PACKAGE_PIN AB2 IOSTANDARD LVDS_25} [get_ports {tx_data_out_p[1]}]
++set_property -dict {PACKAGE_PIN AB1 IOSTANDARD LVDS_25} [get_ports {tx_data_out_n[1]}]
++set_property -dict {PACKAGE_PIN W6 IOSTANDARD LVDS_25} [get_ports {tx_data_out_p[2]}]
++set_property -dict {PACKAGE_PIN W5 IOSTANDARD LVDS_25} [get_ports {tx_data_out_n[2]}]
++set_property -dict {PACKAGE_PIN V5 IOSTANDARD LVDS_25} [get_ports {tx_data_out_p[3]}]
++set_property -dict {PACKAGE_PIN V4 IOSTANDARD LVDS_25} [get_ports {tx_data_out_n[3]}]
++set_property -dict {PACKAGE_PIN T4 IOSTANDARD LVDS_25} [get_ports {tx_data_out_p[4]}]
++set_property -dict {PACKAGE_PIN U4 IOSTANDARD LVDS_25} [get_ports {tx_data_out_n[4]}]
++set_property -dict {PACKAGE_PIN AB5 IOSTANDARD LVDS_25} [get_ports {tx_data_out_p[5]}]
++set_property -dict {PACKAGE_PIN AB4 IOSTANDARD LVDS_25} [get_ports {tx_data_out_n[5]}]
++
++set_property -dict {PACKAGE_PIN U6 IOSTANDARD LVCMOS25} [get_ports {gpio_status[0]}]
++set_property -dict {PACKAGE_PIN T6 IOSTANDARD LVCMOS25} [get_ports {gpio_status[1]}]
++set_property -dict {PACKAGE_PIN AB6 IOSTANDARD LVCMOS25} [get_ports {gpio_status[2]}]
++set_property -dict {PACKAGE_PIN U7 IOSTANDARD LVCMOS25} [get_ports {gpio_status[3]}]
++set_property -dict {PACKAGE_PIN AB7 IOSTANDARD LVCMOS25} [get_ports {gpio_status[4]}]
++set_property -dict {PACKAGE_PIN U5 IOSTANDARD LVCMOS25} [get_ports {gpio_status[5]}]
++set_property -dict {PACKAGE_PIN R6 IOSTANDARD LVCMOS25} [get_ports {gpio_status[6]}]
++set_property -dict {PACKAGE_PIN P16 IOSTANDARD LVCMOS25} [get_ports {gpio_status[7]}]
++set_property -dict {PACKAGE_PIN R7 IOSTANDARD LVCMOS25} [get_ports {gpio_ctl[0]}]
++set_property -dict {PACKAGE_PIN V7 IOSTANDARD LVCMOS25} [get_ports {gpio_ctl[1]}]
++set_property -dict {PACKAGE_PIN W7 IOSTANDARD LVCMOS25} [get_ports {gpio_ctl[2]}]
++set_property -dict {PACKAGE_PIN V9 IOSTANDARD LVCMOS25} [get_ports {gpio_ctl[3]}]
++set_property -dict {PACKAGE_PIN T18 IOSTANDARD LVCMOS25} [get_ports gpio_en_agc]
++set_property -dict {PACKAGE_PIN R15 IOSTANDARD LVCMOS25} [get_ports gpio_sync]
++set_property -dict {PACKAGE_PIN U11 IOSTANDARD LVCMOS25} [get_ports gpio_resetb]
++set_property -dict {PACKAGE_PIN W8 IOSTANDARD LVCMOS25} [get_ports enable]
++set_property -dict {PACKAGE_PIN R16 IOSTANDARD LVCMOS25} [get_ports txnrx]
++
++
++set_property  -dict {PACKAGE_PIN  V10  IOSTANDARD LVCMOS25  PULLTYPE PULLUP} [get_ports spi_csn]
++set_property -dict {PACKAGE_PIN U12 IOSTANDARD LVCMOS25} [get_ports spi_clk]
++set_property -dict {PACKAGE_PIN U10 IOSTANDARD LVCMOS25} [get_ports spi_mosi]
++set_property -dict {PACKAGE_PIN U9 IOSTANDARD LVCMOS25} [get_ports spi_miso]
++
++set_property -dict {PACKAGE_PIN AB22 IOSTANDARD LVCMOS33} [get_ports pll_le]
++set_property -dict {PACKAGE_PIN AB21 IOSTANDARD LVCMOS33} [get_ports pll_clk]
++set_property -dict {PACKAGE_PIN AA21 IOSTANDARD LVCMOS33} [get_ports pll_mosi]
++set_property -dict {PACKAGE_PIN Y19  IOSTANDARD LVCMOS33} [get_ports i_clk]
++
++
++set_property  -dict {PACKAGE_PIN  H17  IOSTANDARD LVCMOS25 PULLTYPE PULLUP} [get_ports iic_scl]
++set_property  -dict {PACKAGE_PIN  F16  IOSTANDARD LVCMOS25 PULLTYPE PULLUP} [get_ports iic_sda]
++
++set_property  -dict {PACKAGE_PIN  E16  IOSTANDARD LVCMOS25} [get_ports pl_spi_clk_o]
++set_property  -dict {PACKAGE_PIN  D16  IOSTANDARD LVCMOS25} [get_ports pl_spi_miso]
++set_property  -dict {PACKAGE_PIN  D17  IOSTANDARD LVCMOS25} [get_ports pl_spi_mosi]
+ 
+ 
+ create_clock -period 4.000 -name rx_clk [get_ports rx_clk_in_p]
++create_clock -period  8.000          [get_ports RGMII_rxc]
+ 
+ # probably gone in 2016.4
+ 
+diff --git a/hdl/projects/pluto/system_project.tcl b/hdl/projects/pluto/system_project.tcl
+index dc12d032..3d5f9b0b 100755
+--- a/hdl/projects/pluto/system_project.tcl
++++ b/hdl/projects/pluto/system_project.tcl
+@@ -2,10 +2,12 @@ source ../../scripts/adi_env.tcl
+ source $ad_hdl_dir/projects/scripts/adi_project_xilinx.tcl
+ source $ad_hdl_dir/projects/scripts/adi_board.tcl
+ 
+-adi_project_create pluto 0 {} "xc7z020clg400-2"
++adi_project_create pluto 0 {} "xc7z020clg484-2"
+ 
+ adi_project_files pluto [list \
+   "system_top.v" \
++  "ADF4001_init.v" \
++  "ADF4001_spi_drive.v" \
+   "system_constr.xdc" \
+   "$ad_hdl_dir/library/common/ad_iobuf.v"]
+ 
+diff --git a/hdl/projects/pluto/system_top.v b/hdl/projects/pluto/system_top.v
+index 5e471887..2273d24b 100755
+--- a/hdl/projects/pluto/system_top.v
++++ b/hdl/projects/pluto/system_top.v
+@@ -36,7 +36,15 @@
+ `timescale 1ns/100ps
+ 
+ module system_top (
+-
++  output          MDIO_PHY_mdc,
++  inout           MDIO_PHY_mdio_io,
++  input [3:0]     RGMII_rd,
++  input           RGMII_rx_ctl,
++  input           RGMII_rxc,
++  output [3:0]    RGMII_td,
++  output          RGMII_tx_ctl,
++  output          RGMII_txc,
++  
+   inout   [14:0]  ddr_addr,
+   inout   [ 2:0]  ddr_ba,
+   inout           ddr_cas_n,
+@@ -91,7 +99,13 @@ module system_top (
+ 
+   output          pl_spi_clk_o,
+   output          pl_spi_mosi,
+-  input           pl_spi_miso
++  input           pl_spi_miso,
++  
++  output   	  pll_le,
++  output          pll_clk,
++  output          pll_mosi,
++  input           i_clk
++    
+ );
+ 
+   // internal signals
+@@ -118,6 +132,15 @@ module system_top (
+ 
+ 
+   system_wrapper i_system_wrapper (
++    .MDIO_PHY_mdc(MDIO_PHY_mdc),
++    .MDIO_PHY_mdio_io(MDIO_PHY_mdio_io),
++    .RGMII_rd(RGMII_rd),
++    .RGMII_rx_ctl(RGMII_rx_ctl),
++    .RGMII_rxc(RGMII_rxc),
++    .RGMII_td(RGMII_td),
++    .RGMII_tx_ctl(RGMII_tx_ctl),
++    .RGMII_txc(RGMII_txc),
++    
+     .ddr_addr (ddr_addr),
+     .ddr_ba (ddr_ba),
+     .ddr_cas_n (ddr_cas_n),
+@@ -180,4 +203,27 @@ module system_top (
+     .up_enable (gpio_o[15]),
+     .up_txnrx (gpio_o[16]));
+ 
++
++reg [2:0] cnt; 
++reg adf4001_spi_clk;
++always @(posedge i_clk) begin
++    cnt <= cnt + 1'b1;          
++    if(cnt == 3'd3) adf4001_spi_clk <= 1'b1;
++    else if(cnt == 3'd7) begin 
++        adf4001_spi_clk <= 1'b0;
++        cnt <= 3'b0;
++    end
++end
++
++ADF4001_init ADF4001_INIT_U(
++//system clock and reset
++	.clk            (adf4001_spi_clk),
++	.rst_n          (1'b1),
++
++	.SPI_LE         (pll_le   ),
++	.SPI_SCLK       (pll_clk  ),
++	.SPI_MOSI       (pll_mosi )
++);
++
++
+ endmodule

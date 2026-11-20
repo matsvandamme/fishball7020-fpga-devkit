@@ -1,5 +1,12 @@
 # What is on the board
 
+!!! note "This page describes the PlutoSky R1"
+    The PlutoSky R2 is a different board: a CLG484 Zynq, Ethernet through the
+    FPGA, a 10 MHz reference input and a 1.8 V header. The parts, sheets and
+    rails below are the R1's. For the R2 see [the PlutoSky R2](plutosky-r2.md)
+    and the vendor's
+    [R2 schematic](https://github.com/OpenSourceSDRLab/PlutoSky-R2/blob/main/hardware/PlutoSky-R2-schematic.pdf).
+
 The board's main parts, clocks, connectors and supply rails, read off the
 vendor schematic in [`docs/vendor/`](vendor/7020_936x_SDR-schematic.pdf) (sheet
 numbers given) and cross-checked against a running board where possible. For

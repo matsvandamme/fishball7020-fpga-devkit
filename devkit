@@ -19,6 +19,30 @@
 #   Everything else is the same board and the same tools either way.
 #   DEVKIT_TARGET=factory in your environment makes factory the default.
 #
+# ---- Two hardware revisions -------------------------------------------------
+#
+#   --rev r1           (the default) PlutoSky R1 / 7020-SDR: XC7Z020-CLG400.
+#   --rev r2           PlutoSky R2: XC7Z020-CLG484, Ethernet through the FPGA,
+#                      a 10 MHz reference input. Another package and another
+#                      pin-out, so it needs its own FPGA design, boot image and
+#                      device tree: an R1 image on an R2 boots with no radio, no
+#                      Ethernet and no USB. Its files are kept apart -
+#                      firmware-modern/output-r2/, firmware/src-r2/ - and an XSA
+#                      for the other revision is refused by its part number.
+#                      -> docs/plutosky-r2.md
+#
+#   Takes --rev:  the same commands that take --target.
+#   DEVKIT_REV=r2 in your environment makes r2 the default.
+#   Not to be confused with `verify --board`, which is about the board on your
+#   desk running the build, not about which board it is.
+#
+#   On the R2 the factory target builds the FPGA and nothing else:
+#       ./devkit setup --target factory --rev r2     hdl/ only, ~0.2 GB
+#       ./devkit build --target factory --rev r2     Vivado -> system_top.xsa
+#       ./devkit setup --rev r2 && ./devkit build --rev r2 --xsa \
+#           firmware/src-r2/hdl/projects/pluto/system_top.xsa
+#       sudo ./devkit write-card --rev r2 /dev/sdX
+#
 # ---- Before you build -------------------------------------------------------
 #
 #     ./devkit doctor      Can this machine build? Checks the compilers, host
@@ -300,6 +324,11 @@ Two firmware targets
   --target factory   Linux 5.15 + Buildroot; the FPGA itself, built with Vivado
   DEVKIT_TARGET=factory in your environment makes factory the default.
 
+Two hardware revisions
+  --rev r1           PlutoSky R1 / 7020-SDR, XC7Z020-CLG400 (the default)
+  --rev r2           PlutoSky R2, XC7Z020-CLG484; its own FPGA design and output-r2/
+  DEVKIT_REV=r2 in your environment makes r2 the default.
+
 The usual runs
   ./devkit doctor && ./devkit setup                      # once
   ./devkit build --all --xsa "$(./firmware-modern/fetch-pinned-xsa.sh)"
@@ -380,10 +409,13 @@ case "$cmd" in
         exit 0 ;;
     -V|--version|version)
         echo "devkit $(git -C "$HERE" describe --tags --always --dirty 2>/dev/null || echo '(not a git checkout)')"
-        for _t in "factory:$HERE/firmware/output/BOOT.bin" "modern:$HERE/firmware-modern/output/BOOT.bin"; do
+        for _t in "factory:$HERE/firmware/output/BOOT.bin" "modern:$HERE/firmware-modern/output/BOOT.bin" \
+                  "modern-r2:$HERE/firmware-modern/output-r2/BOOT.bin"; do
+            # The R2 line only once there is something to say about it.
+            [ "${_t%%:*}" != modern-r2 ] || [ -r "${_t#*:}" ] || continue
             _f="${_t#*:}"
-            if [ -r "$_f" ]; then printf '  %-8s built %s\n' "${_t%%:*}" "$(date -r "$_f" '+%Y-%m-%d %H:%M')"
-            else printf '  %-8s not built\n' "${_t%%:*}"; fi
+            if [ -r "$_f" ]; then printf '  %-9s built %s\n' "${_t%%:*}" "$(date -r "$_f" '+%Y-%m-%d %H:%M')"
+            else printf '  %-9s not built\n' "${_t%%:*}"; fi
         done
         exit 0 ;;
 esac
@@ -408,19 +440,34 @@ esac
 # now reaches the modern target is refused with a message naming --target
 # factory, rather than doing something else: the modern build demands --xsa
 # and refuses --hdl-only, and the modern flash refuses --all and --rootfs-only.
+#
+# --rev r1|r2, the hardware revision, is parsed in the same pass and for the same
+# commands, and exported as DEVKIT_REV: the scripts read it from the environment
+# (firmware/scripts/rev.sh), so nothing has to pass it down by hand. It is --rev
+# and not --board because `verify --board` already means something else.
 TARGET="${DEVKIT_TARGET:-modern}"
+REV="${DEVKIT_REV:-r1}"
 case "$cmd" in
     setup|build|verify|flash|doctor|status|write-card)
         _rest=(); _take=0
         for a in "$@"; do
             if [ "$_take" -eq 1 ]; then TARGET="$a"; _take=0; continue; fi
+            if [ "$_take" -eq 2 ]; then REV="$a"; _take=0; continue; fi
             case "$a" in
                 --target)   _take=1 ;;
                 --target=*) TARGET="${a#--target=}" ;;
+                --rev)      _take=2 ;;
+                --rev=*)    REV="${a#--rev=}" ;;
                 *)          _rest+=("$a") ;;
             esac
         done
         [ "$_take" -eq 1 ] && { echo "ERROR: --target needs a value: factory or modern" >&2; exit 1; }
+        [ "$_take" -eq 2 ] && { echo "ERROR: --rev needs a value: r1 or r2" >&2; exit 1; }
+        case "$REV" in
+            r1|r2) ;;
+            *) echo "ERROR: unknown --rev '$REV'${DEVKIT_REV:+ (DEVKIT_REV=$DEVKIT_REV?)}. It is r1 (the default, PlutoSky R1) or r2 (PlutoSky R2)." >&2
+               exit 1 ;;
+        esac
         case "$TARGET" in
             factory|modern) ;;
             *) echo "ERROR: unknown --target '$TARGET'${DEVKIT_TARGET:+ (DEVKIT_TARGET=$DEVKIT_TARGET?)}. It is modern (the default) or factory." >&2
@@ -428,7 +475,27 @@ case "$cmd" in
         esac
         set -- ${_rest[@]+"${_rest[@]}"} ;;
 esac
+export DEVKIT_REV="$REV"
+# "" on the R1, "-r2" on the R2: the suffix on every per-revision directory.
+case "$REV" in r1) REVSFX="" ;; *) REVSFX="-$REV" ;; esac
 FWM="$HERE/firmware-modern"
+
+# Off the R1, the factory target is the FPGA build and nothing more: the R2's
+# kernel, device tree and root are the modern target's. So setup, build and
+# doctor go to the FPGA-only scripts, and the commands that act on the factory
+# target's five SD-card files have nothing to act on.
+if [ "$TARGET" = factory ] && [ "$REV" != r1 ]; then
+    case "$cmd" in
+        setup)  exec "$FW/scripts/setup_fpga.sh" "$@" ;;
+        build)  exec "$FW/scripts/build_fpga.sh" "$@" ;;
+        doctor) exec "$FW/scripts/build_fpga.sh" --preflight-only "$@" ;;
+        verify|flash)
+            echo "ERROR: on --rev $REV the factory target builds only the FPGA design, so there" >&2
+            echo "       are no factory SD-card files to $cmd. The firmware is the modern target's:" >&2
+            echo "           ./devkit $cmd --rev $REV" >&2
+            exit 1 ;;
+    esac
+fi
 
 case "$cmd" in
     doctor)
@@ -484,7 +551,7 @@ case "$cmd" in
                         exit 1 ;;
                 esac
             done
-            FW_OUTPUT="$FWM/output" exec "$HERE/tools/flash.sh" "$@"
+            FW_OUTPUT="$FWM/output$REVSFX" exec "$HERE/tools/flash.sh" "$@"
         fi
         exec "$HERE/tools/flash.sh" "$@" ;;
     write-card)
@@ -595,15 +662,34 @@ case "$cmd" in
             [ -f "$FWM/boot/fw/u-boot-xlnx/Makefile" ] && echo "   boot:   present (U-Boot, embeddedsw, bootgen)" \
                 || echo "   boot:   missing - run ./devkit setup --target modern"
             echo
-            echo "== last modern build =="
+            echo "== last modern build${REVSFX:+ for --rev $REV (output$REVSFX/)} =="
             for f in BOOT.bin uImage devicetree.dtb uEnv.txt system_top.xsa; do
-                if [ -r "$FWM/output/$f" ]; then printf '   %-22s %10s B  %s\n' "$f" \
-                    "$(stat -c%s "$FWM/output/$f")" "$(date -r "$FWM/output/$f" '+%Y-%m-%d %H:%M')"
+                if [ -r "$FWM/output$REVSFX/$f" ]; then printf '   %-22s %10s B  %s\n' "$f" \
+                    "$(stat -c%s "$FWM/output$REVSFX/$f")" "$(date -r "$FWM/output$REVSFX/$f" '+%Y-%m-%d %H:%M')"
                 else printf '   %-22s -\n' "$f"; fi
             done
             if [ -r "$FWM/debian/rootfs.tar" ]; then printf '   %-22s %10s B  %s  (debian/, for write-card)\n' rootfs.tar \
                 "$(stat -c%s "$FWM/debian/rootfs.tar")" "$(date -r "$FWM/debian/rootfs.tar" '+%Y-%m-%d %H:%M')"
             else printf '   %-22s -\n' "rootfs.tar"; fi
+            echo
+            board_status
+            exit 0
+        fi
+        if [ "$REV" != r1 ]; then
+            # The FPGA-only tree: is it there, and has it produced an XSA?
+            echo "== FPGA source for --rev $REV (firmware/src$REVSFX/) =="
+            _pl="$FW/src$REVSFX/hdl/projects/pluto"
+            if [ -f "$_pl/system_bd.tcl" ]; then
+                echo "   hdl/ present, $(grep -c . "$FW/src$REVSFX/.devkit-patches-applied" 2>/dev/null || echo 0) patch(es) recorded as applied"
+            else
+                echo "   missing - run ./devkit setup --target factory --rev $REV"
+            fi
+            if [ -r "$_pl/system_top.xsa" ]; then
+                printf '   %-20s %10s B  %s\n' system_top.xsa "$(stat -c%s "$_pl/system_top.xsa")" \
+                    "$(date -r "$_pl/system_top.xsa" '+%Y-%m-%d %H:%M')"
+            else
+                echo "   no system_top.xsa yet - run ./devkit build --target factory --rev $REV"
+            fi
             echo
             board_status
             exit 0

@@ -47,6 +47,12 @@ _devkit_complete() {
         return
     fi
 
+    # --rev picks the hardware revision: r1 (the default, PlutoSky R1) or r2.
+    if [ "$prev" = "--rev" ]; then
+        COMPREPLY=($(compgen -W "r1 r2" -- "$cur"))
+        return
+    fi
+
     # Which target is this command line for? It changes which flags exist:
     # build: --hdl-only is factory's; --boot-only, --rootfs-only, --all modern's.
     # flash: --all/--rootfs-only are factory's.
@@ -69,27 +75,27 @@ _devkit_complete() {
     case "$cmd" in
         build)
             if [ "$tgt" = modern ]; then
-                COMPREPLY=($(compgen -W "--target --xsa --boot-only --rootfs-only --all
+                COMPREPLY=($(compgen -W "--target --rev --xsa --boot-only --rootfs-only --all
                                          --preflight-only --help" -- "$cur"))
             else
-                COMPREPLY=($(compgen -W "--target --hdl-only --xsa --preflight-only --help" -- "$cur"))
+                COMPREPLY=($(compgen -W "--target --rev --hdl-only --xsa --preflight-only --help" -- "$cur"))
             fi ;;
         flash)
             if [ "$tgt" = modern ]; then
-                COMPREPLY=($(compgen -W "--target --boot-only --kernel-only --dtb-only --no-reboot --help" -- "$cur"))
+                COMPREPLY=($(compgen -W "--target --rev --boot-only --kernel-only --dtb-only --no-reboot --help" -- "$cur"))
             else
                 COMPREPLY=($(compgen -W "--target --all --boot-only --kernel-only --dtb-only
                                          --rootfs-only --no-reboot --help" -- "$cur"))
             fi ;;
         verify)
-            COMPREPLY=($(compgen -W "--target --board --help" -- "$cur")) ;;
+            COMPREPLY=($(compgen -W "--target --rev --board --help" -- "$cur")) ;;
         setup|doctor|status)
-            COMPREPLY=($(compgen -W "--target --help" -- "$cur")) ;;
+            COMPREPLY=($(compgen -W "--target --rev --help" -- "$cur")) ;;
         write-card)
             # Offer removable disks only - the same thing write-card itself insists on.
             local disks=""
             for d in /sys/block/*; do [ "$(cat "$d/removable" 2>/dev/null)" = 1 ] && disks="$disks /dev/${d##*/}"; done
-            COMPREPLY=($(compgen -W "--target --dry-run --image --size --help $disks" -- "$cur")) ;;
+            COMPREPLY=($(compgen -W "--target --rev --dry-run --image --size --help $disks" -- "$cur")) ;;
         selftest)
             COMPREPLY=($(compgen -W "--ssh --loopback --pad --channel --quick
                                      --baseline --save-baseline --json

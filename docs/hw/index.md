@@ -17,7 +17,7 @@ What is on the board and how to wire to it, one question per page.
 -   :material-pin-outline:{ .lg } **[Wire something to the JP5 header](wire-to-jp5.md)**
 
 
-    Four free 3.3 V pins, where ground is, and what not to touch.
+    Four free 3.3 V pins (R1), where ground is, and what not to touch.
 
 -   :material-toggle-switch-outline:{ .lg } **[Toggle a GPIO pin from Linux](toggle-a-gpio.md)**
 
@@ -53,6 +53,11 @@ What is on the board and how to wire to it, one question per page.
 
 
     Which PDF to trust, which sheets matter, and the ratings everything is checked against.
+
+-   :material-chip:{ .lg } **[I have a PlutoSky R2](../plutosky-r2.md)**
+
+
+    A different board: 1.8 V header pins, a `10M_IN` socket, its own build.
 
 </div>
 

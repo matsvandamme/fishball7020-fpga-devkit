@@ -67,6 +67,11 @@ echo "=== Installing the board's device tree and kernel configuration ==="
 # too, so neither needs to carry context that can rot.
 install -m 644 "$FW_DIR/dts/zynq-pluto-sdr-fishball.dts" \
     "$SRC_DIR/arch/arm/boot/dts/xilinx/"
+# The PlutoSky R2's tree, always installed, whichever --rev this setup is for:
+# it is one more file, it includes the R1's, and the build picks one of them by
+# name. Its kernel options are config/r2.config, merged at build time.
+install -m 644 "$FW_DIR/dts/zynq-pluto-sdr-fishball-r2.dts" \
+    "$SRC_DIR/arch/arm/boot/dts/xilinx/"
 install -m 644 "$FW_DIR/config/fishball_defconfig" "$SRC_DIR/arch/arm/configs/"
 
 echo "=== Applying patches ==="

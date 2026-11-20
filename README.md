@@ -57,7 +57,7 @@
 
 ## ℹ️ Overview
 
-The board is sold as **PlutoSky R1**, **7020-SDR**, **Fishball7020** and **Fish-Wan**: a Zynq XC7Z020 (two ARM cores plus FPGA fabric) with an AD9361 radio chip, 70 MHz to 6 GHz, two transmit and two receive channels, a power amplifier on each transmit port. It arrives with no published, buildable source. This repository reconstructs it, so you can open the real FPGA design, put your own logic next to the radio's datapath and rebuild everything. To software the board looks like an ADALM-Pluto at `ip:fishball.local`, so libiio, pyadi-iio, GNU Radio, SDR++, SDRangel and MATLAB work with it.
+The board is sold as **PlutoSky R1**, **7020-SDR**, **Fishball7020** and **Fish-Wan**; its successor, the **PlutoSky R2**, is supported with its own build ([below](#plutosky-r2)). The R1 is a Zynq XC7Z020 (two ARM cores plus FPGA fabric) with an AD9361 radio chip, 70 MHz to 6 GHz, two transmit and two receive channels, a power amplifier on each transmit port. It arrives with no published, buildable source. This repository reconstructs it, so you can open the real FPGA design, put your own logic next to the radio's datapath and rebuild everything. To software the board looks like an ADALM-Pluto at `ip:fishball.local`, so libiio, pyadi-iio, GNU Radio, SDR++, SDRangel and MATLAB work with it.
 
 > **Not the official Analog Devices / OpenSourceSDRLab repository.** This is an independent, reverse-engineered reconstruction.
 
@@ -68,7 +68,7 @@ iio_attr -S
 #  1: 192.168.2.1 (FISH Ball PlutoSDR Rev.A (Z7020-AD9361)), serial=... [ip:fishball.local]
 ```
 
-`FISH Ball PlutoSDR Rev.A (Z7020-AD9361)` fits. A `Z7010`, an `AD9363` or another Rev does not work unchanged. Transmit power figures here assume the power amplifier is fitted ([variants](docs/hardware.md)).
+`FISH Ball PlutoSDR Rev.A (Z7020-AD9361)` fits. A **PlutoSky R2** (CLG484 Zynq, a `10M_IN` socket, vendor firmware `v0.38-5-g76414`) needs the R2 build, not this one. A `Z7010`, an `AD9363` or another Rev does not work unchanged. Transmit power figures here assume the power amplifier is fitted ([variants](docs/hardware.md)).
 
 **Two firmware targets.** `./devkit` drives both: modern by default, factory with `--target factory`.
 
@@ -77,6 +77,25 @@ iio_attr -S
 | kernel | 6.12 LTS, Analog Devices' tree | 5.15, the vendor's fork |
 | userspace | Debian 13 armhf, on the SD card | Buildroot and busybox, in RAM |
 | FPGA | taken from a built design (an `.xsa` file) | built with Vivado: the only bitstream source here |
+
+### PlutoSky R2
+
+The R2 is a different board, and **an R1 image does not work on it**: it boots with no radio, no Ethernet and no USB. Build for it with `--rev r2`:
+
+```bash
+# run from: the repo root
+./devkit setup --target factory --rev r2 && ./devkit build --target factory --rev r2   # the FPGA design, Vivado 2022.2
+./devkit setup --rev r2
+./devkit build --rev r2 --xsa firmware/src-r2/hdl/projects/pluto/system_top.xsa        # boot files and kernel
+```
+
+| | State on the R2 (one board, 2026-11-20) |
+|---|---|
+| boots, radio receives, Ethernet (1 Gbit/s, DHCP), USB | **works** |
+| transmit, the sample-locked header pins, the 10 MHz input, the self-test baselines | not tested yet |
+| a release to download | none yet: the R2 needs your own Vivado build |
+
+The header pins are **1.8 V** on the R2 (3.3 V on the R1) and pin 1 is 5 V. Everything else on this page, and every measurement in the docs, is the R1 unless it says otherwise. Details: [the PlutoSky R2](docs/plutosky-r2.md).
 
 <img src="docs/img/board-map.png" alt="The board photographed from above, with 22 labels: the four SMA ports, EXT_CLK, TX_LO and RX_LO, the AD9361, the Zynq XC7Z020, two MT41K256M16 DDR3L chips, the RTL8211F Ethernet PHY, the HR911130A RJ45 jack, the JP5 header, the BOOT DIP switch, the reset button, the microSD card and both USB-C sockets." width="760">
 
@@ -103,7 +122,7 @@ Then pick a starting point: receive with [SDR++](docs/sdrpp.md) or [other tools]
 
 **Just want a working board?** Back up every file on the board's microSD card first; that is your way back. Then:
 
-1. Download [the latest release](../../releases/latest) (modern firmware). It needs two partitions, so write it with a clone of this repository and a card reader: `sudo ./devkit write-card --from ~/Downloads /dev/sdX`. **On Windows**, double-click `write-card.cmd` from the same release instead: [writing the card on Windows](docs/windows-sd-card.md). For the factory firmware, copy the five files of [v1.7](../../releases/tag/v1.7) onto the FAT32 card instead.
+1. Download [the latest release](../../releases/latest) (modern firmware, **PlutoSky R1 only**; for an R2 see [above](#plutosky-r2)). It needs two partitions, so write it with a clone of this repository and a card reader: `sudo ./devkit write-card --from ~/Downloads /dev/sdX`. **On Windows**, double-click `write-card.cmd` from the same release instead: [writing the card on Windows](docs/windows-sd-card.md). For the factory firmware, copy the five files of [v1.7](../../releases/tag/v1.7) onto the FAT32 card instead.
 2. Check the **`BOOT`** DIP switch next to `RST` is in SD mode: both sliders away from `ON`. Boards ship like that.
 3. Insert the card and power on, from a mains USB charger: on a laptop's USB power the board can hang. Nothing happening? [Boot modes and recovery](docs/flashing.md).
 

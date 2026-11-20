@@ -1,5 +1,9 @@
 # firmware: the factory firmware, rebuilt from source
 
+> **PlutoSky R2:** with `--rev r2` this target builds the R2 FPGA design only
+> (`revs/r2/patches/`, into `src-r2/`); there is no R2 build of the 5.15 kernel or
+> the Buildroot root. See [the PlutoSky R2](../docs/plutosky-r2.md).
+
 A reconstruction of the firmware the Fishball7020 ships with on its SD card:
 the vendor's Linux 5.15, a Buildroot root filesystem that runs from RAM, and
 the FPGA design, which you build with Vivado or take ready-made from an XSA.

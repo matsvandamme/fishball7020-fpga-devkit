@@ -13,12 +13,18 @@ on:
   push:
     paths:
       - "firmware/patches/**"
+      - "firmware/revs/**"
       - "firmware/scripts/setup.sh"
+      - "firmware/scripts/setup_fpga.sh"
+      - "firmware/scripts/rev.sh"
       - ".github/workflows/verify-patches.yml"
   pull_request:
     paths:
       - "firmware/patches/**"
+      - "firmware/revs/**"
       - "firmware/scripts/setup.sh"
+      - "firmware/scripts/setup_fpga.sh"
+      - "firmware/scripts/rev.sh"
   schedule:
     # Weekly, so upstream disappearing/force-pushing is caught even when
     # nobody's actively touching this repo.
@@ -236,3 +242,39 @@ jobs:
             echo "checking $(basename "$p")"
             git apply --check "$p"
           done
+
+  verify-r2:
+    name: The PlutoSky R2's FPGA series applies
+    # --rev r2: the same series with firmware/revs/r2/patches/ replacing or adding,
+    # applied to hdl/ only (firmware/scripts/setup_fpga.sh). A change to a shared
+    # HDL patch can stop applying on the R2's design while still applying on the
+    # R1's, and only this job would notice.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run setup_fpga.sh (sparse hdl/ + the R2 series)
+        run: DEVKIT_REV=r2 ./firmware/scripts/setup_fpga.sh
+      - name: It is idempotent
+        run: DEVKIT_REV=r2 ./firmware/scripts/setup_fpga.sh | grep -q 'already applied - nothing to do'
+      - name: The tree is the R2's design, with this repo's FPGA changes in it
+        run: |
+          P=firmware/src-r2/hdl/projects/pluto
+          grep -q '"xc7z020clg484-2"' $P/system_project.tcl
+          test -f $P/ADF4001_init.v
+          test -f $P/tx_gpio_bitmap.v
+          grep -q 'gmii_to_rgmii' $P/system_bd.tcl
+          # The four sample-GPIO outputs, on the R2's header balls and no others.
+          for pin in M19 M20 M21 M22; do
+            [ "$(grep -c "PACKAGE_PIN $pin " $P/system_constr.xdc)" -eq 1 ] || {
+              echo "::error::$pin must be constrained exactly once"; exit 1; }
+          done
+          # 0009: the crossing constraint names both ends.
+          grep -q 'up_dac_gpio_out_int_reg' $P/system_constr.xdc
+          # No ball may be claimed twice - a wrong PACKAGE_PIN is not a build error
+          # until place_design, 40 minutes in.
+          dup=$(grep -oE 'PACKAGE_PIN +[A-Z]+[0-9]+' $P/system_constr.xdc | awk '{print $2}' | sort | uniq -d)
+          [ -z "$dup" ] || { echo "::error::balls constrained twice: $dup"; exit 1; }
+      - name: The R1 series is exactly firmware/patches (the selector changes nothing there)
+        run: |
+          source firmware/scripts/rev.sh
+          diff <(devkit_patch_series "$PWD/firmware") <(ls "$PWD"/firmware/patches/*.patch)

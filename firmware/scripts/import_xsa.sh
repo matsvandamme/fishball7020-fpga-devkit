@@ -43,12 +43,23 @@ unzip -l "$XSA_FILE" | grep -q ' system_top.bit$' || {
 # Refuse a platform for another part or another tool version rather than
 # let it reach the FSBL build and fail there, where the message is about a
 # missing peripheral rather than about the file you passed.
+#
+# The part is also what tells the two hardware revisions apart - CLG400 is the
+# R1, CLG484 the R2 (rev.sh) - so this is the check that stops one revision's
+# FPGA design being packaged for the other. That mistake boots: Linux comes up
+# with no radio, no Ethernet and no USB.
+# shellcheck source=rev.sh
+source "$(dirname "${BASH_SOURCE[0]}")/rev.sh"
 sysdef="$(unzip -p "$XSA_FILE" sysdef.xml 2>/dev/null || true)"
 case "$sysdef" in
-    *'PART="xc7z020clg400-2"'*) ;;
+    *"PART=\"$REV_PART\""*) ;;
     "") echo "WARNING: $XSA_FILE has no sysdef.xml - cannot check the part" >&2 ;;
-    *)  echo "ERROR: that XSA is not for this board's part (xc7z020clg400-2)." >&2
+    *)  echo "ERROR: that XSA is not for the $REV_NAME's part ($REV_PART)." >&2
         echo "       It says: $(printf '%s' "$sysdef" | grep -o 'PART="[^\"]*"' | head -1)" >&2
+        case "$sysdef" in
+            *'PART="xc7z020clg400-2"'*) echo "       That is a PlutoSky R1 design: build it without --rev (or with --rev r1)." >&2 ;;
+            *'PART="xc7z020clg484-2"'*) echo "       That is a PlutoSky R2 design: build it with --rev r2." >&2 ;;
+        esac
         exit 1 ;;
 esac
 case "$sysdef" in

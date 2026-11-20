@@ -19,6 +19,12 @@
 #     --preflight-only   Check tools and sources, build nothing.
 #
 # Writes firmware-modern/output/: BOOT.bin, uImage, devicetree.dtb, uEnv.txt.
+#
+# HARDWARE REVISION. DEVKIT_REV=r2 (./devkit build --rev r2) builds for the
+# PlutoSky R2: its device tree, one more kernel option, and everything written to
+# firmware-modern/output-r2/ instead, so the two boards' files cannot be mixed.
+# The XSA must be an R2 design; an R1 one is refused by its part number. There is
+# no pinned R2 XSA: build one with ./devkit build --target factory --rev r2.
 # The Debian root, firmware-modern/debian/rootfs.tar, is built only on request
 # (--rootfs-only or --all): it needs armhf emulation and takes far longer than
 # everything else here.
@@ -49,9 +55,14 @@ REPO="$(dirname "$FW_DIR")"
 BOOT="$FW_DIR/boot"
 MONO="$BOOT/fw"
 KSRC="$FW_DIR/src/linux"
-OUT="$FW_DIR/output"
-PLUTO="$BOOT/hdl"                 # where import_xsa.sh puts the platform
-FSBL_BUILD="$BOOT/fsbl-build"
+# shellcheck source=../firmware/scripts/rev.sh
+source "$REPO/firmware/scripts/rev.sh"
+# Per revision: the output, the imported platform and the FSBL built from it.
+# U-Boot ($MONO) and the kernel tree ($KSRC) are shared - one source, built for
+# whichever revision asked last.
+OUT="$FW_DIR/output$REV_SUFFIX"
+PLUTO="$BOOT/hdl$REV_SUFFIX"      # where import_xsa.sh puts the platform
+FSBL_BUILD="$BOOT/fsbl-build$REV_SUFFIX"
 BOOTGEN="$BOOT/bootgen/bootgen"
 XILINX_DIR="${XILINX_DIR:-/tools/Xilinx}"
 # shellcheck source=../firmware/scripts/fetch_common.sh
@@ -96,6 +107,14 @@ if [ "$ROOTFS_ONLY" -eq 1 ] || [ "$WITH_ROOTFS" -eq 1 ]; then
 fi
 # --preflight-only (what `./devkit doctor --target modern` runs) is "can this
 # machine build?", which does not depend on which XSA you will pass later.
+if [ -z "$XSA_FILE" ] && [ "$PREFLIGHT_ONLY" -eq 0 ] && [ "$DEVKIT_REV" != r1 ]; then
+    echo "ERROR: the modern target needs --xsa FILE: the FPGA design it builds around." >&2
+    echo "       For the $REV_NAME that is the one your own FPGA build wrote:" >&2
+    echo "           ./devkit build --target factory$REV_FLAG        # Vivado; writes the XSA" >&2
+    echo "           ./devkit build$REV_FLAG --xsa firmware/src$REV_SUFFIX/hdl/projects/pluto/system_top.xsa" >&2
+    echo "       No release carries a $REV_NAME design, so there is no pinned one to fetch." >&2
+    exit 1
+fi
 if [ -z "$XSA_FILE" ] && [ "$PREFLIGHT_ONLY" -eq 0 ]; then
     echo "ERROR: the modern target needs --xsa FILE: the FPGA design it builds around." >&2
     echo "       The one a factory release shipped, fetched and checked for you:" >&2
@@ -156,6 +175,7 @@ if [ "$fail" -ne 0 ]; then
     exit 1
 fi
 echo "  ARM Linux compiler: ${CROSS}gcc"
+echo "  hardware revision:  $DEVKIT_REV ($REV_NAME, $REV_PART) -> ${OUT#"$REPO"/}/"
 [ "$PREFLIGHT_ONLY" -eq 1 ] && { echo "=== preflight passed; nothing built (--preflight-only) ==="; exit 0; }
 
 mkdir -p "$OUT"
@@ -214,11 +234,32 @@ else
     # fishball_defconfig, never zynq_pluto_defconfig on its own - that is an
     # ADALM-Pluto, with no Ethernet, SD card or GPIO sysfs (see README.md).
     make -s -C "$KSRC" ARCH=arm CROSS_COMPILE=$CROSS fishball_defconfig
+    # A revision's own options, merged over the R1's configuration: config/r2.config
+    # for the R2. fishball_defconfig just above resets .config first, so building
+    # the R1 after the R2 in the same tree gives the R1's kernel again.
+    REV_CONFIG="$FW_DIR/config/$DEVKIT_REV.config"
+    if [ "$DEVKIT_REV" != r1 ]; then
+        [ -f "$REV_CONFIG" ] || { echo "ERROR: $REV_CONFIG is missing" >&2; exit 1; }
+        [ -f "$KSRC/arch/arm/boot/dts/xilinx/$REV_DTB.dts" ] || {
+            echo "ERROR: $REV_DTB.dts is not in the kernel tree - run ./devkit setup$REV_FLAG" >&2; exit 1; }
+        ( cd "$KSRC" && ARCH=arm CROSS_COMPILE=$CROSS ./scripts/kconfig/merge_config.sh -m .config "$REV_CONFIG" >/dev/null )
+        make -s -C "$KSRC" ARCH=arm CROSS_COMPILE=$CROSS olddefconfig
+        # merge_config only warns when an option does not survive olddefconfig (a
+        # missing dependency), and the kernel then builds without it. Check each one.
+        while IFS= read -r opt; do
+            grep -qxF "$opt" "$KSRC/.config" || {
+                echo "ERROR: $opt from $(basename "$REV_CONFIG") did not make it into .config" >&2; exit 1; }
+        done < <(grep -E '^CONFIG_[A-Z0-9_]+=' "$REV_CONFIG")
+    fi
+    # The kernel tree is shared between revisions, so say whose uImage is in it:
+    # write-card compares the tree's uImage with output/'s to catch a stale copy,
+    # and must not call the R2's stale because the R1 was built after it.
+    echo "$DEVKIT_REV" > "$KSRC/.devkit-rev"
     make -s -C "$KSRC" ARCH=arm CROSS_COMPILE=$CROSS uImage LOADADDR=0x8000 -j"$(nproc)"
-    make -s -C "$KSRC" ARCH=arm CROSS_COMPILE=$CROSS DTC_FLAGS=-@ xilinx/zynq-pluto-sdr-fishball.dtb
+    make -s -C "$KSRC" ARCH=arm CROSS_COMPILE=$CROSS DTC_FLAGS=-@ "xilinx/$REV_DTB.dtb"
     cp "$KSRC/arch/arm/boot/uImage" "$STAGE/uImage"
     # NOTE THE RENAME: the flasher wants the literal name devicetree.dtb.
-    cp "$KSRC/arch/arm/boot/dts/xilinx/zynq-pluto-sdr-fishball.dtb" "$STAGE/devicetree.dtb"
+    cp "$KSRC/arch/arm/boot/dts/xilinx/$REV_DTB.dtb" "$STAGE/devicetree.dtb"
 fi
 
 # ---- [5] uEnv.txt ----------------------------------------------------------------
@@ -245,6 +286,8 @@ hwh() { printf '%s' "$HWH" | grep -o -m1 "$1=\"[^\"]*\"" | head -1 | cut -d'"' -
     echo "fishball_build=$(git -C "$REPO" describe --abbrev=8 --dirty --always --tags 2>/dev/null || echo unknown) modern"
     echo "fishball_xsa=$XSA_NAME, md5 $(md5sum < "$XSA_FILE" | cut -c1-8)"
     echo "fishball_fpga=xc$(hwh DEVICE)$(hwh PACKAGE)$(hwh SPEEDGRADE), Vivado $(hwh VIVADOVERSION)"
+    # Only off the R1, so an R1 uEnv.txt is byte for byte what it was.
+    [ "$DEVKIT_REV" = r1 ] || echo "fishball_rev=$DEVKIT_REV"
 } >> "$STAGE/uEnv.txt"
 
 # ---- [6] BOOT.bin ----------------------------------------------------------------
@@ -290,10 +333,10 @@ echo "=== Done: $OUT ==="
 [ "$BOOT_ONLY" -eq 1 ] && echo "(--boot-only: uImage and devicetree.dtb in output/ are from an earlier build, or absent)"
 echo
 echo "Onto a running board, with a backup and an md5 check before anything is swapped:"
-echo "    ./devkit flash --target modern --boot-only      # BOOT.bin"
-echo "    ./devkit flash --target modern --kernel-only    # uImage"
+echo "    ./devkit flash --target modern$REV_FLAG --boot-only      # BOOT.bin"
+echo "    ./devkit flash --target modern$REV_FLAG --kernel-only    # uImage"
 echo "Or a whole card from a reader, with the Debian root:"
-echo "    sudo ./devkit write-card --target modern /dev/sdX"
+echo "    sudo ./devkit write-card --target modern$REV_FLAG /dev/sdX"
 if [ "$WITH_ROOTFS" -eq 1 ]; then
     echo
     echo "=== The boot files are done; now the Debian root (--all) ==="

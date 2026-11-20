@@ -5,6 +5,11 @@ description: Read or drive the four free JP5 pins from the board or from your PC
 
 # Toggle a GPIO pin from Linux
 
+!!! note "PlutoSky R2"
+    Written and measured on the R1. On the R2 the same four `JP5` pins are
+    **1.8 V** and have not been tested yet:
+    [the PlutoSky R2](../plutosky-r2.md#the-sample-locked-gpio-pins-on-the-r2).
+
 Resolve the line **by name**, then read or drive it. The four free pins are
 `sample_gpio0` to `sample_gpio3` (JP5 pins 7, 9, 11, 13).
 

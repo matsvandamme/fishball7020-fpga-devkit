@@ -5,6 +5,11 @@ description: Four JP5 pins whose every edge is locked to a transmitted sample, f
 
 # Make pins follow the transmit samples
 
+!!! note "PlutoSky R2"
+    Written and measured on the R1. On the R2 the same four `JP5` pins are
+    **1.8 V** and have not been tested yet:
+    [the PlutoSky R2](../plutosky-r2.md#the-sample-locked-gpio-pins-on-the-r2).
+
 Turn on `tx_sample_gpio_en`, and JP5 pins 7, 9, 11 and 13 carry the **low
 four bits of every transmitted I sample** on channel 0. The AD9361's DAC takes
 only the top 12 of your 16 bits, so those four bits cost no analog

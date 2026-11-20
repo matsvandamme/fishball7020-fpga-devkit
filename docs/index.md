@@ -9,7 +9,8 @@ hide:
 # What do you want to do?
 
 Firmware, guides and measurements for the Fishball7020 / PlutoSky R1: a Zynq
-XC7Z020 and an AD9361 radio, rebuilt from source.
+XC7Z020 and an AD9361 radio, rebuilt from source. The
+[PlutoSky R2](plutosky-r2.md) is supported with its own build.
 
 <label class="hero-search" for="__search">:material-magnify: Search: write the card, SDR++, transmit, GPIO, reference clock…</label>
 
