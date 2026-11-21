@@ -38,8 +38,8 @@ macb e000b000.ethernet eth0: Could not attach PHY (-19)
 
 ## Build for the R2
 
-From [its own repository](https://github.com/matsvandamme/plutosky-r2-fpga-devkit#build-it).
-There is no R2 release yet, and the FPGA half of its build needs Vivado 2022.2.
+From [its own repository](https://github.com/matsvandamme/plutosky-r2-fpga-devkit#get-it-running),
+which also has [a release to download](https://github.com/matsvandamme/plutosky-r2-fpga-devkit/releases).
 
 ## The sample-locked GPIO pins on the R2
 

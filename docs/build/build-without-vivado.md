@@ -6,8 +6,8 @@ description: Build the modern firmware (kernel, drivers, Debian) from a pinned F
 # Build without Vivado
 
 !!! note "PlutoSky R2: not this repository"
-    The R2 is built from [its own repository](../plutosky-r2.md), and no FPGA
-    design is released for it yet, so its build needs one Vivado run first.
+    The R2 is built from [its own repository](../plutosky-r2.md), which has
+    its own released FPGA design to build around.
 
 The modern firmware takes its FPGA design from an **XSA** (AMD's export of a
 finished design: the bitstream plus the processor setup), so it builds with

@@ -1,8 +1,8 @@
 # Building the firmware without installing Vivado
 
 !!! note "PlutoSky R2: not this repository"
-    The R2 is built from [its own repository](plutosky-r2.md), and no FPGA
-    design is released for it yet, so its build needs one Vivado run first.
+    The R2 is built from [its own repository](plutosky-r2.md), which has its
+    own released FPGA design to build around.
 
 Vivado, AMD's FPGA design tool, is about **50 GB** and spends **20 to 70
 minutes** in every build. A build that changes a driver, the kernel or the root
