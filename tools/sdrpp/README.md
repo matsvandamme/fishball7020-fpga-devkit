@@ -37,6 +37,52 @@ Build on a disk with a few GB free, not on a small `/tmp`: `makepkg` packages
 an empty `libsdrpp_core.so` if stripping runs out of space, and only says so in
 the middle of its log.
 
+## macOS
+
+```bash
+# run from: the repo root, on the Mac
+tools/sdrpp/build-macos.sh --install-deps    # or without the flag: it names the missing formulae and stops
+~/.cache/fishball-sdrpp/sdrpp                # the launcher it writes
+```
+
+[`build-macos.sh`](build-macos.sh) builds the same SDR++ commit with the same
+patch and the same DAB+ decoder, and libiio 0.26 and libad9361-iio 0.4.0 beside
+it, into one directory (`~/.cache/fishball-sdrpp`, or the directory you pass).
+No `sudo`, nothing in `/usr/local`, `/Library` or `/Applications`; delete the
+directory to remove it. From Homebrew it needs
+`cmake pkgconf fftw glfw volk portaudio zstd libusb faad2 mpg123`.
+About 200 MB; 20 seconds on an 18-core Apple Silicon Mac. Quit SDR++ before
+building again: the script stops if this build's SDR++ is running.
+
+What differs from the Arch package:
+
+- **The board is found, not typed in.** This SDR++ has no address field. Choose
+  the **PlutoSDR** source and the board is in the menu under it as `(ip) …`,
+  because libiio finds `iiod on fishball` by DNS-SD. If the menu is empty after
+  **Refresh**, ask libiio directly: `~/.cache/fishball-sdrpp/prefix/bin/iio_info -S`
+  lists what it sees, and `dns-sd -B _iio._tcp` shows whether the board's
+  announcement reaches the Mac at all (it does not cross most routers and
+  guest networks).
+- **Audio is the PortAudio sink**, as in upstream's own macOS builds.
+- **The DAB Decoder panel is already there.** On Arch you add a `dab_decoder`
+  instance in the Module Manager; here the launcher adds one, named
+  **DAB Decoder**, to the config before SDR++ starts, once. Remove it in the
+  Module Manager and it stays removed. Start SDR++ with the launcher, not
+  `prefix/bin/sdrpp`, or add the instance by hand. Usage:
+  [listen to DAB+ radio](../../docs/radio/listen-to-dab.md).
+- **None of the sources that need a vendor library** (Airspy, HackRF,
+  RTL-SDR). The log's `Module 'airspy_source' doesn't exist` lines at start are
+  those; they are harmless.
+- **Two cmake files are changed** besides the patch: one line of SDR++'s, so
+  the PlutoSDR source links the libiio built here instead of
+  `/Library/Frameworks/iio.framework`, and five lines added to the DAB+
+  decoder's, because clang refuses a C++ flag on its C files.
+  `build-macos.sh --help` says why.
+
+Settings are kept in `~/.cache/fishball-sdrpp/root`, apart from any other SDR++
+on the Mac. That directory records where the modules are, so after moving the
+build, delete `root/config.json`.
+
 ## What the patch changes
 
 | control | writes |
