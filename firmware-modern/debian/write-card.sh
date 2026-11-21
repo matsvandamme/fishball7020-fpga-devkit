@@ -7,6 +7,11 @@
 #     sudo ./devkit write-card --target modern --image card.img # a NEW image file, not a disk
 #     sudo ./devkit write-card --target modern --from "$HOME/Downloads" /dev/sdX
 #
+# On macOS the same command lines work, with /dev/diskN for the card (see
+# `diskutil list external physical`); --image needs no sudo there. This script
+# hands over to tools/write_card_mac.py, which writes p2 as ext3 and, with
+# --from, takes the release's debian-rootfs.tar.gz as the root as well.
+#
 # --from DIR takes BOOT.bin, uImage, devicetree.dtb and uEnv.txt from DIR - a
 # downloaded modern release - instead of firmware-modern/output/. If DIR has the
 # release's SHA256SUMS, every boot file listed there is checked against it first.
@@ -32,6 +37,17 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FW="$(dirname "$HERE")"                      # firmware-modern/
 REPO="$(dirname "$FW")"
+
+# macOS has none of the tools this script drives (sfdisk, lsblk, mkfs.vfat,
+# mkfs.ext4, losetup; no ext4 driver to mount the root with) and no /sys/block
+# to ask whether a disk is removable. tools/write_card_mac.py takes the same
+# options, asks diskutil instead, and lays the card out itself - p2 as ext3, the
+# card tools/write-card.cmd makes on Windows. Nothing below runs on a Mac.
+if [ "$(uname -s)" = Darwin ]; then
+    command -v python3 >/dev/null 2>&1 || { echo "ERROR: write-card needs python3 on macOS (xcode-select --install)" >&2; exit 1; }
+    exec python3 "$REPO/tools/write_card_mac.py" "$@"
+fi
+
 TAR="$HERE/rootfs.tar"
 BOOT_MB=128
 

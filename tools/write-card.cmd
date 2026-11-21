@@ -1280,7 +1280,7 @@ if ($ImageMode) {
     $target = [Fishball.Target]::OpenImage($img, $ImageSizeMB * 1MB)
     $diskNo = -1
 } else {
-    if (-not $IsWin) { Fail 'writing a card needs Windows. Use -ImageFile to make a card image instead.' }
+    if (-not $IsWin) { Fail 'writing a card with this script needs Windows. On macOS and Linux, write it from the repo: sudo ./devkit write-card --from FOLDER /dev/...  (or use -ImageFile here to make a card image instead).' }
 
     # ------------------------------------------------------------- 2. which card
     Step '2/6  Choosing the card'
