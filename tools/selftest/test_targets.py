@@ -93,7 +93,10 @@ with tempfile.TemporaryDirectory() as d:
     fake = pathlib.Path(d) / "podman"
     fake.write_text("#!/bin/sh\nexit 1\n")
     fake.chmod(0o755)
-    env = {"PATH": d + os.pathsep + os.environ["PATH"], "container": ""}
+    # DEVKIT_RUNTIME names it, because being first on PATH is not enough: on macOS
+    # build.sh takes docker before podman, and with Colima running this test then
+    # built a real root and replaced firmware-modern/debian/rootfs.tar.
+    env = {"PATH": d + os.pathsep + os.environ["PATH"], "container": "", "DEVKIT_RUNTIME": "podman"}
     expect("modern build --rootfs-only needs no --xsa and runs debian/build.sh",
            [DEVKIT, "build", "--target", "modern", "--rootfs-only"], 1,
            "cannot run armhf containers", env=env)
