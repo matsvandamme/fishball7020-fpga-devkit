@@ -1,9 +1,8 @@
 # Flashing the board, and checking what it runs
 
 !!! note "PlutoSky R2"
-    Releases, and the flashing commands as written, are for the R1. The R2
-    needs its own build and `--rev r2`: [the PlutoSky R2](plutosky-r2.md). Its
-    `BOOT` switch works the same way: both sliders away from `ON` is SD.
+    Releases, and the flashing commands on this page, are for the R1. The R2
+    needs its own build, from [its own repository](plutosky-r2.md).
 
 Every way to get a build onto the board, how to confirm the board runs it,
 the USB ports and the BOOT switch. For the tasks, see

@@ -5,10 +5,9 @@ description: Build the modern firmware (kernel, drivers, Debian) from a pinned F
 
 # Build without Vivado
 
-!!! note "PlutoSky R2: not possible yet"
-    This route starts from a released FPGA design, and none is released for the
-    R2. An R2 build needs one Vivado run first:
-    [build for the R2](../plutosky-r2.md#build-for-the-r2).
+!!! note "PlutoSky R2: not this repository"
+    The R2 is built from [its own repository](../plutosky-r2.md), and no FPGA
+    design is released for it yet, so its build needs one Vivado run first.
 
 The modern firmware takes its FPGA design from an **XSA** (AMD's export of a
 finished design: the bitstream plus the processor setup), so it builds with
@@ -43,7 +42,7 @@ XSA="$(./firmware-modern/fetch-pinned-xsa.sh)"      # the FPGA design of a facto
 |---|---|
 | something that is not a zip | `ERROR: … is not a readable zip archive.` |
 | an XSA exported without the bitstream | `ERROR: … contains no system_top.bit.` |
-| an XSA for a different chip | `ERROR: that XSA is not for the PlutoSky R1's part (xc7z020clg400-2).` |
+| an XSA for a different chip | `ERROR: that XSA is not for this board's part (xc7z020clg400-2).` |
 | an XSA from a different Vivado version | `ERROR: that XSA was written by a different tool version.` |
 
 Where to get an XSA, what must be installed, and what you give up:

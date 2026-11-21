@@ -1,8 +1,7 @@
 # firmware-modern: a current Linux for this board
 
-> **PlutoSky R2:** add `--rev r2` to `setup` and `build`. It has its own device tree
-> (`dts/zynq-pluto-sdr-fishball-r2.dts`), kernel fragment (`config/r2.config`) and
-> output directory (`output-r2/`), and no pinned XSA yet. See [the PlutoSky R2](../docs/plutosky-r2.md).
+> **PlutoSky R2:** a different board, built from
+> [its own repository](https://github.com/matsvandamme/plutosky-r2-fpga-devkit). Nothing built here works on it.
 
 Linux 6.12 LTS from Analog Devices, with a Debian 13 root filesystem, for the
 Fishball7020. This is the **recommended** firmware target: use it unless you

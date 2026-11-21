@@ -1,7 +1,7 @@
 # Four header pins that tick with the transmitted waveform
 
 !!! warning "PlutoSky R2: 1.8 V outputs, not yet measured"
-    The R2 build contains this feature, on the same `JP5` pin numbers, at
+    The R2's own firmware contains this feature, on the same `JP5` pin numbers, at
     **1.8 V** instead of 3.3 V. Every measurement on this page was made on an
     R1; the R2's outputs are untested. See
     [the PlutoSky R2](plutosky-r2.md#the-sample-locked-gpio-pins-on-the-r2).

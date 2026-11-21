@@ -7,8 +7,8 @@ description: Download the latest release and write it to a microSD card, from Li
 
 !!! warning "PlutoSky R2: the release does not fit"
     The released image is for the R1. On an R2 it boots with no radio, no
-    Ethernet and no USB. There is no R2 release yet: build one with
-    [`--rev r2`](../plutosky-r2.md#build-for-the-r2).
+    Ethernet and no USB. There is no R2 release yet: build one from
+    [the R2's own repository](../plutosky-r2.md#build-for-the-r2).
 
 Download the [latest release](https://github.com/matsvandamme/fishball7020-fpga-devkit/releases/latest)
 and write it to the card. The modern firmware needs **two partitions**

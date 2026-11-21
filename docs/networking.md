@@ -1,9 +1,8 @@
 # Reaching the board and changing its IP address
 
 !!! note "PlutoSky R2"
-    With an R2 build the board reaches the network the same way: Ethernet by
-    DHCP at 1 Gbit/s and `fishball.local` were checked on one R2
-    ([details](plutosky-r2.md)).
+    This page is the R1's. The R2 has [its own repository](plutosky-r2.md) and
+    documentation.
 
 Every route to the board, every address setting, and where the settings are
 stored, which decides what survives a reboot or a reflash. For the tasks, see

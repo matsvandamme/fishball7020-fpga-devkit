@@ -34,10 +34,6 @@ FW="$(dirname "$HERE")"                      # firmware-modern/
 REPO="$(dirname "$FW")"
 TAR="$HERE/rootfs.tar"
 BOOT_MB=128
-# Which hardware revision's boot files: output/ for the R1, output-r2/ for the R2
-# (./devkit write-card --rev r2). The Debian root is the same for both.
-# shellcheck source=../../firmware/scripts/rev.sh
-source "$REPO/firmware/scripts/rev.sh"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 # Partition N of a whole-disk device, by the kernel's own naming rule: a name that
@@ -113,7 +109,7 @@ fi
 [ "$bytes" -ge $((1024*1024*1024)) ] || die "$DEV is only $((bytes/1024/1024)) MB; a Debian root needs ~1 GB minimum"
 
 # The boot files come from firmware-modern/output/, or from --from DIR.
-SRC="${FROM:-$FW/output$REV_SUFFIX}"
+SRC="${FROM:-$FW/output}"
 UIMG="$SRC/uImage"
 DTB="$SRC/devicetree.dtb"
 for f in "$UIMG" "$DTB" ${FROM:+"$FROM/uEnv.txt"}; do
@@ -135,14 +131,8 @@ fi
 # rebuilt with the systemd options in src/linux and never copied over, so the card
 # got a kernel with no CONFIG_NAMESPACES - which boots systemd perfectly and makes
 # every unit sandbox silently do nothing. Compare rather than hope.
-#
-# The kernel tree is shared between hardware revisions and holds the uImage of
-# whichever was built last (build_all.sh notes it in .devkit-rev; a tree from
-# before that note existed is the R1's). Only compare when that is this revision,
-# or the other board's kernel would be reported as this one's stale copy.
-_tree_rev="$(cat "$FW/src/linux/.devkit-rev" 2>/dev/null || echo r1)"
-[ -n "$FROM" ] || [ "$_tree_rev" != "$DEVKIT_REV" ] || for pair in "arch/arm/boot/uImage:$UIMG" \
-            "arch/arm/boot/dts/xilinx/$REV_DTB.dtb:$DTB"; do
+[ -n "$FROM" ] || for pair in "arch/arm/boot/uImage:$UIMG" \
+            "arch/arm/boot/dts/xilinx/zynq-pluto-sdr-fishball.dtb:$DTB"; do
     src="$FW/src/linux/${pair%%:*}"; dst="${pair##*:}"
     [ -f "$src" ] || continue
     if ! cmp -s "$src" "$dst"; then
@@ -236,8 +226,8 @@ else
     # card BEFORE its last flash - so say what is being written instead.
     echo "note: nothing to compare the FPGA bitstream with; writing the one below"
 fi
-[ -r "$FW/output$REV_SUFFIX/xsa-provenance.txt" ] && [ "$BOOTBIN" = "$FW/output$REV_SUFFIX/BOOT.bin" ] && \
-    sed -n 's/^\(source\|bitstream_md5\):/      \1:/p' "$FW/output$REV_SUFFIX/xsa-provenance.txt"
+[ -r "$FW/output/xsa-provenance.txt" ] && [ "$BOOTBIN" = "$FW/output/BOOT.bin" ] && \
+    sed -n 's/^\(source\|bitstream_md5\):/      \1:/p' "$FW/output/xsa-provenance.txt"
 [ -n "$RAMDISK" ] && [ -f "$RAMDISK" ] || RAMDISK="$REPO/firmware/output/uramdisk.image.gz"
 
 cat <<EOF

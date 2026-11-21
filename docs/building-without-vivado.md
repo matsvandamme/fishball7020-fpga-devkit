@@ -1,9 +1,8 @@
 # Building the firmware without installing Vivado
 
-!!! note "PlutoSky R2: not possible yet"
-    This route starts from a released FPGA design, and none is released for the
-    R2. An R2 build needs one Vivado run first:
-    [build for the R2](plutosky-r2.md#build-for-the-r2).
+!!! note "PlutoSky R2: not this repository"
+    The R2 is built from [its own repository](plutosky-r2.md), and no FPGA
+    design is released for it yet, so its build needs one Vivado run first.
 
 Vivado, AMD's FPGA design tool, is about **50 GB** and spends **20 to 70
 minutes** in every build. A build that changes a driver, the kernel or the root
@@ -177,5 +176,5 @@ fail with a misleading error:
 |---|---|
 | Something that is not a zip | `ERROR: … is not a readable zip archive.` |
 | An XSA exported without the bitstream | `ERROR: … contains no system_top.bit.` |
-| An XSA for a different chip | `ERROR: that XSA is not for the PlutoSky R1's part (xc7z020clg400-2).` |
+| An XSA for a different chip | `ERROR: that XSA is not for this board's part (xc7z020clg400-2).` |
 | An XSA from a different Vivado version | `ERROR: that XSA was written by a different tool version.` |

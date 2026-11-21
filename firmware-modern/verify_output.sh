@@ -13,10 +13,8 @@
 set -euo pipefail
 FW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(dirname "$FW_DIR")"
-# shellcheck source=../firmware/scripts/rev.sh
-source "$REPO/firmware/scripts/rev.sh"
-OUT="$FW_DIR/output$REV_SUFFIX"
-PLUTO="$FW_DIR/boot/hdl$REV_SUFFIX"
+OUT="$FW_DIR/output"
+PLUTO="$FW_DIR/boot/hdl"
 BOARD_CHECK=0
 for a in "$@"; do
     case "$a" in
@@ -33,7 +31,7 @@ for f in BOOT.bin uImage devicetree.dtb uEnv.txt; do
     elif { [ "$f" = uImage ] || [ "$f" = devicetree.dtb ]; } && [ -s "$OUT/BOOT.bin" ]; then
         # BOOT.bin without the rest is what --boot-only leaves on a fresh tree.
         printf '  FAIL  %-16s missing - --boot-only builds BOOT.bin and uEnv.txt only; drop it to build the kernel\n' "$f"; fail=1
-    else printf '  FAIL  %-16s missing - run ./devkit build --target modern%s --xsa FILE\n' "$f" "$REV_FLAG"; fail=1; fi
+    else printf '  FAIL  %-16s missing - run ./devkit build --target modern --xsa FILE\n' "$f"; fail=1; fi
 done
 # The root filesystem write-card reads is debian/rootfs.tar, from debian/build.sh
 # (the .tar.gz in output/ is what a release publishes, and nothing reads it here).

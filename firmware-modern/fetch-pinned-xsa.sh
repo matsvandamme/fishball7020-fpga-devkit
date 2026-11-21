@@ -13,13 +13,6 @@ set -euo pipefail
 FW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PIN="$FW_DIR/factory-xsa.pin"
 case "${1:-}" in -h|--help) sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;; esac
-# The pinned XSA is a PlutoSky R1 design. Handing it to an R2 build would be
-# refused by its part number anyway; say so here, where the mistake is made.
-if [ "${DEVKIT_REV:-r1}" != r1 ]; then
-    echo "ERROR: the pinned XSA is the PlutoSky R1's; no release carries an $DEVKIT_REV design." >&2
-    echo "       Build one:  ./devkit build --target factory --rev $DEVKIT_REV" >&2
-    exit 1
-fi
 tag="$(sed -n 's/^tag=//p' "$PIN")"
 want="$(sed -n 's/^sha256=//p' "$PIN")"
 [ -n "$tag" ] && [ ${#want} -eq 64 ] || { echo "ERROR: $PIN needs tag= and a 64-hex sha256=" >&2; exit 1; }

@@ -9,7 +9,7 @@
 # anchors and out-of-docs links behave the way GitHub's do. The course
 # (docs/course/index.html) and the images are copied through unchanged.
 site_name: Fishball7020 FPGA Devkit
-site_description: Buildable firmware, documentation and an SDR/FPGA course for the Fishball7020 / PlutoSky R1 and R2 software-defined radios.
+site_description: Buildable firmware, documentation and an SDR/FPGA course for the Fishball7020 / PlutoSky R1 software-defined radio.
 site_url: https://matsvandamme.github.io/fishball7020-fpga-devkit/
 repo_url: https://github.com/matsvandamme/fishball7020-fpga-devkit
 repo_name: fishball7020-fpga-devkit

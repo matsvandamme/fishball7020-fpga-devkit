@@ -1,6 +1,6 @@
 # AGENTS.md — fishball7020-fpga-devkit
 
-Editable, rebuildable firmware for the **PlutoSky R1 / 7020-SDR** and, with `--rev r2`, the **PlutoSky R2** (Zynq **XC7Z020** + **AD9361**) two-channel SDR. HDL + bootloader + kernel + rootfs, patch-based. Public, **GPL-2.0**. `README.md` and `CONTRIBUTING.md` are the source of truth.
+Editable, rebuildable firmware for the **PlutoSky R1 / 7020-SDR** (Zynq **XC7Z020** + **AD9361**) two-channel SDR. HDL + bootloader + kernel + rootfs, patch-based. Public, **GPL-2.0**. `README.md` and `CONTRIBUTING.md` are the source of truth.
 
 ## The build driver: `./devkit`
 - `./devkit doctor` — check the machine can build.
@@ -10,7 +10,7 @@ Editable, rebuildable firmware for the **PlutoSky R1 / 7020-SDR** and, with `--r
 - `./devkit verify --board` — after flashing to real hardware.
 - Modern kernel path: `firmware-modern/setup.sh` (Linux 6.12 LTS, ADI at a pinned SHA); build with `./devkit build --target modern` / `--xsa "$(./firmware-modern/fetch-pinned-xsa.sh)"`.
 - Rootfs only: `./devkit build --target modern --rootfs-only` then `./firmware-modern/debian/check-rootfs.sh`.
-- **Two hardware revisions.** `--rev r1` (default, PlutoSky R1, CLG400) or `--rev r2` (PlutoSky R2, CLG484) on the commands that take `--target`; every revision-dependent name is in `firmware/scripts/rev.sh`. The R2 has its own FPGA design (`firmware/revs/r2/patches/`), device tree (`firmware-modern/dts/*-r2.dts`), kernel fragment (`config/r2.config`) and output directory (`output-r2/`); on the R2 the factory target builds the FPGA only. An image for one revision does not work on the other. See `docs/plutosky-r2.md`, including what is untested.
+- **The PlutoSky R2 is not built here.** It is a different board (XC7Z020-CLG484, Ethernet through the FPGA, a 1.8 V header) with its own repository, `matsvandamme/plutosky-r2-fpga-devkit`, copied from this one on 2026-11-21 and sharing its history. An R1 image does not work on an R2. A change to a shared file (`firmware/patches/`, `firmware-modern/patches/`, the R1 device tree, `fishball_defconfig`, the Debian overlay, the host tools) is worth carrying over there.
 
 ## Conventions
 - **Everything is a patch.** Change a file, then `git diff -- path > firmware/patches/00NN-what-it-does.patch` (or `firmware-modern/patches/`), and re-run the matching `setup`. Don't commit materialised sources.
