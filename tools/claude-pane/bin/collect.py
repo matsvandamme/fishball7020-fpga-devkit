@@ -78,17 +78,34 @@ BOARD_KINDS = ("iiod", "dropbear", "openssh-debian")
 
 
 def route_iface(addr: str) -> str | None:
-    """The interface the route to addr leaves on, from `ip route get`."""
+    """The interface the route to addr leaves on.
+
+    `ip route get` on Linux. macOS has no `ip`; its `route -n get` answers the
+    same question on an "interface:" line.
+    """
+    if sys.platform == "darwin":
+        argv, pattern = ["route", "-n", "get", addr], r"^\s*interface: (\S+)"
+    else:
+        argv, pattern = ["ip", "-o", "route", "get", addr], r"\bdev (\S+)"
     try:
-        r = run(["ip", "-o", "route", "get", addr], timeout=3)
+        r = run(argv, timeout=3)
     except (OSError, subprocess.TimeoutExpired):
         return None
-    m = re.search(r"\bdev (\S+)", r.stdout)
+    m = re.search(pattern, r.stdout, re.M)
     return m.group(1) if m else None
 
 
-def is_board_usb(iface: str) -> bool:
-    """True when iface is the board's own USB network gadget."""
+def is_board_usb(iface: str, ip: str = "") -> bool:
+    """True when iface is the board's own USB network gadget.
+
+    Linux says which USB device an interface belongs to, in sysfs. Where there
+    is no sysfs (macOS) the address stands in: the gadget's own, board_addr.USB,
+    which Ethernet is never given. A board whose USB address was changed is
+    then shown as "eth" - a label, nothing else depends on it.
+    """
+    if not os.path.isdir("/sys/class/net"):
+        from board_addr import USB                                    # noqa: E402
+        return ip == USB
     try:
         with open(f"/sys/class/net/{iface}/device/../idVendor") as f:
             return f.read().strip() == USB_VENDOR
@@ -123,7 +140,7 @@ def probe_hosts(hosts: list[str], deadline: float) -> tuple[list[dict], set[str]
                 iface = route_iface(ip)
                 hits[(host, ip)] = {"host": host, "ip": ip, "iface": iface,
                                     "iiod": kind != "openssh-debian",
-                                    "kind": "usb" if iface and is_board_usb(iface) else "eth"}
+                                    "kind": "usb" if iface and is_board_usb(iface, ip) else "eth"}
         except Exception:
             pass
 

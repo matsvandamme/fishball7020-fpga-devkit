@@ -1,18 +1,46 @@
 # Tab completion for ./devkit
 #
-#   source <(./devkit completion)      # this shell, one command, no files
+#   eval "$(./devkit completion)"      # this shell, one command, no files
 #   ./devkit completion install        # every new shell, from then on
 #
 # Either is one command. There is no zero-command option: a shell will not
 # load completions out of a directory it has never been told about, which is
 # a security property rather than an oversight.
 #
-# Works with zsh too, after `autoload -U bashcompinit && bashcompinit`.
+# eval rather than `source <(...)`: bash 3.2 (macOS's /bin/bash) reads nothing
+# from a process substitution it is asked to source, and says nothing either.
+#
+# bash and zsh. zsh, the default shell on macOS, runs bash completions through
+# bashcompinit, which this file turns on itself (below) - so the same one
+# command works there. Everything here has to parse in both shells and in
+# bash 3.2.
 #
 # It completes subcommands, then that subcommand's own flags - so you do not
 # have to remember that --dtb-only exists on flash and not on build. --xsa
 # completes .xsa files, and `net static` completes nothing because the next
 # thing it wants is an address only you know.
+
+# zsh: `complete` exists only once bashcompinit is loaded, and that needs
+# compinit first. A zsh that already ran compinit (most configurations) is
+# not made to run it again.
+if [ -n "${ZSH_VERSION:-}" ]; then
+    whence compdef >/dev/null 2>&1 || { autoload -U +X compinit && compinit; }
+    whence complete >/dev/null 2>&1 || { autoload -U +X bashcompinit && bashcompinit; }
+fi
+
+# Removable disks, for write-card. /sys/block is Linux; macOS has no /sys, and
+# diskutil lists the same thing ("external, physical" leaves out the internal
+# disk and disk images).
+_devkit_removable_disks() {
+    local d
+    if [ -d /sys/block ]; then
+        for d in /sys/block/*; do
+            [ "$(cat "$d/removable" 2>/dev/null)" = 1 ] && printf "/dev/%s " "${d##*/}"
+        done
+    elif command -v diskutil >/dev/null 2>&1; then
+        diskutil list external physical 2>/dev/null | sed -n 's|^\(/dev/disk[0-9]*\) .*|\1|p' | tr "\n" " "
+    fi
+}
 
 _devkit_complete() {
     local cur prev cmd
@@ -87,8 +115,7 @@ _devkit_complete() {
             COMPREPLY=($(compgen -W "--target --help" -- "$cur")) ;;
         write-card)
             # Offer removable disks only - the same thing write-card itself insists on.
-            local disks=""
-            for d in /sys/block/*; do [ "$(cat "$d/removable" 2>/dev/null)" = 1 ] && disks="$disks /dev/${d##*/}"; done
+            local disks; disks="$(_devkit_removable_disks)"
             COMPREPLY=($(compgen -W "--target --dry-run --image --size --help $disks" -- "$cur")) ;;
         selftest)
             COMPREPLY=($(compgen -W "--ssh --loopback --pad --channel --quick

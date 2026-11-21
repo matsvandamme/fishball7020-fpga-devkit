@@ -1534,19 +1534,21 @@ def _fit_slope(xs, ys):
 
 
 class Shell:
-    """Run commands on the board. Uses sshpass if it is installed."""
+    """Run commands on the board.
+
+    Login is tools/board_ssh.py: the key ./devkit ssh-key makes, then the
+    password through sshpass where that is installed. Without either this
+    used to run a bare ssh, which stopped at a password prompt.
+    """
 
     def __init__(self, host, password="analog", user="root"):
-        import shutil
         import subprocess
+        import pathlib as _pl
+        sys.path.insert(0, str(_pl.Path(__file__).resolve().parent.parent))
+        import board_ssh
         self.sp = subprocess
-        self.base = []
-        if password and shutil.which("sshpass"):
-            self.base = ["sshpass", "-p", password]
-        self.base += ["ssh", "-o", "StrictHostKeyChecking=no",
-                      "-o", "UserKnownHostsFile=/dev/null",
-                      "-o", "LogLevel=ERROR", "-o", "ConnectTimeout=8",
-                      f"{user}@{host}"]
+        self.install_line = board_ssh.install_line
+        self.base = board_ssh.ssh_argv(host, password, connect_timeout=8, user=user)
 
     def run(self, command, timeout=90):
         r = self.sp.run(self.base + [command], capture_output=True,
@@ -1986,8 +1988,9 @@ def main(argv=None):
                 test_board_scripts(rep, sh)
             else:
                 rep.add("Board customisation", "shell access", WARN,
-                        f"cannot log in to root@{host}. Install sshpass, or add "
-                        f"an ssh key, to list what /mnt/jffs2 starts at boot.")
+                        f"cannot log in to root@{host}. Run ./devkit ssh-key, or "
+                        f"install sshpass ({sh.install_line()}), to list what "
+                        f"/mnt/jffs2 starts at boot.")
         else:
             rep.add("Board customisation", "skipped", INFO,
                     "add --ssh to list what /mnt/jffs2 starts at every boot. "

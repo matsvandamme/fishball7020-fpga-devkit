@@ -21,17 +21,14 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BOARD="${BOARD:-fishball.local}"
-PASS="${BOARD_PASS:-analog}"
-OPTS=(-o ConnectTimeout=8 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR)
+# Login is tools/lib/board-ssh.sh: the devkit key (~/.ssh/fishball) first, and
+# if the board refuses that one, your usual keys and the agent. Neither alone
+# was enough: plain `ssh -o BatchMode=yes` never offered the devkit key, and
+# the devkit key with IdentitiesOnly shut out the key you log in with every day.
+BOARD_SSH_CONNECT_TIMEOUT=8
+. "$HERE/../lib/board-ssh.sh"
 
-on_board() {
-    if ssh "${OPTS[@]}" -o BatchMode=yes "root@$BOARD" true 2>/dev/null; then
-        ssh "${OPTS[@]}" -o BatchMode=yes "root@$BOARD" "$@"
-    else
-        command -v sshpass >/dev/null || { echo "cannot log in to $BOARD: run ./devkit ssh-key, or install sshpass" >&2; exit 2; }
-        sshpass -p "$PASS" ssh "${OPTS[@]}" "root@$BOARD" "$@"
-    fi
-}
+on_board() { board_ssh "$BOARD" "$@"; }
 
 venv() {
     if [ ! -x "$HERE/.venv/bin/python" ]; then
@@ -44,10 +41,33 @@ venv() {
 cmd="${1:-help}"; shift || true
 case "$cmd" in
     install)
+        board_ssh_require || exit 2
         echo "== installing the automation server on $BOARD"
-        on_board 'grep -q "^ID=debian" /etc/os-release' || {
-            echo "the server needs the Debian root (firmware-modern); this board runs something else" >&2; exit 1; }
-        tar -C "$HERE" --exclude=__pycache__ -cf - fishball_automation fishball-automation.service fishball-automation-mute.sh \
+        # Three answers, not two: grep says 0 (Debian) or 1 (something else);
+        # anything else is ssh failing, and "this board runs something else"
+        # was what a board that could not be logged in to used to be told.
+        rc=0; err=$(on_board 'grep -q "^ID=debian" /etc/os-release' 2>&1) || rc=$?
+        if [ "$rc" -eq 1 ]; then
+            echo "the server needs the Debian root (firmware-modern); this board runs something else" >&2; exit 1
+        elif [ "$rc" -ne 0 ]; then
+            if board_ssh_refused "$rc" "$err"; then
+                echo "$BOARD answers, and refuses the login: ${err:-ssh exit $rc}" >&2
+                echo "    ./devkit ssh-key            a key for this board (BOARD_PASS=<password> if it is not analog)" >&2
+            else
+                echo "cannot log in to root@$BOARD: ${err:-ssh exit $rc}" >&2
+                echo "(is the board up? BOARD=<address> if it is not $BOARD)" >&2
+                command -v sshpass >/dev/null 2>&1 || board_ssh_hint
+            fi
+            exit 1
+        fi
+        # macOS tar (bsdtar) adds what GNU tar on the board cannot use: a ._NAME
+        # AppleDouble file beside every file that has extended attributes, and
+        # xattr headers that print a warning per file. COPYFILE_DISABLE stops
+        # the first; --no-xattrs the second, where this tar knows the option
+        # (GNU tar 1.27+, bsdtar; not busybox).
+        noxattr=""
+        tar --no-xattrs -cf /dev/null -T /dev/null 2>/dev/null && noxattr=--no-xattrs
+        COPYFILE_DISABLE=1 tar -C "$HERE" --exclude=__pycache__ $noxattr -cf - fishball_automation fishball-automation.service fishball-automation-mute.sh \
             | on_board 'mkdir -p /opt/fishball-automation && tar -C /opt/fishball-automation -xf -'
         on_board '
             set -e
@@ -70,6 +90,7 @@ case "$cmd" in
             echo "   the service is running, on port 7020"'
         echo "== installed: try ./devkit automation status" ;;
     uninstall)
+        board_ssh_require || exit 2
         on_board 'systemctl disable -q --now fishball-automation 2>/dev/null; rm -f /etc/systemd/system/fishball-automation.service; rm -rf /opt/fishball-automation; systemctl daemon-reload; echo removed' ;;
     test)
         venv; exec "$HERE/.venv/bin/python" "$HERE/tests/test_automation.py" "$@" ;;

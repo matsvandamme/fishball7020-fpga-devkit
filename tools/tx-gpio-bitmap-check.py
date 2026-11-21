@@ -30,9 +30,9 @@ TWO TRAPS THIS SCRIPT EXISTS TO AVOID
    therefore streams two DIFFERENT nibbles: if the pin follows the data the
    fabric owns it, and if it reads the same either way the fabric has let go.
 
-Needs: python3, sshpass, and network access to the board.
+Needs: python3, a way to log in (the key ./devkit ssh-key makes, or sshpass),
+and network access to the board.
 """
-import shutil
 import subprocess
 import sys
 import time
@@ -41,6 +41,7 @@ sys.path.insert(0, __file__.rsplit("/", 1)[0] + "/selftest")
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
 from iiod_min import Iiod, mask_for                      # noqa: E402
 from tx_gate import assert_quiet_after_enable, TxGateError   # noqa: E402
+import board_ssh                                         # noqa: E402
 
 TXDEV = "cf-ad9361-dds-core-lpc"
 PHY = "ad9361-phy"
@@ -60,16 +61,16 @@ class Board:
         self.phy = None
 
     def sh(self, cmd, check=True):
-        r = subprocess.run(
-            ["sshpass", "-p", self.password, "ssh", "-o", "StrictHostKeyChecking=no",
-             "-o", "UserKnownHostsFile=/dev/null", "-o", "LogLevel=ERROR",
-             "-o", "ConnectTimeout=10", f"root@{self.host}", cmd],
-            capture_output=True, text=True, timeout=60)
+        # The key ./devkit ssh-key makes, then the password through sshpass
+        # where that is installed: tools/board_ssh.py.
+        r = subprocess.run(board_ssh.ssh_argv(self.host, self.password) + [cmd],
+                           capture_output=True, text=True, timeout=60)
         if check and r.returncode != 0:
             raise SystemExit(f"ssh to root@{self.host} failed (exit {r.returncode}): "
                              f"{(r.stderr or r.stdout).strip()[:200] or 'no output'}\n"
                              f"Check the board is up, and BOARD/BOARD_PASS if it is not "
-                             f"the board found by name / analog.")
+                             f"the board found by name / analog."
+                             + ("" if board_ssh.sshpass() else "\n" + board_ssh.hint()))
         return r.stdout.strip()
 
     def discover(self):
@@ -123,8 +124,8 @@ class Board:
 def main():
     if any(a in ("-h", "--help") for a in sys.argv[1:]):
         print(__doc__); return 0
-    if not shutil.which("sshpass"):
-        raise SystemExit("needs sshpass (sudo apt install sshpass)")
+    if not board_ssh.can_login():
+        raise SystemExit(board_ssh.hint())
     import os, pathlib as _pl
     sys.path.insert(0, str(_pl.Path(__file__).resolve().parent))
     from board_addr import resolve as _board_host

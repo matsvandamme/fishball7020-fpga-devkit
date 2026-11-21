@@ -11,6 +11,7 @@ every behaviour holds, 1 otherwise. Python 3.8.
 """
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -99,6 +100,35 @@ with tempfile.TemporaryDirectory() as d:
     rc, out, _ = run(["ssh-key", "--check"], env=dict(NOBOARD, FISHBALL_SSH_KEY=str(key)))
     check("ssh-key --check with a key but no board says the board is unreachable",
           rc == 1 and "not reachable" in out and "not set up" not in out, "exit=%s out=%r" % (rc, out[-160:]))
+
+# ---- completion install: arguments first, and a shell it is not for is not a failure -
+with tempfile.TemporaryDirectory() as d:
+    dest = pathlib.Path(d) / ".local" / "share" / "bash-completion" / "completions" / "devkit"
+    env = {"HOME": d, "BASH_COMPLETION_USER_DIR": "", "ZDOTDIR": ""}
+    rc, out, _ = run(["completion", "install", "--bogus"], env=dict(env, SHELL="/bin/zsh"))
+    check("completion install refuses an unknown option before it copies anything",
+          rc == 2 and "unknown option: --bogus" in out and not dest.exists(), "exit=%s out=%r" % (rc, out[:200]))
+    for shell in ("/usr/bin/fish", "/bin/sh"):
+        rc, out, _ = run(["completion", "install"], env=dict(env, SHELL=shell))
+        check("completion install with %s as the login shell installs the file, says who can use it, and exits 0" % shell,
+              rc == 0 and dest.exists() and "installed: %s" % dest in out and "bash and zsh" in out
+              and "source %s" % dest in out, "exit=%s out=%r" % (rc, out[:300]))
+        dest.unlink()
+
+# ---- help <command> under mawk, the awk of an Ubuntu without gawk ------------------
+# mawk 1.3.4 has no {n} in its regular expressions and dies on one with
+# "REcompile() - panic". Where there is a mawk, run the help through it.
+mawk = shutil.which("mawk")
+if mawk:
+    with tempfile.TemporaryDirectory() as d:
+        os.symlink(mawk, os.path.join(d, "awk"))
+        # The three whose help is cut out of devkit's own text by awk.
+        for c in ("setup", "status", "doctor"):
+            rc, out, _ = run(["help", c], env={"PATH": d + os.pathsep + os.environ["PATH"]})
+            check("help %s works when awk is mawk" % c,
+                  rc == 0 and "REcompile" not in out and "./devkit %s" % c in out, "exit=%s out=%r" % (rc, out[:200]))
+else:
+    print("  SKIP  help <command> under mawk: no mawk on this machine (CI's Ubuntu has one)")
 
 # ---- the Claude Code pane: start needs `claude`, and says where to get it ------------
 rc, out, took = run(["claude-pane", "start"], env={"PATH": "/usr/bin:/bin"})

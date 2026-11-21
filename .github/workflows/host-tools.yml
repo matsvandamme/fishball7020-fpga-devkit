@@ -86,6 +86,20 @@ jobs:
       - name: devkit help, typos and the no-board path
         run: python tools/selftest/test_devkit_cli.py
 
+      # What broke on a Mac, executed: the one ssh login helper (key, then
+      # sshpass, else say how), flash leaving /boot as it found it, and the
+      # bash 3.2 and BSD constructs. Here it guards the Linux side of each fix;
+      # the host-tools-macos job below runs the same file under bash 3.2.
+      - name: Host tools, portable (no board)
+        run: python tools/selftest/test_host_tools.py
+
+      # The card image writer (tools/card_image.py) and every refusal of the
+      # macOS card writer, on an image file and made-up diskutil answers. No
+      # card and no root. The write-card-macos jobs below check a whole image
+      # with a Linux kernel; this is the part that runs anywhere.
+      - name: Card image writer, and the macOS card writer's refusals (no card)
+        run: python tools/selftest/test_card_image.py
+
       # The Claude Code pane's collector with no board: still one JSON object,
       # every asked-for section present and only those, the board reported
       # offline rather than a traceback, and inside its own deadline.
@@ -164,6 +178,95 @@ jobs:
 
       - name: FIR coefficient generator still designs a filter it stands behind
         run: python firmware/scripts/gen_fir_coe.py
+
+  # The same host tools on macOS, where they are used to talk to a board and
+  # never to build: /bin/bash is 3.2 (no mapfile, no associative arrays, an
+  # empty array is "unbound" under set -u), the userland is BSD (stat, paste,
+  # tar, no timeout) and there is no sshpass. No job ran any of this before,
+  # and all of those were broken. One Python: what differs here is the shell.
+  host-tools-macos:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # The point of the job. /bin first, so a `bash` taken from PATH is the
+      # system's and not a newer one Homebrew put on the runner.
+      - name: bash is 3.2, the one macOS ships
+        run: |
+          echo "/bin" >> "$GITHUB_PATH"
+          /bin/bash -c 'echo "$BASH_VERSION"; [ "${BASH_VERSINFO[0]}" -eq 3 ]'
+
+      # ...and that the step above worked. $GITHUB_PATH only takes effect in
+      # LATER steps, and the tests never name /bin/bash: they run `bash`, and
+      # the scripts say `#!/usr/bin/env bash`. If a change to PATH (here, or in
+      # the runner image) put a bash 5 first, every test below would pass on
+      # it and say nothing about a Mac. Asked the way the tests ask.
+      - name: The bash the tests will find is that one
+        run: |
+          command -v bash
+          python - <<'PY'
+          import shutil, subprocess
+          v = subprocess.run(["bash", "-c", "echo $BASH_VERSION"], capture_output=True, text=True).stdout.strip()
+          e = subprocess.run(["/usr/bin/env", "bash", "-c", "echo $BASH_VERSION"], capture_output=True, text=True).stdout.strip()
+          print("bash on PATH:", shutil.which("bash"), v, "| env bash:", e)
+          assert v.startswith("3.") and e.startswith("3."), "the tests would run bash %s / %s, not macOS's 3.2" % (v, e)
+          PY
+
+      - name: Everything compiles
+        run: python -m compileall -q tools firmware/scripts examples
+
+      - name: Host tools, portable (no board)
+        run: python tools/selftest/test_host_tools.py
+
+      - name: devkit help, typos and the no-board path
+        run: python tools/selftest/test_devkit_cli.py
+
+      - name: Card image writer, and the macOS card writer's refusals (no card)
+        run: python tools/selftest/test_card_image.py
+
+      - name: Two-target build plumbing (no board, no sources)
+        run: python tools/selftest/test_targets.py
+
+      - name: Measurement maths, without numpy
+        run: python tools/selftest/test_dsp.py
+
+      - name: Transmitter-safety behaviours and the ADS-B decoder (no board)
+        run: |
+          python -m pip install --quiet numpy
+          python tools/selftest/test_safety.py
+          python tools/adsb/test_adsb.py
+
+      - name: Every tool agrees on where the board is
+        run: python tools/board_addr.py --self-test
+
+      # No `timeout` here as in the Linux job: it is GNU coreutils and macOS
+      # has none. The step's own limit stands in for it.
+      - name: The self-test refuses to run without a board, rather than hanging
+        timeout-minutes: 2
+        run: |
+          python tools/selftest/sdr_selftest.py --uri ip:203.0.113.1 \
+            && { echo "should have failed"; exit 1; } || test $? -eq 2
+
+      # collect.py finds the interface with `route -n get` here, not `ip`.
+      - name: Claude Code pane collector, with no board
+        timeout-minutes: 2
+        env:
+          BOARD: 203.0.113.1
+        run: |
+          python tools/claude-pane/bin/collect.py --sections board,radio > pane.json
+          python - <<'PY'
+          import json
+          d = json.load(open("pane.json"))
+          assert d["sections"] == ["board", "radio"], d.get("sections")
+          assert d["board"]["ok"] is False and d["board"]["online"] is False, d["board"]
+          assert [l["name"] for l in d["board"]["links"]] == ["usb", "eth", "iio"]
+          assert d["took_s"] < 20, d["took_s"]
+          print("collect.py: no board -> offline, in", d["took_s"], "s")
+          PY
 
   # The Claude Code pane (tools/claude-pane/) is a plugin of function hooks:
   # `claude plugin validate` reads its manifest and module the way Claude Code
@@ -322,3 +425,73 @@ jobs:
           sudo apt-get install -y -qq dosfstools e2fsprogs >/dev/null
           sudo python3 tools/check_card_image.py card.img rel
           sudo python3 tools/check_card_image.py card.vhd rel
+
+  # The same card, written by the macOS writer (tools/write_card_mac.py, through
+  # ./devkit write-card) on a real Mac: a release laid out into an image file,
+  # the synthetic hard cases laid out into another, and the refusals of a disk
+  # that must never be written. macOS cannot mount ext3, so nothing here can say
+  # the root partition is right; the next job asks a Linux kernel.
+  write-card-macos:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fetch the latest release's card files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir rel
+          tag=$(gh release view --repo "${{ github.repository }}" --json tagName -q .tagName)
+          echo "release $tag"
+          gh release download "$tag" --repo "${{ github.repository }}" --dir rel \
+            -p BOOT.bin -p uImage -p devicetree.dtb -p uEnv.txt -p debian-rootfs.tar.gz -p SHA256SUMS
+      - name: Card image writer, and the macOS card writer's refusals (no card)
+        run: python3 tools/selftest/test_card_image.py
+      - name: A dry run writes nothing
+        run: |
+          ./devkit write-card --from rel --dry-run --image card-mac.img
+          test ! -e card-mac.img
+      - name: Image file, from the release
+        run: ./devkit write-card --from rel --image card-mac.img --size 1200
+      - name: Image file, from the hard cases
+        run: |
+          python3 tools/card_image_testdata.py hard
+          python3 tools/card_image.py hard card-mac-hard.img --size 1024
+      # disk0 is the Mac's own disk: internal, not removable. No sudo, so even a
+      # writer that got this wrong could not open it. Not `! command`: under
+      # the step's `bash -e` a negated command that "fails" does not stop the
+      # script, so only the last line of two would have counted.
+      - name: The disk macOS runs from is refused, dry run or not
+        run: |
+          if ./devkit write-card --from rel /dev/disk0; then echo "disk0 was not refused" >&2; exit 1; fi
+          if ./devkit write-card --from rel --dry-run /dev/disk0; then echo "disk0 was not refused in a dry run" >&2; exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: write-card-macos-output
+          path: |
+            card-mac.img
+            card-mac-hard.img
+          retention-days: 3
+
+  write-card-macos-check:
+    needs: write-card-macos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: write-card-macos-output
+      - name: Fetch the same release's files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir rel
+          tag=$(gh release view --repo "${{ github.repository }}" --json tagName -q .tagName)
+          gh release download "$tag" --repo "${{ github.repository }}" --dir rel \
+            -p BOOT.bin -p uImage -p devicetree.dtb -p uEnv.txt -p debian-rootfs.tar.gz -p SHA256SUMS
+      - name: The images a Mac wrote match what they were written from, entry by entry
+        run: |
+          sudo apt-get install -y -qq dosfstools e2fsprogs
+          python3 tools/card_image_testdata.py hard
+          sudo python3 tools/check_card_image.py card-mac.img rel
+          sudo python3 tools/check_card_image.py card-mac-hard.img hard

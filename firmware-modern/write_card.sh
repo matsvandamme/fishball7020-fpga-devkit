@@ -19,7 +19,8 @@
 # CONFIG_MMC is on there, go back to tools/flash.sh.
 #
 # It expects the card auto-mounted by your desktop (no sudo). Insert it and
-# look for /media/$USER/<something> containing BOOT.bin.
+# look for /media/$USER/<something> containing BOOT.bin - on macOS,
+# /Volumes/<something>. Mounted somewhere else: CARD=/path ./firmware-modern/write_card.sh
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,24 +29,38 @@ SRC="$HERE/output"
 RESTORE=0
 [ "${1:-}" = "--restore" ] && RESTORE=1
 
-# Find a mounted FAT partition that looks like this board's boot card.
-CARD=""
-for m in /media/"$USER"/* /run/media/"$USER"/* /mnt/*; do
-    [ -d "$m" ] || continue
-    if [ -f "$m/BOOT.bin" ] && [ -f "$m/uImage" ]; then CARD="$m"; break; fi
-done
+# Find a mounted FAT partition that looks like this board's boot card. A path
+# given as CARD=/path (or CARD_OVERRIDE, the older name) is taken as it is.
+# That override was documented and dead: CARD was reset here, and
+# CARD_OVERRIDE was read only after the "not found" exit it was meant to avoid.
+# /Volumes is where macOS mounts a card; $USER is unset in some containers.
+CARD="${CARD:-${CARD_OVERRIDE:-}}"
+ME="${USER:-$(id -un)}"
+if [ -n "$CARD" ]; then
+    [ -f "$CARD/BOOT.bin" ] || { echo "CARD=$CARD holds no BOOT.bin - not this board's boot partition" >&2; exit 1; }
+else
+    for m in /media/"$ME"/* /run/media/"$ME"/* /mnt/* /Volumes/*; do
+        [ -d "$m" ] || continue
+        if [ -f "$m/BOOT.bin" ] && [ -f "$m/uImage" ]; then CARD="$m"; break; fi
+    done
+fi
 if [ -z "$CARD" ]; then
     echo "No SD card found." >&2
     echo "Looked for a mounted directory containing BOOT.bin and uImage under" >&2
-    echo "  /media/$USER/*, /run/media/$USER/*, /mnt/*" >&2
+    echo "  /media/$ME/*, /run/media/$ME/*, /mnt/*, /Volumes/*" >&2
     echo >&2
     echo "Insert the board's card in a reader and let the desktop mount it." >&2
     echo "If it is mounted somewhere else, pass the path:  CARD=/path $0" >&2
     exit 1
 fi
-CARD="${CARD_OVERRIDE:-$CARD}"
+# md5sum is GNU coreutils; macOS has had one only since 13, and `md5 -q` before.
+md5of() {
+    if command -v md5sum >/dev/null 2>&1; then md5sum "$1" | cut -d' ' -f1
+    else md5 -q "$1"; fi
+}
 echo "card: $CARD"
-echo "   $(ls -la "$CARD"/BOOT.bin | awk '{print $5}') bytes of BOOT.bin present (not touched)"
+# wc -c, not `ls -la | awk`: the column the size is in differs between ls builds.
+echo "   $(( $(wc -c < "$CARD/BOOT.bin") )) bytes of BOOT.bin present (not touched)"
 
 if [ "$RESTORE" = 1 ]; then
     echo
@@ -72,7 +87,7 @@ mkdir -p "$BK"
 for f in uImage devicetree.dtb; do
     if [ -f "$CARD/$f" ]; then
         cp "$CARD/$f" "$BK/$f"
-        echo "   saved $f  ($(md5sum "$BK/$f" | cut -d' ' -f1))"
+        echo "   saved $f  ($(md5of "$BK/$f"))"
     fi
 done
 echo "   backup: $BK"
@@ -94,8 +109,8 @@ for f in uImage devicetree.dtb; do
     fi
     cp "$SRC/$f" "$CARD/$f"
     sync
-    want="$(md5sum "$SRC/$f" | cut -d' ' -f1)"
-    got="$(md5sum "$CARD/$f" | cut -d' ' -f1)"
+    want="$(md5of "$SRC/$f")"
+    got="$(md5of "$CARD/$f")"
     if [ "$want" != "$got" ]; then
         echo "   $f verified WRONG ($got, wanted $want)" >&2
         echo "   restoring $f from $f.prev and stopping" >&2

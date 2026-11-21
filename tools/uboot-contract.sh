@@ -32,28 +32,30 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASELINE="${BASELINE:-$HERE/../firmware-modern/baseline/uboot-contract.txt}"
-PASS="${BOARD_PASS:-analog}"
 SAVE=0
 [ "${1:-}" = "--save" ] && SAVE=1
 [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ] && {
     sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0; }
 
-command -v sshpass >/dev/null || { echo "need sshpass (sudo apt install sshpass)" >&2; exit 2; }
-SSH_OPTS=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-          -o LogLevel=ERROR -o ConnectTimeout=8)
+# Login is tools/lib/board-ssh.sh: the key ./devkit ssh-key makes, then the
+# password through sshpass where that is installed.
+BOARD_SSH_CONNECT_TIMEOUT=8
+. "$HERE/lib/board-ssh.sh"
+board_ssh_require || exit 2
 
 board=""
 for c in ${BOARD:-} $(python3 "$HERE/board_addr.py" --list 2>/dev/null) fishball.local 192.168.2.1; do
-    sshpass -p "$PASS" ssh "${SSH_OPTS[@]}" "root@$c" true 2>/dev/null && { board="$c"; break; }
+    board_ssh "$c" true 2>/dev/null && { board="$c"; break; }
 done
-[ -n "$board" ] || { echo "cannot reach the board" >&2; exit 1; }
+[ -n "$board" ] || { echo "cannot reach the board" >&2
+                     command -v sshpass >/dev/null 2>&1 || board_ssh_hint; exit 1; }
 
 # NOTE the `|| true`. ssh returns the REMOTE command's exit status, and several
 # reads here legitimately exit non-zero - `grep -c` with no match is 1, and
 # fw_printenv on an unset variable is non-zero on Buildroot. Without this, set -e
 # kills the script partway through and it looks like a passing run that simply
 # stopped printing. That happened on the first version of this file.
-on() { sshpass -p "$PASS" ssh "${SSH_OPTS[@]}" "root@$board" "$1" 2>/dev/null || true; }
+on() { board_ssh "$board" "$1" 2>/dev/null || true; }
 
 fails=0
 report=""
@@ -178,12 +180,13 @@ if [ "$SAVE" = "1" ]; then
     echo "baseline written: $BASELINE"
 elif [ -f "$BASELINE" ]; then
     echo "-- against the recorded baseline --"
-    if diff <(grep -v '^#' "$BASELINE" | grep -v '^$') <(echo "$report" | grep -v '^$') > /tmp/.ubc.$$ 2>&1; then
+    ubc="${TMPDIR:-/tmp}/.ubc.$$"
+    if diff <(grep -v '^#' "$BASELINE" | grep -v '^$') <(echo "$report" | grep -v '^$') > "$ubc" 2>&1; then
         echo "  identical to $BASELINE"
     else
-        echo "  DIFFERS from the baseline:"; sed 's/^/    /' /tmp/.ubc.$$; fails=$((fails+1))
+        echo "  DIFFERS from the baseline:"; sed 's/^/    /' "$ubc"; fails=$((fails+1))
     fi
-    rm -f /tmp/.ubc.$$
+    rm -f "$ubc"
 else
     echo "no baseline at $BASELINE - run with --save to record one"
 fi

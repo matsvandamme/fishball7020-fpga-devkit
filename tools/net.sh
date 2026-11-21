@@ -33,51 +33,104 @@
 # Full background: docs/networking.md
 set -euo pipefail
 
-PASS="${BOARD_PASS:-analog}"
-command -v sshpass >/dev/null || { echo "need sshpass (sudo apt install sshpass)" >&2; exit 2; }
-
-# Same reasoning as flash.sh: every board ships as 192.168.2.1 and each keeps
-# its own host key, so a second board would otherwise trip a "changed key"
-# warning that sshpass hides.
-SSH_OPTS=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-          -o LogLevel=ERROR -o ConnectTimeout=8)
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Login is tools/lib/board-ssh.sh: the key ./devkit ssh-key makes, then the
+# password through sshpass where that is installed. Whether this machine can
+# log in at all is asked in resolve_board, not here: `find` and --help need no
+# login, and used to die on a machine without sshpass all the same.
+BOARD_SSH_CONNECT_TIMEOUT=8
+. "$HERE/lib/board-ssh.sh"
 
 # Where is it? BOARD wins; otherwise try the name before the USB address,
 # because this is the command you run when you do not know the address.
+# Returns 2 when this machine has no way to log in, 1 when no board answers.
 resolve_board() {
-    local cands=()
+    local cands c
+    board_ssh_require || return 2
     # The candidate list lives in one place, board_addr.py, so this and the
     # Python tools cannot drift apart. The fallback is only for a machine with
-    # no python3 at all.
+    # no python3 at all. Split on whitespace into the array: `mapfile` is bash
+    # 4, and macOS's /bin/bash is 3.2. No candidate contains a space.
     if [ -n "${BOARD:-}" ]; then
         cands=("$BOARD")
     else
-        mapfile -t cands < <(python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/board_addr.py" --list 2>/dev/null) \
-            || cands=(fishball.local pluto.local 192.168.2.1)
+        # shellcheck disable=SC2207
+        cands=($(python3 "$HERE/board_addr.py" --list 2>/dev/null || true))
         [ ${#cands[@]} -eq 0 ] && cands=(fishball.local pluto.local 192.168.2.1)
     fi
     for c in "${cands[@]}"; do
-        if sshpass -p "$PASS" ssh "${SSH_OPTS[@]}" "root@$c" true 2>/dev/null; then
+        if board_ssh "$c" true 2>/dev/null; then
             echo "$c"; return 0
         fi
     done
     return 1
 }
 
-on_board() { sshpass -p "$PASS" ssh "${SSH_OPTS[@]}" "root@$1" "$2"; }
+# For the commands that change something: find the board or stop, saying why.
+need_board() {
+    local rc=0
+    b=$(resolve_board) || rc=$?
+    [ "$rc" -eq 0 ] && return 0
+    [ "$rc" -eq 2 ] && exit 2              # board_ssh_require has said what to do
+    echo "cannot reach the board" >&2
+    command -v sshpass >/dev/null 2>&1 || board_ssh_hint
+    exit 1
+}
 
-# avahi-resolve is the direct question; iio_info -s answers it too, via the
-# board's own service advertisement, and is present on any machine that can
-# already talk to the radio.
+on_board() { board_ssh "$1" "$2"; }
+
+# The system resolver is the direct question, asked through Python: it answers
+# .local names wherever the machine does mDNS at all (nss-mdns on Linux, built
+# in on macOS). This used to call avahi-resolve under `timeout`, and neither
+# exists on a Mac, so `find` could not find a board that `ping fishball.local`
+# reached. A lookup can block for many seconds on a name nobody answers to and
+# cannot be interrupted, hence the thread and the hard exit.
+resolve_name() {   # <name> <seconds>
+    python3 -c 'import os, socket, sys, threading
+out = []
+def look():
+    try:
+        out.append(socket.getaddrinfo(sys.argv[1], None, socket.AF_INET)[0][4][0])
+    except OSError:
+        pass
+t = threading.Thread(target=look, daemon=True)
+t.start(); t.join(float(sys.argv[2]))
+if out:
+    print(out[0])
+sys.stdout.flush()
+os._exit(0 if out else 1)' "$1" "$2" 2>/dev/null
+}
+
+# Run a command for at most N seconds. `timeout` is GNU coreutils: Linux has it,
+# Homebrew's coreutils calls it gtimeout, and a stock Mac has neither.
+bounded() {   # <seconds> <command...>
+    local t="$1"; shift
+    if command -v timeout >/dev/null 2>&1; then timeout "$t" "$@"
+    elif command -v gtimeout >/dev/null 2>&1; then gtimeout "$t" "$@"
+    else python3 -c 'import subprocess, sys
+try:
+    sys.exit(subprocess.run(sys.argv[2:], timeout=float(sys.argv[1])).returncode)
+except subprocess.TimeoutExpired:
+    sys.exit(124)' "$t" "$@"
+    fi
+}
+
+# By name first; iio_info -s answers it too, via the board's own service
+# advertisement, and is present on any machine that can already talk to the
+# radio.
 find_by_name() {
     local a n
     for n in "${1:-fishball}" fishball Fishball7020 pluto; do
-        command -v avahi-resolve >/dev/null 2>&1 || break
-        a=$(timeout 6 avahi-resolve -n "$n.local" 2>/dev/null | awk '{print $2}')
+        a=$(resolve_name "$n.local" 6 || true)
+        # A Linux machine with avahi-daemon but no nss-mdns resolves .local
+        # only through avahi's own tool.
+        if [ -z "$a" ] && command -v avahi-resolve >/dev/null 2>&1; then
+            a=$(bounded 6 avahi-resolve -n "$n.local" 2>/dev/null | awk '{print $2}' || true)
+        fi
         [ -n "$a" ] && { echo "$a"; return 0; }
     done
     if command -v iio_info >/dev/null 2>&1; then
-        a=$(timeout 15 iio_info -s 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        a=$(bounded 15 iio_info -s 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
         [ -n "$a" ] && { echo "$a"; return 0; }
     fi
     return 1
@@ -91,8 +144,22 @@ find_by_name() {
 # commands would write a variable, read it back successfully, and report a
 # working static address while the board stayed on DHCP. A confident false
 # report is worse than an error, so detect the rootfs and refuse.
+#
+# Three answers. grep says 0 (Debian) or 1 (not; 2 where there is no os-release
+# at all, which is not Debian either); anything else is ssh failing, and a board
+# that did not answer must not be taken for a Buildroot one and written to.
+# This used to be `grep -c ... || echo 0` compared with "0": on Buildroot grep
+# prints 0 AND fails, so the answer was two zeros, which is not "0" - and every
+# Buildroot board, the only kind these commands are for, was refused as Debian.
 is_debian_rootfs() {
-    [ "$(on_board "$1" 'grep -ci "^ID=debian" /etc/os-release 2>/dev/null || echo 0')" != "0" ]
+    local rc=0
+    on_board "$1" 'grep -qi "^ID=debian" /etc/os-release 2>/dev/null' || rc=$?
+    case "$rc" in
+        0)   return 0 ;;
+        1|2) return 1 ;;
+    esac
+    echo "the board at $1 did not say which rootfs it runs (ssh exit $rc) - nothing was changed" >&2
+    exit 1
 }
 
 refuse_on_debian() {   # $1 = board, $2 = what was asked for, $3.. = how to do it there
@@ -155,6 +222,9 @@ show() {
 
 # Write, read back, and only then reboot. fw_setenv reports success on a write
 # it did not make if the environment is not where fw_env.config says it is.
+# Exits 1 if the write failed or the board cannot be found afterwards, and 3 if
+# it is found and refuses the login (the setting is written; only the last look
+# at it was not possible).
 set_and_reboot() {
     local b="$1"; shift
     echo "writing the U-Boot environment in QSPI ..."
@@ -177,8 +247,9 @@ set_and_reboot() {
     echo
     if [ -z "$a" ]; then
         cat >&2 <<'MSG'
-The board did not answer by name within two minutes. It is probably fine - mDNS
-needs avahi on THIS machine, and some networks block multicast. Ways back in:
+The board did not answer by name within two minutes. It is probably fine - finding
+it by name needs mDNS on THIS machine (avahi on Linux; built in on macOS), and
+some networks block multicast. Ways back in:
   * USB cable, then ssh root@192.168.2.1 - usb0 keeps its own address whatever
     Ethernet is doing, so this always works
   * your router's DHCP lease table; the board's MAC starts 00:0a:35
@@ -188,17 +259,54 @@ MSG
     fi
     echo "found it: $name.local is $a"
     echo
-    show "$name.local" 2>/dev/null || show "$a"
+    # It answers by name. Does it still let us in? These commands are for the
+    # Buildroot root, where /root is a RAM disk: a key in /root/.ssh that was
+    # not also saved in /mnt/jffs2 (./devkit ssh-key saves it) is gone after
+    # this reboot. With a key as the only login, `show` then died on ssh's
+    # "Permission denied" and the command that had just worked looked failed.
+    local t rc=0 err=""
+    for t in "$name.local" "$a"; do
+        rc=0; err=$(board_ssh "$t" true 2>&1) || rc=$?
+        if [ "$rc" -eq 0 ]; then show "$t"; return 0; fi
+        if board_ssh_refused "$rc" "$err"; then break; fi
+    done
+    if board_ssh_refused "$rc" "$err"; then
+        cat >&2 <<MSG
+The board is back at $a, and it refuses the login this command began with.
+
+The setting was written - it is read back above, from before the reboot. What
+did not survive the reboot is the login: on the Buildroot root /root is a RAM
+disk, and a key that was not also saved in /mnt/jffs2 is gone. Put it back,
+this time to stay:
+
+    BOARD=$a ./devkit ssh-key
+
+NOT DONE: the look at what the board came up with. After ssh-key:
+
+    BOARD=$a ./devkit net
+MSG
+        exit 3
+    fi
+    echo "It answers by name but not over ssh yet (${err:-ssh exit $rc}). Give it a moment, then:" >&2
+    echo "    BOARD=$a ./devkit net" >&2
+    exit 1
 }
 
 cmd="${1:-show}"; shift || true
 case "$cmd" in
     show|"")
-        b=$(resolve_board) || { echo "cannot reach the board over ssh (tried ${BOARD:-$(python3 "$(dirname "${BASH_SOURCE[0]}")/board_addr.py" --list 2>/dev/null | paste -sd" ")})" >&2; exit 1; }
+        rc=0; b=$(resolve_board) || rc=$?
+        [ "$rc" -eq 2 ] && exit 2          # board_ssh_require has said what to do
+        if [ "$rc" -ne 0 ]; then
+            # `paste -sd" " -`: BSD paste reads stdin only when given the "-".
+            echo "cannot reach the board over ssh (tried ${BOARD:-$(python3 "$HERE/board_addr.py" --list 2>/dev/null | paste -sd" " -)})" >&2
+            command -v sshpass >/dev/null 2>&1 || board_ssh_hint
+            exit 1
+        fi
         show "$b" ;;
 
     dhcp)
-        b=$(resolve_board) || { echo "cannot reach the board" >&2; exit 1; }
+        need_board
         refuse_on_debian "$b" "clearing ipaddr_eth" \
             "ssh root@$b" \
             "\$EDITOR /etc/network/interfaces   # iface eth0 inet dhcp" \
@@ -216,7 +324,7 @@ case "$cmd" in
     static)
         ip="${1:-}"; mask="${2:-255.255.255.0}"
         [ -n "$ip" ] || { echo "usage: ./devkit net static <ip> [netmask]" >&2; exit 2; }
-        b=$(resolve_board) || { echo "cannot reach the board" >&2; exit 1; }
+        need_board
         refuse_on_debian "$b" "a static address via fw_setenv" \
             "ssh root@$b" \
             "\$EDITOR /etc/network/interfaces" \
@@ -241,7 +349,7 @@ WARN
     name)
         n="${1:-}"
         [ -n "$n" ] || { echo "usage: ./devkit net name <hostname>" >&2; exit 2; }
-        b=$(resolve_board) || { echo "cannot reach the board" >&2; exit 1; }
+        need_board
         refuse_on_debian "$b" "setting the hostname via fw_setenv" \
             "ssh root@$b hostnamectl set-hostname $n" \
             "# avahi picks the new name up immediately; no reboot needed"

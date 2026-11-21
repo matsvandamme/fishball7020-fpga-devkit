@@ -21,6 +21,34 @@ ok()   { say "ok" "$1"; }
 bad()  { say "FAIL" "$1"; fail=$((fail+1)); }
 soft() { say "warn" "$1"; warn=$((warn+1)); }
 
+# This runs under macOS's /bin/bash too, which is 3.2: no associative arrays.
+# A Mac cannot build the factory firmware natively (no Vivado, and the kernel
+# build wants a Linux host) - ./devkit container is the way there - but the
+# doctor has to get to the end and say so rather than stop at a syntax error.
+# pkg <apt packages> <brew packages>: the install line for this machine.
+MAC=0; case "${OSTYPE:-}" in darwin*) MAC=1 ;; esac
+pkg() { if [ "$MAC" -eq 1 ]; then echo "brew install $2"; else echo "sudo apt install $1"; fi; }
+# Where headers live: /usr/include, plus Homebrew's prefix on a Mac (/opt/homebrew
+# on Apple Silicon, /usr/local on Intel), which is not on the default search path.
+INCLUDE_DIRS="/usr/include"
+if [ "$MAC" -eq 1 ]; then
+    INCLUDE_DIRS="$INCLUDE_DIRS $(brew --prefix 2>/dev/null || echo /opt/homebrew)/include"
+    INCLUDE_DIRS="$INCLUDE_DIRS $(brew --prefix openssl 2>/dev/null || echo /opt/homebrew/opt/openssl)/include"
+fi
+have_header() {   # e.g. gmp.h, openssl/evp.h
+    local d
+    for d in $INCLUDE_DIRS; do
+        [ -e "$d/$1" ] && return 0
+        # Debian keeps some under /usr/include/<triplet>/.
+        find "$d" -maxdepth 3 -name "$(basename "$1")" 2>/dev/null | grep -q . && return 0
+    done
+    return 1
+}
+sha256() {        # sha256sum is GNU; macOS before 13 has only shasum
+    if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
+    else shasum -a 256 "$1" | cut -d' ' -f1; fi
+}
+
 # Are we already inside the build container? Telling someone to use the
 # container while they are in it is worse than saying nothing.
 IN_CONTAINER=0
@@ -42,7 +70,12 @@ host_supported_by_vivado() {
 }
 
 echo "== toolchain =="
-if [ "$IN_CONTAINER" -eq 0 ] && ! host_supported_by_vivado; then
+if [ "$MAC" -eq 1 ]; then
+    soft "macOS cannot build the factory firmware natively: Vivado is Linux-only"
+    say "" "Build in the container instead (docs/building-in-a-container.md):"
+    say "" "  ./devkit container build-image"
+    say "" "The host tools need none of what follows: ./devkit doctor --host"
+elif [ "$IN_CONTAINER" -eq 0 ] && ! host_supported_by_vivado; then
     . "$OS_RELEASE" 2>/dev/null
     soft "Ubuntu ${VERSION_ID:-?} is newer than Vivado 2022.2 supports (18.04/20.04/22.04)"
     say "" "Build in the container instead - it needs nothing from this OS:"
@@ -85,7 +118,7 @@ if command -v arm-none-eabi-gcc >/dev/null 2>&1; then
         ok "arm-none-eabi-gcc ($(arm-none-eabi-gcc -dumpversion 2>/dev/null)) - builds the FSBL"
     fi
 else
-    bad "arm-none-eabi-gcc missing - the FSBL needs it (sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi)"
+    bad "arm-none-eabi-gcc missing - the FSBL needs it ($(pkg "gcc-arm-none-eabi libnewlib-arm-none-eabi" "--cask gcc-arm-embedded"))"
 fi
 # u-boot, the kernel and the device tree. Either ARM Linux compiler builds
 # them: build_all.sh compiles u-boot with -mfloat-abi=soft, so the hard-float
@@ -108,21 +141,22 @@ else bad "tools/env-vivado.sh missing"; fi
 
 echo
 echo "== host packages =="
-# command -> what breaks without it
-declare -A NEED=(
-  [git]="cloning the upstream source"
-  [make]="every build stage"
-  [gcc]="host tools and the cross-toolchain build"
-  [bison]="the kernel build"
-  [flex]="the kernel build"
-  [bc]="the kernel build (include/generated/timeconst.h)"
-  [dtc]="the device tree (device-tree-compiler)"
-  [mkimage]="the uImage and ramdisk (u-boot-tools)"
-)
-for c in "${!NEED[@]}"; do
+# command|what breaks without it. One line each and not an associative array
+# (bash 4): see the note on macOS above. It also fixes the order, which an
+# associative array left to its hash.
+while IFS="|" read -r c why; do
   if command -v "$c" >/dev/null 2>&1; then ok "$c"
-  else bad "$c missing - needed for ${NEED[$c]}"; fi
-done
+  else bad "$c missing - needed for $why"; fi
+done <<'NEED'
+git|cloning the upstream source
+make|every build stage
+gcc|host tools and the cross-toolchain build
+bison|the kernel build
+flex|the kernel build
+bc|the kernel build (include/generated/timeconst.h)
+dtc|the device tree (device-tree-compiler)
+mkimage|the uImage and ramdisk (u-boot-tools)
+NEED
 if command -v python3 >/dev/null 2>&1; then ok "python3"; else bad "python3 missing"; fi
 # bootgen is built from AMD's Apache-2.0 source by setup.sh, not taken from a
 # Xilinx install. That is what makes an --xsa build need nothing from Xilinx.
@@ -131,18 +165,21 @@ elif [ -d "$FW_DIR/src" ]; then bad "no src/bootgen/bootgen - run: ./devkit setu
 else soft "bootgen not built yet - ./devkit setup --target factory builds it"; fi
 # It is C++ against OpenSSL. Both are in build-essential/libssl-dev, which the
 # kernel build needs anyway, so this only fires on an unusually bare host.
-command -v g++ >/dev/null 2>&1 || bad "g++ missing - bootgen cannot be built (apt install build-essential)"
-[ -e /usr/include/openssl/evp.h ] || bad "openssl headers missing - bootgen cannot be built (apt install libssl-dev)"
+command -v g++ >/dev/null 2>&1 || bad "g++ missing - bootgen cannot be built ($(pkg build-essential gcc))"
+have_header openssl/evp.h || bad "openssl headers missing - bootgen cannot be built ($(pkg libssl-dev openssl))"
 # Headers, which are not commands. The kernel's GCC plugins #include <gmp.h>
 # and the failure appears at stage 4 as a bare "gmp.h: No such file".
 for h in gmp.h mpc.h mpfr.h; do
-  if find /usr/include -maxdepth 3 -name "$h" 2>/dev/null | grep -q .; then ok "$h"
-  else bad "$h missing - install libgmp-dev libmpc-dev libmpfr-dev"; fi
+  if have_header "$h"; then ok "$h"
+  else bad "$h missing - $(pkg "libgmp-dev libmpc-dev libmpfr-dev" "gmp libmpc mpfr")"; fi
 done
 if command -v iverilog >/dev/null 2>&1; then ok "iverilog (HDL simulation)"
-else soft "iverilog missing - ./sim/run_sim.sh will not run (sudo apt install iverilog)"; fi
-if command -v sshpass >/dev/null 2>&1; then ok "sshpass (scripted board access)"
-else soft "sshpass missing - flash.sh and the hardware checks need it"; fi
+else soft "iverilog missing - ./sim/run_sim.sh will not run ($(pkg iverilog icarus-verilog))"; fi
+# Logging in to the board unattended: the key ./devkit ssh-key makes, or
+# sshpass typing the password. Either will do (tools/lib/board-ssh.sh).
+if [ -r "${FISHBALL_SSH_KEY:-$HOME/.ssh/fishball}" ]; then ok "board ssh key (scripted board access)"
+elif command -v sshpass >/dev/null 2>&1; then ok "sshpass (scripted board access)"
+else soft "no board ssh key and no sshpass - flash.sh and the hardware checks cannot log in (./devkit ssh-key, or $(pkg sshpass sshpass))"; fi
 
 echo
 echo "== disk =="
@@ -164,7 +201,7 @@ if [ -d "$FW_DIR/src/.git" ]; then
   else
     missing=0
     for p in "$FW_DIR"/patches/*.patch; do
-      grep -qxF "$(sha256sum "$p" | cut -d' ' -f1)  $(basename "$p")" "$stamp" || missing=$((missing+1))
+      grep -qxF "$(sha256 "$p")  $(basename "$p")" "$stamp" || missing=$((missing+1))
     done
     if [ "$missing" -eq 0 ]; then ok "patches applied (current set)"
     else soft "$missing patch(es) not applied - run ./devkit setup --target factory"; fi

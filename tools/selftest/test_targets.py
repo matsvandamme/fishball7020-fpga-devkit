@@ -57,12 +57,19 @@ expect("--target=bogus (the = form) is refused too",
        [DEVKIT, "setup", "--target=bogus"], 1, "unknown --target")
 
 # ---- 2. the modern build refuses what it must ----------------------------------
-expect("modern build refuses to run without --xsa",
-       [DEVKIT, "build", "--target", "modern"], 1, "needs --xsa")
+# On macOS the modern build stops one step earlier, at "use ./devkit container"
+# (firmware-modern/build_all.sh): nothing below that line builds natively there.
+if sys.platform == "darwin":
+    expect("modern build on macOS sends you to the container, before asking for --xsa",
+           [DEVKIT, "build", "--target", "modern"], 1, "./devkit container build --xsa")
+else:
+    expect("modern build refuses to run without --xsa",
+           [DEVKIT, "build", "--target", "modern"], 1, "needs --xsa")
 expect("bare build is the modern target: without --xsa it says how to get one",
        [DEVKIT, "build"], 1, "fetch-pinned-xsa.sh")
-expect("bare build without --xsa also names the factory target, for Vivado",
-       [DEVKIT, "build"], 1, "./devkit build --target factory")
+if sys.platform != "darwin":
+    expect("bare build without --xsa also names the factory target, for Vivado",
+           [DEVKIT, "build"], 1, "./devkit build --target factory")
 expect("bare build --hdl-only (an old factory guide) names --target factory",
        [DEVKIT, "build", "--hdl-only"], 1, "./devkit build --target factory --hdl-only")
 expect("DEVKIT_TARGET with an unknown value is refused, and named",

@@ -35,12 +35,14 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BOARD="${BOARD:-$(python3 "$HERE/board_addr.py" 2>/dev/null || echo 192.168.2.1)}"
-PASS="${BOARD_PASS:-analog}"
 
-command -v sshpass >/dev/null || { echo "needs sshpass (sudo apt install sshpass)" >&2; exit 1; }
+# Login is tools/lib/board-ssh.sh: the key ./devkit ssh-key makes, then the
+# password through sshpass where that is installed.
+BOARD_SSH_CONNECT_TIMEOUT=8
+. "$HERE/lib/board-ssh.sh"
+board_ssh_require || exit 1
 
-sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    -o LogLevel=ERROR -o ConnectTimeout=8 "root@$BOARD" 'sh -s' <<'EOF'
+board_ssh "$BOARD" 'sh -s' <<'EOF'
 P=/sys/bus/iio/devices/iio:device0
 for d in /sys/bus/iio/devices/iio:device*; do
     [ "$(cat $d/name)" = "xadc" ] && XADC=$d

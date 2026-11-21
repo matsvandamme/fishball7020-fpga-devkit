@@ -10,9 +10,12 @@ firmware it runs (factory or modern, and the version) and its kernel. Exit 0
 if the board answered, 3 if only its ssh did (iiod is down), 1 if nothing did.
 `./devkit status` uses it.
 
-The firmware is told apart by what the board publishes: the modern (Debian)
+The firmware is told apart by what the board publishes. The modern (Debian)
 firmware's fishball-identity service adds `fw_build`, the full `git describe`
-of the build; the factory (Buildroot) firmware does not.
+of the build - but only when that differs from the release tag, so a board
+running a release (fw_version v2.3, no fw_build) does not have it. The kernel
+settles those: the modern target is Linux 6.x, the factory one 5.15. With
+neither to go on the answer is "unknown", not a guess.
 """
 from __future__ import annotations
 
@@ -27,10 +30,22 @@ from iiod_min import Iiod                                        # noqa: E402
 
 def describe(attrs: dict[str, str]) -> list[tuple[str, str]]:
     kernel = attrs.get("local,kernel", "?")
+    version = attrs.get("fw_version", "?")
+    major = kernel.split(".")[0]
     if "fw_build" in attrs:
         fw = f"modern (Debian), {attrs['fw_build']}"
+    elif version.startswith("debian-"):
+        # fishball-identity's fallback when the root has no /opt/VERSIONS.
+        fw = f"modern (Debian), {version}"
+    elif major.isdigit() and int(major) >= 6:
+        # A release build: fw_version is the bare tag and fw_build is left out.
+        # The context does not say which root is mounted, so "(Debian)" is not
+        # claimed here - a 6.x kernel can also be booted onto the ramdisk.
+        fw = f"modern, {version}"
+    elif major.isdigit():
+        fw = f"factory (Buildroot), {version}"
     else:
-        fw = f"factory (Buildroot), {attrs.get('fw_version', '?')}"
+        fw = f"unknown, {version}"
     return [("model", attrs.get("hw_model", "?")),
             ("firmware", fw),
             ("kernel", kernel)]

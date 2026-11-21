@@ -33,14 +33,14 @@ while [ $# -gt 0 ]; do
 done
 
 BOARD="${BOARD:-fishball.local}"
-PASS="${BOARD_PASS:-analog}"
-OPTS=(-o ConnectTimeout=5 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR)
+# Login is tools/lib/board-ssh.sh: the devkit key (~/.ssh/fishball) first, and
+# if the board refuses that one, your usual keys and the agent. Neither alone
+# was enough: plain `ssh -o BatchMode=yes` never offered the devkit key, and
+# the devkit key with IdentitiesOnly shut out the key you log in with every day.
+BOARD_SSH_CONNECT_TIMEOUT=5
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/board-ssh.sh"
 
-on_board() {
-    ssh "${OPTS[@]}" -o BatchMode=yes "root@$BOARD" "$1" 2>/dev/null && return 0
-    command -v sshpass >/dev/null || return 255
-    sshpass -p "$PASS" ssh "${OPTS[@]}" "root@$BOARD" "$1"
-}
+on_board() { board_ssh "$BOARD" "$1" 2>/dev/null; }
 
 # One line per busy buffer, then one per process holding a radio device file.
 # Empty output: free.
@@ -68,7 +68,15 @@ start=$(date +%s) free_since=""
 while :; do
     state=$(probe); rc=$?
     if [ $rc -eq 2 ]; then
-        echo "board-busy: no answer from $BOARD over ssh" >&2
+        # Which of the two it was: a board that is not there, or one that is
+        # and will not let this machine in. One more connection, only here.
+        why=$(board_ssh "$BOARD" true 2>&1); wrc=$?
+        if [ $wrc -ne 0 ] && board_ssh_refused "$wrc" "$why"; then
+            echo "board-busy: $BOARD answers, and refuses the login - run ./devkit ssh-key" >&2
+        else
+            echo "board-busy: no answer from $BOARD over ssh" >&2
+            [ -r "$BOARD_SSH_KEY" ] || command -v sshpass >/dev/null 2>&1 || board_ssh_hint
+        fi
         exit 2
     fi
     now=$(date +%s)

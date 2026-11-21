@@ -20,14 +20,26 @@ case "${1:-}" in
     -h|--help|help) sed -n '2,/^set -/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 
+# On macOS MATLAB is an application bundle and puts nothing on PATH, so look
+# where the installer puts it; the newest release sorts last.
+if ! command -v "$MATLAB" >/dev/null 2>&1 && [ -z "${MATLAB_BIN:-}" ]; then
+    for m in /Applications/MATLAB_R20*.app/bin/matlab; do
+        [ -x "$m" ] && MATLAB="$m"
+    done
+fi
+
 if ! command -v "$MATLAB" >/dev/null 2>&1; then
+    case "${OSTYPE:-}" in
+        darwin*) eg=/Applications/MATLAB_R2026a.app/bin/matlab ;;
+        *)       eg=/usr/local/MATLAB/R2026a/bin/matlab ;;
+    esac
     cat >&2 <<MSG
 matlab: not found on PATH.
 
   MATLAB is not installed here, or its bin directory is not on PATH. Set
   MATLAB_BIN to the binary if it lives somewhere unusual:
 
-      MATLAB_BIN=/usr/local/MATLAB/R2026a/bin/matlab ./devkit matlab
+      MATLAB_BIN=$eg ./devkit matlab
 
   Everything in matlab/+fishball that does not need live radio also works
   without MATLAB at all - see docs/matlab.md for the capture-file route.

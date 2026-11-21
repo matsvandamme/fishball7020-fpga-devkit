@@ -26,7 +26,10 @@
 #                          Vivado, the patch stamp and the board. In about a
 #                          second. Every check is a failure that once cost
 #                          somebody an hour. Run it before the hour, not during.
-#     ./devkit setup       Fetch the kernel and boot-loader source, and apply
+#       --host             Only what the host tools need (flash, status,
+#                          selftest): ssh, python3 and a way to log in. The
+#                          whole answer on a machine that builds nothing.
+#     ./devkit setup      Fetch the kernel and boot-loader source, and apply
 #                          this repo's patches (factory: into firmware/src/).
 #                          Safe to re-run; it stamps what it applied. Needed
 #                          once, and after every new patch.
@@ -83,7 +86,7 @@
 #                          The Debian root cannot be swapped over the network:
 #                          build it, then write a card:
 #                              ./devkit build --rootfs-only
-#                              sudo ./devkit write-card /dev/sdX
+#                              sudo ./devkit write-card /dev/sdX   (macOS: /dev/diskN)
 #       --target factory   Flash the factory build instead, which also takes:
 #         --all            all five SD-card files (a release)
 #         --rootfs-only    uramdisk.image.gz only
@@ -91,6 +94,8 @@
 #                          A whole modern card from a card reader: BOOT.bin and the
 #                          kernel on p1, the Debian root on p2. DESTROYS the card;
 #                          refuses any disk that is not removable. Needs sudo.
+#                          On macOS the card is /dev/diskN: diskutil list
+#                          external physical names it.
 #       --dry-run          Every check, and the plan, with nothing written.
 #       --image NEW_FILE   Write into a new image file instead of a disk.
 #
@@ -154,7 +159,7 @@
 #                          through at least 20 dB of pad.
 #       --apply            Write the measured value.
 #     ./devkit completion  Tab completion for all of the above. Either
-#                            source <(./devkit completion)   -> this shell
+#                            eval "$(./devkit completion)"   -> this shell
 #                            ./devkit completion install     -> every shell
 #     ./devkit uboot-contract
 #                          What the bootloader must still do after you replace
@@ -244,12 +249,14 @@
 #
 # ---- Tab completion ---------------------------------------------------------
 #
-#     source <(./devkit completion)      # this shell, one command, no files
+#     eval "$(./devkit completion)"      # this shell, one command, no files
 #     ./devkit completion install        # every new shell, from then on
 #
 # Completes subcommands, then that subcommand's own flags, so you do not have
 # to remember that --dtb-only is on flash and not on build. --xsa completes
-# .xsa files. zsh works too, after: autoload -U bashcompinit && bashcompinit
+# .xsa files. bash and zsh both; in zsh the script turns bashcompinit on itself.
+# eval, not `source <(...)`: bash 3.2, which is macOS's /bin/bash, reads
+# nothing from a process substitution it is asked to source.
 #
 # Extra arguments pass straight through, so anything the underlying script
 # accepts works here too. Each subcommand's own --help has the full list.
@@ -303,7 +310,7 @@ Two firmware targets
 The usual runs
   ./devkit doctor && ./devkit setup                      # once
   ./devkit build --all --xsa "$(./firmware-modern/fetch-pinned-xsa.sh)"
-  sudo ./devkit write-card /dev/sdX                      # a whole card
+  sudo ./devkit write-card /dev/sdX                      # a whole card (macOS: /dev/diskN)
   ./devkit flash --kernel-only                           # a kernel change, over the network
   ./devkit selftest --ssh                                # "is it broken?"
 
@@ -316,10 +323,12 @@ USAGE
 # The part of the full help that describes one command: from each line that
 # starts "./devkit <cmd>" at the command indent (4 spaces; deeper ones are
 # examples inside another command) to the next command or section heading.
+# The four spaces are written out: mawk 1.3.4, the awk of an Ubuntu without
+# gawk, has no {n} in its regular expressions and dies on one ("REcompile()").
 usage_for() {
     usage_all | awk -v c="$1" '
-        /^ {4}(sudo )?\.\/devkit [a-z-]+/ {
-            n = $0; sub(/^ {4}(sudo )?\.\/devkit /, "", n); sub(/[ \t].*/, "", n); on = (n == c) }
+        /^    (sudo )?\.\/devkit [a-z-]+/ {
+            n = $0; sub(/^    (sudo )?\.\/devkit /, "", n); sub(/[ \t].*/, "", n); on = (n == c) }
         /^---- / { on = 0 }
         on'
 }
@@ -361,8 +370,56 @@ board_status() {
             fi ;;
         3)  printf '%s\n' "$out" | sed 's/^/   /'
             echo "   on the board: journalctl -b -u fishball-rf-quiesce -u iiod" ;;
-        *)  echo "   not found (tried $(python3 "$HERE/tools/board_addr.py" --list | paste -sd, | sed 's/,/, /g'))" ;;
+        # `paste -sd, -`: BSD paste (macOS) reads stdin only when given the "-".
+        *)  echo "   not found (tried $(python3 "$HERE/tools/board_addr.py" --list | paste -sd, - | sed 's/,/, /g'))" ;;
     esac
+}
+
+# A file's size in bytes, and its sha256. `stat -c%s` and sha256sum are GNU;
+# BSD stat (macOS) spells the first differently and macOS before 13 has no
+# sha256sum. wc -c on a regular file reads its size, not its contents.
+fsize()  { wc -c < "$1" | tr -d ' '; }
+sha256() {
+    if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
+    else shasum -a 256 "$1" | cut -d' ' -f1; fi
+}
+
+# What the HOST tools need - flash, status, selftest, net, ssh-key - which is
+# far less than a build: ssh, python3 and a way to log in. Printed by
+# `./devkit doctor` ahead of the build checks, and alone by `doctor --host`,
+# which is the whole answer on a machine that only talks to a board (a Mac
+# cannot build the firmware natively; ./devkit container can). Hints are for
+# Homebrew on macOS and apt elsewhere.
+host_doctor() {
+    local bad=0 mac=0 key="${FISHBALL_SSH_KEY:-$HOME/.ssh/fishball}" c
+    case "${OSTYPE:-}" in darwin*) mac=1 ;; esac
+    row() { printf "  %-6s %s\n" "$1" "$2"; }
+    echo "== host tools (flash, status, selftest; no build needed) =="
+    row ok "bash ${BASH_VERSION%%(*}"
+    if command -v python3 >/dev/null 2>&1; then
+        row ok "python3 ($(python3 -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' 2>/dev/null))"
+    elif [ "$mac" -eq 1 ]; then row FAIL "python3 missing - xcode-select --install, or brew install python"; bad=1
+    else row FAIL "python3 missing - sudo apt install python3"; bad=1; fi
+    if command -v ssh >/dev/null 2>&1; then row ok "ssh"
+    elif [ "$mac" -eq 1 ]; then row FAIL "ssh missing - it ships with macOS; check PATH has /usr/bin"; bad=1
+    else row FAIL "ssh missing - sudo apt install openssh-client"; bad=1; fi
+    # Logging in unattended: the key, or sshpass typing the password.
+    if [ -r "$key" ]; then row ok "board key at $key (./devkit ssh-key --check tries it)"
+    elif command -v sshpass >/dev/null 2>&1; then row ok "sshpass (logs in with the board's password; ./devkit ssh-key makes a key)"
+    elif [ "$mac" -eq 1 ]; then
+        row warn "no board key and no sshpass - flash, net and the hardware checks cannot log in"
+        row ""   "  ./devkit ssh-key     makes a key; asks for the board's password once"
+        row ""   "  or: brew install sshpass  (no such formula? brew install hudochenkov/sshpass/sshpass)"
+    else
+        row warn "no board key and no sshpass - flash, net and the hardware checks cannot log in"
+        row ""   "  ./devkit ssh-key     or: sudo apt install sshpass"
+    fi
+    # Optional: this repo's own tools speak to iiod themselves (iiod_min.py).
+    if command -v iio_info >/dev/null 2>&1; then row ok "libiio tools (iio_info) - optional"
+    elif [ "$mac" -eq 1 ]; then row "" "libiio tools not installed - optional (brew install libiio)"
+    else row "" "libiio tools not installed - optional (sudo apt install libiio-utils)"; fi
+    echo
+    return "$bad"
 }
 
 cmd="${1:-}"; shift || true
@@ -434,6 +491,15 @@ case "$cmd" in
     doctor)
         # The modern target's doctor IS its build preflight: one list of what it
         # needs, so the two cannot disagree about whether this machine can build.
+        # The host tools' needs come first and never change the build verdict;
+        # --host stops after them, with their verdict.
+        _host=0; _rest=()
+        for a in "$@"; do
+            case "$a" in --host) _host=1 ;; *) _rest+=("$a") ;; esac
+        done
+        set -- ${_rest[@]+"${_rest[@]}"}
+        if [ "$_host" -eq 1 ]; then host_doctor; exit $?; fi
+        host_doctor || true
         if [ "$TARGET" = modern ]; then exec "$FWM/build_all.sh" --preflight-only "$@"; fi
         exec "$FW/scripts/doctor.sh" "$@" ;;
     setup)
@@ -560,27 +626,88 @@ case "$cmd" in
     claude-pane) exec python3 "$HERE/tools/claude-pane/claude_pane.py" "$@" ;;
     completion)
         # No argument: print the script, so one command sets this shell up
-        #     source <(./devkit completion)
+        #     eval "$(./devkit completion)"
         # "install": put it where bash-completion loads from by itself, so
         # new shells have it without anyone sourcing anything. A shell cannot
         # load completions from a directory it has never been told about, so
         # one of these two is unavoidable - but neither is a copy-paste of
         # two lines.
+        #
+        # That directory is read by bash-completion 2, which a Linux desktop's
+        # bash has and nothing on a Mac does: its default shell is zsh, and its
+        # /bin/bash is 3.2 with no bash-completion at all. There the file is
+        # still copied to the same place, and the shell needs ONE line in its
+        # startup file to read it. This command does not edit a startup file
+        # unless asked to with --rc; without it, it prints the line.
         case "${1:-}" in
             install)
+                # The options first: nothing is copied anywhere for a command
+                # line that is then refused.
+                # Which shell is this for? The login shell, unless --shell says.
+                _sh="${SHELL##*/}"; _rc_edit=0; shift
+                while [ $# -gt 0 ]; do
+                    case "$1" in
+                        --rc)      _rc_edit=1 ;;
+                        --shell)   _sh="${2:-}"; [ $# -lt 2 ] || shift ;;
+                        --shell=*) _sh="${1#--shell=}" ;;
+                        *) echo "unknown option: $1 (see ./devkit completion --help)" >&2; exit 2 ;;
+                    esac
+                    shift
+                done
                 dest="${BASH_COMPLETION_USER_DIR:-$HOME/.local/share/bash-completion}/completions"
                 mkdir -p "$dest"
                 cp "$HERE/tools/devkit-completion.bash" "$dest/devkit"
                 echo "installed: $dest/devkit"
-                echo "Every new shell will have it. For this one:"
-                echo "    source $dest/devkit"
-                echo "To undo:  rm $dest/devkit" ;;
+                case "$_sh" in
+                    zsh)  _rc="${ZDOTDIR:-$HOME}/.zshrc" ;;
+                    bash) case "${OSTYPE:-}" in
+                              # A Mac's Terminal starts bash as a login shell,
+                              # which reads .bash_profile and not .bashrc.
+                              darwin*) _rc="$HOME/.bash_profile" ;;
+                              *)       _rc="" ;;        # bash-completion loads it
+                          esac ;;
+                    # fish, sh, ksh ...: the file is installed, which is all
+                    # this command ever did for them, and that is not a
+                    # failure. Say who can use it, and how.
+                    *)    echo "The shell is '${_sh:-unknown}'; this completion is for bash and zsh."
+                          echo "A bash with bash-completion loads the file by itself. To use it in a"
+                          echo "bash or zsh you start yourself:"
+                          echo "    source $dest/devkit"
+                          echo "For the startup-file line of one of those:  ./devkit completion install --shell zsh"
+                          echo "To undo:  rm $dest/devkit"
+                          exit 0 ;;
+                esac
+                if [ -z "$_rc" ]; then
+                    echo "Every new shell will have it. For this one:"
+                    echo "    source $dest/devkit"
+                    echo "To undo:  rm $dest/devkit"
+                    exit 0
+                fi
+                _line="source \"$dest/devkit\"   # ./devkit tab completion"
+                if grep -qF "$dest/devkit" "$_rc" 2>/dev/null; then
+                    echo "$_rc already reads it. Every new $_sh has it."
+                elif [ "$_rc_edit" -eq 1 ]; then
+                    printf '\n%s\n' "$_line" >> "$_rc"
+                    echo "added one line to $_rc:"
+                    echo "    $_line"
+                    echo "Every new $_sh will have it."
+                else
+                    echo "$_sh reads nothing from that directory by itself. Add this line to $_rc:"
+                    echo "    $_line"
+                    echo "or have it added for you:  ./devkit completion install --rc"
+                fi
+                echo "For this shell:  source $dest/devkit"
+                echo "To undo:  rm $dest/devkit, and take the line out of $_rc" ;;
             -h|--help)
-                echo "usage: ./devkit completion [install]"
+                echo "usage: ./devkit completion [install [--rc] [--shell bash|zsh]]"
                 echo
                 echo "  (no argument)  print the script, for:"
-                echo "                     source <(./devkit completion)"
-                echo "  install        install it for every new shell" ;;
+                echo "                     eval \"\$(./devkit completion)\""
+                echo "  install        install it for every new shell. Where the shell"
+                echo "                 does not load it by itself (zsh; bash on macOS) it"
+                echo "                 prints the one line your startup file needs."
+                echo "    --rc         add that line to the startup file for you"
+                echo "    --shell S    for bash or zsh, instead of your login shell" ;;
             *)  cat "$HERE/tools/devkit-completion.bash" ;;
         esac
         exit 0 ;;
@@ -591,18 +718,23 @@ case "$cmd" in
         echo
         if [ "$TARGET" = modern ]; then
             echo "== modern source =="
-            [ -f "$FWM/src/linux/Makefile" ] && echo "   kernel: present" || echo "   kernel: missing - run ./devkit setup --target modern"
-            [ -f "$FWM/boot/fw/u-boot-xlnx/Makefile" ] && echo "   boot:   present (U-Boot, embeddedsw, bootgen)" \
-                || echo "   boot:   missing - run ./devkit setup --target modern"
+            # On macOS the two trees live in container volumes; the directory
+            # here then holds only the note tools/container/run.sh leaves in it.
+            if [ -f "$FWM/src/linux/Makefile" ]; then echo "   kernel: present"
+            elif [ -f "$FWM/src/IN-A-DOCKER-VOLUME.txt" ]; then echo "   kernel: in the container's volume (./devkit container shell to look)"
+            else echo "   kernel: missing - run ./devkit setup --target modern"; fi
+            if [ -f "$FWM/boot/fw/u-boot-xlnx/Makefile" ]; then echo "   boot:   present (U-Boot, embeddedsw, bootgen)"
+            elif [ -f "$FWM/boot/IN-A-DOCKER-VOLUME.txt" ]; then echo "   boot:   in the container's volume (./devkit container shell to look)"
+            else echo "   boot:   missing - run ./devkit setup --target modern"; fi
             echo
             echo "== last modern build =="
             for f in BOOT.bin uImage devicetree.dtb uEnv.txt system_top.xsa; do
                 if [ -r "$FWM/output/$f" ]; then printf '   %-22s %10s B  %s\n' "$f" \
-                    "$(stat -c%s "$FWM/output/$f")" "$(date -r "$FWM/output/$f" '+%Y-%m-%d %H:%M')"
+                    "$(fsize "$FWM/output/$f")" "$(date -r "$FWM/output/$f" '+%Y-%m-%d %H:%M')"
                 else printf '   %-22s -\n' "$f"; fi
             done
             if [ -r "$FWM/debian/rootfs.tar" ]; then printf '   %-22s %10s B  %s  (debian/, for write-card)\n' rootfs.tar \
-                "$(stat -c%s "$FWM/debian/rootfs.tar")" "$(date -r "$FWM/debian/rootfs.tar" '+%Y-%m-%d %H:%M')"
+                "$(fsize "$FWM/debian/rootfs.tar")" "$(date -r "$FWM/debian/rootfs.tar" '+%Y-%m-%d %H:%M')"
             else printf '   %-22s -\n' "rootfs.tar"; fi
             echo
             board_status
@@ -616,11 +748,12 @@ case "$cmd" in
             else
                 missing=0
                 for p in "$FW"/patches/*.patch; do
-                    grep -qxF "$(sha256sum "$p" | cut -d' ' -f1)  $(basename "$p")" "$stamp" \
+                    grep -qxF "$(sha256 "$p")  $(basename "$p")" "$stamp" \
                         || missing=$((missing+1))
                 done
                 if [ "$missing" -eq 0 ]; then
-                    echo "   src/ present, all $(ls "$FW"/patches/*.patch | wc -l) patches applied"
+                    # $(( )) strips the padding BSD wc puts before the number.
+                    echo "   src/ present, all $(( $(ls "$FW"/patches/*.patch | wc -l) )) patches applied"
                 else
                     echo "   src/ present, $missing patch(es) not applied - run ./devkit setup"
                 fi
@@ -633,7 +766,7 @@ case "$cmd" in
         if [ -r "$FW/output/BOOT.bin" ]; then
             for f in BOOT.bin devicetree.dtb uEnv.txt uImage uramdisk.image.gz; do
                 [ -r "$FW/output/$f" ] && printf '   %-20s %10s B  %s\n' "$f" \
-                    "$(stat -c%s "$FW/output/$f")" "$(date -r "$FW/output/$f" '+%Y-%m-%d %H:%M')"
+                    "$(fsize "$FW/output/$f")" "$(date -r "$FW/output/$f" '+%Y-%m-%d %H:%M')"
             done
         else
             echo "   nothing in output/ - run ./devkit build"
