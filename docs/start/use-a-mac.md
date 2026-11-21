@@ -192,8 +192,9 @@ tools/sdrpp/build-macos.sh --install-deps    # without the flag it names the mis
 
 It builds SDR++ at the pinned commit with the patch and the DAB+ decoder into
 one directory, with no `sudo`. Pick the board from the device menu under the
-**PlutoSDR** source: there is no address field, the menu lists what libiio's
-scan finds.
+**PlutoSDR** source, which lists what libiio's scan finds. If the board is not
+in it, type its address (`192.168.2.1` on the USB cable) in **Address** and
+press **Use address**.
 
 **Tested:** it builds, starts, and loads the PlutoSDR source, the audio sink
 and the DAB+ decoder. Receiving in the window was not checked. Fast TCP

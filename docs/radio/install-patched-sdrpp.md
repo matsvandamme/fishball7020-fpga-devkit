@@ -51,7 +51,9 @@ adds them to the PlutoSDR source panel.
     `--clean` deletes the build and starts over.
 
     - **Pick the board from the device menu** under the **PlutoSDR** source.
-      There is no address field: the menu lists what libiio's scan finds.
+      The menu lists what libiio's scan finds. If the board is not in it,
+      type its address (`192.168.2.1` on the USB cable) in **Address** and
+      press **Use address**.
     - **Start it with the launcher**, which also adds the **DAB Decoder**
       panel once.
     - **Tested** on one Apple Silicon Mac: it builds, starts, and loads the

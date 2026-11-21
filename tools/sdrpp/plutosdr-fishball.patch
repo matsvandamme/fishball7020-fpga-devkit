@@ -1,5 +1,5 @@
 diff --git a/source_modules/plutosdr_source/src/main.cpp b/source_modules/plutosdr_source/src/main.cpp
-index 7a7db0c3..401ed1aa 100644
+index 7a7db0c3..e74b06dd 100644
 --- a/source_modules/plutosdr_source/src/main.cpp
 +++ b/source_modules/plutosdr_source/src/main.cpp
 @@ -9,7 +9,15 @@
@@ -40,7 +40,7 @@ index 7a7db0c3..401ed1aa 100644
  
          // Define valid bandwidths
          bandwidths.define(0, "Auto", 0);
-@@ -52,6 +60,11 @@ public:
+@@ -52,8 +60,14 @@ public:
          gainModes.define("slow_attack", "Slow Attack", "slow_attack");
          gainModes.define("hybrid", "Hybrid", "hybrid");
  
@@ -51,8 +51,11 @@ index 7a7db0c3..401ed1aa 100644
 +
          // Enumerate devices
          refresh();
++        defineManual(true);
  
-@@ -80,6 +93,9 @@ public:
+         // Select device
+         config.acquire();
+@@ -80,6 +94,9 @@ public:
  
      void postInit() {}
  
@@ -62,7 +65,7 @@ index 7a7db0c3..401ed1aa 100644
      void enable() {
          enabled = true;
      }
-@@ -93,6 +109,73 @@ public:
+@@ -93,6 +110,160 @@ public:
      }
  
  private:
@@ -133,10 +136,117 @@ index 7a7db0c3..401ed1aa 100644
 +        config.release(true);
 +    }
 +
++    // A device given by address, for a board libiio's scan does not list. On
++    // the network that scan is DNS-SD: a board that announces nothing is
++    // missing, two boards with one name share an entry, and one stale
++    // announcement fails the whole scan. "192.168.2.1" or "fishball.local"
++    // becomes "ip:<address>"; a libiio URI ("ip:...", "usb:1.5.5") is kept as
++    // typed. Empty means no manual device.
++    static std::string cleanAddress(std::string addr) {
++        addr.erase(0, addr.find_first_not_of(" \t"));
++        addr.erase(addr.find_last_not_of(" \t") + 1);
++        // "192.168.2.1." resolves to nothing; a name may end in a dot
++        if (addr.find_first_not_of("0123456789.") == std::string::npos) { addr.erase(addr.find_last_not_of('.') + 1); }
++        return addr;
++    }
++
++    static std::string manualUri(const std::string& typed) {
++        std::string addr = cleanAddress(typed);
++        if (addr.empty()) { return ""; }
++        for (const char* backend : { "ip:", "usb:", "serial:", "local:", "xml:" }) {
++            if (addr.rfind(backend, 0) == 0) { return addr; }
++        }
++        return "ip:" + addr;
++    }
++
++    // The saved address as a device entry. Called after every refresh(), which
++    // clears the list, so the entry does not depend on what the scan found or
++    // on whether it worked. Nothing is opened here: start() does that.
++    void defineManual(bool fillField = false) {
++        manualKey.clear();
++        std::string addr;
++        config.acquire();
++        if (config.conf.contains("manualAddress") && config.conf["manualAddress"].is_string()) {
++            addr = config.conf["manualAddress"];
++        }
++        config.release();
++        if (fillField) { snprintf(manualAddr, sizeof(manualAddr), "%s", addr.c_str()); }
++        std::string muri = manualUri(addr);
++        if (muri.empty()) { return; }
++        size_t colon = muri.find(':');
++        std::string key = "manual " + muri;
++        std::string devName = '(' + muri.substr(0, colon) + ") " + muri.substr(colon + 1) + " [manual]";
++        // The list holds a URI once. If the scan found this one too, the manual
++        // entry takes its place: the same entry, with the same saved settings,
++        // whether or not the scan worked this time.
++        if (devices.valueExists(muri)) { devices.undefineValue(muri); }
++        if (devices.keyExists(key) || devices.nameExists(devName)) { return; }
++        devices.define(key, devName, muri);
++        manualKey = key;
++        flog::info("PlutoSDR manual device: {} opens {}", devName, muri);
++    }
++
++    // The Address field's button: save the address, replace the manual entry
++    // and select it. An empty field removes the entry.
++    void useManual() {
++        std::string addr = cleanAddress(manualAddr);
++        snprintf(manualAddr, sizeof(manualAddr), "%s", addr.c_str());
++        config.acquire();
++        if (addr.empty()) { config.conf.erase("manualAddress"); }
++        else { config.conf["manualAddress"] = addr; }
++        config.release(true);
++        if (!manualKey.empty() && devices.keyExists(manualKey)) { devices.undefineKey(manualKey); }
++        defineManual();
++        manualError.clear();
++        select(manualKey.empty() ? devDesc : manualKey);
++        core::setInputSampleRate(samplerate);
++        config.acquire();
++        config.conf["device"] = devDesc;
++        config.release(true);
++    }
++
++    // A typed address is not checked until it is opened: say what was wrong.
++    void manualFailed(const std::string& why) {
++        if (manualKey.empty() || devDesc != manualKey) { return; }
++        manualError = uri + ": " + why;
++        flog::error("Manual device {}", manualError);
++    }
++
++    // The host of an "ip:" URI, split as libiio splits it: HOST, HOST:PORT, a
++    // bare IPv6 address, or [IPv6]:PORT. That port is iiod's, not zc-stream's.
++    static std::string uriHost(const std::string& uri) {
++        std::string host = uri.substr(3);
++        size_t first = host.find(':'), last = host.rfind(':');
++        if (first == std::string::npos) { return host; }
++        if (first == last) { return host.substr(0, first); }
++        if (host[0] == '[' && host[last - 1] == ']') { return host.substr(1, last - 2); }
++        return host;
++    }
++
      std::string getBandwdithScaled(double bw) {
          char buf[1024];
          if (bw >= 1000000.0) {
-@@ -218,6 +301,13 @@ private:
+@@ -199,16 +370,19 @@ private:
+         // If no device is available, give up
+         if (devices.empty()) {
+             devDesc.clear();
++            devId = 0;
+             return;
+         }
+ 
+         // If the device is not available, select the first one
+         if (!devices.keyExists(desc)) {
+             select(devices.key(0));
++            return;
+         }
+ 
+         // Update URI
+         devDesc = desc;
++        devId = devices.keyId(desc);
+         uri = devices.value(devices.keyId(desc));
+ 
+         // TODO: Enumerate capabilities
+@@ -218,6 +392,13 @@ private:
          bandwidth = 0;
          gmId = 0;
          gain = -1.0f;
@@ -150,7 +260,7 @@ index 7a7db0c3..401ed1aa 100644
  
          // Load device config
          config.acquire();
-@@ -241,7 +331,29 @@ private:
+@@ -241,7 +422,29 @@ private:
              gain = config.conf["devices"][devDesc]["gain"];
              gain = std::clamp<int>(gain, -1.0f, 73.0f);
          }
@@ -180,7 +290,37 @@ index 7a7db0c3..401ed1aa 100644
  
          // Update samplerate ID
          if (samplerates.keyExists(samplerate)) {
-@@ -301,30 +413,109 @@ private:
+@@ -279,52 +482,138 @@ private:
+ 
+         // If no device is selected, give up
+         if (_this->devDesc.empty() || _this->uri.empty()) { return; }
++        _this->manualError.clear();
+ 
+         // Open context
+         _this->ctx = iio_create_context_from_uri(_this->uri.c_str());
+         if (_this->ctx == NULL) {
+             flog::error("Could not open pluto ({})", _this->uri);
++            _this->manualFailed("nothing answers there");
+             return;
+         }
+ 
+-        // Get phy and device handle
++        // Get phy and device handle. The scan lists only boards it knows by
++        // name; a typed address can be any IIO device, and is checked here.
+         _this->phy = iio_context_find_device(_this->ctx, "ad9361-phy");
+         if (_this->phy == NULL) {
+             flog::error("Could not connect to pluto phy");
++            _this->manualFailed("no ad9361-phy device there, so not a PlutoSDR or a board like it");
+             iio_context_destroy(_this->ctx);
++            _this->ctx = NULL;
+             return;
+         }
+         _this->dev = iio_context_find_device(_this->ctx, "cf-ad9361-lpc");
+         if (_this->dev == NULL) {
+             flog::error("Could not connect to pluto dev");
++            _this->manualFailed("no cf-ad9361-lpc capture device there");
+             iio_context_destroy(_this->ctx);
++            _this->ctx = NULL;
              return;
          }
  
@@ -300,7 +440,7 @@ index 7a7db0c3..401ed1aa 100644
      }
  
      static void stop(void* ctx) {
-@@ -334,8 +525,21 @@ private:
+@@ -334,8 +623,21 @@ private:
          // Stop worker thread
          _this->running = false;
          _this->stream.stopWriter();
@@ -322,10 +462,26 @@ index 7a7db0c3..401ed1aa 100644
  
          // Close device
          if (_this->ctx != NULL) {
-@@ -389,7 +593,78 @@ private:
+@@ -386,10 +688,94 @@ private:
+         SmGui::ForceSync();
+         if (SmGui::Button(CONCAT("Refresh##_pluto_refr_", _this->name))) {
+             _this->refresh();
++            _this->defineManual();
              _this->select(_this->devDesc);
              core::setInputSampleRate(_this->samplerate);
          }
++
++        // A board the scan does not list, by address: see manualUri()
++        SmGui::LeftLabel("Address");
++        SmGui::FillWidth();
++        bool useAddr = SmGui::InputText(CONCAT("##_pluto_addr_", _this->name), _this->manualAddr, sizeof(_this->manualAddr), ImGuiInputTextFlags_EnterReturnsTrue);
++        SmGui::FillWidth();
++        if (SmGui::Button(CONCAT("Use address##_pluto_addr_use_", _this->name)) || useAddr) {
++            _this->useManual();
++        }
++        if (!_this->manualError.empty()) {
++            SmGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), _this->manualError.c_str());
++        }
 +
 +        // Any rate within the limits, typed in kHz; Set adds it to the list.
 +        if (_this->customKHz <= 0) { _this->customKHz = _this->samplerate / 1000; }
@@ -401,7 +557,7 @@ index 7a7db0c3..401ed1aa 100644
  
          SmGui::LeftLabel("Bandwidth");
          SmGui::FillWidth();
-@@ -397,6 +672,7 @@ private:
+@@ -397,6 +783,7 @@ private:
              _this->bandwidth = _this->bandwidths.value(_this->bwId);
              if (_this->running) {
                  _this->setBandwidth(_this->bandwidth);
@@ -409,7 +565,7 @@ index 7a7db0c3..401ed1aa 100644
              }
              if (!_this->devDesc.empty()) {
                  config.acquire();
-@@ -419,40 +695,211 @@ private:
+@@ -419,40 +806,211 @@ private:
              }
          }
  
@@ -557,7 +713,7 @@ index 7a7db0c3..401ed1aa 100644
 +            flog::error("{}", fastError);
 +            return false;
 +        }
-+        std::string host = uri.substr(3);
++        std::string host = uriHost(uri);
 +        int port = fastPort + rxPort;
 +        addrinfo hints = {}, *res = NULL;
 +        hints.ai_socktype = SOCK_STREAM;
@@ -634,7 +790,7 @@ index 7a7db0c3..401ed1aa 100644
              return;
          }
  
-@@ -461,6 +908,9 @@ private:
+@@ -461,6 +1019,9 @@ private:
          iio_channel_enable(rx0_q);
  
          // Allocate buffer
@@ -644,7 +800,7 @@ index 7a7db0c3..401ed1aa 100644
          iio_buffer* rxbuf = iio_device_create_buffer(_this->dev, blockSize, false);
          if (!rxbuf) {
              flog::error("Could not create RX buffer");
-@@ -500,9 +950,26 @@ private:
+@@ -500,11 +1061,31 @@ private:
      iio_device* phy = NULL;
      iio_device* dev = NULL;
      iio_channel* rxLO = NULL;
@@ -671,8 +827,13 @@ index 7a7db0c3..401ed1aa 100644
 +
      std::string devDesc = "";
      std::string uri = "";
++    char manualAddr[256] = "";    // the Address field
++    std::string manualKey;        // the manual entry's key in `devices`, if there is one
++    std::string manualError;
  
-@@ -515,11 +982,18 @@ private:
+     double freq;
+     int samplerate = 4000000;
+@@ -515,11 +1096,18 @@ private:
      int srId = 0;
      int bwId = 0;
      int gmId = 0;
@@ -691,7 +852,7 @@ index 7a7db0c3..401ed1aa 100644
  };
  
  MOD_EXPORT void _INIT_() {
-@@ -542,14 +1016,20 @@ MOD_EXPORT void _INIT_() {
+@@ -542,14 +1130,20 @@ MOD_EXPORT void _INIT_() {
  }
  
  MOD_EXPORT ModuleManager::Instance* _CREATE_INSTANCE_(std::string name) {

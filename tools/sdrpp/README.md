@@ -18,6 +18,9 @@ with a patch that adds, to that source:
 - **Transport**: libiio, or **Fast TCP, 8-bit** from
   [`zc-stream`](../stream-paths/zc-stream/README.md) on the board, for up to
   20 MS/s over the network. Every control above still goes through libiio.
+- **Address**: a board opened by its address or name, typed in, for when
+  libiio's scan does not list it. The entry is saved and does not depend on
+  the scan.
 - **A stuck radio is put back**: if a rate or filter change leaves the AD9361
   in `alert` (receivers off, every sample frozen), starting puts it back in `fdd`
   and says so in the log.
@@ -29,7 +32,7 @@ How to use them, with screenshots and measured settings:
 
 ```bash
 # run from: tools/sdrpp/
-makepkg -f                                   # builds sdrpp-git-…-10-x86_64.pkg.tar.zst
+makepkg -f                                   # builds sdrpp-git-…-11-x86_64.pkg.tar.zst
 sudo pacman -U sdrpp-git-*-x86_64.pkg.tar.zst
 ```
 
@@ -56,13 +59,16 @@ building again: the script stops if this build's SDR++ is running.
 
 What differs from the Arch package:
 
-- **The board is found, not typed in.** This SDR++ has no address field. Choose
-  the **PlutoSDR** source and the board is in the menu under it as `(ip) …`,
-  because libiio finds `iiod on fishball` by DNS-SD. If the menu is empty after
-  **Refresh**, ask libiio directly: `~/.cache/fishball-sdrpp/prefix/bin/iio_info -S`
-  lists what it sees, and `dns-sd -B _iio._tcp` shows whether the board's
-  announcement reaches the Mac at all (it does not cross most routers and
-  guest networks).
+- **The board is found by DNS-SD.** Choose the **PlutoSDR** source and the
+  board is in the menu under it as `(ip) …`, because libiio finds
+  `iiod on fishball` by DNS-SD. If the menu is empty after **Refresh**, or
+  lacks the board, type its address in **Address** and press **Use address**:
+  that entry needs no scan. To see why the scan misses it, ask libiio
+  directly: `~/.cache/fishball-sdrpp/prefix/bin/iio_info -S` lists what it
+  sees, and `dns-sd -B _iio._tcp` shows whether the board's announcement
+  reaches the Mac at all (it does not cross most routers and guest networks).
+  One announced address that no longer answers, such as an unplugged Ethernet
+  cable's, can fail the whole scan.
 - **Audio is the PortAudio sink**, as in upstream's own macOS builds.
 - **The DAB Decoder panel is already there.** On Arch you add a `dab_decoder`
   instance in the Module Manager; here the launcher adds one, named
@@ -97,12 +103,18 @@ build, delete `root/config.json`.
 | Gain | `hardwaregain` on the selected receiver, live; in an automatic mode, moving the slider writes `gain_control_mode` `manual` first, and the slider shows the chip's `hardwaregain` once a second |
 | AD9361 state (ENSM) | after the rate and filter at start, and after a bandwidth change while streaming: `ensm_mode` read; `alert`, `wait` or `sleep` is set back to `fdd` and read back, and a chip that stays out of `fdd` stops the start with an error. Pin-control modes are left alone. The rate and `ad9361_set_bb_rate` errors are logged with their codes |
 | Transport: Fast TCP | nothing: it reads samples from `zc-stream -D -8` over TCP, RX1 on the zc-stream port (5555) and RX2 on the next, int8 ÷ 2048 so levels match libiio's int16 ÷ 32768. Only for an `ip:` device |
+| Address | nothing until you press play. **Use address**, or Enter, adds the device `(ip) <address> [manual]` with the URI `ip:<address>`, selects it, and saves the address as `manualAddress` in `plutosdr_source_config.json`; the entry is put back after every scan, whether the scan worked or not, and an empty field removes it. A libiio URI (`ip:…`, `usb:…`) is used as typed. The scan lists only boards it knows by name; a typed address is checked at play: without an `ad9361-phy` and a `cf-ad9361-lpc` device it does not start, and says so under the field |
 
 Sample rate, filter, RF bandwidth and port selection are shared by both
 receivers and stay on RX1's channel. On a one-receiver Pluto, selecting RX2 logs
 an error and does not start; on an FPGA without the decimator, the /8 option
 logs an error, says so under the checkbox, and does not start. Every setting is
-saved per device.
+saved per device; a typed address is its own device, `manual <URI>`.
+
+An address can be `192.168.2.1`, a name (`fishball.local`), `host:port` for an
+`iiod` on another port, or an IPv6 address; with a port, IPv6 is written
+`[address]:port`. Fast TCP connects to the same host. Only IPv4 addresses and
+names were tried on a board.
 
 ## What the PKGBUILD is
 

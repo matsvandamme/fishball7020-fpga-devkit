@@ -39,11 +39,12 @@
 # v0.4.0: the last tag for 0.x, and the first whose cmake can build a dylib
 # instead of a framework (v0.3 cannot).
 #
-# WHY libiio IS BUILT WITH DNS-SD. This SDR++ has no address field: its device
-# menu lists only what libiio's scan finds. Over the network that scan is
-# DNS-SD, so the board appears because it announces `_iio._tcp` (`dns-sd -B
-# _iio._tcp` shows "iiod on fishball"), and on a network that drops mDNS it does
-# not appear at all. macOS answers DNS-SD itself; no Avahi is needed.
+# WHY libiio IS BUILT WITH DNS-SD. SDR++'s device menu lists what libiio's scan
+# finds. Over the network that scan is DNS-SD, so the board appears because it
+# announces `_iio._tcp` (`dns-sd -B _iio._tcp` shows "iiod on fishball"), and
+# on a network that drops mDNS it does not appear at all: type its address in
+# the patch's Address field then. macOS answers DNS-SD itself; no Avahi is
+# needed.
 #
 # THE ONE EDIT BESIDES THE PATCH. On macOS SDR++'s plutosdr_source/CMakeLists.txt
 # links /Library/Frameworks/iio.framework by absolute path, which is where the
@@ -392,7 +393,8 @@ cat <<EOF
       $WORK/sdrpp
 
   then: Source -> PlutoSDR, and pick the board in the menu under it. It is
-  listed as "(ip) ..." once libiio finds it on the network; if the menu is
-  empty, see "macOS" in tools/sdrpp/README.md. DAB+ is the "DAB Decoder"
-  panel in the same left-hand menu: docs/radio/listen-to-dab.md.
+  listed as "(ip) ..." once libiio finds it on the network; if it is not,
+  type its address in Address and press "Use address" (more under "macOS" in
+  tools/sdrpp/README.md). DAB+ is the "DAB Decoder" panel in the same
+  left-hand menu: docs/radio/listen-to-dab.md.
 EOF

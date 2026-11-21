@@ -78,6 +78,7 @@ them to the same source panel:
 |---|---|---|
 | **Sample rate list** and **Custom (kHz)** | the 500 kHz steps plus the rates other SDR tools default to (2.048, 2.304, 2.4, 3.072, 3.84, 4.8, 6.144 MHz …); or type any rate and press **Set rate**: 521 kHz to 61.44 MHz, or 261 kHz to 7.68 MHz with the /8. A typed rate is saved | a rate the list lacks |
 | **RX Port** | RX1 or RX2, one at a time | the antenna is on RX2 |
+| **Address** and **Use address** | opens a board by address, without libiio's scan. Type `192.168.2.1`, a name such as `fishball.local`, or a libiio URI (`ip:…`, `usb:…`), and press **Use address** or Enter: the device list gains `(ip) 192.168.2.1 [manual]`, selected and saved. It stays after **Refresh** and when the scan fails; an empty field removes it. The address is first tried when you press play | the board answers `ping` but is not in the device list, or two boards share a name |
 | **Gain** | live in every gain mode. Moving it in an automatic mode switches to Manual, because the chip takes a gain only there; in an automatic mode it shows the gain the chip chose, once a second. **Hybrid** leaves the gain at 73 dB on this board, the maximum, so a strong band clips: use Manual or Slow Attack | the noise floor rises with the strongest signal: lower it |
 | **FPGA /8 decimator** | the AD9361 samples at 8× the rate you pick and the FPGA filters and keeps one sample in eight, so rates of 250 kHz to 7.68 MHz reach SDR++ with an eighth of the data | listening to one station, or any rate below 2 MHz |
 | **Quadrature tracking** | the AD9361 keeps I and Q balanced, which suppresses the mirror image of each signal | leave on |
@@ -186,6 +187,8 @@ usual.
 | no PlutoSDR device after **Refresh** | the board is not answering on USB; `./devkit status` says why. On the Debian firmware, see [ssh works, but nothing can open the radio](troubleshooting.md#ssh-works-but-nothing-can-open-the-radio-debian-root) |
 | streaks across the waterfall, clicks in the audio | samples lost: the rate is above what USB carries, or another program is streaming from the board |
 | play does nothing, the log says the FPGA did not engage the /8 decimator | the board's FPGA design has no decimator; untick **FPGA /8 decimator** |
+| the device list is empty or lacks the board, and the board answers `ping` | libiio finds network boards by their mDNS announcement. A network that drops mDNS hides the board, two boards with one name share an entry, and one announced address that no longer answers (an unplugged cable) can fail the whole scan. Since package release 11: type the board's address in **Address** and press **Use address** |
+| a red line under **Address** after pressing play | `nothing answers there`: no `iiod` at that address, which can take half a minute to show. `no ad9361-phy device there`: something answers, but it is not this kind of board |
 | play does nothing with RX2 selected | the board has one receiver (a one-receiver Pluto) |
 | stations sit slightly off their frequency | set **Freq. corr. (ppm)** from `./devkit clock measure` |
 | occasional clicks at any rate, with `audio write error, underrun` in SDR++'s log | the PC's audio output ran dry, not the radio: seen a few times a minute at every rate in these measurements |
