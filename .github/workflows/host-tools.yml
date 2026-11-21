@@ -35,7 +35,9 @@ on:
 
 jobs:
   host-tools:
-    runs-on: ubuntu-latest
+    # ubuntu-latest (26.04) has no Python 3.8 build; 24.04 is the newest
+    # image that does. 3.8 stays in the matrix as the oldest version supported.
+    runs-on: ${{ matrix.python == '3.8' && 'ubuntu-24.04' || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
