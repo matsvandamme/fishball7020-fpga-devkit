@@ -92,7 +92,7 @@ RUN set -eux; \
     systemctl enable serial-getty@ttyPS0.service; \
     echo 'root:analog' | chpasswd; \
     chage -d 1 root; \
-    chmod 0755 /usr/local/sbin/fishball-rf-quiesce /usr/local/sbin/fishball-identity; \
+    chmod 0755 /usr/local/sbin/*; \
     # No identity in the image: it is a release asset, so anything here is on
     # every board flashed from it.
     #

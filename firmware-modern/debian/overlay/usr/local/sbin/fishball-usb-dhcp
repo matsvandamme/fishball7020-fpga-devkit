@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""Hand the PC on the USB cable its address: 192.168.2.10, from 192.168.2.1.
+
+    fishball-usb-dhcp [--iface usb0] [--server 192.168.2.1] [--lease 192.168.2.10]
+
+Replaces the udhcpd that Buildroot's S40network configures, with the factory's
+numbers: one address, for whichever PC is on the other end of the cable. Without
+it the PC has to be given 192.168.2.10 by hand, which a Mac asks for in System
+Settings and Windows in the adapter's properties.
+
+What it does NOT send matters as much. No router and no DNS server: with either,
+a PC may send its internet traffic to the board, which leads nowhere. That is
+also what the factory does.
+
+It answers on one interface only (SO_BINDTODEVICE) and waits while that
+interface is not there, so it cannot hand out addresses on Ethernet. A PC with a static
+192.168.2.10 never asks and never notices.
+
+Python because python3 is already on the board and a DHCP server for one
+address is one screen of code; no package to add.
+"""
+import argparse
+import ipaddress
+import select
+import socket
+import struct
+import sys
+import time
+
+MAGIC = b"\x63\x82\x53\x63"
+DISCOVER, OFFER, REQUEST, DECLINE, ACK, NAK, RELEASE, INFORM = range(1, 9)
+# Long, because there is nobody else to give the address to. An unplugged cable
+# ends the lease on the PC's side whatever this says.
+LEASE_SECONDS = 86400
+
+
+def parse(packet):
+    """A BOOTP request as a dict, or None if it is not one we answer."""
+    if len(packet) < 240 or packet[0] != 1 or packet[236:240] != MAGIC:
+        return None
+    # htype 1, hlen 6: Ethernet. Every USB network function presents as that.
+    if packet[1] != 1 or packet[2] != 6:
+        return None
+    req = {
+        "xid": packet[4:8],
+        "flags": packet[10:12],
+        "ciaddr": packet[12:16],
+        "giaddr": packet[24:28],
+        "chaddr": packet[28:44],
+        "options": {},
+    }
+    i = 240
+    while i < len(packet):
+        code = packet[i]
+        if code == 255:
+            break
+        if code == 0:
+            i += 1
+            continue
+        if i + 1 >= len(packet):
+            break
+        size = packet[i + 1]
+        req["options"][code] = packet[i + 2:i + 2 + size]
+        i += 2 + size
+    kind = req["options"].get(53)
+    if not kind or len(kind) != 1:
+        return None
+    req["type"] = kind[0]
+    return req
+
+
+def reply(req, server, lease, netmask):
+    """(packet, destination address) answering req, or None to stay silent."""
+    server_b, lease_b = server.packed, lease.packed
+    # A request addressed to another DHCP server is not ours to answer.
+    if req["options"].get(54, server_b) != server_b:
+        return None
+    # Relayed requests do not exist on a cable with two ends.
+    if req["giaddr"] != b"\0\0\0\0":
+        return None
+
+    kind = req["type"]
+    yiaddr = lease_b
+    if kind == DISCOVER:
+        answer = OFFER
+    elif kind == REQUEST:
+        # The address asked for is option 50 when selecting or rebooting, and
+        # ciaddr when renewing. A PC that remembers a lease from another network
+        # asks for that one: NAK, and it starts again with a DISCOVER.
+        asked = req["options"].get(50) or req["ciaddr"]
+        answer = ACK if asked in (lease_b, b"\0\0\0\0") else NAK
+    elif kind == INFORM:
+        # The PC has an address already and wants the options only.
+        answer, yiaddr = ACK, b"\0\0\0\0"
+    else:
+        return None  # DECLINE, RELEASE: nothing to keep track of
+
+    options = bytes([53, 1, answer, 54, 4]) + server_b
+    if answer == NAK:
+        yiaddr = b"\0\0\0\0"
+    else:
+        if kind != INFORM:
+            options += bytes([51, 4]) + struct.pack("!I", LEASE_SECONDS)
+        options += bytes([1, 4]) + netmask.packed
+    options += b"\xff"
+
+    packet = (
+        bytes([2, 1, 6, 0]) + req["xid"] + b"\0\0" + req["flags"]
+        + (b"\0\0\0\0" if answer == NAK else req["ciaddr"])
+        + yiaddr + b"\0\0\0\0" + b"\0\0\0\0" + req["chaddr"]
+        + bytes(192) + MAGIC + options
+    )
+    packet += bytes(max(0, 300 - len(packet)))  # the BOOTP minimum
+
+    # To the PC's own address when it has one (a renewal). Otherwise broadcast:
+    # it has no address to send to yet, and every DHCP client accepts that.
+    renewing = answer != NAK and req["ciaddr"] != b"\0\0\0\0"
+    dest = socket.inet_ntoa(req["ciaddr"]) if renewing else "255.255.255.255"
+    return packet, dest
+
+
+def ifindex(iface):
+    try:
+        return socket.if_nametoindex(iface)
+    except OSError:
+        return 0
+
+
+def serve(iface, server, lease, netmask):
+    names = {OFFER: "offer", ACK: "ack", NAK: "nak"}
+    while True:
+        # Wait for the interface rather than exit: it is absent whenever the
+        # gadget is not bound, and a restart loop costs more than a sleep.
+        index = ifindex(iface)
+        if not index:
+            time.sleep(2)
+            continue
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        # Before bind(), so that no packet from another interface is ever queued.
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, iface.encode() + b"\0")
+        sock.bind(("0.0.0.0", 67))
+        print(f"fishball-usb-dhcp: on {iface}, offering {lease} from {server}", flush=True)
+
+        while True:
+            ready, _, _ = select.select([sock], [], [], 5)
+            if not ready:
+                # The socket is tied to the interface that existed when it was
+                # opened. A gadget that is re-created makes a new usb0, on which
+                # this socket hears nothing: open another.
+                if ifindex(iface) != index:
+                    print(f"fishball-usb-dhcp: {iface} was replaced", flush=True)
+                    break
+                continue
+            packet, _ = sock.recvfrom(2048)
+            req = parse(packet)
+            answer = req and reply(req, server, lease, netmask)
+            if not answer:
+                continue
+            data, dest = answer
+            mac = req["chaddr"][:6].hex(":")
+            try:
+                sock.sendto(data, (dest, 68))
+                print(f"fishball-usb-dhcp: {names[data[242]]} {lease} to {mac}", flush=True)
+            except OSError as e:
+                print(f"fishball-usb-dhcp: reply to {mac} failed: {e}", file=sys.stderr, flush=True)
+        sock.close()
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--iface", default="usb0")
+    ap.add_argument("--server", default="192.168.2.1", help="the board's own address on that interface")
+    ap.add_argument("--lease", default="192.168.2.10", help="the one address handed out")
+    ap.add_argument("--netmask", default="255.255.255.0")
+    a = ap.parse_args()
+    serve(a.iface, ipaddress.IPv4Address(a.server), ipaddress.IPv4Address(a.lease),
+          ipaddress.IPv4Address(a.netmask))
+
+
+if __name__ == "__main__":
+    main()

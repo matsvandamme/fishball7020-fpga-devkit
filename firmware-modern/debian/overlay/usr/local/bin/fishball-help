@@ -44,6 +44,7 @@ cmd "fw_setenv xo_correction 40000020"                     "calibrate the 40 MHz
 cmd "fw_setenv tx_led 0"                                   "user LED no longer shows transmit"
 cmd "fw_setenv iio_max_block_size 67108864"                "largest DMA block, bytes"
 cmd "fw_setenv tx_starve_ms"                               "(no value) back to the default"
+cmd "fishball-usb-mode ncm"                                "USB network a Mac can use; rndis = back"
 
 sec "Logs  (systemd journal; there is no /var/log/syslog)"
 cmd "journalctl -b"                                        "everything since this boot"

@@ -17,6 +17,13 @@ fail=0
 LIST="$(mktemp)"; trap 'rm -f "$LIST"' EXIT
 tar tf "$T" | sed 's|^\./||' > "$LIST"
 file() { tar xOf "$T" "$1" 2>/dev/null || tar xOf "$T" "./$1" 2>/dev/null; }
+# Where a symlink points. The COLUMNS of `tar tvf` differ between GNU tar and
+# the bsdtar macOS ships (size is field 3 in one and 5 in the other), and
+# reading them by number gave false FAILs on a Mac. Both end a symlink's line
+# with "name -> target", so read that instead.
+LONG="$(mktemp)"; trap 'rm -f "$LIST" "$LONG"' EXIT
+tar tvf "$T" 2>/dev/null | grep -- ' -> ' > "$LONG" || true
+linkto() { sed -n "s|^.* \(\./\)\{0,1\}$1 -> ||p" "$LONG" | head -1; }
 ok()  { printf '  ok    %s\n' "$1"; }
 bad() { printf '  FAIL  %s\n' "$1"; fail=1; }
 check() { if eval "$2"; then ok "$1"; else bad "$1"; fi; }
@@ -25,7 +32,7 @@ echo "== $T"
 
 echo "-- no identity in the image (it is a release asset)"
 check "no SSH host keys"                     '! grep -q "^etc/ssh/ssh_host_" "$LIST"'
-check "/etc/machine-id present and empty"    '[ "$(tar tvf "$T" 2>/dev/null | awk "\$6 ~ /^(\\.\\/)?etc\\/machine-id\$/ {print \$3}")" = 0 ]'
+check "/etc/machine-id present and empty"    'grep -qx "etc/machine-id" "$LIST" && [ "$(file etc/machine-id | wc -c | tr -d "[:space:]")" = 0 ]'
 check "first-boot SSH key generation enabled" 'grep -q "wants/fishball-sshd-keygen.service$" "$LIST"'
 
 echo "-- transmitter safety"
@@ -41,7 +48,12 @@ check "iiod rebinds USB when it stops"       'file "$D" | grep -q "^ExecStopPost
 echo "-- the way in"
 check "the USB gadget units are enabled"     'grep -q "wants/fishball-usb-gadget.service$" "$LIST" && grep -q "wants/fishball-usb-bind.service$" "$LIST"'
 check "a console on the USB cable"           'grep -q "wants/serial-getty@ttyGS0.service$" "$LIST"'
-check "hostname is fishball"                 '[ "$(file etc/hostname)" = fishball ]'
+check "the USB network can be switched for a Mac (rndis, ncm, ecm)" 'file usr/local/sbin/fishball-usb-gadget | grep -q "usb_ethernet_mode" && grep -qx "usr/local/sbin/fishball-usb-mode" "$LIST" && file etc/systemd/system/fishball-usb-gadget.service | grep -q "^EnvironmentFile=-/etc/default/fishball-usb-gadget"'
+check "the PC is handed an address on the USB cable" 'grep -qx "etc/systemd/system/fishball-usb-dhcp.service" "$LIST" && grep -qx "usr/bin/python3" "$LIST" && file usr/local/sbin/fishball-usb-bind | grep -q "restart fishball-usb-dhcp.service"'
+# ^-rwx: a regular file its owner can execute. Not the exact mode: a root built
+# from a umask-002 checkout has -rwxrwxr-x.
+check "the new USB scripts are executable"   '[ "$(tar tvf "$T" 2>/dev/null | grep -cE "^-rwx.*usr/local/sbin/fishball-usb-(mode|dhcp)$")" = 2 ]'
+check "hostname is fishball"               '[ "$(file etc/hostname)" = fishball ]'
 check "the VMAT login message is installed"  'grep -qx "etc/update-motd.d/10-fishball" "$LIST" && grep -qx "usr/local/sbin/fishball-bootbin" "$LIST"'
 check "fishball-help, the command cheat sheet, is there" 'grep -qx "usr/local/bin/fishball-help" "$LIST"'
 check "it has tips of the day"               '[ "$(file usr/share/fishball/tips.txt | grep -v "^#" | grep -c .)" -ge 10 ]'
@@ -50,7 +62,7 @@ check "the serial console login has a fixed speed" 'file etc/systemd/system/seri
 
 echo "-- kernel support"
 check "modprobe is installed (kmod)"         'grep -qx "usr/sbin/modprobe" "$LIST"'
-check "regulatory.db is the upstream copy the kernel trusts" '[ "$(tar tvf "$T" 2>/dev/null | awk "\$6 ~ /^(\\.\\/)?etc\\/alternatives\\/regulatory\\.db\$/ {print \$8}")" = /lib/firmware/regulatory.db-upstream ]'
+check "regulatory.db is the upstream copy the kernel trusts" '[ "$(linkto etc/alternatives/regulatory.db)" = /lib/firmware/regulatory.db-upstream ]'
 
 echo "-- what it was built from"
 V="$(file opt/VERSIONS)"

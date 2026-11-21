@@ -1,0 +1,11 @@
+[Unit]
+Description=Hand the PC on the USB cable its address (192.168.2.10)
+Documentation=file:///usr/local/sbin/fishball-usb-dhcp
+# Not enabled, and no [Install] section: fishball-usb-bind starts it each time
+# it has bound the gadget and given usb0 its address. Before that there is no
+# usb0 to serve.
+
+[Service]
+ExecStart=/usr/local/sbin/fishball-usb-dhcp
+Restart=on-failure
+RestartSec=2

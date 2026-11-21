@@ -1,0 +1,12 @@
+# Read by fishball-usb-gadget.service. Empty by default.
+#
+# Which network function the USB cable carries: rndis (the default; Windows and
+# Linux), ncm (macOS, Linux, Windows 11) or ecm (macOS, Linux). A value here
+# wins over the card's uEnv.txt and over the U-Boot variable that
+# `fishball-usb-mode ncm` sets, so leave it commented unless you want this root
+# filesystem to decide. Apply with: systemctl restart fishball-usb-gadget
+#
+# systemd reads this file, not a shell: the value is everything after the =, so
+# a comment at the end of the line is NOT allowed. `USB_ETHERNET_MODE=ncm # mac`
+# is not ncm, and the gadget falls back to rndis. Comments go on their own line.
+#USB_ETHERNET_MODE=ncm

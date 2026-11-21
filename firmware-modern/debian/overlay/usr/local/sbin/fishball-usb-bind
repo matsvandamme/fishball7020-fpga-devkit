@@ -78,6 +78,11 @@ if [ -d /sys/class/net/usb0 ]; then
     ip addr add 192.168.2.1/24 dev usb0 2>/dev/null
     ip link set usb0 up
     echo "fishball-usb-bind: usb0 up at 192.168.2.1"
+    # Hand the PC its address. The unit is not enabled: it has nothing to serve
+    # before this point, and usb0 is a new interface after every bind, so it is
+    # restarted here. --no-block: this runs inside iiod's start job.
+    systemctl --no-block restart fishball-usb-dhcp.service 2>/dev/null \
+        || echo "fishball-usb-bind: no DHCP on usb0 - give the PC 192.168.2.10/24 by hand" >&2
 else
     echo "fishball-usb-bind: usb0 never appeared" >&2
 fi

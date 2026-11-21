@@ -21,3 +21,4 @@ This is full Debian on ext4: apt install python3-scipy works, and your files sur
 fishball-bootbin lists the partitions of /boot/BOOT.bin with their hashes, without bootgen.
 Calibrate the 40 MHz reference once: fw_setenv xo_correction <Hz>, applied at every boot.
 grep ^fishball_ /boot/uEnv.txt shows which build and which FPGA design the boot files came from.
+On a Mac, fishball-usb-mode ncm makes the USB cable a network macOS can use; fishball-usb-mode rndis undoes it.

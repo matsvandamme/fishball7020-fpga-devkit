@@ -1,0 +1,99 @@
+#!/bin/sh
+# Show or change which network function the USB cable carries.
+#
+#   fishball-usb-mode                 what is set, and what the gadget runs now
+#   fishball-usb-mode ncm             for a Mac (also Linux and Windows 11)
+#   fishball-usb-mode rndis           back to the default (Windows and Linux)
+#   fishball-usb-mode ecm             CDC-ECM (macOS and Linux)
+#   fishball-usb-mode ncm --no-apply  store it only; it takes effect at the next boot
+#
+# A Mac cannot reach 192.168.2.1 in the default mode, but it can reach this
+# command: over Ethernet (ssh root@fishball.local), or on the same USB cable's
+# serial console, which macOS does drive:
+#
+#   screen /dev/cu.usbmodem* 115200      # on the Mac; log in as root
+#
+# The mode is stored in the U-Boot environment, like the other settings
+# (fw_printenv), so it survives a rewritten card. fishball-usb-gadget explains
+# the modes and the two places that override this one.
+set -u
+# The two overrides are for firmware-modern/debian/tests/.
+GADGET=${FISHBALL_USB_GADGET:-/usr/local/sbin/fishball-usb-gadget}
+G=${FISHBALL_CONFIGFS:-/sys/kernel/config}/usb_gadget/composite_gadget
+# /etc/default/fishball-usb-gadget is NOT read here. systemd reads it for the
+# gadget unit, by its own rules and not a shell's, so `$GADGET --show` reads it
+# by those rules too and this script asks it: one parser, one answer.
+
+# What the gadget runs now: sets now (rndis.0, ncm.usb0, ecm.usb0 or none) and
+# bound (the UDC's name, or empty).
+running() {
+    now=none
+    for d in "$G"/functions/rndis.* "$G"/functions/ncm.* "$G"/functions/ecm.*; do
+        [ -d "$d" ] && now=${d##*/}
+    done
+    bound=$(cat "$G/UDC" 2>/dev/null)
+}
+
+show() {
+    set -- $($GADGET --show)
+    want=$1; shift
+    echo "set:      $want  (from $*)"
+    running
+    echo "running:  ${now%%.*}  ($now, $( [ -n "$bound" ] && echo bound || echo "not bound"))"
+    [ "$want" = "${now%%.*}" ] || echo "They differ. Apply with: systemctl restart fishball-usb-gadget"
+}
+
+new=${1:-}
+# Kept now: `set --` below replaces the arguments.
+opt=${2:-}
+case "$new" in
+    "")            show; exit 0 ;;
+    rndis|ncm|ecm) ;;
+    *)             sed -n '2,8p' "$0" | cut -c3- >&2; exit 2 ;;
+esac
+
+# rndis is the absence of the variable, so a board switched back is a board
+# that was never switched. With no value fw_setenv deletes.
+# timeout: fw_setenv writes the QSPI flash, and one that does not answer would
+# leave this command hanging.
+if [ "$new" = rndis ]; then timeout 10 fw_setenv usb_ethernet_mode; else timeout 10 fw_setenv usb_ethernet_mode "$new"; fi \
+    || { echo "fishball-usb-mode: fw_setenv failed - nothing changed" >&2
+         echo "fishball-usb-mode: the mode can be set in two other places instead:" >&2
+         echo "fishball-usb-mode:   a line  usb_ethernet_mode=$new  in /boot/uEnv.txt (the card's FAT partition), or" >&2
+         echo "fishball-usb-mode:   USB_ETHERNET_MODE=$new  in /etc/default/fishball-usb-gadget" >&2
+         echo "fishball-usb-mode: then: systemctl restart fishball-usb-gadget" >&2
+         exit 1; }
+
+# Say so when a higher-priority place decides instead.
+set -- $($GADGET --show)
+if [ "$1" != "$new" ]; then
+    got=$1; shift
+    echo "fishball-usb-mode: stored $new, but the gadget will use $got, from $*." >&2
+    echo "fishball-usb-mode: change or remove that as well." >&2
+    exit 1
+fi
+echo "fishball-usb-mode: usb_ethernet_mode is now $new"
+
+if [ "$opt" = "--no-apply" ]; then
+    echo "fishball-usb-mode: not applied; reboot, or: systemctl restart fishball-usb-gadget"
+    exit 0
+fi
+# The restart unplugs the board from the PC's point of view for a few seconds:
+# the USB network, the USB console and USB libiio all drop and come back, the
+# network as the new kind. Ethernet is not touched.
+#
+# Both units, by name: the gadget script swaps the function and binds again,
+# and the bind unit is started as well in case it was stopped or had failed
+# (it does nothing when the gadget is already bound). Not --no-block: the end
+# state is checked below. A shell on the USB console loses its line during the
+# restart and this script with it; systemd finishes the job all the same.
+echo "fishball-usb-mode: applying - everything on the USB cable drops for a few seconds"
+systemctl restart fishball-usb-gadget.service fishball-usb-bind.service
+rc=$?
+running
+if [ "${now%%.*}" != "$new" ] || [ -z "$bound" ]; then
+    echo "fishball-usb-mode: FAILED - the gadget runs ${now%%.*} ($now), $( [ -n "$bound" ] && echo bound || echo "NOT bound"); wanted $new, bound (systemctl exit $rc)." >&2
+    echo "fishball-usb-mode: why: journalctl -b -u fishball-usb-gadget -u fishball-usb-bind" >&2
+    exit 1
+fi
+echo "fishball-usb-mode: the gadget now runs $new ($now), bound to $bound"

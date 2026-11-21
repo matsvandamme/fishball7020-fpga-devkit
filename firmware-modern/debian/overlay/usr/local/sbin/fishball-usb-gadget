@@ -2,6 +2,9 @@
 # Build the USB composite gadget: a network interface at 192.168.2.1, a serial
 # console, and libiio over USB. Replaces the gadget half of Buildroot's S23udc.
 #
+#   fishball-usb-gadget          create it, or change its network function
+#   fishball-usb-gadget --show   print "<mode> <where the mode comes from>", change nothing
+#
 # This is the board's route in that does not depend on Ethernet, DHCP or
 # interface naming, so a broken network configuration still leaves it reachable
 # at 192.168.2.1.
@@ -10,58 +13,195 @@
 # create the gadget, start iiod on the FunctionFS, then attach to the UDC.
 # Binding before iiod serves it gives the host a device that does not answer.
 set -u
-CONFIGFS=/sys/kernel/config
+# The six overrides are for firmware-modern/debian/tests/, which runs this
+# script against a directory instead of a kernel.
+CONFIGFS=${FISHBALL_CONFIGFS:-/sys/kernel/config}
+UENV=${FISHBALL_UENV:-/boot/uEnv.txt}
+SERIAL=${FISHBALL_HW_SERIAL:-/mnt/jffs2/hw_serial}
+FFS=${FISHBALL_FFS:-/dev/iio_ffs}
+DEFAULTS=${FISHBALL_DEFAULTS:-/etc/default/fishball-usb-gadget}
+BIND=${FISHBALL_USB_BIND:-/usr/local/sbin/fishball-usb-bind}
 G=$CONFIGFS/usb_gadget/composite_gadget
+C=$G/configs/c.1
 
 # The factory IDs. Host tools that match on idVendor/idProduct (SDRangel,
 # libiio's usb backend) do not see the board otherwise.
 VID=0x0456
 PID=0xb673
 PRODUCT="PlutoSDR (ADALM-PLUTO)"
-NETFUNC=${USB_ETHERNET_MODE:-rndis.0}
+
+# --- which USB network function ------------------------------------------
+# One of three, as on the ADALM-Pluto and under the same name, usb_ethernet_mode:
+#
+#   rndis   the default. Windows and Linux drive it; macOS has no driver for it.
+#   ncm     CDC-NCM. macOS, Linux and Windows 11 drive it; Windows 10 does not
+#           bind its driver by itself.
+#   ecm     CDC-ECM. macOS and Linux; Windows has no driver. Try it if a Mac
+#           keeps dropping the ncm link.
+#
+# It is a switch, not both at once. Two functions in one configuration put a
+# second network adapter on every Windows and Linux PC, and the board would
+# need a bridge (not in this kernel) to answer at 192.168.2.1 on both. Two
+# configurations, RNDIS first, stop Windows loading its composite driver at
+# all, so the console and USB libiio would go as well.
+#
+# Read from, first match wins:
+#   1. USB_ETHERNET_MODE, set in /etc/default/fishball-usb-gadget
+#   2. a line usb_ethernet_mode=ncm in uEnv.txt on the card's FAT partition,
+#      which a Mac can edit with the card in a reader
+#   3. the U-Boot variable (fishball-usb-mode ncm, or fw_setenv), which
+#      survives a rewritten card
+# Anything else, or nothing, is rndis.
+#
+# systemd reads place 1 into the environment (EnvironmentFile= in the unit). Run by
+# hand, or by fishball-usb-mode, there is no such variable, so the file is read
+# here, and the way systemd reads it: the last assignment wins; spaces round the
+# = and at the end of the line go, and one pair of quotes round the value; and
+# NOTHING else. `USB_ETHERNET_MODE=ncm # for the Mac` is the value
+# "ncm # for the Mac" to systemd, so it is that here too, and is refused below.
+mode=${USB_ETHERNET_MODE:-}
+if [ -z "$mode" ] && [ -r "$DEFAULTS" ]; then
+    mode=$(sed -n 's/^[[:space:]]*USB_ETHERNET_MODE[[:space:]]*=[[:space:]]*//p' "$DEFAULTS" | tail -1 \
+           | sed -e 's/[[:space:]]*$//' -e 's/^"\(.*\)"$/\1/' -e "s/^'\\(.*\\)'\$/\\1/")
+fi
+src="USB_ETHERNET_MODE in $DEFAULTS"
+if [ -z "$mode" ] && [ -r "$UENV" ]; then
+    # tr: a Windows editor leaves a CR, and people put spaces round the =.
+    mode=$(sed -n 's/^[[:space:]]*usb_ethernet_mode[[:space:]]*=//p' "$UENV" | tail -1 | tr -d ' \t\r"')
+    src="usb_ethernet_mode in $UENV"
+fi
+if [ -z "$mode" ]; then
+    # libubootenv's fw_printenv exits 0 with empty output for an unset variable.
+    # timeout: it reads the QSPI flash, and this unit is ordered before iiod; a
+    # flash that does not answer must not hold up the boot.
+    mode=$(timeout 3 fw_printenv -n usb_ethernet_mode 2>/dev/null || true)
+    src="the U-Boot variable usb_ethernet_mode"
+fi
+[ -n "$mode" ] || { mode=rndis; src="the default"; }
+# Lower case, and without an instance suffix: this variable used to hold a
+# configfs function name (rndis.0).
+mode=$(echo "$mode" | tr 'A-Z' 'a-z'); mode=${mode%%.*}
+case "$mode" in
+    rndis|ncm|ecm) ;;
+    *)  echo "fishball-usb-gadget: '$mode' (from $src) is not rndis, ncm or ecm - using rndis" >&2
+        mode=rndis; src="the default" ;;
+esac
+# The instance names are the factory's (S23udc).
+netfunc() { case "$1" in ncm) echo ncm.usb0 ;; ecm) echo ecm.usb0 ;; *) echo rndis.0 ;; esac; }
+NETFUNC=$(netfunc "$mode")
+
+[ "${1:-}" = "--show" ] && { echo "$mode $src"; exit 0; }
 
 mountpoint -q $CONFIGFS || mount -t configfs configfs $CONFIGFS 2>/dev/null
 [ -d $CONFIGFS/usb_gadget ] || { echo "no configfs usb_gadget support" >&2; exit 1; }
-[ -d "$G" ] && { echo "gadget already present"; exit 0; }
 
-serial=$(cat /mnt/jffs2/hw_serial 2>/dev/null)
-[ -n "$serial" ] || { echo "no /mnt/jffs2/hw_serial - fishball-identity should have minted one" >&2; exit 1; }
+serial=$(cat "$SERIAL" 2>/dev/null)
+if [ -z "$serial" ]; then
+    # Without it there are no MACs to give a new function. A gadget that is
+    # already up is left alone, exit 0, as a restart always did: failing here
+    # would fail fishball-usb-bind with it.
+    [ -d "$G" ] && { echo "gadget already present; no $SERIAL, so it is left as it is" >&2; exit 0; }
+    echo "no $SERIAL - fishball-identity should have minted one" >&2; exit 1
+fi
 
 # Both MACs are derived from sha1(hw_serial) exactly as the factory S23udc does.
 # The host names its interface enx<host_addr> (the PC end, not the board's
 # dev_addr), so a different derivation renames it and breaks any static address
 # or NetworkManager profile bound to the old name. hw_serial persists in
-# /mnt/jffs2, so the name is stable across reflashes.
+# /mnt/jffs2, so the name is stable across reflashes. The mode does not enter
+# into it: the PC's interface keeps its name, and a Mac its network service,
+# whichever function is chosen.
 s=$(printf '%s\n' "$serial" | sha1sum | cut -c1-12)
 hex() { echo "$s" | cut -c"$1"-"$2"; }
 host_addr="00:E0:22:$(hex 1 2):$(hex 3 4):$(hex 5 6)"
 dev_addr="00:05:F7:$(hex 7 8):$(hex 9 10):$(hex 11 12)"
 
-mkdir -p "$G" || exit 1
-echo $VID > "$G/idVendor"
-echo $PID > "$G/idProduct"
-mkdir -p "$G/strings/0x409"
-echo "Analog Devices Inc." > "$G/strings/0x409/manufacturer"
-echo "$PRODUCT"           > "$G/strings/0x409/product"
-echo "$serial"            > "$G/strings/0x409/serialnumber"
+# Create a network function and give it both MACs. Fails where the kernel has
+# no such function (CONFIG_USB_CONFIGFS_NCM, _ECM): configfs refuses the mkdir.
+make_net() {
+    mkdir "$G/functions/$1" 2>/dev/null || return 1
+    echo "$host_addr" > "$G/functions/$1/host_addr" || return 1
+    echo "$dev_addr"  > "$G/functions/$1/dev_addr"
+}
+# Link the three functions into the configuration, network first. The order of
+# the links is the order of the interfaces: network 0 and 1, console 2 and 3,
+# libiio 4, in every mode. Host software that addresses an interface by number
+# does not see the mode change.
+link_all() {
+    for f in "$1" acm.usb0; do
+        ln -sf "$G/functions/$f" "$C/" 2>/dev/null
+    done
+    ln -sf "$G/functions/ffs.iio_ffs" "$C/ffs.iio_ffs" 2>/dev/null
+}
+# Attach to the UDC again after the swap below has detached it. Done here and
+# not left to systemd: fishball-usb-bind.service restarts with this unit
+# (Requires=) only while it is active, and not at all when this script is run
+# by hand, and either way the board would be left with no USB. When systemd
+# does run it afterwards (After= this unit, so never at the same time) it finds
+# the gadget bound and does nothing. --no-wait: iiod has not changed state.
+rebind() {
+    "$BIND" --no-wait
+    [ -n "$(cat "$G/UDC" 2>/dev/null)" ] && return 0
+    echo "fishball-usb-gadget: the gadget is NOT bound - no USB network, console or libiio. Try: fishball-usb-bind" >&2
+    return 1
+}
 
-mkdir -p "$G/functions/$NETFUNC" "$G/functions/acm.usb0" "$G/functions/ffs.iio_ffs"
-echo "$host_addr" > "$G/functions/$NETFUNC/host_addr"
-echo "$dev_addr"  > "$G/functions/$NETFUNC/dev_addr"
+swapped=0
+if [ -d "$G" ]; then
+    # Already there: `systemctl restart fishball-usb-gadget` after a mode
+    # change, which fishball-usb-mode runs. Swap the network function in place
+    # and leave the rest: iiod holds the FunctionFS open and does not notice.
+    have=
+    for d in "$G"/functions/rndis.* "$G"/functions/ncm.* "$G"/functions/ecm.*; do
+        [ -d "$d" ] && have=${d##*/}
+    done
+    [ "$have" = "$NETFUNC" ] && { echo "gadget already present ($have)"; exit 0; }
+    # configfs will not change a bound configuration. rebind attaches it again
+    # on every way out of here.
+    echo "" > "$G/UDC" 2>/dev/null
+    swapped=1
+    # All three links go, or the new function would come last and renumber
+    # every interface.
+    rm -f "$C/$have" "$C/acm.usb0" "$C/ffs.iio_ffs" 2>/dev/null
+    if [ -n "$have" ] && ! rmdir "$G/functions/$have" 2>/dev/null; then
+        # Exit 0 once it is bound again: failing here would fail
+        # fishball-usb-bind with it, and the old gadget is better than none.
+        echo "fishball-usb-gadget: cannot remove $have - keeping it" >&2
+        link_all "$have"
+        rebind || exit 1
+        exit 0
+    fi
+else
+    mkdir -p "$G" || exit 1
+    echo $VID > "$G/idVendor"
+    echo $PID > "$G/idProduct"
+    mkdir -p "$G/strings/0x409"
+    echo "Analog Devices Inc." > "$G/strings/0x409/manufacturer"
+    echo "$PRODUCT"           > "$G/strings/0x409/product"
+    echo "$serial"            > "$G/strings/0x409/serialnumber"
 
-mkdir -p "$G/configs/c.1/strings/0x409"
-echo "RNDIS/ACM/IIOUSBD" > "$G/configs/c.1/strings/0x409/configuration"
-echo 500 > "$G/configs/c.1/MaxPower"
-for f in "$NETFUNC" acm.usb0; do
-    ln -sf "$G/functions/$f" "$G/configs/c.1/" 2>/dev/null
-done
-ln -sf "$G/functions/ffs.iio_ffs" "$G/configs/c.1/ffs.iio_ffs" 2>/dev/null
+    mkdir -p "$G/functions/acm.usb0" "$G/functions/ffs.iio_ffs"
+    mkdir -p "$C/strings/0x409"
+    echo 500 > "$C/MaxPower"
+fi
+
+# USB is the route in when all else fails, so a function this kernel cannot
+# make must not leave the board without one: fall back to what it shipped with.
+if ! make_net "$NETFUNC"; then
+    echo "fishball-usb-gadget: this kernel cannot create $NETFUNC - falling back to rndis" >&2
+    rmdir "$G/functions/$NETFUNC" 2>/dev/null
+    mode=rndis; NETFUNC=$(netfunc rndis)
+    make_net "$NETFUNC" || echo "fishball-usb-gadget: cannot create $NETFUNC either - no USB network" >&2
+fi
+echo "$(echo "$mode" | tr 'a-z' 'A-Z')/ACM/IIOUSBD" > "$C/strings/0x409/configuration"
+link_all "$NETFUNC"
 
 # FunctionFS is where iiod serves libiio over USB. It must be mounted before iiod
 # starts, hence Before=iiod.service on this unit.
-mkdir -p /dev/iio_ffs
-mountpoint -q /dev/iio_ffs || mount -t functionfs iio_ffs /dev/iio_ffs 2>/dev/null
+mkdir -p "$FFS"
+mountpoint -q "$FFS" || mount -t functionfs iio_ffs "$FFS" 2>/dev/null
 
 # Print host_addr, in lower case, as the PC's interface name (enx<mac>);
 # dev_addr is the board's end and never appears on the PC.
-echo "fishball-usb-gadget: created, dev_addr $dev_addr, host_addr $host_addr (your PC sees enx$(echo "$host_addr" | tr -d ':' | tr 'A-Z' 'a-z'))"
+echo "fishball-usb-gadget: created, network $mode (from $src), dev_addr $dev_addr, host_addr $host_addr (your PC sees enx$(echo "$host_addr" | tr -d ':' | tr 'A-Z' 'a-z'))"
+if [ "$swapped" = 1 ]; then rebind || exit 1; fi

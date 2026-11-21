@@ -356,6 +356,12 @@ jobs:
           [ "$t" = "/dev/null" ] || { echo "$m points at '$t', not /dev/null" >&2; exit 1; }
           echo "  logind masked via symlink -> /dev/null"
 
+      # The USB gadget scripts, run against a directory standing in for
+      # configfs with the commands they call stubbed: which network function,
+      # in what order, with which MACs. The steps above only prove they parse.
+      - name: The USB gadget scripts decide and write what they should (no board)
+        run: ./firmware-modern/debian/tests/test-usb-gadget.sh
+
       - name: The overlay survives a container COPY, symlinks included
         # `COPY overlay/ /` is how these files reach the image. This is the same
         # copy, on the same kind of tree, asserting the mask arrives as a symlink

@@ -10,7 +10,14 @@ RequiresMountsFor=/mnt/jffs2
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/local/sbin/fishball-usb-gadget
+# A oneshot has no start timeout by default, and iiod waits for this unit. The
+# script's slow steps are bounded (3 s for the U-Boot environment, about 10 s
+# to bind again after a mode change); this is the backstop.
+TimeoutStartSec=30
 StandardOutput=journal+console
+# Optional: USB_ETHERNET_MODE=rndis|ncm|ecm. The script lists where else the
+# mode can come from; fishball-usb-mode is the command that sets it.
+EnvironmentFile=-/etc/default/fishball-usb-gadget
 
 [Install]
 WantedBy=multi-user.target
