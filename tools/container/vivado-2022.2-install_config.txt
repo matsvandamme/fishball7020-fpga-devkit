@@ -1,0 +1,21 @@
+#### Vivado ML Standard Install Configuration ####
+# For a batch install with no display (macOS, a server, CI):
+#     ./devkit container install <installer.bin> -a XilinxEULA,3rdPartyEULA -b Install \
+#         -c tools/container/vivado-2022.2-install_config.txt
+# The -a flag accepts AMD's licence agreements on your behalf, so read them
+# first. Destination below must be where the container mounts Vivado, which is
+# $XILINX_DIR: edit it if that is not /tools/Xilinx (nothing rewrites this file).
+# This is what `xsetup -b ConfigGen` writes for "Vivado", "Vivado ML Standard",
+# with every device family switched off except Zynq-7000 - the only one this
+# board needs, and the difference between ~130 GB and ~30 GB on disk.
+Edition=Vivado ML Standard
+Product=Vivado
+Destination=/tools/Xilinx
+Modules=Virtex UltraScale+ HBM:0,DocNav:0,Kintex UltraScale:0,Artix UltraScale+:0,Spartan-7:0,Artix-7:0,Virtex UltraScale+:0,Vitis Model Composer(Xilinx Toolbox for MATLAB and Simulink. Includes the functionality of System Generator for DSP):0,Zynq UltraScale+ MPSoC:0,Zynq-7000:1,Virtex UltraScale+ 58G:0,Kintex-7:0,Install Devices for Kria SOMs and Starter Kits:0,Kintex UltraScale+:0
+InstallOptions=
+CreateProgramGroupShortcuts=0
+ProgramGroupFolder=Xilinx Design Tools
+CreateShortcutsForAllUsers=0
+CreateDesktopShortcuts=0
+CreateFileAssociation=0
+EnableDiskUsageOptimization=1

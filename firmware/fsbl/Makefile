@@ -66,7 +66,7 @@ app: bsp
 	done && \
 	$(CROSS)gcc $(APP_LDFLAGS) -Wl,-T -Wl,../src/lscript.ld -L$(BSP)/lib \
 	    -o fsbl.elf $$(ls src/*.o | sort) $(APP_LIBS)
-	@echo "  $(APP)/Debug/fsbl.elf  $$(stat -c %s $(APP)/Debug/fsbl.elf) bytes"
+	@echo "  $(APP)/Debug/fsbl.elf  $$(wc -c < $(APP)/Debug/fsbl.elf | tr -d '[:space:]') bytes"
 
 # The equivalence test. Compare the LOADABLE IMAGE, not the ELF: -g3 DWARF
 # carries absolute build paths and will always differ, while the loadable image
@@ -76,8 +76,8 @@ compare:
 	[ -r "$$theirs" ] || { echo "no golden FSBL at $$theirs" >&2; exit 1; }; \
 	$(CROSS)objcopy -O binary $$ours  /tmp/fsbl-ours.bin; \
 	$(CROSS)objcopy -O binary $$theirs /tmp/fsbl-theirs.bin; \
-	echo "  ours   $$(md5sum /tmp/fsbl-ours.bin   | cut -d' ' -f1)  $$(stat -c %s /tmp/fsbl-ours.bin) bytes"; \
-	echo "  vitis  $$(md5sum /tmp/fsbl-theirs.bin | cut -d' ' -f1)  $$(stat -c %s /tmp/fsbl-theirs.bin) bytes"; \
+	echo "  ours   $$(md5sum /tmp/fsbl-ours.bin   | cut -d' ' -f1)  $$(wc -c < /tmp/fsbl-ours.bin | tr -d '[:space:]') bytes"; \
+	echo "  vitis  $$(md5sum /tmp/fsbl-theirs.bin | cut -d' ' -f1)  $$(wc -c < /tmp/fsbl-theirs.bin | tr -d '[:space:]') bytes"; \
 	if cmp -s /tmp/fsbl-ours.bin /tmp/fsbl-theirs.bin; then echo "  IDENTICAL"; else \
 	  echo "  differ - expected with the distro toolchain; check it is only the"; \
 	  echo "  newlib atexit machinery and that OCM still fits:"; \

@@ -26,6 +26,10 @@ if [ ! -d "$SRC_DIR" ]; then
     echo "ERROR: $SRC_DIR not found. Run ./setup.sh first." >&2
     exit 1
 fi
+# The pins, devkit_ensure_bootgen and the portable helpers (devkit_ncpu and
+# friends). Sourced up here because the helpers are used from stage 4 on.
+# shellcheck source=fetch_common.sh
+source "$BUILD_ALL_DIR/fetch_common.sh"
 
 # ---------------------------------------------------------------------------
 # Options
@@ -278,7 +282,12 @@ echo "=== [1/7] Building HDL: synth -> impl -> bitstream -> hardware platform ==
     # patches/, so there is one source of truth. system_bd.tcl references
     # this filename, so a rename has to happen in both places.
     cp "$BUILD_ALL_DIR/coefile_wbfm_102100.coe" .
-    vivado -mode batch -source build_hdl.tcl -journal build_hdl.jou -log build_hdl.log
+    # stdin closed, always. Batch-mode Vivado still reads it, and with a stdin
+    # that is open but never delivers anything - a container started without -i,
+    # a build launched from a script or over ssh - it sits at the end of the Tcl
+    # script waiting for a command instead of exiting. Seen on macOS, where the
+    # bitstream had been written and the build never moved on.
+    vivado -mode batch -source build_hdl.tcl -journal build_hdl.jou -log build_hdl.log </dev/null
     echo "    Timing summary:"; grep -A3 "Design Timing Summary" timing.rpt | tail -2 || true
 )
 fi
@@ -341,8 +350,8 @@ if [ "$HDL_ONLY" -eq 1 ]; then
 else
     echo "=== [4/7] Building kernel: uImage + fishball device tree ==="
     PATH="$TOOLCHAIN_PATH" make -C "$SRC_DIR/linux" ARCH=arm CROSS_COMPILE=$CROSS_COMPILE zynq_pluto_defconfig
-    PATH="$TOOLCHAIN_PATH" make -C "$SRC_DIR/linux" -j "$(nproc)" ARCH=arm CROSS_COMPILE=$CROSS_COMPILE uImage UIMAGE_LOADADDR=0x8000
-    PATH="$TOOLCHAIN_PATH" DTC_FLAGS=-@ make -C "$SRC_DIR/linux" -j "$(nproc)" ARCH=arm CROSS_COMPILE=$CROSS_COMPILE zynq-pluto-sdr-fishball.dtb
+    PATH="$TOOLCHAIN_PATH" make -C "$SRC_DIR/linux" -j "$(devkit_ncpu)" ARCH=arm CROSS_COMPILE=$CROSS_COMPILE uImage UIMAGE_LOADADDR=0x8000
+    PATH="$TOOLCHAIN_PATH" DTC_FLAGS=-@ make -C "$SRC_DIR/linux" -j "$(devkit_ncpu)" ARCH=arm CROSS_COMPILE=$CROSS_COMPILE zynq-pluto-sdr-fishball.dtb
 
 fi
 
@@ -411,8 +420,6 @@ PATH="$TOOLCHAIN_PATH" CROSS_COMPILE=$CROSS_COMPILE "$SRC_DIR/scripts/get_defaul
 echo "=== [7/7] Packaging SD-card files ==="
 # bootgen must RUN here, not merely exist: one built on a newer-glibc host does
 # not run in the build container. See devkit_ensure_bootgen in fetch_common.sh.
-# shellcheck source=fetch_common.sh
-source "$BUILD_ALL_DIR/fetch_common.sh"
 devkit_ensure_bootgen "$SRC_DIR/bootgen"
 (
     # No env-vivado.sh here any more: bootgen was the only thing in this stage
@@ -429,7 +436,7 @@ devkit_ensure_bootgen "$SRC_DIR/bootgen"
     # only the header moved. Pin the stamp to the rootfs's own mtime so the
     # image is as old as its contents and two builds of the same source agree.
     # An externally set SOURCE_DATE_EPOCH wins, as reproducible-builds expects.
-    SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(stat -c %Y "$SRC_DIR/buildroot/output/images/rootfs.cpio.gz")}" \
+    SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(devkit_mtime "$SRC_DIR/buildroot/output/images/rootfs.cpio.gz")}" \
     mkimage -A arm -T ramdisk -C gzip -d "$SRC_DIR/buildroot/output/images/rootfs.cpio.gz" uramdisk.image.gz
 
     cp "$BUILD_ALL_DIR/boot.bif" .
@@ -448,7 +455,7 @@ done
 # BOOT.bin (FSBL + bitstream + U-Boot) should always be multiple MB; a
 # truncated file here usually means bootgen failed partway without a
 # nonzero exit code.
-boot_bin_size=$(stat -c %s "$OUT_DIR/BOOT.bin")
+boot_bin_size=$(devkit_fsize "$OUT_DIR/BOOT.bin")
 if [ "$boot_bin_size" -lt 1000000 ]; then
     echo "ERROR: $OUT_DIR/BOOT.bin is only $boot_bin_size bytes - expected several MB. bootgen likely failed silently." >&2
     exit 1

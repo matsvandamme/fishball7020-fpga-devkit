@@ -49,6 +49,25 @@ FW_MONOREPO_COMMIT="$UPSTREAM_COMMIT"
 # 5.8 GB of the monorepo's 6.5.
 FW_MONOREPO_MODERN_SPARSE="u-boot-xlnx scripts"
 
+# ---- small portable helpers ---------------------------------------------------
+# GNU coreutils spellings that macOS (BSD userland, bash 3.2) does not have.
+# The supported way to build on a Mac is ./devkit container, where none of this
+# matters - but pieces of the build get run by hand on the host, and "stat:
+# illegal option -- c" in the middle of one is a poor way to find that out.
+#
+# CPUs to build with. NEVER leave this empty: `make -j` with no number means
+# "unlimited jobs", which is what a missing nproc used to turn -j"$(nproc)" into.
+devkit_ncpu() {
+    local n
+    n="$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || true)"
+    case "$n" in ''|*[!0-9]*) n=1 ;; esac
+    echo "$n"
+}
+# Size of a file in bytes (stat -c %s).
+devkit_fsize() { wc -c < "$1" | tr -d '[:space:]'; }
+# Modification time of a file, seconds since the epoch (stat -c %Y).
+devkit_mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"; }
+
 # Make sure bootgen exists AND RUNS IN THIS ENVIRONMENT, rebuilding it if not.
 # Costs ~5 s. Called by both setup scripts and by both build scripts just before
 # they package BOOT.bin.
@@ -84,7 +103,7 @@ devkit_ensure_bootgen() {
         exit 1; }
     # clean first: objects compiled against another libstdc++ will not relink.
     make -C "$d" clean >/dev/null 2>&1 || true
-    make -C "$d" -j"$(nproc)" "LIBS=-lssl -lcrypto -ldl -lpthread" >/dev/null 2>&1 || {
+    make -C "$d" -j"$(devkit_ncpu)" "LIBS=-lssl -lcrypto -ldl -lpthread" >/dev/null 2>&1 || {
         echo "ERROR: bootgen failed to build. It needs OpenSSL headers:" >&2
         echo "       sudo apt install build-essential libssl-dev" >&2
         exit 1; }

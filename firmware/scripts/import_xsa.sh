@@ -100,8 +100,9 @@ mkdir -p "$OUT_DIR"
     echo "# Written by import_xsa.sh. This bitstream was NOT built here."
     echo "source:   $XSA_FILE"
     echo "md5:      $(md5sum "$XSA_FILE" | cut -d' ' -f1)"
-    echo "mtime:    $(date -r "$XSA_FILE" -Is 2>/dev/null || echo unknown)"
-    echo "imported: $(date -Is)"
+    echo "mtime:    $(date -r "$XSA_FILE" -Is 2>/dev/null || date -r "$XSA_FILE" +%Y-%m-%dT%H:%M:%S%z 2>/dev/null || echo unknown)"
+    # date -Is is GNU; BSD date (macOS) has no -I with a precision before 14.
+    echo "imported: $(date -Is 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z)"
     echo "bitstream_md5: $(md5sum "$PLUTO_DIR/pluto.runs/impl_1/system_top.bit" | cut -d' ' -f1)"
     echo "# IP instances, read from the platform's own system.hwh - this"
     echo "# describes the BITSTREAM, unlike system_bd.tcl which describes"
@@ -110,7 +111,7 @@ mkdir -p "$OUT_DIR"
         | grep -oE 'INSTANCE="[A-Za-z_0-9]+"' | sort -u | sed 's/^/ip: /' || true
 } > "$OUT_DIR/xsa-provenance.txt"
 
-bit_sz=$(stat -c %s "$PLUTO_DIR/pluto.runs/impl_1/system_top.bit")
+bit_sz=$(wc -c < "$PLUTO_DIR/pluto.runs/impl_1/system_top.bit" | tr -d '[:space:]')   # not stat -c: BSD stat has none
 echo "    hardware platform: $PLUTO_DIR/system_top.xsa"
 echo "    bitstream:         $bit_sz bytes"
 echo "    provenance:        $OUT_DIR/xsa-provenance.txt"

@@ -94,6 +94,27 @@ if [ "$ROOTFS_ONLY" -eq 1 ] || [ "$WITH_ROOTFS" -eq 1 ]; then
     fi
     [ "$ROOTFS_ONLY" -eq 1 ] && exec "$FW_DIR/debian/build.sh"
 fi
+# macOS. Everything below this line - U-Boot, the kernel, the FSBL - is built in
+# the container there, never on the Mac itself: the kernel tree has file names
+# that differ only in case, its host tools want <elf.h> and GNU userland, and
+# there is no packaged arm-linux-gnueabi compiler. Say that in one sentence, for
+# doctor as well as for build, rather than as a list of "missing" apt packages
+# nobody can install. (--rootfs-only, handled above, does run on the Mac: it
+# drives docker itself.)
+if [ "$(uname -s)" = Darwin ]; then
+    echo "ERROR: building natively on macOS is not supported; use ./devkit container:" >&2
+    echo "           ./devkit container build-image                      # once" >&2
+    echo "           ./devkit container doctor" >&2
+    echo "           ./devkit container setup" >&2
+    echo "           ./devkit container build --xsa \"\$(./firmware-modern/fetch-pinned-xsa.sh)\"" >&2
+    if [ "$WITH_ROOTFS" -eq 1 ]; then
+        echo "       --all is two commands here: the container build above for the boot" >&2
+        echo "       files, then the Debian root on the Mac itself:" >&2
+        echo "           ./devkit build --rootfs-only" >&2
+    fi
+    echo "       It needs Docker (Colima); see docs/building-in-a-container.md." >&2
+    exit 1
+fi
 # --preflight-only (what `./devkit doctor --target modern` runs) is "can this
 # machine build?", which does not depend on which XSA you will pass later.
 if [ -z "$XSA_FILE" ] && [ "$PREFLIGHT_ONLY" -eq 0 ]; then
@@ -202,7 +223,7 @@ echo "=== [3/6] Building U-Boot ==="
 # are identical.
 UCC="${CROSS}gcc -mfloat-abi=soft"
 make -s -C "$MONO/u-boot-xlnx" ARCH=arm CROSS_COMPILE=$CROSS CC="$UCC" zynq_pluto_defconfig
-make -s -C "$MONO/u-boot-xlnx" ARCH=arm CROSS_COMPILE=$CROSS CC="$UCC" UBOOTVERSION="PlutoSDR" -j"$(nproc)"
+make -s -C "$MONO/u-boot-xlnx" ARCH=arm CROSS_COMPILE=$CROSS CC="$UCC" UBOOTVERSION="PlutoSDR" -j"$(devkit_ncpu)"
 UBOOT_ELF="$MONO/u-boot-xlnx/u-boot"
 [ -f "$UBOOT_ELF" ] || { echo "ERROR: the U-Boot build produced no u-boot" >&2; exit 1; }
 
@@ -214,7 +235,7 @@ else
     # fishball_defconfig, never zynq_pluto_defconfig on its own - that is an
     # ADALM-Pluto, with no Ethernet, SD card or GPIO sysfs (see README.md).
     make -s -C "$KSRC" ARCH=arm CROSS_COMPILE=$CROSS fishball_defconfig
-    make -s -C "$KSRC" ARCH=arm CROSS_COMPILE=$CROSS uImage LOADADDR=0x8000 -j"$(nproc)"
+    make -s -C "$KSRC" ARCH=arm CROSS_COMPILE=$CROSS uImage LOADADDR=0x8000 -j"$(devkit_ncpu)"
     make -s -C "$KSRC" ARCH=arm CROSS_COMPILE=$CROSS DTC_FLAGS=-@ xilinx/zynq-pluto-sdr-fishball.dtb
     cp "$KSRC/arch/arm/boot/uImage" "$STAGE/uImage"
     # NOTE THE RENAME: the flasher wants the literal name devicetree.dtb.
@@ -267,7 +288,7 @@ BUILT="BOOT.bin uEnv.txt"
 for f in $BUILT; do
     [ -s "$STAGE/$f" ] || { echo "ERROR: $f is missing or empty - output/ left untouched." >&2; exit 1; }
 done
-sz=$(stat -c %s "$STAGE/BOOT.bin")
+sz=$(devkit_fsize "$STAGE/BOOT.bin")
 [ "$sz" -ge 1000000 ] || { echo "ERROR: BOOT.bin is only $sz bytes - bootgen failed quietly." >&2; exit 1; }
 # Not just "a file of the right size": the three partitions BOOT.bin exists to
 # carry, read back out of it, with the bitstream checked against the XSA byte for

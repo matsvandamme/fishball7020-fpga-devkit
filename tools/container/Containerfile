@@ -51,6 +51,9 @@ RUN apt-get -o Acquire::Retries=5 update \
       `# doctor treats these as soft, but a container that cannot simulate` \
       `# sends you back to the host for the one-second check` \
       iverilog sshpass \
+      `# ssh and scp, for the board: doctor's host-tools section asks for them,` \
+      `# and sshpass alone does not bring them in under --no-install-recommends` \
+      openssh-client \
       `# kernel and buildroot - and g++/libssl-dev also build bootgen, which` \
       `# setup.sh compiles from AMD's Apache-2.0 source so that packaging` \
       `# BOOT.bin needs no AMD binary` \
