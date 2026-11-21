@@ -109,7 +109,7 @@ Then pick a starting point: receive with [SDR++](docs/sdrpp.md) or [other tools]
 
 **Just want a working board?** Back up every file on the board's microSD card first; that is your way back. Then:
 
-1. Download [the latest release](../../releases/latest) (modern firmware, **PlutoSky R1 only**; an R2 needs [its own repository](#plutosky-r2)). It needs two partitions, so write it with a clone of this repository and a card reader: `sudo ./devkit write-card --from ~/Downloads /dev/sdX`. **On Windows**, double-click `write-card.cmd` from the same release instead: [writing the card on Windows](docs/windows-sd-card.md). For the factory firmware, copy the five files of [v1.7](../../releases/tag/v1.7) onto the FAT32 card instead.
+1. Download [the latest release](../../releases/latest) (modern firmware, **PlutoSky R1 only**; an R2 needs [its own repository](#plutosky-r2)). It needs two partitions, so write it with a clone of this repository and a card reader: `sudo ./devkit write-card --from ~/Downloads /dev/sdX`. **On macOS** the same command takes `/dev/diskN` (`diskutil list external physical` names it); a card written this way was written on a Mac and booted in an R1 on 2026-11-21. **On Windows**, double-click `write-card.cmd` from the same release instead: [writing the card on Windows](docs/windows-sd-card.md). For the factory firmware, copy the five files of [v1.7](../../releases/tag/v1.7) onto the FAT32 card instead.
 2. Check the **`BOOT`** DIP switch next to `RST` is in SD mode: both sliders away from `ON`. Boards ship like that.
 3. Insert the card and power on, from a mains USB charger: on a laptop's USB power the board can hang. Nothing happening? [Boot modes and recovery](docs/flashing.md).
 
@@ -127,6 +127,8 @@ sudo ./devkit write-card /dev/sdX                   # the first time: a whole ne
 
 After that, `./devkit flash --kernel-only` puts a changed kernel on the running board over the network. Never flash with DFU.
 
+**On a Mac** the host tools (`ssh-key`, `status`, `flash`, `selftest --ssh`, `write-card`) run as they are, with no `sshpass`; the build runs in `./devkit container` with Docker through Colima; and the USB network needs the board switched to `ncm`, with firmware from the next release. What was tested and what was not: [use the devkit on a Mac](docs/start/use-a-mac.md).
+
 **Changing the FPGA** needs Vivado 2022.2, on Ubuntu 18.04 to 22.04 or in the container `./devkit container` builds for you:
 ```bash
 # run from: the repo root
@@ -137,7 +139,7 @@ After that, `./devkit flash --kernel-only` puts a changed kernel on the running 
 ./devkit verify --target factory --board  # is the board actually running it?
 ```
 
-`./devkit help` lists every command and `./devkit help <command>` explains one; `./devkit completion install` adds tab completion. `DEVKIT_TARGET=factory` makes factory the default. Details: [building](docs/building.md) · [in a container](docs/building-in-a-container.md) · [flashing](docs/flashing.md).
+`./devkit help` lists every command and `./devkit help <command>` explains one; `./devkit completion install` adds tab completion (bash and zsh; for the current shell only, `eval "$(./devkit completion)"`). `DEVKIT_TARGET=factory` makes factory the default. Details: [building](docs/building.md) · [in a container](docs/building-in-a-container.md) · [flashing](docs/flashing.md).
 
 ## 💭 Feedback and contributing
 

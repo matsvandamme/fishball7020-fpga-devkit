@@ -818,8 +818,9 @@ hostnamectl set-hostname lab-sdr  <span class="c"># avahi picks it up immediatel
   </ul>
 
   <p>On Debian <code>usb0</code> is brought up at <strong>192.168.2.1</strong> by
-    <code>fishball-usb-bind</code>, which hard-codes that address, and there is <strong>no DHCP
-    server</strong> on the USB link. Give your host end an address yourself:</p>
+    <code>fishball-usb-bind</code>, which hard-codes that address. On release v2.3 and earlier there is
+    <strong>no DHCP server</strong> on the USB link; from the next release the board hands your host
+    <code>192.168.2.10</code> itself. On v2.3, give your host end an address yourself:</p>
 
   <div class="code">
     <div class="code-bar"><span class="f">terminal</span><span class="t">Shell</span></div>

@@ -131,7 +131,15 @@ The DAB+ decoder works the same on either transport.
 ### Installing it
 
 On Arch, a package; on another Linux, SDR++ built from source at the pinned
-commit with the patch applied: [install the patched SDR++](radio/install-patched-sdrpp.md).
+commit with the patch applied; on macOS, `tools/sdrpp/build-macos.sh`, which
+builds it into a private directory:
+[install the patched SDR++](radio/install-patched-sdrpp.md).
+
+The macOS build was tested this far on one Apple Silicon Mac: it builds,
+starts, and loads the PlutoSDR source, the audio sink and the DAB+ decoder.
+Receiving in the window was not checked. Fast TCP itself was measured from the
+Mac with a script, on a PlutoSky R2: 20 MS/s arrived in full on both receive
+ports.
 
 ## DAB+ radio
 

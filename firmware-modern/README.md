@@ -63,6 +63,12 @@ running, with a backup and an md5 check before anything is swapped:
 sudo ./devkit write-card --target modern /dev/sdX         # refuses any non-removable disk
 ```
 
+On macOS the card is `/dev/diskN` (`diskutil list external physical`), and the
+writer makes the root ext3 instead of ext4. A card written this way was
+written on a Mac and booted in an R1 (2026-11-21). The build itself runs in
+`./devkit container` there, and `--rootfs-only` on the Mac with `docker buildx`:
+[use the devkit on a Mac](../docs/start/use-a-mac.md).
+
 `./devkit build --target modern --all --xsa "$XSA"` builds the boot files and
 the root in one go. The root is built in its own container, so run that on your
 PC rather than inside `./devkit container`.

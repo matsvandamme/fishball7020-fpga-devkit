@@ -25,6 +25,29 @@ signature.
 port on the same laptop. To confirm, run `./devkit selftest`: on mains it reports
 `25 passed, 0 warnings, 0 failed` and `HEALTHY`, with no Calibration TIMEOUTs.
 
+### On a Mac, `192.168.2.1` does not answer and no network port appears
+
+**Symptom.** The USB cable is in and the board runs, but macOS shows no new
+network port. `iio_info -s` may still list the board as a `usb:` context.
+
+**Cause.** The board's USB network is RNDIS by default, and macOS has no RNDIS
+driver.
+
+**Fix.** Reach the board over Ethernet (`ssh root@fishball.local`) and run
+`fishball-usb-mode ncm`. This needs firmware from the next release; it is not
+in v2.3. On v2.3, use Ethernet.
+[Reach the board over the USB cable](start/use-a-mac.md#reach-the-board-over-the-usb-cable).
+
+### A tool stops with `No way to log in to the board without typing a password`
+
+**Cause.** The machine has neither the devkit's key nor `sshpass`. A stock Mac
+has no `sshpass`.
+
+**Fix.** `./devkit ssh-key`. It needs no `sshpass`: it asks for the board's
+password (`analog`) once, in the terminal. `./devkit doctor --host` shows what
+the host tools find. Older versions of the tools stopped with `need sshpass`
+instead; the key now replaces it.
+
 ### ssh works, but nothing can open the radio (Debian root)
 
 **Symptom.** `iio_info -u ip:192.168.2.1` fails and SDR++ finds no device, but

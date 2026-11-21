@@ -76,5 +76,8 @@ an image entry by entry against the release. The repository's CI runs the
 script under Windows PowerShell 5.1 for every change, into an image file and
 into a virtual disk, and checks both that way.
 
+On macOS, `./devkit write-card` makes the same card (FAT32 and ext3) with
+`tools/write_card_mac.py`: [use the devkit on a Mac](start/use-a-mac.md#write-a-card).
+
 The cards it writes have been checked under Windows and Linux. They have not
 yet been booted on a board: tell us how yours goes.

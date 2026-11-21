@@ -22,7 +22,7 @@ From a board in its box to a board you can use: six short steps, one page each.
 -   :material-numeric-3-circle:{ .lg } **[Put the firmware on a card](write-the-card.md)**
 
 
-    Download the latest release and write it, from Linux or Windows.
+    Download the latest release and write it, from Linux, macOS or Windows.
 
 -   :material-numeric-4-circle:{ .lg } **[Connect and find the board](connect.md)**
 
@@ -47,4 +47,5 @@ From a board in its box to a board you can use: six short steps, one page each.
   [aircraft (ADS-B)](../adsb.md), [watch a sweep live](../chirp-view.md).
 - **Change the address or name:** [change the IP address](change-the-address.md).
 - **Stop typing the password:** [log in with a key](log-in-with-a-key.md).
+- **On macOS:** [use the devkit on a Mac](use-a-mac.md).
 - **Something is wrong:** [troubleshooting](../troubleshooting.md).

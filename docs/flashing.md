@@ -63,7 +63,14 @@ previous files stay on the card as `*.prev` and on your disk in
 - `--all` and `--rootfs-only` are refused for the modern target: the Debian
   root cannot be swapped over the network. Write a card (Option A).
 - On Buildroot `/dev/mmcblk0p1` is **unmounted**; on Debian it is **already
-  mounted at `/boot`**. `./devkit flash` handles both.
+  mounted at `/boot`**. `./devkit flash` handles both, and leaves `/boot`
+  read-write or read-only as it found it. (It used to leave `/boot` read-only
+  on Debian.)
+- The time it reports for the reboot is elapsed seconds.
+- **It logs in with the key** from `./devkit ssh-key` and falls back to
+  `sshpass` where that is installed, so it runs from Linux and from macOS.
+  Tested from a Mac on a PlutoSky R2: `--kernel-only --no-reboot`, and a flash
+  with the reboot.
 
 By hand, the same steps:
 
@@ -109,6 +116,35 @@ ssh $BOARD "cd $SD && cp BOOT.bin BOOT.bin.prev && mv BOOT.bin.new BOOT.bin && s
 
     !!! danger "Check the device name yourself"
         It refuses non-removable disks, but this command can destroy data you care about.
+
+=== "macOS"
+
+    The same command, with the disk's macOS name. It runs
+    `tools/write_card_mac.py`, which lays the card out itself in Python: no
+    Linux tools and no container.
+
+    ```bash
+    # run from: the repo root, on the Mac. DESTROYS everything on the card
+    diskutil list external physical                    # names the card: /dev/diskN
+    ./devkit write-card --from DIR --dry-run /dev/diskN   # DIR holds a downloaded release
+    sudo ./devkit write-card --from DIR /dev/diskN
+    ./devkit write-card --from DIR --image card.img    # a new image file instead; no sudo
+    ```
+
+    - **`--from DIR`** also takes the root, `debian-rootfs.tar.gz`, from the
+      release. Without it the boot files come from `firmware-modern/output/`
+      and the root from `firmware-modern/debian/rootfs.tar`.
+    - **The root partition is ext3**, as from the Windows writer; the Linux
+      writer makes ext4. It fills the rest of the card.
+    - **It refuses** internal disks (except a card in a built-in SD slot), the
+      disk macOS runs from, non-removable disks, disk images and partitions.
+    - **It checks the whole release before erasing** and reads back every byte
+      it wrote.
+
+    A 32 GB card with release v2.3 took 81 s for 926 MB and read back
+    identical. It booted in an R1 on 2026-11-21.
+    Every option: `python3 tools/write_card_mac.py --help`, or
+    [use the devkit on a Mac](start/use-a-mac.md#write-a-card).
 
 === "firmware/ (Buildroot)"
 

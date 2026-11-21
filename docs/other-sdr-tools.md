@@ -32,7 +32,7 @@ It can also record raw IQ to the board's memory; recordings open in
 !!! warning "It is a different firmware, not an application"
     Installing it replaces this devkit's bitstream, kernel and root filesystem, and
     with them the sample-locked GPIO outputs, the transmit-mute patches, the thermal
-    limit and the `tx_disable` latch. `sudo ./devkit write-card /dev/sdX` brings them
+    limit and the `tx_disable` latch. `sudo ./devkit write-card /dev/sdX` (on a Mac, `/dev/diskN`) brings them
     back (the factory firmware: `./devkit flash --target factory --all`).
 
 !!! warning "Its FPGA design targets the ADALM-Pluto"
@@ -73,6 +73,9 @@ fields across captures and re-transmits, with direct PlutoSDR-class support.
 plugins and many demodulators; [SDR++](https://github.com/AlexandreRouma/SDRPlusPlus)
 is a faster interface over a smaller feature set; [GQRX](https://gqrx.dk/) is the
 simplest. All reach the board through libiio or SoapySDR at `ip:fishball.local`.
+On a Mac, libiio's `usb:` transport reaches the board in the default USB mode;
+`ip:192.168.2.1` over the USB cable needs the board switched to `ncm`
+([use the devkit on a Mac](start/use-a-mac.md#reach-the-board-over-the-usb-cable)).
 SDR++'s PlutoSDR source reads only RX1;
 [Using SDR++ with this board](sdrpp.md) covers its settings, the rates USB
 carries, and a patched build with RX2, the FPGA /8 decimator and the AD9361's

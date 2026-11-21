@@ -31,6 +31,10 @@ a release card names its release.*
 `iio_info` shows the same `fw_version`, and `hw_model` should read
 `FISH Ball PlutoSDR Rev.A (Z7020-AD9361)`.
 
+From a clone, `./devkit status` gives it in one line without logging in. A
+release card reads `modern, v2.3`; a build between releases reads
+`modern (Debian)` with its `git describe`.
+
 **Built it yourself?** Compare the card with your build:
 
 ```bash

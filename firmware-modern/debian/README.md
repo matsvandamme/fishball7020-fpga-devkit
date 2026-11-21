@@ -24,7 +24,14 @@ sudo ./devkit write-card --target modern --image card.img                   # a 
 sudo ./devkit write-card --target modern --from "$HOME/Downloads" /dev/sdX  # the files of a downloaded release
 ```
 
-**What the build needs on your PC:** podman or docker, and ARM emulation
+On macOS the same commands take `/dev/diskN` (`diskutil list external physical`
+names the card), `--image` needs no `sudo`, and `--from` also takes
+`debian-rootfs.tar.gz` from the release as the root. `tools/write_card_mac.py`
+lays the card out itself and makes the root ext3, as the Windows writer does.
+A card written this way was written on a Mac and booted in an R1 on 2026-11-21.
+
+**What the build needs on your PC:** podman, or docker with its buildx plugin
+(on macOS: Colima, `brew install colima docker docker-buildx`), and ARM emulation
 (`qemu-user` registered with the kernel, so ARM programs run on an x86 PC). If
 the emulation is missing, the build sets it up itself, which needs docker or
 `sudo podman`. With rootless podman, install it from your distro:
@@ -118,9 +125,20 @@ What happens depends on how the board is powered:
   back in, and ssh works again within a few seconds.
 
 If `192.168.2.1` does not answer after a replug, check your PC's end first.
-Its name depends on your system (by USB port, `enp…`, or by MAC, `enx…`), and
-a network profile tied to a different name will not give it its
-`192.168.2.10` address.
+From the next release the board hands the PC `192.168.2.10` by DHCP
+(`fishball-usb-dhcp`), so a profile set to DHCP gets it. On v2.3 and earlier
+there is no DHCP server on `usb0`: the PC's profile must set `192.168.2.10`
+itself. The interface's name depends on your system (by USB port, `enp…`, or
+by MAC, `enx…`), and a network profile tied to a different name will not give
+it that address.
+
+On a Mac the default USB network (RNDIS) has no driver. From the next
+release, `fishball-usb-mode ncm` on the board switches it to one macOS drives;
+`fishball-usb-mode rndis` switches back. The mode can also be set with a line
+`usb_ethernet_mode=ncm` in `uEnv.txt` on the card's FAT partition, or
+`USB_ETHERNET_MODE=ncm` in `/etc/default/fishball-usb-gadget`; `ecm` is
+accepted too. In `ncm` mode Windows 10 has no in-box driver (Windows 11 has),
+and `ecm` has no Windows driver.
 
 | check, on your PC | means |
 |---|---|

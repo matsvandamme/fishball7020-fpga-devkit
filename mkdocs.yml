@@ -116,6 +116,7 @@ nav:
       - Before you transmit: start/before-you-transmit.md
       - Change the IP address or name: start/change-the-address.md
       - Log in with a key: start/log-in-with-a-key.md
+      - Use the devkit on a Mac: start/use-a-mac.md
       - Troubleshooting: troubleshooting.md
       - Reference:
           - Transmitter safety: transmitter-safety.md

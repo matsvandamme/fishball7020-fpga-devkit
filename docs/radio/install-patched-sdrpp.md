@@ -37,6 +37,30 @@ adds them to the PlutoSDR source panel.
     [build instructions](https://github.com/AlexandreRouma/SDRPlusPlus#building-on-linux--bsd)
     list them per distribution.
 
+=== "macOS"
+
+    ```bash
+    # run from: the repo root, on the Mac
+    tools/sdrpp/build-macos.sh --install-deps    # without the flag it names the missing Homebrew formulae and stops
+    ~/.cache/fishball-sdrpp/sdrpp                # the launcher it writes
+    ```
+
+    It builds the same SDR++ commit with the same patch and the DAB+ decoder,
+    and libiio 0.26 beside it, into `~/.cache/fishball-sdrpp` (or the
+    directory you pass). No `sudo`; delete the directory to remove it.
+    `--clean` deletes the build and starts over.
+
+    - **Pick the board from the device menu** under the **PlutoSDR** source.
+      There is no address field: the menu lists what libiio's scan finds.
+    - **Start it with the launcher**, which also adds the **DAB Decoder**
+      panel once.
+    - **Tested** on one Apple Silicon Mac: it builds, starts, and loads the
+      PlutoSDR source, the audio sink and the DAB+ decoder. Receiving in the
+      window was not checked.
+
+    What differs from the Arch package:
+    [`tools/sdrpp/README.md`](../../tools/sdrpp/README.md#macos).
+
 **You should see:** the PlutoSDR source panel with **RX Port**, **FPGA /8
 decimator** and **Transport**, as in the picture.
 

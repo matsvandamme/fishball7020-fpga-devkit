@@ -34,6 +34,7 @@ serial console and libiio, independently of Ethernet:
 |---|---|---|
 | `fishball-usb-gadget.service` | `Before=iiod.service` | builds the USB gadget, mounts FunctionFS |
 | `fishball-usb-bind.service` | `After=iiod.service` | attaches the gadget to the USB controller, brings usb0 up |
+| `fishball-usb-dhcp.service` | started by `fishball-usb-bind`, not enabled | hands the PC on the cable `192.168.2.10`. From the next release |
 | `serial-getty@ttyGS0.service` | | a login console on the same cable |
 
 **FunctionFS** lets `iiod` serve libiio over USB from userspace. The gadget can
@@ -47,6 +48,23 @@ that checks the gadget exists, so a failed gadget cannot stop `iiod`.
 does, so your PC's interface name (for example `enx00e022338e2c`) and any
 network profile bound to it stay the same. `hw_serial` lives in `/mnt/jffs2` on
 the QSPI flash, so it survives reflashing the card.
+
+**The network function** is RNDIS by default. From the next release (not in
+v2.3) it can be switched, because macOS has no RNDIS driver:
+
+| Command or file | What it does |
+|---|---|
+| `fishball-usb-mode` | shows the mode that is set and the one the gadget runs |
+| `fishball-usb-mode ncm` (or `rndis`, `ecm`) | stores the mode in the U-Boot variable `usb_ethernet_mode` and applies it at once; `--no-apply` stores it only |
+| `fishball-usb-gadget --show` | prints the mode and where it comes from, and changes nothing |
+| `/etc/default/fishball-usb-gadget` | `USB_ETHERNET_MODE=`, read by the gadget unit; wins over `uEnv.txt` and the U-Boot variable |
+| `fishball-usb-dhcp` | a DHCP server for one address, on `usb0` only, with no router and no DNS |
+
+`systemctl restart fishball-usb-gadget` swaps the network function in place:
+the gadget detaches, the three functions are linked again in the same order
+(network, console, libiio) and it attaches again, so interface numbers do not
+change. `iiod` keeps running. Which PC drives which mode, and what was tested:
+[the USB network](networking.md#the-usb-network-rndis-ncm-or-ecm).
 
 ## Board identity
 

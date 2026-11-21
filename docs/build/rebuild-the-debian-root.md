@@ -15,6 +15,11 @@ changes:
 sudo ./devkit write-card /dev/sdX   # refuses anything not removable
 ```
 
+On a Mac both commands run on the Mac itself, with `/dev/diskN` for the card:
+the build drives `docker buildx` (1 min 43 s on an Apple Silicon Mac), and the
+writer makes the root ext3. A root built this way was not booted.
+[Use the devkit on a Mac](../start/use-a-mac.md).
+
 `write-card` refuses a `rootfs.tar` older than the overlay, and lists what it
 would miss. The root cannot be swapped over the network: it takes a card.
 

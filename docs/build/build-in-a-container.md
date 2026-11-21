@@ -27,6 +27,14 @@ recommended way to build the FPGA.**
 **Build in the container; flash from the host:** `flash`, `selftest`,
 `gpio-check` and `verify --board` are host commands.
 
+**On an Apple Silicon Mac** the same commands work, with Docker through
+Colima: an x86-64 image under Rosetta runs Vivado, and the sources and Vivado
+live in Docker volumes. Start with
+`./devkit container build-image --target factory`. One full build took
+1 h 04 min and met timing; nothing built this way was booted. Setup and what
+was not proven:
+[macOS on Apple Silicon](../building-in-a-container.md#macos-on-apple-silicon).
+
 **No Vivado installed yet?** [Install Vivado 2022.2](install-vivado.md) first:
 the container runs the installer too. Budget an hour.
 

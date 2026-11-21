@@ -62,6 +62,8 @@ cat /etc/os-release      # "Debian GNU/Linux 13" -> see the Debian column
 | boot-time extras | `/mnt/jffs2/autorun.sh` | a systemd unit; `autorun.sh` is **never run** |
 | `config.txt` on a USB drive | yes | **no**: there is no mass-storage gadget |
 | USB network at **192.168.2.1** | yes, always the way back in | yes, always the way back in; also a serial console on the same cable (`/dev/ttyACM0`) |
+| your PC's address on the USB cable | `udhcpd` hands it `ipaddr_host`, default `192.168.2.10` | from the next release, `fishball-usb-dhcp` hands it `192.168.2.10`. On v2.3 and earlier there is no DHCP server on `usb0`: set `192.168.2.10/24` by hand |
+| USB network function | the `usb_ethernet_mode` variable | from the next release: `fishball-usb-mode`, [below](#the-usb-network-rndis-ncm-or-ecm). On v2.3 and earlier: RNDIS only |
 
 ## Reaching the board
 
@@ -82,6 +84,61 @@ avahi-resolve -n fishball.local     # fishball.local  192.168.129.142
 iio_info -s                         # address, model and serial, [ip:fishball.local]
 avahi-browse -tpr _iio._tcp         # the iiod service on port 30431
 ```
+
+## The USB network: RNDIS, NCM or ECM
+
+!!! warning "Debian root: needs firmware from the next release"
+    Release v2.3 and earlier carry RNDIS only, and no DHCP server on `usb0`.
+
+The USB cable carries one network function. It is RNDIS by default, which
+Windows and Linux drive and macOS does not. The Debian root can switch it:
+
+```bash
+# run on: the board
+fishball-usb-mode               # what is set, and what the gadget runs now
+fishball-usb-mode ncm           # for a Mac; stored in the U-Boot environment and applied at once
+fishball-usb-mode rndis         # back to the default
+fishball-usb-mode ncm --no-apply   # store it only; it takes effect at the next boot
+```
+
+| Mode | Windows | Linux | macOS |
+|---|---|---|---|
+| `rndis` (the default) | yes | yes | no driver |
+| `ncm` | Windows 11; Windows 10 has no in-box driver | yes | yes |
+| `ecm` | no driver | yes | yes |
+
+- **A switch re-enumerates the USB device.** The USB network, the USB console
+  and USB libiio drop for a few seconds and come back. Ethernet is not touched.
+- **It is one function, not two.** The script's header
+  (`firmware-modern/debian/overlay/usr/local/sbin/fishball-usb-gadget`) says why.
+- **The PC's interface keeps its MAC address** in every mode, so its name and
+  network profile stay.
+- **libiio's `usb:` transport does not depend on the mode.**
+
+The mode is read from three places; the first that has a value wins:
+
+| # | Where | Set it with | Survives a rewritten card |
+|---|---|---|---|
+| 1 | `USB_ETHERNET_MODE=ncm` in `/etc/default/fishball-usb-gadget` on the root | an editor, then `systemctl restart fishball-usb-gadget`. No comment after the value on that line | no |
+| 2 | a line `usb_ethernet_mode=ncm` in `uEnv.txt` on the card's FAT partition | any PC with a card reader, a Mac included | no |
+| 3 | the U-Boot variable `usb_ethernet_mode` | `fishball-usb-mode ncm` | yes, it is in QSPI flash |
+
+Anything else, or nothing, is `rndis`. If the kernel cannot create the
+function asked for, the gadget falls back to `rndis`, so the board keeps its
+USB route.
+
+**Your PC's address.** `fishball-usb-dhcp` answers on `usb0` only and hands out
+one address, `192.168.2.10`, with no router and no DNS server, so the PC does
+not send its internet traffic to the board. `fishball-usb-bind` starts it each
+time it brings `usb0` up. A PC with a static `192.168.2.10` is not affected.
+
+**Tested** on 2026-11-21 on a PlutoSky R2 with an Apple Silicon Mac, with the
+mode set in `/etc/default/fishball-usb-gadget`: `ncm` gave the Mac a network
+port named `PlutoSDR (ADALM-PLUTO)` and the address `192.168.2.10`; ping, ssh
+and `./devkit selftest` worked over `192.168.2.1`; the mode survived a
+reboot; switching back to `rndis` and again to `ncm` worked. Not tested on a
+board: `ecm`, the `uEnv.txt` line, `fishball-usb-mode` writing the U-Boot
+environment, and `ncm` with a Windows PC.
 
 ## A direct cable to your PC
 
@@ -235,10 +292,10 @@ On Buildroot the addresses are **not in any file on the SD card**:
 | `ipaddr_eth` | *(unset)* | **The Ethernet socket. Set it for a static address; leave it unset for DHCP.** |
 | `netmask_eth` | `255.255.255.0` | The Ethernet netmask, used only when `ipaddr_eth` is set |
 | `ipaddr` | `192.168.2.1` | The board's own address on the USB cable (`usb0`) |
-| `ipaddr_host` | `192.168.2.10` | The single address the board's DHCP server hands *your PC* over USB |
+| `ipaddr_host` | `192.168.2.10` | The single address the board's DHCP server hands *your PC* over USB. Debian does not read it: there the address is fixed at `192.168.2.10` |
 | `netmask` | `255.255.255.0` | The USB netmask |
 | `hostname` | the contents of `/etc/hostname`: `fishball` | The hostname, and therefore the mDNS name `fishball.local` |
-| `usb_ethernet_mode` | `rndis` | USB Ethernet flavour: `rndis`, `ncm` or `ecm` |
+| `usb_ethernet_mode` | `rndis` | USB Ethernet flavour: `rndis`, `ncm` or `ecm`. From the next release the Debian root reads it too ([the USB network](#the-usb-network-rndis-ncm-or-ecm)) |
 | `ethaddr` | *(stored in the environment)* | The Ethernet MAC; Linux uses it for `eth0` with patch `0013` |
 | `ssid_wlan`, `pwd_wlan`, `ipaddr_wlan` | *(unset)* | A USB Wi-Fi dongle, if you fit one |
 
@@ -251,6 +308,10 @@ On Buildroot the addresses are **not in any file on the SD card**:
     and this U-Boot has no network stack (`# CONFIG_NET is not set`). Linux's
     `fw_printenv` reads `/dev/mtd1`. An edit that seemed to work did so because
     192.168.2.1 is also `S40network`'s built-in default. Use Route 1 or Route 3.
+
+    One exception, on the Debian root from the next release: the line
+    `usb_ethernet_mode=ncm`, which `fishball-usb-gadget` reads from the file
+    itself ([the USB network](#the-usb-network-rndis-ncm-or-ecm)).
 
 ## A static address has no gateway and no DNS
 
@@ -315,7 +376,7 @@ The MAC is the `ethaddr` variable (omitted if unset). A static stanza gets
 | 30431/tcp | `iiod` | **none** |
 | 80/tcp | httpd, the info page | none; discloses serial, MACs, kernel and firmware versions |
 | 5353/udp | avahi (mDNS) | n/a |
-| 67/udp | udhcpd | limited to `usb0` by its config, so it does not serve your LAN |
+| 67/udp | udhcpd (Buildroot); `fishball-usb-dhcp` (Debian, from the next release) | limited to `usb0`, so it does not serve your LAN |
 
 !!! danger "Anyone who reaches port 30431 can tune, receive and transmit"
     Isolate the board on a separate VLAN or behind the router's firewall. A static
@@ -340,8 +401,20 @@ ssh fishball
 | `~/.ssh/config` | a `Host fishball` block, appended without touching what is already there |
 
 The key is dedicated because the board has a published root password. The last
-step logs in with `BatchMode=yes`, so a pass proves the key works. The password
-stays enabled; on Debian, turn it off only after key login is proven:
+step logs in with `BatchMode=yes`, so a pass proves the key works.
+
+- **No `sshpass` needed.** Where it is not installed (a stock Mac),
+  `./devkit ssh-key` lets ssh ask for the board's password once, in the
+  terminal.
+- **`flash`, `net`, `selftest --ssh` and `gpio-check` try this key first** and
+  fall back to `sshpass` where that is installed. `./devkit doctor --host`
+  shows which of the two this machine has.
+  `./devkit verify --target factory --board` still needs `sshpass`.
+- **On the factory (Buildroot) root** `/root` is a RAM disk, so the key is also
+  saved in `/mnt/jffs2/root/.ssh`, from where the boot script restores it after
+  a reboot. This was not tested on a board.
+
+The password stays enabled; on Debian, turn it off only after key login is proven:
 
 ```bash
 # run from: the board - Debian only, and ONLY after key login is proven

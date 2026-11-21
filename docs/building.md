@@ -44,7 +44,7 @@ sudo apt install -y git build-essential bison flex libssl-dev \
 | `gcc-arm-linux-gnueabi` | the *cross-compiler* (runs on your PC, produces code for the board's ARM cores) for U-Boot and the kernel. The hard-float `arm-linux-gnueabihf-gcc` also works (U-Boot is then built with `-mfloat-abi=soft`), but only `gnueabi` rebuilds the factory kernel byte for byte. Buildroot brings its own compiler for the userspace. |
 | `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi` | the bare-metal compiler and C library for the boot loader. Without newlib's hard-float variant the link fails with `uses VFP register arguments`. |
 | `libgmp-dev`, `libmpc-dev`, `libmpfr-dev` | the kernel's GCC-plugin build; without them stage 4 fails with `fatal error: gmp.h` |
-| `sshpass` | `./devkit flash`, `verify --board` and `gpio-check` use it to reach the board |
+| `sshpass` | types the board's password for `./devkit flash`, `gpio-check` and `verify --target factory --board`. Optional for the first two once `./devkit ssh-key` has made a key, which they try first |
 | `iverilog` | HDL simulation |
 | `libiio-utils` | `iio_attr` and `iio_info` |
 | `screen` | the serial console only |

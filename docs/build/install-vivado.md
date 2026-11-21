@@ -1,6 +1,6 @@
 ---
 icon: material/download-box-outline
-description: Install Vivado 2022.2 for an FPGA build, on an Ubuntu host or through the container on any other Linux.
+description: Install Vivado 2022.2 for an FPGA build, on an Ubuntu host or through the container on any other Linux or a Mac.
 ---
 
 # Install Vivado 2022.2
@@ -30,6 +30,29 @@ FPGA? [Build without Vivado](build-without-vivado.md).
     The web installer needs your AMD account and downloads the content itself;
     budget an hour.
 
+=== "macOS, through the container"
+
+    Vivado goes into a Docker volume (`fbmac-xilinx`), not onto the Mac's disk.
+    There is no display for the installer's GUI, so it runs in batch mode: the
+    arguments after the installer go to AMD's `xsetup`.
+
+    ```bash
+    # run from: the repo root, on the Mac. Read AMD's licence agreements first: -a accepts them for you
+    ./devkit container build-image --target factory      # the x86-64 image, once
+    ./devkit container install ~/Downloads/Xilinx_Unified_2022.2_*.bin -b AuthTokenGen
+    ./devkit container install ~/Downloads/Xilinx_Unified_2022.2_*.bin \
+        -a XilinxEULA,3rdPartyEULA -b Install \
+        -c tools/container/vivado-2022.2-install_config.txt
+    ```
+
+    The config file holds the answers of the table below.
+
+    !!! warning "Not proven with AMD's real installer"
+        Only the plumbing of this route was tested. The Mac build that was
+        measured used a Vivado already in a Docker volume, named with
+        `XILINX_VOLUME`. Docker and Colima first:
+        [macOS on Apple Silicon](../building-in-a-container.md#macos-on-apple-silicon).
+
 === "Ubuntu 18.04 to 22.04, on the host"
 
     1. Create an account at [xilinx.com](https://www.xilinx.com) and open the
@@ -43,7 +66,7 @@ FPGA? [Build without Vivado](build-without-vivado.md).
         chmod +x Xilinx_Unified_2022.2_*.bin && ./Xilinx_Unified_2022.2_*.bin
         ```
 
-Either way, answer the installer the same:
+Whichever way, answer the installer the same:
 
 | It asks | Choose |
 |---|---|
