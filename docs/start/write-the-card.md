@@ -47,7 +47,7 @@ and write it to the card. The modern firmware needs **two partitions**
     disks, but **check the disk name yourself**. The root partition is ext3,
     as from the Windows writer.
 
-    A 32 GB card with release v2.3 was written on a Mac and booted in an R1 on 2026-11-21.
+    Release v2.4's card was written this way on a Mac and booted in an R1 on 2026-11-21.
     More: [use the devkit on a Mac](use-a-mac.md#write-a-card).
 
 === "Windows"

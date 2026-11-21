@@ -34,8 +34,8 @@ network port. `iio_info -s` may still list the board as a `usb:` context.
 driver.
 
 **Fix.** Reach the board over Ethernet (`ssh root@fishball.local`) and run
-`fishball-usb-mode ncm`. This needs firmware from the next release; it is not
-in v2.3. On v2.3, use Ethernet.
+`fishball-usb-mode ncm`. This needs firmware v2.4 or later; on v2.3 and
+earlier, use Ethernet.
 [Reach the board over the USB cable](start/use-a-mac.md#reach-the-board-over-the-usb-cable).
 
 ### A tool stops with `No way to log in to the board without typing a password`

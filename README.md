@@ -127,7 +127,7 @@ sudo ./devkit write-card /dev/sdX                   # the first time: a whole ne
 
 After that, `./devkit flash --kernel-only` puts a changed kernel on the running board over the network. Never flash with DFU.
 
-**On a Mac** the host tools (`ssh-key`, `status`, `flash`, `selftest --ssh`, `write-card`) run as they are, with no `sshpass`; the build runs in `./devkit container` with Docker through Colima; and the USB network needs the board switched to `ncm`, with firmware from the next release. What was tested and what was not: [use the devkit on a Mac](docs/start/use-a-mac.md).
+**On a Mac** the host tools (`ssh-key`, `status`, `flash`, `selftest --ssh`, `write-card`) run as they are, with no `sshpass`; the build runs in `./devkit container` with Docker through Colima; and the USB network needs the board switched to `ncm`, with firmware v2.4 or later. What was tested and what was not: [use the devkit on a Mac](docs/start/use-a-mac.md).
 
 **Changing the FPGA** needs Vivado 2022.2, on Ubuntu 18.04 to 22.04 or in the container `./devkit container` builds for you:
 ```bash

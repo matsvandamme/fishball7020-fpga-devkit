@@ -20,7 +20,7 @@ card reader.
     Going back to the old firmware is then just swapping the cards.
 
 **1. Download the release.** Make a new folder, for example
-`Downloads\fishball-v2.3`. From the
+`Downloads\fishball-v2.4`. From the
 [latest release](https://github.com/matsvandamme/fishball7020-fpga-devkit/releases/latest),
 save these seven files into it:
 

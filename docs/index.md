@@ -121,7 +121,7 @@ XC7Z020 and an AD9361 radio, rebuilt from source. The
 | kernel | Linux 6.12 LTS, Analog Devices | 5.15, the vendor's fork |
 | userspace | Debian 13 + systemd, on ext4 | Buildroot, in RAM |
 | FPGA | taken from a built design (`.xsa`) | built with Vivado: the bitstream source |
-| release | v2.3 | v1.7 |
+| release | v2.4 | v1.7 |
 
 Rebuilding needs nothing from AMD: the boot loader compiles from AMD's public
 embeddedsw with an ordinary `gcc-arm-none-eabi`, and `bootgen` builds from

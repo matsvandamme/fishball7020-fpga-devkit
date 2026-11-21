@@ -174,7 +174,7 @@ libiio over USB. Over libiio there is no ssh, so uptime and load are missing.
 
 | If | Then |
 |---|---|
-| **libiio is ● but USB is ○** | the cable is in, but your PC's USB network interface has no address. From the next release the board hands it `192.168.2.10` by DHCP; on v2.3 and earlier give it one in the board's USB subnet yourself, e.g. `192.168.2.10/24`. Either way, set that profile to connect by itself: `nmcli con mod <profile> connection.autoconnect yes`, then `nmcli con up <profile>`. On a Mac there is no USB network interface until the board is [switched to `ncm`](networking.md#the-usb-network-rndis-ncm-or-ecm) |
+| **libiio is ● but USB is ○** | the cable is in, but your PC's USB network interface has no address. From v2.4 the board hands it `192.168.2.10` by DHCP; on v2.3 and earlier give it one in the board's USB subnet yourself, e.g. `192.168.2.10/24`. Either way, set that profile to connect by itself: `nmcli con mod <profile> connection.autoconnect yes`, then `nmcli con up <profile>`. On a Mac there is no USB network interface until the board is [switched to `ncm`](networking.md#the-usb-network-rndis-ncm-or-ecm) |
 | **Ethernet is ○ on a direct cable** | set up the PC's side as in [a direct cable to your PC](networking.md#a-direct-cable-to-your-pc) |
 | **Ethernet says `<address> on the board, no answer from here`** | the board has a network address, but your PC cannot reach it: the two are on different networks, or a firewall is in between. Put the PC on the board's network, or use the USB link |
 | **everything is ○** | the board is off, still booting (about 40 s), or on a USB port that cannot power it; see [reaching the board](networking.md#reaching-the-board) |

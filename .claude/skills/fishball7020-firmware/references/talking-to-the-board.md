@@ -471,7 +471,7 @@ jumbo frames (macb max 1518, cdc_ncm 1500). The Debian root's DHCP client
 depends on its build; `grep -E '^(dhcpcd-base|isc-dhcp-client) ' /opt/VERSIONS`
 on the board shows which one was built in (a hand-installed swap does not
 update that file, so `pgrep -a dhcpcd` is the live check):
-- **dhcpcd** (main since 2026-10-06, releases after v2.3): follows the cable.
+- **dhcpcd** (main since 2026-10-06, release v2.4 and later): follows the cable.
   Measured: router to PC adapter and back, address 10 s after plug-in; cable
   plugged in after booting without one, 7 s. It leaves an `ip addr add`
   alone (3 min on a cable with no DHCP server, 0/36 pings lost) and adds a

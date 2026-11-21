@@ -45,7 +45,7 @@ SDR software reaches it at `ip:fishball.local` or `ip:192.168.2.1`.
 !!! note "On a Mac, `192.168.2.1` does not answer by default"
     The board's USB network is RNDIS, and macOS has no driver for it. Use
     Ethernet (`ssh root@fishball.local`), or switch the board to `ncm` with
-    firmware from the next release:
+    firmware v2.4 or later:
     [reach the board over the USB cable](use-a-mac.md#reach-the-board-over-the-usb-cable).
 
 ??? question "Nothing answers?"

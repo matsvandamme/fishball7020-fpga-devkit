@@ -177,7 +177,8 @@ passes its extra arguments to AMD's `xsetup` for a batch install:
 - `./devkit container install` with AMD's real installer. Only its plumbing
   was tested; the Vivado used came from an existing volume, named with
   `XILINX_VOLUME`.
-- Nothing built this way was booted on a board.
+- Booting the factory-target build. Release v2.4's modern boot files and
+  Debian root were built this way and booted in an R1 (2026-11-21).
 - podman on macOS. Docker is tried first there.
 - Intel Macs.
 

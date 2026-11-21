@@ -819,8 +819,8 @@ hostnamectl set-hostname lab-sdr  <span class="c"># avahi picks it up immediatel
 
   <p>On Debian <code>usb0</code> is brought up at <strong>192.168.2.1</strong> by
     <code>fishball-usb-bind</code>, which hard-codes that address. On release v2.3 and earlier there is
-    <strong>no DHCP server</strong> on the USB link; from the next release the board hands your host
-    <code>192.168.2.10</code> itself. On v2.3, give your host end an address yourself:</p>
+    <strong>no DHCP server</strong> on the USB link; from v2.4 the board hands your host
+    <code>192.168.2.10</code> itself. On v2.3 and earlier, give your host end an address yourself:</p>
 
   <div class="code">
     <div class="code-bar"><span class="f">terminal</span><span class="t">Shell</span></div>
@@ -1046,7 +1046,7 @@ sudo ufw allow in on IFACE to any port 67 proto udp
       on <code>eth0</code>, including one you just added with <code>ip addr add</code>. A connection
       that worked a moment ago then hangs. Serve DHCP from the PC, or stop the client first with
       <code>kill $(cat /run/dhclient.eth0.pid)</code>.</p>
-    <p>Firmware built after v2.3 uses <code>dhcpcd</code> instead. It leaves an address you added
+    <p>Release v2.4 and later use <code>dhcpcd</code> instead. It leaves an address you added
       alone, and it follows the cable: move the cable between your router and your PC while the
       board runs, and it has a new address about ten seconds later. With <code>dhclient</code>,
       reboot the board after moving the cable.</p>

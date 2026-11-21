@@ -31,7 +31,8 @@ recommended way to build the FPGA.**
 Colima: an x86-64 image under Rosetta runs Vivado, and the sources and Vivado
 live in Docker volumes. Start with
 `./devkit container build-image --target factory`. One full build took
-1 h 04 min and met timing; nothing built this way was booted. Setup and what
+1 h 04 min and met timing; that factory build was not booted. Release v2.4's
+modern boot files were built in the container on a Mac and booted. Setup and what
 was not proven:
 [macOS on Apple Silicon](../building-in-a-container.md#macos-on-apple-silicon).
 

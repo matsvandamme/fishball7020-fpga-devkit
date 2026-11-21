@@ -34,7 +34,7 @@ serial console and libiio, independently of Ethernet:
 |---|---|---|
 | `fishball-usb-gadget.service` | `Before=iiod.service` | builds the USB gadget, mounts FunctionFS |
 | `fishball-usb-bind.service` | `After=iiod.service` | attaches the gadget to the USB controller, brings usb0 up |
-| `fishball-usb-dhcp.service` | started by `fishball-usb-bind`, not enabled | hands the PC on the cable `192.168.2.10`. From the next release |
+| `fishball-usb-dhcp.service` | started by `fishball-usb-bind`, not enabled | hands the PC on the cable `192.168.2.10`. From v2.4 |
 | `serial-getty@ttyGS0.service` | | a login console on the same cable |
 
 **FunctionFS** lets `iiod` serve libiio over USB from userspace. The gadget can
@@ -49,8 +49,8 @@ does, so your PC's interface name (for example `enx00e022338e2c`) and any
 network profile bound to it stay the same. `hw_serial` lives in `/mnt/jffs2` on
 the QSPI flash, so it survives reflashing the card.
 
-**The network function** is RNDIS by default. From the next release (not in
-v2.3) it can be switched, because macOS has no RNDIS driver:
+**The network function** is RNDIS by default. From v2.4 (not in v2.3
+and earlier) it can be switched, because macOS has no RNDIS driver:
 
 | Command or file | What it does |
 |---|---|

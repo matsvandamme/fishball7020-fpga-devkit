@@ -1,24 +1,25 @@
 ---
 icon: material/apple
-description: What works from macOS, what needs the next release's firmware, and what was not tested.
+description: What works from macOS, what needs firmware v2.4 or later, and what was not tested.
 ---
 
 # Use the devkit on a Mac
 
 The host tools, the card writer, the container build and the patched SDR++ run
-on macOS. The USB network needs one setting on the board, and firmware from the
-next release.
+on macOS. The USB network needs one setting on the board, and firmware v2.4 or
+later.
 
 Everything on this page was tested on 2026-11-21 on one Apple Silicon Mac, with
 the `/bin/bash` 3.2 that macOS ships and no `sshpass` installed. The board
-tests used a PlutoSky R2. Intel Macs were not tested.
+tests used a PlutoSky R2; release v2.4 was then booted and switched to `ncm`
+on a PlutoSky R1. Intel Macs were not tested.
 
 | Task | On a Mac | Status |
 |---|---|---|
 | Log in, `status`, `net`, `selftest --ssh`, `flash` | the same commands as on Linux | tested on a board |
-| Write a card | `./devkit write-card` with `/dev/diskN` | written on a Mac and booted in an R1 (2026-11-21) |
-| Reach the board over the USB cable | switch the board to `ncm` | tested; needs firmware from the next release |
-| Build the firmware | `./devkit container`, with Docker through Colima | built; nothing built this way was booted |
+| Write a card | `./devkit write-card` with `/dev/diskN` | release v2.4's card was written on a Mac and booted in an R1 (2026-11-21) |
+| Reach the board over the USB cable | switch the board to `ncm` | tested; needs firmware v2.4 or later |
+| Build the firmware | `./devkit container`, with Docker through Colima | release v2.4's boot files and Debian root were built this way and booted; the factory-target build was not booted |
 | SDR++ with this board's patch | `tools/sdrpp/build-macos.sh` | builds and starts; receiving in the window was not checked |
 
 ## Set up the host tools
@@ -87,6 +88,8 @@ the card.
 
 **Tested:** a 32 GB card in a USB reader, release v2.3: 926 MB written in 81 s
 and read back identical. That card was written on a Mac and booted in an R1 on 2026-11-21.
+So was a card with release v2.4's files: 24 s to a running system, no failed
+units, and `/boot` on the board matching `SHA256SUMS`.
 
 ## Reach the board over the USB cable
 
@@ -100,9 +103,9 @@ work in that state:
 - **The serial console on the same cable:** `screen /dev/cu.usbmodem* 115200`,
   user `root` (not tested).
 
-!!! warning "Needs firmware from the next release"
-    The switch below is not in release v2.3. On v2.3 a Mac reaches the board
-    over Ethernet.
+!!! warning "Needs firmware v2.4 or later"
+    The switch below is not in release v2.3 or earlier. On those a Mac reaches
+    the board over Ethernet.
 
 Switch the board to NCM, which macOS drives:
 
@@ -123,7 +126,9 @@ Settings on the Mac. The board hands the Mac `192.168.2.10`, and
 **Tested** on a PlutoSky R2 with the Mac: with `ncm` set in `/etc/default/fishball-usb-gadget` the
 port appeared, the Mac got `192.168.2.10`, and ping, ssh and
 `./devkit selftest` worked over `192.168.2.1`. The setting survived a
-reboot, and switching back to `rndis` worked.
+reboot, and switching back to `rndis` worked. On a PlutoSky R1 with release
+v2.4, `fishball-usb-mode ncm` gave the Mac a network port and `192.168.2.10`,
+and `fishball-usb-mode rndis` switched it back.
 
 | Mode | Windows | Linux | macOS |
 |---|---|---|---|
@@ -180,7 +185,9 @@ full factory build took 1 h 04 min and met timing. The commands, what was
 measured and what was not proven:
 [building in a container](../building-in-a-container.md#macos-on-apple-silicon).
 
-Nothing built on the Mac was booted on a board.
+Release v2.4's boot files and Debian root were built this way on an Apple
+Silicon Mac and booted in an R1. The factory-target build made on the Mac was
+not booted.
 
 ## SDR++ with this board's patch
 
@@ -208,7 +215,7 @@ Details: [install the patched SDR++](../radio/install-patched-sdrpp.md).
 - Intel Macs, and podman on macOS.
 - `./devkit container install` with AMD's real installer. Vivado came from an
   existing Docker volume.
-- Booting anything built in the container on the Mac.
+- Booting the factory-target build made in the container on the Mac.
 - `./devkit ssh-key` saving the key in `/mnt/jffs2` on the factory (Buildroot)
   root, so that it survives a reboot.
 - Receiving in the SDR++ window.
