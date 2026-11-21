@@ -1,7 +1,11 @@
 # /mnt/jffs2 is the only writable persistent partition: QSPI mtd2 ("qspi-nvmfs").
 # It holds hw_serial, which must survive every reflash, so it is never
 # reformatted. noatime saves NOR flash write cycles.
-/dev/mtdblock2  /mnt/jffs2  jffs2  rw,noatime  0 0
+# nofail and a short device timeout: a board whose flash does not answer must
+# still boot. Without them systemd waits 90 s for /dev/mtdblock2, then fails
+# local-fs.target and stops in emergency mode, with no network and no USB.
+# /mnt/jffs2 is then a plain folder on the SD card, and hw_serial lands there.
+/dev/mtdblock2  /mnt/jffs2  jffs2  rw,noatime,nofail,x-systemd.device-timeout=10s  0 0
 
 # The FAT boot partition (BOOT.bin, uImage, device tree), mounted so
 # tools/flash.sh can update it over the network.

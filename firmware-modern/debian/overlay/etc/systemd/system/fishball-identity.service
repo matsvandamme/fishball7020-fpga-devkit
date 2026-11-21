@@ -5,7 +5,9 @@ Documentation=file:///usr/local/sbin/fishball-identity
 # serves no hw_model/hw_serial and tools cannot tell which unit they talk to.
 After=local-fs.target fishball-rf-quiesce.service
 Before=iiod.service
-RequiresMountsFor=/mnt/jffs2
+# Wants, not Requires: with the QSPI flash missing the mount fails, and this
+# must still run, with /mnt/jffs2 as a folder on the SD card.
+WantsMountsFor=/mnt/jffs2
 
 [Service]
 Type=oneshot

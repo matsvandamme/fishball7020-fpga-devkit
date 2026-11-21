@@ -4,7 +4,9 @@ Documentation=file:///usr/local/sbin/fishball-usb-gadget
 After=sysinit.target fishball-identity.service
 # iiod serves the FunctionFS this creates, so it must exist first.
 Before=iiod.service
-RequiresMountsFor=/mnt/jffs2
+# Wants, not Requires: with the QSPI flash missing the mount fails, and this
+# must still run, with /mnt/jffs2 as a folder on the SD card.
+WantsMountsFor=/mnt/jffs2
 # Best effort: the board must still come up on Ethernet if this fails.
 [Service]
 Type=oneshot
