@@ -76,7 +76,7 @@ variant a board is, by comparing measured loop gain against both models.
 | the device tree | from `ad9361_setup()`'s attenuation write at `ad9361.c:5326` onward, **not** the power-on calibration before it | `adi,tx-attenuation-mdB = 89750` |
 | the boot quiesce | from then until a DMA buffer starts | `S21misc`'s `tx_quiesce` (Buildroot) or `fishball-rf-quiesce.service` (Debian). On Debian **iiod `Requires=` it**: no proven mute, no SDR service (usb0 still comes up, without USB libiio) |
 | `0004` / `0005` | while streaming, and when a buffer is torn down | mute on buffer close, unmute (restoring a cached gain) on buffer start |
-| `0015` starve watchdog | a killed or stalled writer | mute after `tx_starve_timeout_ms` (250 ms) with no DMA block; the first block gets 250 ms + 1 ms per kB, capped at 10 s (`0022`) |
+| `0015` starve watchdog | a killed or stalled writer | mute after `tx_starve_timeout_ms` (250 ms) with no DMA block; the first block gets 250 ms + 1 ms per kB, capped at 10 s (`0022`); data arriving again unmutes (`0024`) |
 | `tx_cyclic_timeout_ms` | a cyclic stream that outlived its writer | **60 s on the modern Debian root only**; 0 (off) on Buildroot |
 | `0016` `tx_disable` | debugfs `initialize` and `bist_tone` mode 1 | a latch debugfs cannot clear; off unless set |
 | `0018` `tx_temp_limit` | getting louder when hot | off unless set |
@@ -149,10 +149,16 @@ mute does not also unbound every cyclic transmit. The starve timeout persists
 the same way: `fw_setenv tx_starve_ms <ms>` (20 ms minimum, `0` = off). Every streaming tool in the devkit transmits cyclically, so a
 killed cyclic stream is the ordinary abnormal ending on this board.
 
-**The starve watchdog fires once and does not re-arm.** Once `0015` has fired,
-the driver believes the transmitter is muted; data resuming does not change
-that, only a fresh buffer enable does. So after a starve-mute a gain write
-raises the attenuator and *nothing* re-mutes it:
+**Data arriving again undoes a starve mute (`0024`).** The mute also hands the
+DAC to the DDS, so before `0024` nothing drained the DMA afterwards: the next
+write timed out (`-110`), a new buffer on the same connection was refused
+(`EBUSY`), and only reconnecting transmitted again (SDR Console: "TX works once
+per connection"). Now a block arriving after a starve mute re-selects the DMA
+source and unmutes exactly as a buffer enable would, and the watchdog is armed
+again. `tools/tx-idle-cases/resume-after-starve.py <uri>` checks it with zero
+samples at -89.5 dB (no affirmation needed; exit 0 = resumed and re-muted).
+While starve-muted with no data arriving, a gain write still raises the
+attenuator and *nothing* re-mutes it:
 
 ```
 atten0=-30.000000  LO_pd=1  buf=1     (gain written AFTER the watchdog fired)

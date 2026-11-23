@@ -1,0 +1,225 @@
+Resume the transmitter when data returns after a starve mute
+
+patches/0015 mutes the transmitter when no DMA block has arrived for
+tx_starve_timeout_ms, and it was one-way: later blocks re-armed the timer and
+did nothing else. Only a fresh buffer enable unmuted.
+
+That mute also hands the DAC to the DDS, and from then on nothing drains the
+DMA. So it was worse than "stays quiet": the blocks a program submits sit in
+the queue, its writes time out, and iiod refuses a new buffer as busy while the
+old one cannot be torn down. Closing the connection was the only way back.
+
+Reported from SDR Console (Windows, the stock Pluto driver), which keeps one
+transmit buffer open and stops feeding it between transmissions: "TX only
+starts once after connecting ... the USER LED still lights up, but nothing is
+output. Only after a stop and a new connection can I send exactly once again."
+The LED is patches/0012 following the attenuator the program had just written,
+with the TX LO still powered down and the DAC still on the DDS.
+
+Measured on the 6.12 kernel (firmware-modern), on an R1 (v2.4) and an R2 (v0.2)
+over libiio USB, with
+tools/tx-idle-cases/resume-after-starve.py - zero samples at -89.5 dB, so no
+output is commanded - before this patch, identically on both:
+
+  feeding                      -89.50 / -89.50  LO_pd=0  source=DMA
+  paused 1.0 s                 -89.75 / -89.75  LO_pd=1  source=DDS
+  pushing into the same buffer FAILED: [Errno 110]
+  feeding again, same buffer   -89.75 / -89.75  LO_pd=1  source=DDS
+  a new buffer was REFUSED for 10.0 s: [Errno 16] Resource busy
+
+and after it:
+
+  feeding                      -89.50 / -89.50  LO_pd=0  source=DMA
+  paused 1.0 s                 -89.75 / -89.75  LO_pd=1  source=DDS
+  feeding again, same buffer   -89.50 / -89.50  LO_pd=0  source=DMA
+  paused again                 -89.75 / -89.75  LO_pd=1  source=DDS
+  feeding a third time         -89.50 / -89.50  LO_pd=0  source=DMA
+
+with the kernel saying so each time:
+
+  no transmit data for 250 ms - muting the transmitter
+  transmit data is back - unmuting the transmitter
+
+What changes:
+
+  - the watchdog records that it was the one that muted (tx_starved);
+  - a block arriving in that state schedules a work item that re-selects the
+    DMA source for the enabled channels and then calls
+    cf_axi_dds_tx_rf_mute(false), the order and the call a buffer enable uses;
+  - postdisable cancels that work before it mutes, and a mutex keeps the
+    watchdog's mute and the resume from interleaving.
+
+What does not: a stalled or killed client is muted after the same 250 ms, and
+again after every later stall, because the block that triggers the resume has
+already re-armed the timer. Because the unmute is the enable's own call, the
+same rules decide what comes back: the cached attenuation only when both
+channels still read muted (0005), never zero (0019), nothing while tx_disable
+is set (0016) or the die is over tx_temp_limit (0018). Cyclic streams are
+untouched: no further block ever arrives on one.
+
+This retires the "fires once and does not re-arm" limit recorded in
+IDLE-CASES.md and docs/transmitter-safety.md.
+
+On this 5.15 tree the change is the same code, and is COMPILED ONLY: both
+boards on the bench run the 6.12 kernel, so it has not been run here.
+
+diff --git a/linux/drivers/iio/frequency/cf_axi_dds.c b/linux/drivers/iio/frequency/cf_axi_dds.c
+index bdda4987a..4f629dbce 100755
+--- a/linux/drivers/iio/frequency/cf_axi_dds.c
++++ b/linux/drivers/iio/frequency/cf_axi_dds.c
+@@ -148,6 +148,17 @@ struct cf_axi_dds_state {
+ 	unsigned int			tx_cyclic_ms;
+ 	bool				tx_cyclic;
+ 	unsigned int			tx_starve_armed_ms;	/* the wait in force, for the log */
++	/*
++	 * Set when it was the watchdog that muted, with the buffer still
++	 * enabled. Data arriving again then puts the transmitter back the way a
++	 * buffer enable would; without this the mute was one-way, and a program
++	 * that keeps one buffer open between transmissions could transmit once.
++	 * tx_mute_lock keeps the watchdog's mute and that resume from
++	 * interleaving.
++	 */
++	bool				tx_starved;
++	struct work_struct		tx_resume_work;
++	struct mutex			tx_mute_lock;
+ 	/*
+ 	 * The DAC core's VDMA status bits are STICKY and read-to-clear, so
+ 	 * they answer "did it happen" and not "how often". Sampling them once
+@@ -1385,8 +1396,12 @@ static void cf_axi_dds_tx_starve_fn(struct work_struct *work)
+ 						   struct cf_axi_dds_state,
+ 						   tx_starve_work);
+ 
+-	if (st->tx_muted)
++	mutex_lock(&st->tx_mute_lock);
++
++	if (st->tx_muted) {
++		mutex_unlock(&st->tx_mute_lock);
+ 		return;
++	}
+ 
+ 	dev_warn(&st->indio_dev->dev,
+ 		 "%s for %u ms - muting the transmitter\n",
+@@ -1396,6 +1411,61 @@ static void cf_axi_dds_tx_starve_fn(struct work_struct *work)
+ 
+ 	cf_axi_dds_tx_rf_mute(st, true);
+ 	cf_axi_dds_datasel(st, -1, DATA_SEL_DDS);
++	st->tx_starved = true;
++
++	mutex_unlock(&st->tx_mute_lock);
++}
++
++static int cf_axi_dds_update_scan_mode(struct iio_dev *indio_dev,
++	const unsigned long *scan_mask);
++
++/*
++ * Data is arriving again on a buffer the watchdog muted.
++ *
++ * The mute above also hands the DAC to the DDS, and from then on nothing
++ * drains the DMA: the blocks a program submits sit in the queue, its writes
++ * time out, and iiod refuses a new buffer as busy while the old one cannot be
++ * torn down. Only closing the connection got the transmitter back. Measured
++ * on both boards with tools/tx-idle-cases/resume-after-starve.py, and
++ * reported from SDR Console, which keeps one buffer open and stops feeding it
++ * between transmissions: "TX works once per connection".
++ *
++ * So a block arriving after a starve mute undoes exactly what the mute did,
++ * in the order a buffer enable uses: the data path first, the attenuation
++ * last. cf_axi_dds_tx_rf_mute(false) is the same call the enable makes, so
++ * the same rules decide what comes back - the cached attenuation only if both
++ * channels still read muted, tx_disable and the temperature limit still
++ * refuse - and the block that got us here has already re-armed the watchdog,
++ * so a second stall mutes again.
++ *
++ * A work item because unmuting talks to the AD9361 over SPI, and that sleeps.
++ */
++static void cf_axi_dds_tx_resume_fn(struct work_struct *work)
++{
++	struct cf_axi_dds_state *st = container_of(work,
++						   struct cf_axi_dds_state,
++						   tx_resume_work);
++	struct iio_dev *indio_dev = st->indio_dev;
++
++	mutex_lock(&st->tx_mute_lock);
++
++	/*
++	 * postdisable cancels this work before it mutes, so a buffer on its way
++	 * down is still enabled here and is muted again straight after.
++	 */
++	if (st->tx_starved && iio_buffer_enabled(indio_dev) &&
++	    indio_dev->active_scan_mask) {
++		st->tx_starved = false;
++
++		dev_info(&indio_dev->dev,
++			 "transmit data is back - unmuting the transmitter\n");
++
++		cf_axi_dds_update_scan_mode(indio_dev,
++					    indio_dev->active_scan_mask);
++		cf_axi_dds_tx_rf_mute(st, false);
++	}
++
++	mutex_unlock(&st->tx_mute_lock);
+ }
+ 
+ /*
+@@ -1419,6 +1489,19 @@ void cf_axi_dds_tx_starve_arm(struct cf_axi_dds_state *st, bool cyclic)
+ }
+ EXPORT_SYMBOL_GPL(cf_axi_dds_tx_starve_arm);
+ 
++/*
++ * Called for every submitted block that carries data, after the watchdog has
++ * been re-armed for it. Kept apart from the arming because that returns early
++ * when the timeout is 0, and a transmitter muted before the watchdog was
++ * turned off must still come back.
++ */
++void cf_axi_dds_tx_starve_resume(struct cf_axi_dds_state *st)
++{
++	if (st->tx_starved)
++		schedule_work(&st->tx_resume_work);
++}
++EXPORT_SYMBOL_GPL(cf_axi_dds_tx_starve_resume);
++
+ /*
+  * Called when a buffer is enabled, before any block has arrived.
+  *
+@@ -1463,13 +1546,17 @@ EXPORT_SYMBOL_GPL(cf_axi_dds_tx_starve_arm_first);
+ void cf_axi_dds_tx_starve_cancel(struct cf_axi_dds_state *st)
+ {
+ 	cancel_delayed_work_sync(&st->tx_starve_work);
++	cancel_work_sync(&st->tx_resume_work);
+ 	st->tx_cyclic = false;
++	st->tx_starved = false;
+ }
+ EXPORT_SYMBOL_GPL(cf_axi_dds_tx_starve_cancel);
+ 
+ void cf_axi_dds_tx_starve_init(struct cf_axi_dds_state *st)
+ {
+ 	INIT_DELAYED_WORK(&st->tx_starve_work, cf_axi_dds_tx_starve_fn);
++	INIT_WORK(&st->tx_resume_work, cf_axi_dds_tx_resume_fn);
++	mutex_init(&st->tx_mute_lock);
+ 	st->tx_starve_ms = CF_AXI_DDS_TX_STARVE_MS_DEFAULT;
+ 	st->tx_cyclic_ms = 0;		/* off: cyclic is meant to outlive you */
+ }
+diff --git a/linux/drivers/iio/frequency/cf_axi_dds.h b/linux/drivers/iio/frequency/cf_axi_dds.h
+index c99f6ca30..d01eb7683 100755
+--- a/linux/drivers/iio/frequency/cf_axi_dds.h
++++ b/linux/drivers/iio/frequency/cf_axi_dds.h
+@@ -331,6 +331,7 @@ void cf_axi_dds_tx_starve_init(struct cf_axi_dds_state *st);
+ void cf_axi_dds_tx_starve_arm(struct cf_axi_dds_state *st, bool cyclic);
+ void cf_axi_dds_tx_starve_arm_first(struct cf_axi_dds_state *st,
+ 				    unsigned long block_bytes);
++void cf_axi_dds_tx_starve_resume(struct cf_axi_dds_state *st);
+ void cf_axi_dds_tx_starve_cancel(struct cf_axi_dds_state *st);
+ void cf_axi_dds_dma_stat_poll(struct cf_axi_dds_state *st);
+ 
+diff --git a/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c b/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
+index fc117e027..8538f77fe 100755
+--- a/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
++++ b/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
+@@ -40,6 +40,7 @@ static int dds_buffer_submit_block(struct iio_dma_buffer_queue *queue,
+ 
+ 	if (block->block.bytes_used) {
+ 		cf_axi_dds_tx_starve_arm(st, cyclic);
++		cf_axi_dds_tx_starve_resume(st);
+ 		cf_axi_dds_dma_stat_poll(st);
+ 
+ 		if (cf_axi_dds_dma_fifo_en(st)) {

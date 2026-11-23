@@ -27,8 +27,8 @@ DMA_I="voltage$((PAIR * 2))"
 DMA_Q="voltage$((PAIR * 2 + 1))"
 
 # Whatever happens - abort, Ctrl-C, a failed assertion - leave the transmitter QUIET.
-# These scripts raise TX to -30 dB, and the starve watchdog does not re-arm once it
-# has fired, so an abort after that point used to exit with -30 dB still on the
+# These scripts raise TX to -30 dB, and a gain written after the starve watchdog has
+# fired is not re-muted, so an abort after that point used to exit with -30 dB still on the
 # attenuator and nothing that would ever undo it. `revoke` is ungated and forces both
 # channels to maximum attenuation, so it is safe to call from a trap.
 # PIDs the script started, so the exit trap can end them. Without this, any abort

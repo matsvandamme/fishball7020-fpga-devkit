@@ -28,6 +28,7 @@ wrong build.
 | `0018` | refuse to transmit louder when the die is hot | context only |
 | [`0019`](#0019-never-restore-a-cached-attenuation-of-zero) | never restore a cached attenuation of zero | **new**, not on the factory target |
 | [`0022`](../../firmware/patches/README.md#0022-give-a-large-first-block-time-to-arrive) | a large first transmit block gets time to arrive | same code as the factory patch |
+| [`0024`](#0024-resume-the-transmitter-when-data-returns) | data arriving after a starve mute unmutes | same code as the factory patch; **measured here** |
 
 "Context only" means the added lines are byte-for-byte identical to the 5.15
 patch; only the surrounding context moved. To check, extract the added lines of
@@ -94,6 +95,25 @@ The same code as [the factory `0022`](../../firmware/patches/README.md#0022-give
 measured here: two channels at 40, 50 and 60 MS/s unmuted; a killed streaming
 transmitter muted at 280 ms; a buffer enabled and never fed muted at 315 ms.
 The persistent switch, `fw_setenv tx_starve_ms`, is read by `fishball-rf-quiesce`.
+
+## 0024: resume the transmitter when data returns
+
+`0015`'s starve mute was one-way, and because it also switches the DAC to the
+DDS, nothing drained the DMA afterwards: the next write timed out, a new buffer
+on the same connection was refused as busy, and only reconnecting transmitted
+again. Reported from SDR Console, which keeps one buffer open and stops feeding
+it between transmissions ("TX only starts once after connecting").
+
+A block arriving after a starve mute now schedules a work item that re-selects
+the DMA source for the enabled channels and calls `cf_axi_dds_tx_rf_mute(false)`,
+the order and the call a buffer enable uses, so `0005`, `0016`, `0018` and `0019`
+decide what comes back exactly as they do there. The block has already re-armed
+the watchdog, so every later stall mutes again.
+
+Measured on an R1 (v2.4 + this kernel) and an R2 (v0.2 + this kernel) with
+`tools/tx-idle-cases/resume-after-starve.py`: muted 1 s into a stall, back on the
+next block, muted again on a second stall, back again; a new buffer on the same
+connection works; a cyclic stream held 3 s stays unmuted.
 
 ## 0019: never restore a cached attenuation of zero
 

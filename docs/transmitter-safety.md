@@ -72,7 +72,7 @@ and the agent skill point here. Update them here first.</sub>
 | probe at maximum attenuation | yes (`patches/0011`) | yes (its device tree) | applied after the power-on calibration, which has already transmitted |
 | mute at boot, before anything can stream | `tx_quiesce` in `S21misc` | `fishball-rf-quiesce.service`; `iiod` does not start unless it succeeded | `fw_setenv tx_quiesce 0` turns it off |
 | mute when a stream stops | yes (`0004`, `0005`) | yes | fires on buffer teardown only |
-| mute when the DAC starves (a killed or stalled program) | yes (`0015`), 250 ms | yes, 250 ms | exempts cyclic streams; fires once |
+| mute when the DAC starves (a killed or stalled program) | yes (`0015`), 250 ms | yes, 250 ms | exempts cyclic streams; data arriving again unmutes (`0024`) |
 | bound on a cyclic stream | **off** (`tx_cyclic_timeout_ms` = 0) | **60 s**, armed at every boot | off on the factory target unless you set it each boot |
 | TX-disable latch | yes (`0016`), off by default | yes, off by default | root can clear it |
 | die-temperature ceiling | yes (`0018`), off by default | yes, off by default | |
@@ -149,7 +149,7 @@ applies as before. Two channels at 40, 50 and 60 MS/s ran unmuted.
 | symptom | silence plus a DMA underflow |
 | cause | a 4.4 MB cyclic buffer (two channels at 40 MS/s) was muted before it landed, and the mute also switches the DAC away from the DMA |
 
-It exempts cyclic streams, and it fires once (both below).
+It exempts cyclic streams, and data arriving again undoes it (both below).
 
 ### Cyclic transmits and the 60 s bound
 
@@ -178,10 +178,30 @@ fw_setenv tx_cyclic_bound 0        # no bound at all, from the next boot on
 - `tools/sample_gpio_clock.py` holds a cyclic stream until Ctrl-C: its RF goes
   quiet after 60 s, its pins do not, and it prints the bound at start.
 
-### The starve watchdog fires once
+### After a starve mute: data arriving again unmutes
 
-It does not re-arm. After a starve-mute a gain write raises the attenuator and
-**nothing re-mutes it** until a fresh buffer enable:
+The mute also switches the DAC from the DMA to the DDS, so until `0024` it was
+one-way: nothing drained the DMA any more, a program's next write timed out, a
+new buffer on the same connection was refused as busy, and only reconnecting
+brought the transmitter back. SDR Console keeps one buffer open and stops
+feeding it between transmissions, so it could transmit once per connection.
+
+Since `0024` a block arriving after a starve mute puts back what the mute took
+away, the same way a buffer enable does, and the watchdog is armed again:
+
+```
+feeding                      -89.50 / -89.50  LO_pd=0  source=DMA
+paused 1.0 s                 -89.75 / -89.75  LO_pd=1  source=DDS    (starve mute)
+feeding again, same buffer   -89.50 / -89.50  LO_pd=0  source=DMA    (resumed)
+paused again                 -89.75 / -89.75  LO_pd=1  source=DDS    (muted again)
+```
+
+Measured on an R1 and an R2 with `tools/tx-idle-cases/resume-after-starve.py`,
+which sends zero samples at -89.5 dB and so commands no output.
+
+One state is unchanged. A gain written **while** the transmitter is starve-muted
+raises the attenuator, and nothing re-mutes it until data arrives and stops
+again, or the buffer closes:
 
 ```
 atten0=-30.000000  LO_pd=1  buf=1      (gain written AFTER the watchdog fired)

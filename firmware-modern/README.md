@@ -78,7 +78,7 @@ PC rather than inside `./devkit container`.
 | | |
 |---|---|
 | `setup.sh`, `build_all.sh`, `verify_output.sh` | what `./devkit setup`, `build` and `verify` run for this target |
-| [`patches/`](patches/README.md) | the ten driver patches, most of them transmitter safety |
+| [`patches/`](patches/README.md) | the eleven driver patches, most of them transmitter safety |
 | `dts/zynq-pluto-sdr-fishball.dts` | the board's device tree, as an overlay on ADI's |
 | `config/fishball_defconfig` | the kernel configuration; `config/fishball.config` explains each option |
 | [`debian/`](debian/README.md) | the Debian root filesystem, and `write-card.sh` |

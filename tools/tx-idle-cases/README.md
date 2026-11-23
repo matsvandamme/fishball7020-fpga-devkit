@@ -54,6 +54,7 @@ the two ports may have an antenna on it. `cs8-level.py`, `avg-level.py` and
 | `case4b.sh` | the board | required | case 4: a genuine network **drop**. Needs `tcp-blackhole.py` and `tx-guard.sh` pushed to `/tmp` (see above) |
 | `case4a.sh` | the host | required, 5th arg | case 4 over real Ethernet. **Expected to ABORT**: the host↔board link cannot keep the DAC fed at 3.072 MSPS, so the watchdog fires before the drop. Kept because that abort is itself the result |
 | `case4-poller.sh` | the board | required | waits for a loud→quiet transition and records `buffer/enable`, `LO_pd` and `ss` *at that instant* |
+| `resume-after-starve.py` | the host | none, commands no output | feeds one buffer, stalls it, feeds it again: does the transmitter come back after a starve mute, and does it mute again (`0024`)? Zero samples at -89.5 dB; takes a libiio URI, e.g. `usb:1.5.5` |
 | `watch.sh` | the board | none, watches both | polls flat out for N seconds and reports whether the TX buffer was **ever** enabled and the loudest attenuation on **either** channel, with an explicit `unreadable` flag |
 | `dds-tone.sh` | the board | required | drives the FPGA's hardware DDS (the built-in tone generator) on one chain, **no DMA buffer at all**. The most dangerous script here; see the warning below |
 | `cs8-level.py` | the host | none | a **single-FFT peak**, a floor and `max\|sample\|` with a clipping flag. Good for a strong tone; it reads noise as a carrier 8-16 dB over the median, so it is not the analyser behind the calibration ladder (`avg-level.py` is) |

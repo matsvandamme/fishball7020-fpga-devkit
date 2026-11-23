@@ -314,17 +314,52 @@ throughput ceiling. `0022` gives the first block 250 ms plus 1 ms per kB (capped
 at 10 s); on 6.12 two channels then ran at 40, 50 and 60 MS/s, while a killed
 streaming writer still muted at 280 ms and a never-fed buffer (64 KB) at 315 ms.
 
-### The starve watchdog does not re-arm
+### After a starve mute, data arriving again unmutes (`0024`)
 
-Once it has fired, the driver considers the transmitter muted, and data resuming
-does not undo that; only a fresh buffer enable does. After a starve-mute:
+Until `0024` the starve mute was one-way. It also hands the DAC to the DDS, so
+nothing drained the DMA afterwards: on an R1 (v2.4) and an R2 (v0.2), over libiio
+USB, with zero samples at -89.5 dB (`tools/tx-idle-cases/resume-after-starve.py`):
+
+```
+feeding                      -89.50 / -89.50  LO_pd=0  source=DMA
+paused 1.0 s                 -89.75 / -89.75  LO_pd=1  source=DDS
+pushing into the same buffer FAILED: [Errno 110]
+feeding again, same buffer   -89.75 / -89.75  LO_pd=1  source=DDS
+a new buffer was REFUSED for 10.0 s: [Errno 16] Resource busy
+```
+
+Only a new connection transmitted again. That is what SDR Console showed its
+user: one transmission per connection, the user LED lit (`0012` follows the
+attenuator the program had just written) and nothing at the port.
+
+With `0024` a block arriving after a starve mute re-selects the DMA source and
+unmutes through the same call a buffer enable makes, and the block has already
+re-armed the watchdog:
+
+```
+feeding                      -89.50 / -89.50  LO_pd=0  source=DMA
+paused 1.0 s                 -89.75 / -89.75  LO_pd=1  source=DDS
+feeding again, same buffer   -89.50 / -89.50  LO_pd=0  source=DMA
+paused again                 -89.75 / -89.75  LO_pd=1  source=DDS
+feeding a third time         -89.50 / -89.50  LO_pd=0  source=DMA
+```
+
+```
+no transmit data for 250 ms - muting the transmitter
+transmit data is back - unmuting the transmitter
+```
+
+A cyclic stream held for 3 s stayed unmuted on both boards, as before.
+
+What is left of the old limit: while the transmitter is starve-muted and no data
+is arriving, the driver considers it muted, so
 
 ```
 atten0=-30.000000  LO_pd=1  buf=1     (gain written AFTER the watchdog fired)
 ```
 
-A userspace attenuation write raises the attenuator, the driver does not re-mute,
-and stream stop does not re-mute either, because it already believes it is muted.
+a userspace attenuation write raises the attenuator and the driver does not
+re-mute until data arrives and stops again, or the buffer closes.
 **What stands in the way is the powered-down LO**: `LO_pd=1` means the oscillator
 is off, so a raised attenuator with no stream is still a dead transmitter. This is
 the one measurement where that second, independent layer carries the load on its

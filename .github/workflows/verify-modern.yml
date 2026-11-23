@@ -119,6 +119,14 @@ jobs:
           grep -q cf_axi_dds_tx_starve_arm_first firmware-modern/src/linux/drivers/iio/frequency/cf_axi_dds.c
           grep -q 'cf_axi_dds_tx_starve_arm_first(st, indio_dev->buffer' firmware-modern/src/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
           grep -q CF_AXI_DDS_TX_FIRST_BLOCK_MAX_MS firmware-modern/src/linux/drivers/iio/frequency/cf_axi_dds.c
+      - name: Data arriving after a starve mute unmutes (0024)
+        run: |
+          # The starve mute also switches the DAC to the DDS, so it must be
+          # undone when data arrives again: without that a program that keeps
+          # one buffer open (SDR Console) transmits once per connection.
+          grep -q cf_axi_dds_tx_resume_fn firmware-modern/src/linux/drivers/iio/frequency/cf_axi_dds.c
+          grep -q 'st->tx_starved = true' firmware-modern/src/linux/drivers/iio/frequency/cf_axi_dds.c
+          grep -q 'cf_axi_dds_tx_starve_resume(st)' firmware-modern/src/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
       - name: Cyclic transmit is handled on both buffer ABIs (0015, on 6.12)
         run: |
           # Which field carries the cyclic flag depends on

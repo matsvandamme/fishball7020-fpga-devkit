@@ -37,6 +37,7 @@ records the reasoning). Neither number is reused.
 | [`0021`](#0021-filter-both-receive-channels-by-default) | filter both receive channels | `STOCK_RX_FILTER=1` opts out |
 | [`0022`](#0022-give-a-large-first-block-time-to-arrive) | a large first transmit block gets time to arrive | transmitter safety |
 | [`0023`](#0023-persistent-transmit-watchdog-settings) | `fw_setenv tx_starve_ms` / `tx_cyclic_bound` | transmitter safety |
+| [`0024`](#0024-resume-the-transmitter-when-data-returns) | data arriving after a starve mute unmutes | fixes "TX works once per connection" |
 | [`optional/0003`](#0003-wbfm-channelizer) | FM broadcast channelizer | **not** applied |
 
 The five **safety** patches work together: `0004` mutes on the clean path,
@@ -541,6 +542,19 @@ cannot build the 5.15 plugins); the code is identical to the 6.12 patch.
 long an unattended cyclic transmit may run). Each is separate, each prints what
 the kernel accepted, and a value that is not a number is ignored with a message.
 The Debian root's `fishball-rf-quiesce` reads the same names.
+
+## 0024: resume the transmitter when data returns
+
+`0015`'s starve mute was one-way, and because it also switches the DAC to the
+DDS, nothing drained the DMA afterwards: a program that keeps one transmit buffer
+open and stops feeding it between transmissions (SDR Console) could transmit once
+per connection. A block arriving after a starve mute now re-selects the DMA
+source and unmutes through the call a buffer enable makes, and the watchdog is
+armed again. The full account and the measurements are in
+[`firmware-modern/patches/README.md`](../../firmware-modern/patches/README.md#0024-resume-the-transmitter-when-data-returns).
+
+The same code as the 6.12 patch. **Compiled for 5.15, not run**: both boards on
+the bench when it was written run the 6.12 kernel.
 
 ## Optional patches (not applied by setup.sh)
 

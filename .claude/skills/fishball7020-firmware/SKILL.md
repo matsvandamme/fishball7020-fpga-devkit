@@ -56,7 +56,7 @@ the Debian ssh answers: the board is up and `iiod` is held back.
 | set up by | `./devkit setup --target factory` | `./devkit setup` |
 | device tree | flat; the factory board's, plus `0008` and `0011` | an overlay on ADI's `.dtsi` (`firmware-modern/dts/`) |
 | defconfig | `zynq_pluto_defconfig` | `fishball_defconfig` |
-| patches | `firmware/patches/`, 20 (+ `optional/0003`) | `firmware-modern/patches/`, 10, drivers only |
+| patches | `firmware/patches/`, 21 (+ `optional/0003`) | `firmware-modern/patches/`, 11, drivers only |
 | FPGA input | Vivado, or `--xsa` | **always `--xsa`** |
 | CI | `verify-patches.yml` | `verify-modern.yml`, `verify-rootfs.yml` |
 
@@ -112,8 +112,8 @@ Buildroot has none of those. See
   whatever the next one started.
 - **Never assume a cyclic stream ends.** The 60 s `tx_cyclic_timeout_ms` bound
   is armed only on the modern Debian root; on factory Buildroot a killed
-  cyclic stream runs until stopped. The starve watchdog (0015) fires once and
-  exempts cyclic streams.
+  cyclic stream runs until stopped. The starve watchdog (0015) exempts
+  cyclic streams; data arriving again unmutes (0024).
 - **Never judge `hardwaregain` alone**: after a starve-mute the attenuator can
   read loud while only the powered-down TX LO keeps the port silent.
 - **On the factory kernel, re-mute after any debugfs `initialize`** and read

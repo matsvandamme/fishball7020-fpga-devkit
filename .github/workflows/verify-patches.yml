@@ -142,6 +142,14 @@ jobs:
           grep -q cf_axi_dds_tx_starve_arm_first firmware/src/linux/drivers/iio/frequency/cf_axi_dds.c
           grep -q 'cf_axi_dds_tx_starve_arm_first(st, indio_dev->buffer' firmware/src/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
           grep -q CF_AXI_DDS_TX_FIRST_BLOCK_MAX_MS firmware/src/linux/drivers/iio/frequency/cf_axi_dds.c
+      - name: Confirm data arriving after a starve mute unmutes (patch 0024)
+        run: |
+          # The starve mute also switches the DAC to the DDS, so it must be
+          # undone when data arrives again: without that a program that keeps
+          # one buffer open (SDR Console) transmits once per connection.
+          grep -q cf_axi_dds_tx_resume_fn firmware/src/linux/drivers/iio/frequency/cf_axi_dds.c
+          grep -q 'st->tx_starved = true' firmware/src/linux/drivers/iio/frequency/cf_axi_dds.c
+          grep -q 'cf_axi_dds_tx_starve_resume(st)' firmware/src/linux/drivers/iio/frequency/cf_axi_dds_buffer_stream.c
       - name: Confirm the transmit-disable latch landed (patch 0016)
         run: |
           grep -q 'tx_disable' firmware/src/linux/drivers/iio/adc/ad9361.c

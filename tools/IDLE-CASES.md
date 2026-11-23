@@ -310,7 +310,7 @@ clean in practice, but through iiod's own cleanup, not the
 `postdisable`-on-file-close mechanism the page named. So the page was wrong about
 the mechanism on every path and wrong about the outcome on the local one. Status:
 **resolved**; the page now describes the starve watchdog, its cyclic exception and
-its no-re-arm limit.
+its no-re-arm limit (which `0024` has since removed).
 
 ---
 

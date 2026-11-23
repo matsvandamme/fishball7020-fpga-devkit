@@ -30,7 +30,7 @@ git diff -- path/to/file > ../patches/0022-what-it-does.patch
 Number it after the highest existing patch in **both** `firmware/patches/` and
 `firmware-modern/patches/`: they share one numbering space, and the same patch
 carries the same number in both where it exists in both. The highest is
-currently `0021`, so the next is `0022`. Rules:
+currently `0024`, so the next is `0025`. Rules:
 
 - **The two directories share numbers.** `0019` exists only in the modern tree
   (the cached attenuation fix) and `0020` and `0021` only in `firmware/` (the
