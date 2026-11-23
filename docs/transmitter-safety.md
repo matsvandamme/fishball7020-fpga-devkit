@@ -186,7 +186,7 @@ new buffer on the same connection was refused as busy, and only reconnecting
 brought the transmitter back. SDR Console keeps one buffer open and stops
 feeding it between transmissions, so it could transmit once per connection.
 
-Since `0024` a block arriving after a starve mute puts back what the mute took
+Since `0024` (release v2.5 and later) a block arriving after a starve mute puts back what the mute took
 away, the same way a buffer enable does, and the watchdog is armed again:
 
 ```
